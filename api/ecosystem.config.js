@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'tfcapi',
-    cwd: '/root/tfcbot-api',
+    cwd: '/var/www/tfcbot/api',
     script: 'api.js',
     env: {
       PORT: 4000,
