@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browse NoName TFC Pickup match history, maps, scores, winners, and player rosters.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/matches.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Match History | NoName TFC Pickups">
+  <meta property="og:description" content="Browse NoName TFC Pickup match history, maps, scores, winners, and player rosters.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/matches.html">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC Pickups | Match History</title>
+
+  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css?v=12">
+  <link rel="stylesheet" href="assets/css/matches2.css?v=1.6">
+
+  <script src="assets/js/main.js?v=10" defer></script>
+  <script src="assets/js/matches2.js" defer></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] matches-page">
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav">
+        <a href="index.html">Home</a>
+        <a href="live.html" class="nav-live">LIVE</a>
+        <a href="matches.html" aria-current="page">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+      </nav>
+
+      <input
+        id="global-search"
+        type="text"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="Search players..."
+        aria-label="Search players"
+        class="site-search"
+      >
+    </div>
+  </header>
+
+  <main class="max-w-[1500px] mx-auto px-8 py-10">
+    <section class="matches-shell matches2-shell">
+
+      <div class="matches2-hero">
+        <div>
+          <p class="matches2-kicker">MATCH ARCHIVE</p>
+          <h1>Match History</h1>
+          <p class="matches2-subtitle">Browse completed pickups, scores, maps, and rosters.</p>
+          <p class="matches2-updated" id="matches2-updated">Checking archive...</p>
+        </div>
+
+      <section class="matches2-kpi-grid">
+        <article class="matches2-kpi kpi-blue">
+          <span>Total Matches</span>
+          <strong id="m2-total-matches">—</strong>
+          <small>completed archive</small>
+        </article>
+
+        <article class="matches2-kpi kpi-purple">
+          <span>Close Games</span>
+          <strong id="m2-close-games">—</strong>
+          <small>ties + score diff &lt; 15</small>
+        </article>
+
+        <article class="matches2-kpi kpi-gold">
+          <span>Ties</span>
+          <strong id="m2-ties">—</strong>
+          <small id="m2-tie-pct">—</small>
+        </article>
+
+        <article class="matches2-kpi kpi-green">
+          <span>Most Played Map</span>
+          <strong id="m2-top-map">—</strong>
+          <small id="m2-top-map-games">—</small>
+        </article>
+
+        <article class="matches2-kpi kpi-cyan">
+          <span>Avg Score</span>
+          <strong id="m2-avg-score">—</strong>
+          <small>blue - red</small>
+        </article>
+      </section>
+      </div>
+      <section class="matches2-filter-bar">
+        <div class="matches2-searchbox">
+          <span>⌕</span>
+          <input id="m2-search" type="text" placeholder="Search match ID, map, or player..." autocomplete="off">
+        </div>
+
+        <select id="m2-map-filter" aria-label="Filter by map">
+          <option value="all">All Maps</option>
+        </select>
+
+        <select id="m2-winner-filter" aria-label="Filter by winner">
+          <option value="all">All Winners</option>
+          <option value="BLUE">Blue Wins</option>
+          <option value="RED">Red Wins</option>
+          <option value="TIE">Ties</option>
+        </select>
+
+        <select id="m2-outcome-filter" aria-label="Filter by outcome">
+          <option value="all">All Outcomes</option>
+          <option value="close">Close / Tie</option>
+          <option value="under25">Within 25</option>
+          <option value="blowout">Blowouts</option>
+          <option value="pending">Pending</option>
+        </select>
+
+        <select id="m2-sort-filter" aria-label="Sort matches">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="score-high">Highest Combined Score</option>
+          <option value="score-low">Lowest Combined Score</option>
+        </select>
+
+        <button id="m2-clear-filters" type="button">✕ Clear Filters</button>
+      </section>
+
+      <section class="matches2-panel">
+        <div class="matches2-panel-topline">
+          <div>
+            <h2>Recent Matches</h2>
+            <span id="m2-range-label">Loading...</span>
+          </div>
+          <div class="matches2-page-size">
+            <span>Rows</span>
+            <select id="m2-page-size">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="matches2-table-scroll">
+          <table id="matches2-table" class="matches2-table">
+            <thead>
+              <tr>
+                <th>Match ID</th>
+                <th>Date</th>
+                <th>Map</th>
+                <th>Blue Team</th>
+                <th>Red Team</th>
+                <th>Score</th>
+                <th>Winner</th>
+              </tr>
+            </thead>
+            <tbody id="matches2-body">
+              <tr><td colspan="7" class="matches2-empty">Loading matches...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <nav class="matches2-pagination" aria-label="Matches pagination">
+        <button id="m2-prev-page" type="button">← Previous</button>
+        <div id="m2-page-numbers" class="matches2-page-numbers"></div>
+        <button id="m2-next-page" type="button">Next →</button>
+      </nav>
+
+    </section>
+  </main>
+
+</body>
+</html>

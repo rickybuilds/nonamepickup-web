@@ -1,0 +1,569 @@
+"use strict";
+
+const express = require("express");
+
+function createPlayersRouter({
+  db,
+  cleanString,
+  positiveInt,
+  sendError,
+  logRouteError,
+  MAX_PLAYER_MATCH_LIMIT,
+  matchColumns,
+  loadMatchPlayers,
+  serializeMatch,
+  parseIdList,
+  cached
+}) {
+  const router = express.Router();
+router.get("/players/search",(req,res)=>{
+  try{
+    const query=cleanString(req.query.q,100);
+    const limit=positiveInt(req.query.limit,20,1,100);
+    if(!query)return res.json({ok:true,data:[]});
+
+    const escaped=query.replace(/[\\%_]/g,"\\$&");
+
+    const rows=db.prepare(`
+      WITH primary_steam AS (
+        SELECT discord_id, MIN(steam_id) AS steam_id
+        FROM player_steam_ids
+        WHERE is_primary = 1
+        GROUP BY discord_id
+      )
+      SELECT
+        r.player_id AS id,
+        COALESCE(r.display_name,r.player_id) AS player,
+        r.rating,
+        COALESCE(up.hide_elo,0) AS hide_elo,
+        ps.steam_id,
+        sp.steam_id64,
+        sp.personaname,
+        sp.profileurl,
+        sp.avatar,
+        sp.avatarmedium,
+        sp.avatarfull,
+        COUNT(DISTINCT m.match_id) AS games,
+        SUM(CASE
+          WHEN m.winner='BLUE' AND EXISTS(SELECT 1 FROM json_each(m.blue_ids) WHERE CAST(value AS TEXT)=CAST(r.player_id AS TEXT)) THEN 1
+          WHEN m.winner='RED' AND EXISTS(SELECT 1 FROM json_each(m.red_ids) WHERE CAST(value AS TEXT)=CAST(r.player_id AS TEXT)) THEN 1
+          ELSE 0 END) AS wins,
+        SUM(CASE
+          WHEN m.winner='BLUE' AND EXISTS(SELECT 1 FROM json_each(m.red_ids) WHERE CAST(value AS TEXT)=CAST(r.player_id AS TEXT)) THEN 1
+          WHEN m.winner='RED' AND EXISTS(SELECT 1 FROM json_each(m.blue_ids) WHERE CAST(value AS TEXT)=CAST(r.player_id AS TEXT)) THEN 1
+          ELSE 0 END) AS losses,
+        SUM(CASE WHEN m.winner='TIE' THEN 1 ELSE 0 END) AS ties
+      FROM ratings r
+      LEFT JOIN user_prefs up ON up.player_id=r.player_id
+      LEFT JOIN primary_steam ps ON CAST(ps.discord_id AS TEXT)=CAST(r.player_id AS TEXT)
+      LEFT JOIN steam_profiles sp ON sp.steam_id=ps.steam_id
+      LEFT JOIN rating_changes rc ON rc.player_id=r.player_id
+      LEFT JOIN matches m ON m.match_id=rc.match_id AND m.status='completed'
+      WHERE CAST(r.player_id AS TEXT)=?
+         OR LOWER(COALESCE(r.display_name,'')) LIKE LOWER(?) ESCAPE '\\'
+      GROUP BY r.player_id
+      ORDER BY
+        CASE WHEN CAST(r.player_id AS TEXT)=? THEN 0
+             WHEN LOWER(COALESCE(r.display_name,''))=LOWER(?) THEN 1
+             ELSE 2 END,
+        r.rating DESC
+      LIMIT ?
+    `).all(query,`%${escaped}%`,query,query,limit);
+
+    res.setHeader("Cache-Control","public, max-age=10");
+    res.json({
+      ok:true,
+      data:rows.map(row=>{
+        const wins=Number(row.wins||0);
+        const losses=Number(row.losses||0);
+        const ties=Number(row.ties||0);
+        const total=wins+losses+ties;
+        return{
+          id:String(row.id),
+          player:row.player||String(row.id),
+          elo:row.hide_elo?null:row.rating,
+          hidden:!!row.hide_elo,
+          wins,
+          losses,
+          ties,
+          record:`${wins}-${losses}-${ties}`,
+          win_pct:total?Math.round((wins/total)*100):0,
+          steam_id:row.steam_id||null,
+          steam_id64:row.steam_id64||null,
+          personaname:row.personaname||null,
+          profileurl:row.profileurl||null,
+          avatar:row.avatar||null,
+          avatarmedium:row.avatarmedium||null,
+          avatarfull:row.avatarfull||null
+        };
+      })
+    });
+  }catch(error){
+    logRouteError("[/api/players/search]",error);
+    sendError(res,500,"player_search_failed");
+  }
+});
+
+router.get("/steam/profile/:discordId",(req,res)=>{
+  try{
+    const discordId=cleanString(req.params.discordId,100);
+    if(!discordId)return sendError(res,400,"invalid_player");
+
+    const profile=db.prepare(`
+      SELECT
+        psi.discord_id,
+        psi.steam_id,
+        sp.steam_id64,
+        sp.personaname,
+        sp.profileurl,
+        sp.avatar,
+        sp.avatarmedium,
+        sp.avatarfull
+      FROM player_steam_ids psi
+      LEFT JOIN steam_profiles sp ON sp.steam_id=psi.steam_id
+      WHERE CAST(psi.discord_id AS TEXT)=?
+        AND psi.is_primary=1
+      ORDER BY psi.steam_id
+      LIMIT 1
+    `).get(discordId);
+
+    if(!profile)return sendError(res,404,"steam_profile_not_found");
+
+    res.setHeader("Cache-Control","public, max-age=300, stale-while-revalidate=3600");
+    res.json({
+      ok:true,
+      data:{
+        discord_id:String(profile.discord_id),
+        steam_id:profile.steam_id,
+        steam_id64:profile.steam_id64||null,
+        personaname:profile.personaname||null,
+        profileurl:profile.profileurl||null,
+        avatar:profile.avatar||null,
+        avatarmedium:profile.avatarmedium||null,
+        avatarfull:profile.avatarfull||null
+      }
+    });
+  }catch(error){
+    logRouteError("[/api/steam/profile/:discordId]",error);
+    sendError(res,500,"steam_profile_failed");
+  }
+});
+
+// Player Card V3 - Elo + Hampalyzer
+router.get("/player/:discordId/v3",(req,res)=>{
+  try{
+    const discordId=cleanString(req.params.discordId,100);
+    if(!discordId)return sendError(res,400,"invalid_player");
+
+    const player=db.prepare(`
+      SELECT r.player_id,r.display_name,r.rating,COALESCE(up.hide_elo,0) AS hide_elo
+      FROM ratings r
+      LEFT JOIN user_prefs up ON up.player_id=r.player_id
+      WHERE r.player_id=?
+    `).get(discordId);
+
+    if(!player)return sendError(res,404,"player_not_found");
+
+    const steam=db.prepare(`
+      SELECT
+        psi.*,
+        sp.steam_id64,
+        sp.personaname,
+        sp.profileurl,
+        sp.avatar,
+        sp.avatarmedium,
+        sp.avatarfull
+      FROM player_steam_ids psi
+      LEFT JOIN steam_profiles sp ON sp.steam_id=psi.steam_id
+      WHERE CAST(psi.discord_id AS TEXT)=?
+      ORDER BY psi.is_primary DESC, psi.steam_id
+      LIMIT 1
+    `).get(discordId);
+
+    const steamId=steam?.steam_id||null;
+
+    const record=db.prepare(`
+      SELECT
+        COUNT(DISTINCT rc.match_id) AS games,
+        SUM(CASE
+          WHEN m.winner='BLUE' AND EXISTS(SELECT 1 FROM json_each(m.blue_ids) WHERE CAST(value AS TEXT)=CAST(rc.player_id AS TEXT)) THEN 1
+          WHEN m.winner='RED' AND EXISTS(SELECT 1 FROM json_each(m.red_ids) WHERE CAST(value AS TEXT)=CAST(rc.player_id AS TEXT)) THEN 1
+          ELSE 0 END) AS wins,
+        SUM(CASE
+          WHEN m.winner='BLUE' AND EXISTS(SELECT 1 FROM json_each(m.red_ids) WHERE CAST(value AS TEXT)=CAST(rc.player_id AS TEXT)) THEN 1
+          WHEN m.winner='RED' AND EXISTS(SELECT 1 FROM json_each(m.blue_ids) WHERE CAST(value AS TEXT)=CAST(rc.player_id AS TEXT)) THEN 1
+          ELSE 0 END) AS losses,
+        SUM(CASE WHEN m.winner='TIE' THEN 1 ELSE 0 END) AS ties
+      FROM rating_changes rc
+      JOIN matches m ON m.match_id=rc.match_id
+      WHERE rc.player_id=? AND m.status='completed'
+    `).get(discordId);
+
+    const classMapRows=steamId?db.prepare(`
+      SELECT
+        m.map_name AS map,
+        c.class_name,
+        SUM(c.seconds) AS seconds,
+        COUNT(DISTINCT c.match_id) AS matches
+      FROM match_player_classes c
+      JOIN matches m ON m.match_id=c.match_id
+      WHERE c.player_key=?
+        AND m.map_name IS NOT NULL
+        AND m.map_name!=''
+      GROUP BY m.map_name,c.class_name
+      ORDER BY m.map_name,seconds DESC
+    `).all(steamId):[];
+
+    const rankRow=db.prepare(`
+      SELECT COUNT(*)+1 AS rank
+      FROM ratings r
+      LEFT JOIN user_prefs up ON up.player_id=r.player_id
+      WHERE COALESCE(up.hide_elo,0)=0
+        AND r.rating > ?
+    `).get(player.rating||0);
+
+    const hStats=steamId?db.prepare(`
+      SELECT
+        COUNT(DISTINCT match_id) AS matches,
+        SUM(kills) AS kills,
+        SUM(deaths) AS deaths,
+        SUM(enemy_damage) AS damage,
+        SUM(team_damage) AS team_damage,
+        SUM(damage_taken) AS damage_taken,
+        SUM(flag_captures) AS caps,
+        SUM(flag_touches) AS touches,
+        SUM(initial_touches) AS initial_touches,
+        SUM(flag_time_seconds) AS flag_time,
+        SUM(conc_jumps) AS conc_jumps
+      FROM match_player_stats
+      WHERE steam_id=? OR player_key=?
+    `).get(steamId,steamId):null;
+
+    const classRows=steamId?db.prepare(`
+      SELECT class_name,
+            SUM(seconds) AS seconds,
+            COUNT(DISTINCT match_id) AS matches
+      FROM match_player_classes
+      WHERE player_key=?
+      GROUP BY class_name
+      ORDER BY seconds DESC
+    `).all(steamId):[];
+
+    const weaponRows=steamId?db.prepare(`
+      SELECT weapon AS weapon_class,
+            SUM(kills) AS kills
+      FROM match_player_weapons
+      WHERE player_key=?
+      GROUP BY weapon
+      ORDER BY kills DESC
+      LIMIT 10
+    `).all(steamId):[];
+
+    let mvpGames=0;
+    if(steamId){
+      try{
+        const mvpRow=db.prepare(`
+          SELECT COUNT(DISTINCT match_id) AS mvp_games
+          FROM match_round_mvps
+          WHERE mvp_player_key=? OR steam_id=?
+        `).get(steamId,steamId);
+        mvpGames=Number(mvpRow?.mvp_games||0);
+      }catch(mvpError){
+        if(!String(mvpError?.message||"").includes("no such table")){
+          logRouteError("[/api/player/:discordId/v3 mvps]",mvpError);
+        }
+      }
+    }
+
+    const wins=Number(record?.wins||0);
+    const losses=Number(record?.losses||0);
+    const ties=Number(record?.ties||0);
+    const games=wins+losses+ties;
+
+    const kills=Number(hStats?.kills||0);
+    const deaths=Number(hStats?.deaths||0);
+    const hMatches=Number(hStats?.matches||0);
+    const totalClassSeconds=classRows.reduce((s,r)=>s+Number(r.seconds||0),0);
+
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=1, stale-while-revalidate=2"
+    );
+
+    res.json({
+      ok:true,
+      data:{
+        player:{
+          id:String(player.player_id),
+          name:player.display_name||String(player.player_id),
+          steam_id:steamId,
+          steam_link:steam||null,
+          steam_id64:steam?.steam_id64||null,
+          personaname:steam?.personaname||null,
+          profileurl:steam?.profileurl||null,
+          avatar:steam?.avatar||null,
+          avatarmedium:steam?.avatarmedium||null,
+          avatarfull:steam?.avatarfull||null
+        },
+        ratings:{
+          elo:player.hide_elo?null:player.rating,
+          hidden:!!player.hide_elo,
+          rank:player.hide_elo?null:Number(rankRow?.rank||0),
+          wins,
+          losses,
+          ties,
+          games,
+          record:`${wins}-${losses}-${ties}`,
+          win_pct:games?Math.round((wins/games)*100):0
+        },
+        hampalyzer:{
+          linked:!!steamId,
+          matches:hMatches,
+          kills,
+          deaths,
+          kdr:deaths?Number((kills/deaths).toFixed(2)):kills,
+          damage:Number(hStats?.damage||0),
+          team_damage:Number(hStats?.team_damage||0),
+          damage_taken:Number(hStats?.damage_taken||0),
+          caps:Number(hStats?.caps||0),
+          touches:Number(hStats?.touches||0),
+          initial_touches:Number(hStats?.initial_touches||0),
+          flag_time:Number(hStats?.flag_time||0),
+          conc_jumps:Number(hStats?.conc_jumps||0),
+          mvp_games:mvpGames
+        },
+        classes:classRows.map(r=>{
+          const seconds=Number(r.seconds||0);
+          return{
+            class:r.class_name,
+            seconds,
+            hours:Number((seconds/3600).toFixed(1)),
+            pct:totalClassSeconds?Number(((seconds/totalClassSeconds)*100).toFixed(1)):0,
+            matches:Number(r.matches||0),
+            avg_seconds_per_match:r.matches?Math.round(seconds/Number(r.matches)):0
+          };
+        }),
+        class_maps:classMapRows.map(r=>{
+        const seconds=Number(r.seconds||0);
+        const matches=Number(r.matches||0);
+        return{
+          map:r.map,
+          class:r.class_name,
+          seconds,
+          hours:Number((seconds/3600).toFixed(1)),
+          matches,
+          avg_seconds_per_match:matches?Math.round(seconds/matches):0
+        };
+      }),
+        favorite_class:classRows[0]?.class_name||null,
+        weapons:weaponRows.map(r=>({
+          weapon_class:r.weapon_class,
+          kills:Number(r.kills||0)
+        }))
+      }
+    });
+  }catch(e){
+    logRouteError("[/api/player/:discordId/v3]",e);
+    sendError(res,500,"player_v3_failed");
+  }
+});
+
+// Recent matches for player
+router.get("/player/:id/recent", (req, res) => {
+  const pid = cleanString(req.params.id, 100);
+  const limit = positiveInt(req.query.limit, 50, 1, MAX_PLAYER_MATCH_LIMIT);
+  if (!pid) return sendError(res, 400, "invalid_player");
+
+  try {
+    const matches = db.prepare(`
+      SELECT ${matchColumns("m")}
+      FROM matches m
+      WHERE EXISTS (
+        SELECT 1 FROM json_each(m.blue_ids)
+        WHERE CAST(value AS TEXT) = ?
+      ) OR EXISTS (
+        SELECT 1 FROM json_each(m.red_ids)
+        WHERE CAST(value AS TEXT) = ?
+      )
+      ORDER BY m.created_at DESC
+      LIMIT ?
+    `).all(pid, pid, limit);
+
+    const adminRows = db.prepare(`
+      SELECT match_id, ts, before, after, delta
+      FROM rating_changes
+      WHERE player_id = ?
+        AND (match_id LIKE 'admin-%' OR match_id LIKE 'admin-set-%')
+      ORDER BY ts DESC
+      LIMIT 5
+    `).all(pid);
+
+    const playersByMatch = loadMatchPlayers(matches, { includeRatings: false });
+    const out = matches.map(row => {
+      const serialized = serializeMatch(row, playersByMatch, { includeTfcstats: false });
+      const player =
+        serialized.blueTeam.find(entry => String(entry.id) === pid) ||
+        serialized.redTeam.find(entry => String(entry.id) === pid);
+      return {
+        ...serialized,
+        before: player?.before ?? null,
+        after: player?.after ?? null,
+        delta: player?.delta ?? 0
+      };
+    });
+
+    for (const a of adminRows) {
+      out.unshift({
+        id: a.match_id,
+        created_at: a.ts,
+        map_name: "(Admin Adjustment)",
+        winner: "—",
+        status: "admin",
+        before: a.before,
+        after: a.after,
+        delta: a.delta,
+        blueTeam: [],
+        redTeam: [],
+        hampalyzer_url: null,
+        score_blue: null,
+        score_red: null
+      });
+    }
+
+    out.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    res.json({ ok: true, data: out.slice(0, limit) });
+  } catch (err) {
+    logRouteError("[recent]", err);
+    sendError(res, 500, "player_recent_failed");
+  }
+});
+
+// Player per-map stats
+router.get("/player/:id/permap", (req, res) => {
+  try {
+    const pid = cleanString(req.params.id, 100);
+    if (!pid) return sendError(res, 400, "invalid_player");
+
+    const rows = db.prepare(`
+      SELECT r.match_id, r.before, r.after, r.delta,
+             m.map_name, m.winner, m.status, m.blue_ids, m.red_ids
+      FROM rating_changes r
+      LEFT JOIN matches m ON m.match_id = r.match_id
+      WHERE r.player_id = ?
+        AND m.status IN ('in_progress','completed')
+        AND m.map_name IS NOT NULL AND m.map_name != '(unknown)'
+    `).all(pid);
+
+    const box = new Map();
+    for (const r of rows) {
+      const key = r.map_name || "(unknown)";
+      const b = box.get(key) || { map: key, gp: 0, w: 0, l: 0, t: 0, sumDelta: 0 };
+
+      let team = null;
+      try {
+        const blueIds = parseIdList(r.blue_ids);
+        const redIds = parseIdList(r.red_ids);
+        if (blueIds.includes(pid)) team = "BLUE";
+        else if (redIds.includes(pid)) team = "RED";
+      } catch {}
+
+      if (r.winner) {
+        if (r.winner === "TIE") b.t += 1;
+        else if (team && r.winner === team) b.w += 1;
+        else if (team && r.winner !== team && r.winner !== "In Progress") b.l += 1;
+      }
+
+      b.gp += 1;
+      b.sumDelta += Number(r.delta) || 0;
+      box.set(key, b);
+    }
+
+    const out = Array.from(box.values()).map(b => {
+      const avgDelta = b.gp ? Math.round(b.sumDelta / b.gp) : 0;
+      const winPct   = (b.w + b.l + b.t) ? Math.round((b.w / (b.w + b.l + b.t)) * 100) : 0;
+      return { map: b.map, gp: b.gp, w: b.w, l: b.l, t: b.t, win_pct: winPct, avg_delta: avgDelta };
+    });
+
+    out.sort((a,b) => b.gp - a.gp || b.win_pct - a.win_pct || a.map.localeCompare(b.map));
+    res.json({ ok: true, data: out, count: out.length });
+  } catch (e) {
+    logRouteError("[player permap]", e);
+    sendError(res, 500, "player_permap_failed");
+  }
+});
+
+// Top players
+// ✅ FIXED: removed N+1 query — rating now comes from the main JOIN instead of a per-row lookup
+// ✅ CACHED: results reused for 30s
+router.get("/topplayers", (req, res) => {
+  try {
+    const days = positiveInt(req.query.days, 30, 1, 3650);
+    const cutoff = Math.floor(Date.now() / 1000) - (days * 86400);
+    const cacheKey = `topplayers_${days}`;
+
+    const out = cached(cacheKey, () => {
+      const rows = db.prepare(`
+        SELECT r.player_id,
+               MAX(rt.display_name) as display_name,
+               MAX(rt.rating)       as current_rating,
+               up.hide_elo,
+               COUNT(*) as games,
+               SUM(CASE
+                     WHEN m.winner='BLUE' AND EXISTS (
+                       SELECT 1 FROM json_each(m.blue_ids)
+                       WHERE CAST(value AS TEXT) = CAST(r.player_id AS TEXT)
+                     ) THEN 1
+                     WHEN m.winner='RED' AND EXISTS (
+                       SELECT 1 FROM json_each(m.red_ids)
+                       WHERE CAST(value AS TEXT) = CAST(r.player_id AS TEXT)
+                     ) THEN 1
+                     ELSE 0
+                   END) as wins,
+               SUM(CASE
+                     WHEN m.winner='BLUE' AND EXISTS (
+                       SELECT 1 FROM json_each(m.red_ids)
+                       WHERE CAST(value AS TEXT) = CAST(r.player_id AS TEXT)
+                     ) THEN 1
+                     WHEN m.winner='RED' AND EXISTS (
+                       SELECT 1 FROM json_each(m.blue_ids)
+                       WHERE CAST(value AS TEXT) = CAST(r.player_id AS TEXT)
+                     ) THEN 1
+                     ELSE 0
+                   END) as losses,
+               SUM(CASE WHEN m.winner='TIE' THEN 1 ELSE 0 END) as ties,
+               SUM(r.delta) as delta
+        FROM rating_changes r
+        JOIN matches m ON m.match_id = r.match_id
+        LEFT JOIN ratings rt ON rt.player_id = r.player_id
+        LEFT JOIN user_prefs up ON up.player_id = r.player_id
+        WHERE m.status='completed' AND m.created_at >= ?
+        GROUP BY r.player_id
+        HAVING games > 0
+        ORDER BY delta DESC
+        LIMIT 20
+      `).all(cutoff);
+
+      // ✅ current_rating comes from the JOIN above — no extra query per row
+      return rows.map((r, i) => ({
+        rank: i + 1,
+        id: String(r.player_id),
+        player: r.display_name || String(r.player_id),
+        record: `${r.wins}-${r.losses}-${r.ties}`,
+        delta: r.delta || 0,
+        current: r.hide_elo ? null : (r.current_rating ?? null),
+        hidden: !!r.hide_elo
+      }));
+    });
+
+    res.json({ ok: true, data: out });
+  } catch (e) {
+    logRouteError("[/api/topplayers]", e);
+    sendError(res, 500, "topplayers_failed");
+  }
+});
+
+
+  return router;
+}
+
+module.exports = { createPlayersRouter };

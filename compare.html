@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Compare two NoName TFC Pickup players as teammates and opponents.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/compare.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Compare Players | NoName TFC Pickups">
+  <meta property="og:description" content="Compare NoName TFC Pickup players across Elo, shared matches, teammate results, and head-to-head records.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/compare.html">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC Pickups | Compare</title>
+
+  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css?v=12">
+  <link rel="stylesheet" href="assets/css/compare.css?v=1">
+  <script src="assets/js/main.js?v=10" defer></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] compare-page">
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav">
+        <a href="index.html">Home</a>
+        <a href="live.html" class="nav-live">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html" aria-current="page">Compare</a>
+      </nav>
+
+      <input
+        id="global-search"
+        type="text"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="Search players..."
+        aria-label="Search players"
+        class="site-search"
+      >
+    </div>
+  </header>
+
+  <main class="max-w-[1500px] mx-auto px-8 py-10">
+    <section class="compare-shell">
+
+      <div class="compare-header">
+        <div>
+          <p class="compare-kicker">PLAYER VS PLAYER</p>
+          <h1>Compare Players</h1>
+          <p class="compare-subtitle">Head-to-head opponents, teammate record, recent shared matches.</p>
+        </div>
+      </div>
+
+      <div class="compare-search-panel">
+        <div class="compare-search-box">
+          <label>Player One</label>
+          <div class="compare-autocomplete-wrap">
+            <input id="compare-player-1" class="compare-player-input" type="text" placeholder="Search player one..." autocomplete="off">
+            <div id="compare-player-1-results" class="compare-autocomplete-results"></div>
+          </div>
+          <small id="compare-player-1-selected">No player selected</small>
+        </div>
+
+        <div class="compare-vs">VS</div>
+
+        <div class="compare-search-box">
+          <label>Player Two</label>
+          <div class="compare-autocomplete-wrap">
+            <input id="compare-player-2" class="compare-player-input" type="text" placeholder="Search player two..." autocomplete="off">
+            <div id="compare-player-2-results" class="compare-autocomplete-results"></div>
+          </div>
+          <small id="compare-player-2-selected">No player selected</small>
+        </div>
+
+        <button id="compare-run" class="compare-run-btn">Compare</button>
+      </div>
+
+      <div id="compare-empty" class="compare-empty">
+        Pick two players to load teammate and opponent stats.
+      </div>
+
+      <div id="compare-results" class="compare-results hidden">
+
+        <div class="compare-player-cards">
+          <div class="compare-player-card blue-side">
+            <p class="card-kicker">PLAYER ONE</p>
+            <h2 id="compare-name-1">—</h2>
+            <p id="compare-elo-1">—</p>
+          </div>
+
+          <div class="compare-player-card red-side">
+            <p class="card-kicker">PLAYER TWO</p>
+            <h2 id="compare-name-2">—</h2>
+            <p id="compare-elo-2">—</p>
+          </div>
+        </div>
+
+        <div class="compare-kpi-grid">
+          <div class="compare-kpi">
+            <span>Games Together</span>
+            <strong id="compare-together-gp">—</strong>
+            <small id="compare-together-record">teammate record</small>
+          </div>
+          <div class="compare-kpi">
+            <span>Head-to-Head</span>
+            <strong id="compare-h2h-gp">—</strong>
+            <small id="compare-h2h-record">opponent record</small>
+          </div>
+          <div class="compare-kpi blue-kpi">
+            <span id="compare-p1-wins-label">P1 Wins</span>
+            <strong id="compare-p1-wins">—</strong>
+            <small>when opponents</small>
+          </div>
+          <div class="compare-kpi red-kpi">
+            <span id="compare-p2-wins-label">P2 Wins</span>
+            <strong id="compare-p2-wins">—</strong>
+            <small>when opponents</small>
+          </div>
+        </div>
+
+        <div class="compare-grid">
+          <div class="compare-panel">
+            <div class="compare-panel-header">
+              <h2>Teammate Stats</h2>
+              <span>Same Team</span>
+            </div>
+            <table class="compare-table">
+              <tbody id="compare-teammate-body"></tbody>
+            </table>
+          </div>
+
+          <div class="compare-panel">
+            <div class="compare-panel-header">
+              <h2>Opponent Stats</h2>
+              <span>Against Each Other</span>
+            </div>
+            <table class="compare-table">
+              <tbody id="compare-opponent-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="compare-panel full-width">
+          <div class="compare-panel-header">
+            <h2>Recent Shared Matches</h2>
+            <span>Latest 25</span>
+          </div>
+          <div class="compare-table-scroll">
+            <table class="compare-table match-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Map</th>
+                  <th>Relation</th>
+                  <th>Blue Team</th>
+                  <th>Red Team</th>
+                  <th>Score</th>
+                  <th>Winner</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody id="compare-matches-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+</body>
+</html>

@@ -1,0 +1,361 @@
+/* =========================================================
+   index.css — page-specific styles only
+   Shared background, shell, glow, main width, and bgShift live in style.css.
+   ========================================================= */
+
+/* ================================
+   X.AI LEVEL INDEX PAGE - FIXED
+================================ */
+
+/* Keep original glows */
+/* Main Shell */
+/* KPI Grid */
+.cyber-kpi-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns:repeat(6, minmax(0,1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+/* Make the grinder card stand out a bit more */
+.cyber-kpi.cyber-red {
+  grid-column: span 1;
+  border-color: rgba(251, 146, 60, 0.5);
+  background: linear-gradient(145deg, rgba(30,41,59,.94), rgba(15,23,42,.9));
+}
+
+.cyber-kpi {
+  position: relative;
+  overflow: hidden;
+  min-height: 138px;
+  border-radius: 28px;
+  padding: 18px 18px;
+  background: linear-gradient(145deg, rgba(30,41,59,.94), rgba(15,23,42,.9));
+  border: 1px solid rgba(77,166,255,.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 18px 35px rgba(0,0,0,.28);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cyber-kpi:hover {
+  transform: translateY(-3px);
+  border-color: rgba(77,166,255,.5);
+  box-shadow: 0 20px 40px rgba(77,166,255,.15), 0 20px 40px rgba(0,0,0,.4);
+}
+
+.cyber-kpi::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 40%; height: 40%;
+  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
+  opacity: 0;
+  transition: all 0.6s;
+}
+
+.cyber-kpi:hover::before {
+  opacity: 1;
+  transform: rotate(15deg) translate(100%, 80%);
+}
+
+.cyber-kpi span {
+  display: block;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 11px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.cyber-kpi strong {
+  display: block;
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -1px;
+  background: linear-gradient(90deg, #ffffff, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cyber-kpi small {
+  display: block;
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.cyber-red {
+  border-color: rgba(251, 146, 60, 0.4) !important;
+}
+
+.cyber-red strong {
+  background: linear-gradient(90deg, #fff, #fb923c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cyber-kpi.cyber-gold {
+  border-color: rgba(250, 204, 21, 0.45);
+  background: linear-gradient(145deg, rgba(42, 35, 15, .94), rgba(15, 23, 42, .92));
+}
+
+.cyber-kpi.cyber-gold span {
+  color: #fde68a;
+}
+
+.cyber-kpi.cyber-gold strong,
+.cyber-kpi.cyber-gold strong a {
+  background: linear-gradient(90deg, #fff, #facc15);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Panels & Tables */
+.cyber-main-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 24px;
+}
+
+.cyber-panel {
+  border-radius: 32px;
+  padding: 20px;
+  background: rgba(15,23,42,.85);
+  border: 1px solid rgba(77,166,255,.24);
+  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+}
+
+.cyber-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.cyber-panel-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 950;
+  letter-spacing: -1px;
+}
+
+.cyber-panel-header span {
+  color: #64748b;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  font-weight: 900;
+}
+
+.cyber-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+  font-size: 13.5px;
+}
+
+.cyber-table thead th {
+  background: rgba(77,166,255,.12);
+  color: #bfdbfe;
+  padding: 12px 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.cyber-table tbody tr {
+  background: rgba(8,13,26,.92);
+  transition: all 0.3s ease;
+}
+
+.cyber-table tbody tr:hover {
+  background: rgba(77,166,255,0.18) !important;
+  transform: scale(1.01);
+  box-shadow: 0 10px 30px rgba(77,166,255,0.25);
+}
+
+.cyber-table td, .cyber-table th {
+  padding: 14px 12px;
+  color: #e5e7eb;
+  border-bottom: 1px solid rgba(148,163,184,.08);
+}
+
+.cyber-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .cyber-kpi-grid, .cyber-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cyber-table thead th {
+  background: rgba(30, 41, 59, 0.9);
+  border-bottom: 2px solid rgba(77,166,255,0.4);
+}
+
+.cyber-table tbody tr:hover {
+  background: rgba(77,166,255,0.12) !important;
+}
+
+.kpi-sub {
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 16px;
+  line-height: 1.4;
+}
+
+.cyber-kpi .secondary-player {
+  font-size: 28px;
+  opacity: 0.85;
+}
+
+.kpi-sub {
+  display: block;
+  margin-top: 16px;
+  line-height: 2.1;
+}
+
+.cyber-red strong {
+  font-size: 32px;
+  line-height: 1.05;
+  margin-bottom: 4px;
+}
+
+.cyber-red .secondary-player {
+  display: block;
+  font-size: 32px;
+  line-height: 1.05;
+  margin-top: 18px;
+}
+
+.cyber-red .kpi-sub {
+  display: block;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-top: 6px;
+  letter-spacing: 0;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.kpi-secondary strong {
+  display: block;
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -2px;
+  background: linear-gradient(90deg, #ffffff, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.kpi-secondary {
+  margin-top: 8px;
+}
+
+.cyber-kpi.cyber-green {
+  border-color: rgba(34, 197, 94, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 18px 35px rgba(0,0,0,.28),
+    0 0 25px rgba(34,197,94,.10);
+}
+
+.cyber-kpi.cyber-green:hover {
+  border-color: rgba(34,197,94,.7);
+  box-shadow:
+    0 20px 40px rgba(34,197,94,.18),
+    0 20px 40px rgba(0,0,0,.4);
+}
+
+.cyber-kpi.cyber-red:hover {
+  border-color: rgba(251,146,60,.7);
+  box-shadow:
+    0 20px 40px rgba(251,146,60,.18),
+    0 20px 40px rgba(0,0,0,.4);
+}
+
+.cyber-kpi.cyber-green strong {
+  background: linear-gradient(90deg, #ffffff, #4ade80);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.close-games-stats {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.close-games-stats div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.close-games-stats b {
+  color: #e2e8f0;
+  min-width: 42px;
+}
+
+@media(max-width:700px){
+
+.index-page main{width:100%!important;padding:8px 6px 28px!important;overflow-x:hidden;}
+
+.cyber-shell{padding:10px!important;border-radius:20px!important;overflow:hidden;}
+
+.cyber-kpi-grid{grid-template-columns:1fr!important;gap:10px;margin-bottom:12px;}
+
+.cyber-kpi{min-height:auto;border-radius:18px;padding:14px;}
+
+.cyber-kpi span{font-size:9px;margin-bottom:6px;}
+
+.cyber-kpi strong{font-size:26px;line-height:1.05;}
+
+.cyber-kpi small{font-size:11px;margin-top:8px;}
+
+.kpi-sub{font-size:11px;line-height:1.45;margin-top:8px;}
+
+.kpi-secondary{margin-top:6px;}
+
+.kpi-secondary strong{font-size:24px;}
+
+.cyber-red strong,.cyber-red .secondary-player{font-size:24px;margin-top:8px;}
+
+.cyber-red .kpi-sub{font-size:10px;white-space:normal;}
+
+.close-games-stats{font-size:10px;gap:4px;}
+
+.close-games-stats b{min-width:34px;}
+
+.cyber-main-grid{grid-template-columns:1fr!important;gap:12px;}
+
+.cyber-panel{border-radius:18px;padding:12px;overflow:hidden;}
+
+.cyber-panel-header{align-items:flex-start;gap:8px;margin-bottom:10px;}
+
+.cyber-panel-header h3{font-size:22px;line-height:1;}
+
+.cyber-panel-header span{font-size:9px;}
+
+.cyber-scroll{max-height:420px;overflow:auto;padding-right:4px;}
+
+.cyber-table{font-size:10px;min-width:420px;}
+
+.cyber-table thead th{font-size:8px;padding:8px 6px;}
+
+.cyber-table td,.cyber-table th{padding:8px 6px;}
+
+}

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Watch NoName TFC Pickup matches, queue activity, rosters, scores, and capture events live.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/live.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Live Matches | NoName TFC Pickups">
+  <meta property="og:description" content="Live NoName TFC Pickup queue activity, match scores, rosters, and capture events.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/live.html">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC Pickups | Live</title>
+
+  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css?v=12">
+  <link rel="stylesheet" href="assets/css/live2.css?v=2.21">
+
+  <script src="assets/js/main.js?v=10" defer></script>
+  <script src="assets/js/live2.js?v=1" defer></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] live2-page">
+
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav">
+        <a href="index.html">Home</a>
+        <a href="live.html" class="nav-live" aria-current="page">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+      </nav>
+
+      <input
+        id="global-search"
+        type="text"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="Search players..."
+        aria-label="Search players"
+        class="site-search"
+      >
+    </div>
+  </header>
+
+  <main class="max-w-[1500px] mx-auto px-8 py-10">
+    <section class="live2-shell">
+
+      <div class="live2-hero">
+        <div>
+          <p class="live2-kicker">LIVE MATCH CENTER</p>
+          <h1><span class="live2-dot">●</span> LIVE</h1>
+          <p class="live2-subtitle">Real-time match state, queue slots, caps, and active rosters.</p>
+        </div>
+
+        <aside class="live2-queue-panel live2-panel">
+          <div class="live2-panel-header">
+            <div>
+              <p>QUEUE</p>
+              <h2 id="live2-queue-title">0/8</h2>
+            </div>
+            <span id="live2-needed">waiting</span>
+          </div>
+
+          <div id="live2-queue-slots" class="live2-queue-slots"></div>
+
+          <div class="live2-queue-footer">
+            <strong id="live2-queue-message">Checking bot queue...</strong>
+            <small>Players in a live match are filtered out.</small>
+          </div>
+        </aside>
+      </div>
+     <div id="live2-match-tabs" class="live2-match-tabs hidden"></div>
+      <section class="live2-layout live2-layout-watch">
+
+        <section class="live2-watch-card live2-panel">
+          <div class="live2-panel-header">
+            <div>
+              <p>WATCH PARTY</p>
+              <h2>Interactive Spectator Bot</h2>
+            </div>
+
+            <a
+              href="https://www.twitch.tv/gamewatchparty"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="live2-twitch-link"
+            >
+              Open Twitch →
+            </a>
+          </div>
+
+          <div class="live2-twitch-wrap">
+            <iframe
+              id="twitch-player"
+              src="https://player.twitch.tv/?channel=gamewatchparty&parent=nonamepickup.servehalflife.com&autoplay=true&muted=true"
+              frameborder="0"
+              allowfullscreen
+              scrolling="no">
+
+            </iframe>
+          </div>
+        </section>
+
+        <section class="live2-match-card">
+          <div class="live2-map-wrap">
+            <img id="live2-map-image" class="live2-map-image" alt="Live map preview">
+            <div class="live2-map-fallback"><img src="./assets/images/maps/NoMap.webp" alt=""></div>
+            <div class="live2-map-overlay"></div>
+          </div>
+
+          <div class="live2-match-content">
+            <div class="live2-match-top">
+              <div>
+                <p class="live2-live-label">CURRENT MATCH</p>
+                <h2 id="live2-map-name">No active match</h2>
+              </div>
+
+              <a
+                id="live2-match-link"
+                class="live2-match-id"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+              >—</a>
+            </div>
+
+            <div class="live2-scoreboard">
+              <div class="live2-team-score blue">
+                <span>TEAM 1</span>
+                <strong id="live2-team1-score">0</strong>
+              </div>
+
+              <div class="live2-vs">
+                <span>VS</span>
+                <small id="live2-round-label">waiting</small>
+              </div>
+
+              <div class="live2-team-score red">
+                <span>TEAM 2</span>
+                <strong id="live2-team2-score">0</strong>
+              </div>
+            </div>
+
+            <div id="live2-last-cap" class="live2-last-cap hidden">
+              <span>LAST CAP</span>
+              <strong id="live2-last-cap-player">—</strong>
+              <small id="live2-last-cap-detail">—</small>
+            </div>
+
+            <div id="live2-idle-state" class="live2-idle-state">
+              <strong>No match currently live.</strong>
+              <span>Queue activity will still show above.</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="live2-roster-panel live2-panel">
+          <div class="live2-panel-header">
+            <div>
+              <p>ROSTERS</p>
+              <h2>Players</h2>
+            </div>
+            <span id="live2-roster-count">0 active</span>
+          </div>
+
+          <div class="live2-rosters">
+            <div class="live2-roster team1">
+              <h3>Team 1</h3>
+              <div id="live2-team1-roster" class="live2-roster-list"></div>
+            </div>
+
+            <div class="live2-roster team2">
+              <h3>Team 2</h3>
+              <div id="live2-team2-roster" class="live2-roster-list"></div>
+            </div>
+          </div>
+        </aside>
+
+<section class="live2-bottom-grid">
+  <div class="live2-panel live2-events-panel">
+          <div class="live2-panel-header">
+            <div>
+              <p>LIVE EVENTS</p>
+              <h2>Recent Caps</h2>
+            </div>
+            <span id="live2-event-count">0 events</span>
+          </div>
+
+          <div id="live2-events" class="live2-events"></div>
+        </div>
+
+        <div class="live2-panel live2-intel-panel">
+          <div class="live2-panel-header">
+            <div>
+              <p>MATCH INTEL</p>
+              <h2>Live Details</h2>
+            </div>
+            <span id="live2-updated">—</span>
+          </div>
+
+          <div class="live2-intel-grid">
+            <div>
+              <span>Match ID</span>
+              <strong id="live2-intel-match">—</strong>
+            </div>
+
+            <div>
+              <span>Map</span>
+              <strong id="live2-intel-map">—</strong>
+            </div>
+
+            <div>
+              <span>Round</span>
+              <strong id="live2-intel-round">—</strong>
+            </div>
+
+            <div>
+              <span>Live Score</span>
+              <strong id="live2-intel-score">—</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </section>
+  </main>
+</body>
+</html>

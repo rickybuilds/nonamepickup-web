@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NN//TFC step-by-step game server deployment guide.">
+  <title>NN//TFC Server Deployment Guide</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/docs/server-build.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script src="/docs/server-build.js" defer></script>
+</head>
+
+<body class="matches-page server-build-page">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="nn-logo" href="/index.html" aria-label="NoName TFC home">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </a>
+
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="/index.html">Home</a>
+        <a href="/live.html" class="nav-live">LIVE</a>
+        <a href="/matches.html">Matches</a>
+        <a href="/leaderboard.html">Leaderboard</a>
+        <a href="/analytics.html">Analytics</a>
+        <a href="/compare.html">Compare</a>
+      </nav>
+
+      <span class="admin-context">Admin Guide</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="matches-shell server-build-shell">
+      <header class="server-build-hero">
+        <div>
+          <p class="server-build-kicker">NN//TFC ADMIN</p>
+          <h1>Server Deployment Guide</h1>
+          <p class="server-build-subtitle">A step-by-step checklist for building a new TFC game server and connecting it to the bot.</p>
+        </div>
+
+        <div class="server-build-actions">
+          <button id="resetProgress" class="server-build-button" type="button">Reset Progress</button>
+          <button id="expandAll" class="server-build-button" type="button">Expand All</button>
+        </div>
+      </header>
+
+      <section class="card setup-card" aria-labelledby="build-variables-title">
+        <div class="section-heading">
+          <p>CONFIGURATION</p>
+          <h2 id="build-variables-title">Build Variables</h2>
+        </div>
+        <p>Fill these in once. They are copied into the command examples below.</p>
+
+        <div class="var-grid">
+          <label for="varIp">New Server IP<input id="varIp" type="text" placeholder="&lt;IP_ADDRESS&gt;" autocomplete="off"></label>
+          <label for="varServer">Server Name<input id="varServer" type="text" placeholder="CENTRAL2" autocomplete="off"></label>
+          <label for="varDisplay">Display Name<input id="varDisplay" type="text" placeholder="TFC Central 2 Server" autocomplete="off"></label>
+          <label for="varSource">Source Server IP<input id="varSource" type="text" placeholder="&lt;SOURCE_SERVER_IP&gt;" autocomplete="off"></label>
+          <label for="varRcon">RCON Password<input id="varRcon" type="password" placeholder="&lt;RCON_PASSWORD&gt;" autocomplete="off"></label>
+          <label for="varUrl">Server URL<input id="varUrl" type="text" placeholder="&lt;SERVER_URL&gt;" autocomplete="off"></label>
+        </div>
+
+        <p class="note">Do not save real secrets here if this page is public. Browser progress uses localStorage only.</p>
+      </section>
+
+      <section class="card progress-card" aria-label="Deployment progress">
+        <div class="progress-top">
+          <strong id="progressText">0% complete</strong>
+          <span id="stepCount">0 / 0 steps</span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-label="Deployment completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="progressBar"></div>
+        </div>
+      </section>
+
+      <section id="steps" class="steps" aria-label="Deployment steps"></section>
+    </section>
+  </main>
+
+  <template id="stepTemplate">
+    <article class="card step-card locked">
+      <button class="step-header" type="button" aria-expanded="false">
+        <span class="step-number"></span>
+        <span class="step-title"></span>
+        <span class="step-state">Locked</span>
+      </button>
+      <div class="step-body">
+        <div class="step-content"></div>
+        <label class="done-row">
+          <input class="done-check" type="checkbox">
+          <span>Mark this step complete</span>
+        </label>
+      </div>
+    </article>
+  </template>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="View full NoName TFC pickup match details, teams, score, player stats, class stats, and weapon stats.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/match.html">
+  <title>NoName TFC Pickups | Match Detail</title>
+
+  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css?v=12">
+  <link rel="stylesheet" href="assets/css/match.css?v=1.6">
+  <script src="assets/js/main.js?v=10" defer></script>
+  <script src="assets/js/match.js?v=1.6" defer></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] matches-page">
+
+<div class="site-bg-grid"></div>
+<div class="site-bg-glow site-bg-glow-a"></div>
+<div class="site-bg-glow site-bg-glow-b"></div>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="nn-logo" aria-label="NoName TFC">
+      <span class="logo-nn">NN</span><span class="logo-slash">//</span><span class="logo-tfc">TFC</span>
+    </div>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="live.html" class="nav-live">LIVE</a>
+      <a href="matches.html" aria-current="page">Matches</a>
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="analytics.html">Analytics</a>
+      <a href="compare.html">Compare</a>
+    </nav>
+    <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+  </div>
+</header>
+
+<main class="match-main">
+  <section id="match-root" class="match-shell">
+    <div class="match-loading">Loading match...</div>
+  </section>
+</main>
+
+</body>
+</html>

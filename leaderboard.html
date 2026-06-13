@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NoName TFC Pickup player Elo leaderboard and records.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/leaderboard.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Elo Leaderboard | NoName TFC Pickups">
+  <meta property="og:description" content="All-time visible Elo standings, records, win rates, and games for NoName TFC Pickup players.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/leaderboard.html">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC Pickups | Leaderboard</title>
+
+  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css?v=12">
+  <link rel="stylesheet" href="assets/css/leaderboard.css?v=4">
+  <script src="assets/js/main.js?v=10" defer></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] leaderboard-page">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav">
+        <a href="index.html">Home</a>
+        <a href="live.html" class="nav-live">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html" aria-current="page">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+      </nav>
+
+      <input
+        id="global-search"
+        type="text"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="Search players..."
+        aria-label="Search players"
+        class="site-search"
+      >
+    </div>
+  </header>
+
+  <main class="max-w-[1500px] mx-auto px-8 py-10">
+    <section class="leaderboard-shell">
+      <div class="leaderboard-hero">
+        <div>
+          <p class="leaderboard-kicker">PLAYER RANKINGS</p>
+          <h1>Elo Leaderboard</h1>
+          <p>Rankings based on recent activity and visible Elo.</p>
+
+			<div class="leaderboard-rules">
+			  <span>All-Time Records</span>
+			  <span>Min 10 Matches</span>
+			  <span>Visible Elo Only</span>
+			</div>
+        </div>
+
+        <div class="leaderboard-summary">
+          <article>
+            <span>Active Ranked Players</span>
+            <strong id="leaderboard-player-count">—</strong>
+          </article>
+          <article>
+            <span>Highest Active Elo</span>
+            <strong id="leaderboard-top-elo">—</strong>
+          </article>
+          <article>
+            <span>Games (90D)</span>
+            <strong id="leaderboard-total-games">—</strong>
+          </article>
+        </div>
+      </div>
+
+      <div class="leaderboard-toolbar">
+        <label for="leaderboard-filter">Filter standings</label>
+        <input id="leaderboard-filter" type="search" placeholder="Search ranked players..." autocomplete="off">
+        <span id="leaderboard-visible-count">Loading standings...</span>
+      </div>
+
+      <div class="leaderboard-table-wrap">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Games</th>
+              <th>Record</th>
+              <th>Win Rate</th>
+              <th>Elo</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <tr><td colspan="6" class="leaderboard-empty">Loading leaderboard...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

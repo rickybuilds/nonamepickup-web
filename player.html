@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="View a NoName TFC Pickup player's Elo, Hampalyzer stats, class identity, weapon kills, maps, activity, teammates, and opponents.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/player.html">
+  <title>NoName TFC Pickups | Player</title>
+
+  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/style.css?v=13">
+  <link rel="stylesheet" href="assets/css/playerversion3granular.css?v=1.6">
+  <script src="assets/js/main.js?v=11" defer></script>
+  <script src="assets/js/playerversion3granular.js?v=1.5" defer></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] text-gray-200 player-v3-page">
+
+<div class="site-bg-grid"></div>
+<div class="site-bg-glow site-bg-glow-a"></div>
+<div class="site-bg-glow site-bg-glow-b"></div>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="nn-logo" aria-label="NoName TFC">
+      <span class="logo-nn">NN</span><span class="logo-slash">//</span><span class="logo-tfc">TFC</span>
+    </div>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="live.html" class="nav-live">LIVE</a>
+      <a href="matches.html">Matches</a>
+      <a href="leaderboard.html" aria-current="page">Leaderboard</a>
+      <a href="analytics.html">Analytics</a>
+      <a href="compare.html">Compare</a>
+    </nav>
+    <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+  </div>
+</header>
+
+<main class="player-v3-main">
+  <section class="player-v3-shell">
+
+    <section class="player-v3-hero">
+      <div class="identity-card">
+        <div class="player-mark-wrap">
+          <div id="player-mark" class="player-mark nn-avatar nn-avatar-lg"><span class="nn-avatar-fallback">?</span></div>
+          <span class="online-dot"></span>
+        </div>
+        <div class="identity-copy">
+          <p class="v3-kicker">PLAYER CARD</p>
+          <h1 id="player-name-v3">Loading...</h1>
+          <div id="player-elo-line" class="elo-line">Current Elo: — <span>Rank: —</span></div>
+          <div id="player-record-line" class="record-line">Record: — | Win%: —</div>
+          <div id="steam-line" class="steam-line">SteamID: —</div>
+        </div>
+      </div>
+
+      <div class="v3-card hero-elo-card">
+        <div class="v3-card-header">
+          <h2>Elo Trend</h2>
+          <span id="elo-chart-label">All Matches</span>
+        </div>
+        <div class="v3-chart-wrap hero-chart-wrap">
+          <canvas id="elo-chart-v3"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="v3-kpi-strip">
+      <div><span>Matches</span><strong id="kpi-matches">—</strong></div>
+      <div><span>Wins</span><strong id="kpi-wins" class="good">—</strong></div>
+      <div><span>Losses</span><strong id="kpi-losses" class="bad">—</strong></div>
+      <div><span>Ties</span><strong id="kpi-ties">—</strong></div>
+      <div><span>Win %</span><strong id="kpi-winpct" class="good">—</strong></div>
+      <div><span>Game MVPs</span><strong id="kpi-mvps" class="gold">-</strong></div>
+      <div><span>KDR</span><strong id="kpi-kdr" class="blue">—</strong></div>
+      <div><span>Kills</span><strong id="kpi-kills">—</strong></div>
+      <div><span>Damage</span><strong id="kpi-damage" class="purple">—</strong></div>
+    </section>
+
+    <section class="v3-card player-intel-card">
+      <div class="v3-card-header player-intel-header">
+        <div><h2>Player Intel</h2><span>Maps and Coaching</span></div>
+        <button id="player-intel-toggle" class="player-intel-toggle" type="button" aria-expanded="false" aria-controls="player-intel-details">View Details</button>
+      </div>
+
+      <div class="player-intel-summary">
+        <div id="intel-best-map" class="player-intel-tile"></div>
+        <div id="intel-worst-map" class="player-intel-tile"></div>
+        <div id="intel-coaching-focus" class="player-intel-tile"></div>
+      </div>
+
+      <div id="player-intel-details" class="player-intel-details" hidden>
+        <section class="player-intel-detail-section map-performance-card">
+          <div class="v3-card-header"><h2>Map Performance</h2><span>Minimum 5 Games</span></div>
+          <div class="map-performance-grid">
+            <div id="best-map-card" class="map-performance-item"></div>
+            <div id="worst-map-card" class="map-performance-item"></div>
+          </div>
+        </section>
+
+        <section class="player-intel-detail-section coaching-card">
+          <div class="v3-card-header"><h2>Coaching Insights</h2><span>Rule-Based Analysis</span></div>
+          <div id="coaching-summary" class="coaching-summary"></div>
+          <div id="coaching-insights" class="coaching-insights-grid"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="v3-hampa-grid">
+      <div class="v3-card combat-card">
+        <div class="v3-card-header"><h2>Combat Stats</h2><span>Hampalyzer</span></div>
+        <div id="combat-stats" class="stat-tile-grid"></div>
+      </div>
+
+      <div class="v3-card flag-card">
+        <div class="v3-card-header"><h2>Flag Stats</h2><span>Objective</span></div>
+        <div id="flag-stats" class="stat-tile-grid"></div>
+      </div>
+
+      <div class="v3-card weapons-card">
+        <div class="v3-card-header"><h2>Top Weapons</h2><span>Kills</span></div>
+        <div id="top-weapons" class="weapon-grid"></div>
+      </div>
+    </section>
+
+    <section class="v3-class-lab">
+      <div class="v3-card map-class-card">
+        <div class="v3-card-header"><h2>Map Class Identity</h2><span>Top Maps</span></div>
+        <div id="map-class-picker" class="map-class-picker"></div>
+      </div>
+
+      <div class="v3-card class-browser-card">
+        <div class="v3-card-header"><h2>Class Deep Dive</h2><span>Click a class</span></div>
+        <div id="class-tabs" class="class-tabs"></div>
+        <div id="class-detail" class="class-detail"></div>
+      </div>
+    </section>
+
+    <section class="v3-main-grid">
+      <div class="v3-card activity-card">
+        <div class="v3-card-header"><h2>Activity Heatmap</h2><span>Day × Time</span></div>
+        <div id="activity-heatmap" class="activity-heatmap"></div>
+        <div class="heatmap-footer">
+          <span id="activity-peak">Peak: —</span>
+          <span class="heat-scale"><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+      </div>
+
+      <div class="v3-card map-card">
+        <div class="v3-card-header"><h2>Map Frequency</h2><span>Most Played</span></div>
+        <div id="map-frequency" class="map-frequency donut-frequency">
+          <div class="map-donut-wrap">
+            <canvas id="map-donut-chart"></canvas>
+            <div class="map-donut-center"><strong id="map-donut-total">—</strong><span>matches</span></div>
+          </div>
+          <div id="map-donut-legend" class="map-donut-legend"></div>
+        </div>
+      </div>
+
+      <div class="v3-card recent-card">
+        <div class="v3-card-header"><h2>Recent Matches</h2><span>Last 100</span></div>
+        <div id="recent-match-list" class="recent-match-list"></div>
+      </div>
+    </section>
+
+    <section class="v3-bottom-grid">
+      <div class="v3-card list-card">
+        <div class="v3-card-header"><h2>Best Teammates</h2><span>Same Team</span></div>
+        <div id="best-teammates" class="mini-list compact"></div>
+      </div>
+
+      <div class="v3-card list-card">
+        <div class="v3-card-header"><h2>Toughest Opponents</h2><span>Against</span></div>
+        <div id="toughest-opponents" class="mini-list compact"></div>
+      </div>
+
+      <div class="v3-card class-time-card">
+        <div class="v3-card-header"><h2>Class Time Matrix</h2><span>All Classes</span></div>
+        <div id="class-time-matrix" class="class-time-matrix"></div>
+      </div>
+    </section>
+
+  </section>
+</main>
+
+<div id="match-drawer-backdrop" class="match-drawer-backdrop"></div>
+
+<aside id="match-drawer" class="match-drawer">
+  <div class="match-drawer-head">
+    <div>
+      <div class="drawer-kicker">MATCH DETAIL</div>
+      <div id="match-drawer-title" class="match-drawer-title">Loading...</div>
+    </div>
+    <button id="match-drawer-close" class="match-drawer-close">×</button>
+  </div>
+
+  <div id="match-drawer-body" class="match-drawer-body">
+    <div class="drawer-loading">Loading match...</div>
+  </div>
+</aside>
+
+</body>
+</html>

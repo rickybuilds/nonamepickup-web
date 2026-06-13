@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="NoName TFC Pickup live queue, match statistics, player rankings, and map intelligence.">
+<link rel="canonical" href="https://nonamepickup.servehalflife.com/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="NoName TFC Pickups">
+<meta property="og:description" content="Live queue, match statistics, player rankings, and map intelligence for NoName TFC Pickups.">
+<meta property="og:url" content="https://nonamepickup.servehalflife.com/">
+<meta name="twitter:card" content="summary">
+<title>NoName TFC Pickups</title>
+
+<!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+
+  <link rel="stylesheet" href="assets/css/style.css?v=12">
+  <link rel="stylesheet" href="assets/css/index.css?v=2.5">
+
+<script src="assets/js/main.js?v=10" defer></script>
+  
+  <!-- Modern Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] text-gray-200 index-page">
+
+  <header class="site-header">
+    <div class="site-header-inner">
+
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+      
+      <nav class="site-nav">
+        <a href="index.html" aria-current="page">Home</a>
+        <a href="live.html" class="nav-live">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+
+      </nav>
+
+      <input
+        id="global-search"
+        type="text"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="Search players..."
+        aria-label="Search players"
+        class="site-search"
+      >
+    </div>
+  </header>
+
+  <main class="max-w-[1500px] mx-auto px-8 py-10">
+    <h1 class="sr-only">NoName TFC Pickup Statistics</h1>
+    <div class="cyber-shell">
+
+      <!-- KPI Section -->
+      <section class="cyber-kpi-grid">
+<div class="cyber-kpi">
+  <span>Total Matches</span>
+  <strong id="total-matches">—</strong>
+
+  <small class="kpi-sub">
+    <b id="kpi-1d">—</b> last 24 hours<br>
+    <b id="kpi-7d">—</b> last 7 days<br>
+    <b id="kpi-30d">—</b> last 30 days
+  </small>
+</div>
+
+<div class="cyber-kpi">
+  <span>Unique Players</span>
+
+  <strong id="unique-players">—</strong>
+<small>Lifetime</small><br>
+  <span>active players</span>
+
+<div class="kpi-secondary">
+  <strong id="unique-players-30d">—</strong>
+  <small>last 30 days</small>
+</div>
+</div>
+
+<div class="cyber-kpi">
+  <span>Close Games</span>
+  <strong id="close-games">—</strong>
+<small class="close-games-stats">
+  <div class="close-line">
+    <b id="ties-count">—</b> ties
+  </div>
+  <div class="close-line">
+    <b id="under-15-count">—</b> &lt;15
+  </div>
+  <div class="close-line">
+    <b id="under-25-count">—</b> &lt;25
+  </div>
+  <div class="close-line">
+    <b id="blowout-count">—</b> blowouts
+  </div>
+</small>
+</div>
+        <div class="cyber-kpi">
+          <span>Most Active</span>
+          <strong id="most-active">—</strong>
+          <small>last 30 days</small>
+        </div>
+
+        <div class="cyber-kpi cyber-green">
+          <span>Current Win Streak</span>
+          <strong id="longest-streak">—</strong>
+          <small>hot right now</small>
+        </div>
+
+        <div class="cyber-kpi cyber-gold">
+          <span>MVP Leader</span>
+          <strong id="mvp-leader">—</strong>
+          <small id="mvp-leader-note">game MVPs</small>
+        </div>
+      </section>
+
+      <!-- Main Content -->
+      <section class="cyber-main-grid">
+        <div class="cyber-panel cyber-wide">
+          <div class="cyber-panel-header">
+            <h3>Top Elo Surge</h3>
+            <span>Last 30 Days</span>
+          </div>
+          <div class="cyber-scroll index-player-scroll">
+            <table id="top-players-table" class="cyber-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Player</th>
+                  <th>Record</th>
+                  <th>Win%</th>
+                  <th>Δ Elo</th>
+                </tr>
+              </thead>
+              <tbody id="top-players-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="cyber-panel">
+          <div class="cyber-panel-header">
+            <h3>Map Intel</h3>
+            <span>Average Scores</span>
+          </div>
+          <div class="cyber-scroll index-map-scroll">
+            <table id="map-averages-table" class="cyber-table">
+              <thead>
+                <tr>
+                  <th>Map</th>
+                  <th>Games</th>
+                  <th>Avg</th>
+                </tr>
+              </thead>
+              <tbody id="map-averages-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

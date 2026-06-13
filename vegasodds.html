@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NoName Vegas Odds</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="/assets/css/style.css?v=8" />
+  <link rel="stylesheet" href="/assets/css/vegas.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="vegas-page">
+  <div class="vegas-wrap">
+    <h1>🎰 NoName Vegas Odds</h1>
+    <p class="sub">Find out when a random goblin is due to return.</p>
+
+    <div class="search-box">
+      <label class="sr-only" for="playerInput">Player name or Discord ID</label>
+      <input id="playerInput" placeholder="Enter player name or Discord ID..." />
+      <button id="runOddsBtn" type="button">Run Odds</button>
+    </div>
+
+    <div id="result" class="odds-card hidden" aria-live="polite"></div>
+  </div>
+
+  <script>
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
+    function renderMessage(className, message) {
+      return `<div class="${className}">${escapeHtml(message)}</div>`;
+    }
+
+    async function lookupVegas() {
+      const input = document.getElementById("playerInput").value.trim();
+      const result = document.getElementById("result");
+
+      if (!input) return;
+
+      result.classList.remove("hidden");
+      result.innerHTML = renderMessage("loading", "Calculating degeneracy...");
+
+      try {
+        const res = await fetch(`/api/vegasodds/${encodeURIComponent(input)}`);
+        const data = await res.json();
+
+        if (!data.ok) {
+          result.innerHTML = renderMessage("error", "Player not found.");
+          return;
+        }
+
+        const playerName = escapeHtml(data.player?.display_name || data.player?.player_id || input);
+        const lastPlayed = escapeHtml(data.last_played || "—");
+        const status = escapeHtml(data.status || "Unknown");
+        const avgGap = Number(data.avg_gap_days ?? 0);
+        const longestGap = Number(data.longest_gap_days ?? 0);
+        const vegasLine = data.vegas_line == null ? "—" : escapeHtml(data.vegas_line);
+        const gamesLastActiveDay = Number(data.games_last_active_day || 0);
+        const daysSince = Number(data.days_since_last_played ?? 0);
+
+        if (!data.enough_data) {
+          result.innerHTML = `
+            <h2>${playerName}</h2>
+            <p>Not enough history yet.</p>
+          `;
+          return;
+        }
+
+        result.innerHTML = `
+          <h2>🎲 ${playerName}</h2>
+
+          <div class="big-status">${status}</div>
+
+          <div class="odds-grid">
+            <div>
+              <span>Last Played</span>
+              <strong>${lastPlayed}</strong>
+            </div>
+
+            <div>
+              <span>Days Since</span>
+              <strong>${daysSince}</strong>
+            </div>
+
+            <div>
+              <span>Avg Vanish</span>
+              <strong>${avgGap} days</strong>
+            </div>
+
+            <div>
+              <span>Longest Vanish</span>
+              <strong>${longestGap} days</strong>
+            </div>
+
+            <div>
+              <span>Vegas Line</span>
+              <strong>O/U ${vegasLine} days</strong>
+            </div>
+
+            <div>
+              <span>Games Last Showing</span>
+              <strong>${gamesLastActiveDay}</strong>
+            </div>
+          </div>
+
+          <div class="prediction">
+            Prediction: back for ${Math.max(3, gamesLastActiveDay)} games, then disappears again.
+          </div>
+        `;
+      } catch (err) {
+        result.innerHTML = renderMessage("error", "API error.");
+      }
+    }
+
+    document.getElementById("runOddsBtn").addEventListener("click", lookupVegas);
+
+    document.getElementById("playerInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") lookupVegas();
+    });
+  </script>
+</body>
+</html>

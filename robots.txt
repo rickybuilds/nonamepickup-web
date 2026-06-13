@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /vegasodds.html
+
+Sitemap: https://nonamepickup.servehalflife.com/sitemap.xml
