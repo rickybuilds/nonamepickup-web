@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BATTLEFIELDS — 1999 LEGENDARY TERMINAL</title>
+  <link rel="stylesheet" href="css/terminal-1999.css">
+</head>
+<body class="crt">
+
+  <div class="terminal-menu">
+    <a href="index.html">DASHBOARD</a>
+    <a href="live.html">LIVE OPS</a>
+    <a href="leaderboard.html">RANKS</a>
+    <a href="maps.html" class="active">MAPS</a>
+    <a href="hall-of-fame.html">HALL OF FAME</a>
+    <button onclick="window.location='index.html'">DISCONNECT</button>
+  </div>
+
+  <div class="terminal-window" style="max-width:1000px; margin:20px auto;">
+    <div class="terminal-titlebar">
+      <div class="title">BATTLEFIELDS TERMINAL — MAP INTEL (/api/mapaverages)</div>
+    </div>
+    <div class="terminal-body" id="maps-content">
+      LOADING CLASSIC MAP ARCHIVES...
+    </div>
+  </div>
+
+  <script src="js/terminal-1999.js"></script>
+  <script>
+    async function loadMapsPage() {
+      const data = await window.NN1999.fetchAPI('/api/mapaverages');
+      const el = document.getElementById('maps-content');
+      if (!data?.ok) {
+        el.textContent = 'ARCHIVES OFFLINE.';
+        return;
+      }
+      let html = '';
+      (data.data || []).slice(0,10).forEach(m => {
+        html += `<div style="margin-bottom:6px;">> <span class="amber">${m.map}</span> — ${m.games} WARS — AVG SCORE ${m.avgScorePerTeam}</div>`;
+      });
+      el.innerHTML = html;
+    }
+    document.addEventListener('DOMContentLoaded', loadMapsPage);
+  </script>
+</body>
+</html>

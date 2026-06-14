@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LIVE OPS — 1999 LEGENDARY TERMINAL</title>
+  <link rel="stylesheet" href="css/terminal-1999.css">
+</head>
+<body class="crt">
+
+  <div class="terminal-menu">
+    <a href="index.html">[1] DASHBOARD</a>
+    <a href="live.html" class="active">[2] LIVE OPS</a>
+    <a href="leaderboard.html">[3] RANKS</a>
+    <a href="maps.html">[4] MAPS</a>
+    <a href="hall-of-fame.html">[5] HALL OF FAME</a>
+    <button onclick="window.location='index.html'" class="old-button">DISCONNECT</button>
+  </div>
+
+  <div class="terminal-window" style="max-width:720px;margin:20px auto;">
+    <div class="terminal-titlebar">
+      <div class="title">LIVE OPS - 1999 TERMINAL</div>
+    </div>
+
+    <div class="terminal-body">
+<pre style="margin:0;color:#33ff33;">
+LIVE QUEUE
+==========
+</pre>
+      <pre id="live-queue" style="background:#000;border:1px solid #222;padding:6px;min-height:90px;font-size:12px;">LOADING...</pre>
+
+<pre style="margin:8px 0 4px;color:#33ff33;">
+ACTIVE MATCHES
+==============
+</pre>
+      <div id="live-matches" style="font-size:12px;"></div>
+
+      <div style="margin-top:12px;">
+        <button onclick="deployToPickup()" class="old-button">[ JOIN PICKUP ]</button>
+        <span style="font-size:11px;color:#225522;"> (type join in main terminal)</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/terminal-1999.js"></script>
+  <script>
+    async function loadLivePage() {
+      const q = await window.NN1999.fetchAPI('/api/queue');
+      const qe = document.getElementById('live-queue');
+      if (q?.ok) {
+        let t = `QUEUE: ${q.count}/${q.max}\n`;
+        (q.players||[]).forEach(p=>t+=`  ${p.name}\n`);
+        qe.textContent = t;
+      }
+      const me = document.getElementById('live-matches');
+      (q?.liveMatches||[]).forEach(m=>{
+        const d=document.createElement('div');
+        d.textContent = `> ${m.map||m.serverKey}  ${m.blue_score||0}/${m.red_score||0}`;
+        me.appendChild(d);
+      });
+    }
+    function deployToPickup() {
+      window.NN1999.playRocket && window.NN1999.playRocket();
+      setTimeout(()=>{window.NN1999.playExplosion && window.NN1999.playExplosion();},180);
+      alert('DEPLOYING (visual only - connect in game or Discord)');
+    }
+    window.onload = loadLivePage;
+  </script>
+</body>
+</html>
