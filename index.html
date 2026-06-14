@@ -19,9 +19,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
 
   <link rel="stylesheet" href="assets/css/style.css?v=12">
-  <link rel="stylesheet" href="assets/css/index.css?v=2.5">
+  <link rel="stylesheet" href="assets/css/index.css?v=2.8">
 
-<script src="assets/js/main.js?v=10" defer></script>
+<script src="assets/js/main.js?v=12" defer></script>
   
   <!-- Modern Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -68,64 +68,64 @@
 
       <!-- KPI Section -->
       <section class="cyber-kpi-grid">
-<div class="cyber-kpi">
-  <span>Total Matches</span>
-  <strong id="total-matches">—</strong>
-
-  <small class="kpi-sub">
-    <b id="kpi-1d">—</b> last 24 hours<br>
-    <b id="kpi-7d">—</b> last 7 days<br>
-    <b id="kpi-30d">—</b> last 30 days
-  </small>
-</div>
-
-<div class="cyber-kpi">
-  <span>Unique Players</span>
-
-  <strong id="unique-players">—</strong>
-<small>Lifetime</small><br>
-  <span>active players</span>
-
-<div class="kpi-secondary">
-  <strong id="unique-players-30d">—</strong>
-  <small>last 30 days</small>
-</div>
-</div>
-
-<div class="cyber-kpi">
-  <span>Close Games</span>
-  <strong id="close-games">—</strong>
-<small class="close-games-stats">
-  <div class="close-line">
-    <b id="ties-count">—</b> ties
-  </div>
-  <div class="close-line">
-    <b id="under-15-count">—</b> &lt;15
-  </div>
-  <div class="close-line">
-    <b id="under-25-count">—</b> &lt;25
-  </div>
-  <div class="close-line">
-    <b id="blowout-count">—</b> blowouts
-  </div>
-</small>
-</div>
         <div class="cyber-kpi">
-          <span>Most Active</span>
-          <strong id="most-active">—</strong>
-          <small>last 30 days</small>
+          <span class="kpi-title">Total Matches</span>
+          <strong id="total-matches" class="kpi-main-name">—</strong>
+          <small class="kpi-main-note kpi-note-list">
+            <span><b id="kpi-1d">—</b> last 24 hours</span>
+            <span><b id="kpi-7d">—</b> last 7 days</span>
+            <span><b id="kpi-30d">—</b> last 30 days</span>
+          </small>
+        </div>
+
+        <div class="cyber-kpi">
+          <span class="kpi-title">Unique Players</span>
+          <strong id="unique-players" class="kpi-main-name">—</strong>
+          <small class="kpi-main-note">Lifetime</small>
+          <div class="kpi-divider"></div>
+          <span class="kpi-secondary-label">Active Players</span>
+          <strong id="unique-players-30d" class="kpi-secondary-name">—</strong>
+          <small class="kpi-secondary-note">last 30 days</small>
+        </div>
+
+        <div class="cyber-kpi">
+          <span class="kpi-title">Close Games</span>
+          <strong id="close-games" class="kpi-main-name">—</strong>
+          <small class="kpi-main-note close-games-stats">
+            <span><b id="ties-count">—</b> ties</span>
+            <span><b id="under-15-count">—</b> &lt;15</span>
+            <span><b id="under-25-count">—</b> &lt;25</span>
+            <span><b id="blowout-count">—</b> blowouts</span>
+          </small>
+        </div>
+        <div class="cyber-kpi">
+          <span class="kpi-title">Most Active</span>
+          <strong id="most-active" class="kpi-main-name">—</strong>
+          <small id="most-active-note" class="kpi-main-note">last 30 days</small>
+          <div class="kpi-divider"></div>
+          <span class="kpi-secondary-label">2nd Most Active</span>
+          <strong id="most-active-runner" class="kpi-secondary-name">—</strong>
+          <small id="most-active-runner-note" class="kpi-secondary-note">last 30 days</small>
         </div>
 
         <div class="cyber-kpi cyber-green">
-          <span>Current Win Streak</span>
-          <strong id="longest-streak">—</strong>
-          <small>hot right now</small>
+          <span class="kpi-title">Current Win Streak</span>
+          <strong id="longest-streak" class="kpi-main-name">—</strong>
+          <small id="longest-streak-note" class="kpi-main-note">hot right now</small>
+          <div class="kpi-divider"></div>
+          <span class="kpi-secondary-label">2nd Highest Active Streak</span>
+          <strong id="streak-runner" class="kpi-secondary-name">—</strong>
+          <small id="streak-runner-note" class="kpi-secondary-note">active streak</small>
         </div>
 
         <div class="cyber-kpi cyber-gold">
-          <span>MVP Leader</span>
-          <strong id="mvp-leader">—</strong>
-          <small id="mvp-leader-note">game MVPs</small>
+          <span class="kpi-title">MVP Leader</span>
+          <strong id="mvp-leader" class="kpi-main-name">—</strong>
+          <small id="mvp-leader-note" class="kpi-main-note">game MVPs</small>
+          <div class="kpi-divider"></div>
+          <span class="kpi-secondary-label">Highest MVP Rate</span>
+          <strong id="mvp-rate-leader" class="kpi-secondary-name">—</strong>
+          <small id="mvp-rate-note" class="kpi-secondary-note">minimum 25 games</small>
         </div>
       </section>
 

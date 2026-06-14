@@ -373,16 +373,17 @@ async function loadIndex() {
   try {
     const longestStreakEl = document.getElementById("longest-streak");
     if (longestStreakEl) {
-      longestStreakEl.innerHTML = `<span class="kpi-sub">Loading...</span>`;
+      longestStreakEl.textContent = "Loading...";
     }
 
-    const [summary, players, top, maps, mvps, outcomes] = await Promise.all([
+    const [summary, players, top, maps, mvps, outcomes, streaks] = await Promise.all([
       fetchJSON("/api/stats/summary"),
       fetchJSON("/api/stats/players"),
       fetchJSON("/api/topplayers?days=30&limit=15"),
       fetchJSON("/api/mapaverages"),
       fetchJSON("/api/stats/mvps?limit=10"),
-      fetchJSON("/api/stats/matchOutcomes")
+      fetchJSON("/api/stats/matchOutcomes"),
+      fetchJSON("/api/stats/streaks")
     ]);
 
     const s = summary.data || {};
@@ -413,19 +414,44 @@ async function loadIndex() {
     document.getElementById("unique-players").textContent = p.uniquePlayers ?? "—";
 	document.getElementById("unique-players-30d").textContent = p.uniquePlayers30d ?? "—";
 
-    document.getElementById("most-active").innerHTML = p.topActive
-      ? `${escapeHtml(p.topActive.player)}<br><span class="kpi-sub">(${p.topActive.games} games)</span>`
-      : "—";
+    const playerLink=row=>row?.id
+      ? `<a href="player.html?id=${encodeURIComponent(row.id)}">${escapeHtml(row.player||"Unknown")}${supporterBadge(row.id)}</a>`
+      : escapeHtml(row?.player||"Unknown");
+    const renderKpiPlayer=(row,nameId,noteId,note)=>{
+      const nameEl=document.getElementById(nameId);
+      const noteEl=document.getElementById(noteId);
+      if(row){
+        if(nameEl)nameEl.innerHTML=playerLink(row);
+        if(noteEl)noteEl.textContent=note(row);
+      }else{
+        if(nameEl)nameEl.textContent="—";
+        if(noteEl)noteEl.textContent="No data yet";
+      }
+    };
+
+    renderKpiPlayer(p.topActive,"most-active","most-active-note",
+      row=>`${Number(row.games||0)} games · last 30 days`);
+    renderKpiPlayer(p.topActiveRunnerUp||p.topActiveList?.[1],"most-active-runner","most-active-runner-note",
+      row=>`${Number(row.games||0)} games · last 30 days`);
+
+    const streakData=streaks.data||{};
+    renderKpiPlayer(streakData.currentStreak,"longest-streak","longest-streak-note",
+      row=>`${Number(row.wins||0)} wins · hot right now`);
+    renderKpiPlayer(streakData.currentStreakRunnerUp||streakData.currentStreakLeaders?.[1],"streak-runner","streak-runner-note",
+      row=>`${Number(row.wins||0)} wins · active streak`);
 
     const mvpLeader=mvps.data?.leader||null;
+    const mvpRateLeader=mvps.data?.rateLeader||null;
     const mvpLeaders=Array.isArray(mvps.data?.leaders)?mvps.data.leaders:[];
     const mvpLeaderEl=document.getElementById("mvp-leader");
     const mvpLeaderNote=document.getElementById("mvp-leader-note");
+    const mvpRateLeaderEl=document.getElementById("mvp-rate-leader");
+    const mvpRateNote=document.getElementById("mvp-rate-note");
 
     if(mvpLeader&&mvpLeaderEl){
       const name=escapeHtml(mvpLeader.player||"Unknown");
       mvpLeaderEl.innerHTML=mvpLeader.id
-        ? `<a href="player.html?id=${encodeURIComponent(mvpLeader.id)}">${name}</a>`
+        ? `<a href="player.html?id=${encodeURIComponent(mvpLeader.id)}">${name}${supporterBadge(mvpLeader.id)}</a>`
         : name;
 
       const tiedCount=mvpLeaders.filter(row=>
@@ -439,6 +465,20 @@ async function loadIndex() {
     }else{
       if(mvpLeaderEl)mvpLeaderEl.textContent="—";
       if(mvpLeaderNote)mvpLeaderNote.textContent="No MVP data yet";
+    }
+
+    if(mvpRateLeader&&mvpRateLeaderEl){
+      const name=escapeHtml(mvpRateLeader.player||"Unknown");
+      mvpRateLeaderEl.innerHTML=mvpRateLeader.id
+        ? `<a href="player.html?id=${encodeURIComponent(mvpRateLeader.id)}">${name}${supporterBadge(mvpRateLeader.id)}</a>`
+        : name;
+      if(mvpRateNote){
+        mvpRateNote.textContent=
+          `${Number(mvpRateLeader.mvp_pct||0).toFixed(1)}% · ${Number(mvpRateLeader.mvp_games||0)}/${Number(mvpRateLeader.games||0)} games`;
+      }
+    }else{
+      if(mvpRateLeaderEl)mvpRateLeaderEl.textContent="No qualified player yet";
+      if(mvpRateNote)mvpRateNote.textContent="Minimum 25 games";
     }
 
     const topBody = document.getElementById("top-players-body");
@@ -467,21 +507,6 @@ async function loadIndex() {
       </tr>
     `).join("") || `<tr><td colspan="3" class="py-6 text-center text-gray-500">No map data</td></tr>`;
 
-// Replace the streak part with this:
-fetchJSON("/api/stats/streaks").then(streaks => {
-  const el = document.getElementById("longest-streak");
-  if (!el) return;
-
-  if (streaks.data?.currentStreak) {
-    el.innerHTML = `${escapeHtml(streaks.data.currentStreak.player)}<br><span class="kpi-sub">(${streaks.data.currentStreak.wins} wins)</span>`;
-  } else {
-    el.textContent = "—";
-  }
-}).catch(e => {
-  console.error("Streak load failed:", e);
-  const el = document.getElementById("longest-streak");
-  if (el) el.textContent = "—";
-});
   } catch (e) {
     console.error("Index load failed:", e);
   }

@@ -44,10 +44,54 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
             mvp_games: Number(row.mvp_games || 0)
           }));
 
-          return { leader: leaders[0] || null, leaders };
+          const rateRow = db.prepare(`
+            WITH linked_mvps AS (
+              SELECT
+                psi.discord_id AS player_id,
+                COUNT(DISTINCT m.match_id) AS mvp_games
+              FROM match_round_mvps m
+              JOIN player_steam_ids psi
+                ON psi.steam_id=m.mvp_player_key OR psi.steam_id=m.steam_id
+              WHERE psi.discord_id IS NOT NULL
+              GROUP BY psi.discord_id
+            ),
+            player_games AS (
+              SELECT
+                rc.player_id,
+                COUNT(DISTINCT rc.match_id) AS games
+              FROM rating_changes rc
+              JOIN matches m ON m.match_id=rc.match_id
+              WHERE m.status='completed'
+              GROUP BY rc.player_id
+            )
+            SELECT
+              pg.player_id AS id,
+              COALESCE(r.display_name, pg.player_id) AS player,
+              pg.games,
+              COALESCE(lm.mvp_games, 0) AS mvp_games,
+              ROUND(100.0 * COALESCE(lm.mvp_games, 0) / pg.games, 1) AS mvp_pct
+            FROM player_games pg
+            LEFT JOIN linked_mvps lm
+              ON CAST(lm.player_id AS TEXT)=CAST(pg.player_id AS TEXT)
+            LEFT JOIN ratings r
+              ON CAST(r.player_id AS TEXT)=CAST(pg.player_id AS TEXT)
+            WHERE pg.games >= 25
+            ORDER BY mvp_pct DESC, mvp_games DESC, games DESC, player COLLATE NOCASE
+            LIMIT 1
+          `).get();
+
+          const rateLeader = rateRow ? {
+            id: rateRow.id == null ? null : String(rateRow.id),
+            player: rateRow.player || "Unknown",
+            games: Number(rateRow.games || 0),
+            mvp_games: Number(rateRow.mvp_games || 0),
+            mvp_pct: Number(rateRow.mvp_pct || 0)
+          } : null;
+
+          return { leader: leaders[0] || null, leaders, rateLeader };
         } catch (error) {
           if (String(error?.message || "").includes("no such table")) {
-            return { leader: null, leaders: [] };
+            return { leader: null, leaders: [], rateLeader: null };
           }
           throw error;
         }
@@ -189,7 +233,7 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
           AND m.created_at >= ?
       `).get(cutoff30d).c;
 
-        const topActive = db.prepare(`
+        const topActiveRows = db.prepare(`
         SELECT rc.player_id,
                COALESCE(r.display_name, rc.player_id) as name,
                COUNT(DISTINCT rc.match_id) as games
@@ -198,14 +242,22 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
         LEFT JOIN ratings r ON r.player_id = rc.player_id
         WHERE m.status='completed' AND m.created_at >= ?
         GROUP BY rc.player_id
-        ORDER BY games DESC
-        LIMIT 1
-      `).get(cutoff30d);
+        ORDER BY games DESC, name COLLATE NOCASE
+        LIMIT 2
+      `).all(cutoff30d);
+
+        const topActiveList = topActiveRows.map(row => ({
+          id: String(row.player_id),
+          player: row.name || String(row.player_id),
+          games: Number(row.games || 0)
+        }));
 
         return {
           uniquePlayers,
           uniquePlayers30d,
-          topActive: topActive ? { player: topActive.name, games: topActive.games } : null
+          topActive: topActiveList[0] || null,
+          topActiveRunnerUp: topActiveList[1] || null,
+          topActiveList
         };
       });
 
@@ -219,7 +271,7 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
   router.get("/stats/streaks", (req, res) => {
     try {
       const data = (() => {
-        const active = db.prepare(`
+        const activeRows = db.prepare(`
         WITH player_games AS (
           SELECT 
             rc.player_id,
@@ -273,13 +325,19 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
           active
         FROM current_streaks
         ORDER BY active DESC, last_played DESC
-        LIMIT 1
-      `).get();
+        LIMIT 2
+      `).all();
+
+        const currentStreakLeaders = activeRows.map(row => ({
+          id: String(row.player_id),
+          player: row.name || String(row.player_id),
+          wins: Number(row.active || 0)
+        }));
 
         return {
-          currentStreak: active
-            ? { player: active.name, wins: active.active }
-            : null
+          currentStreak: currentStreakLeaders[0] || null,
+          currentStreakRunnerUp: currentStreakLeaders[1] || null,
+          currentStreakLeaders
         };
       })();
 
