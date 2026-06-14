@@ -13,9 +13,9 @@
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/style.css?v=13">
-  <link rel="stylesheet" href="assets/css/playerversion3granular.css?v=1.6">
+  <link rel="stylesheet" href="assets/css/playerversion3granular.css?v=1.7">
   <script src="assets/js/main.js?v=11" defer></script>
-  <script src="assets/js/playerversion3granular.js?v=1.5" defer></script>
+  <script src="assets/js/playerversion3granular.js?v=1.6" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -86,30 +86,16 @@
 
     <section class="v3-card player-intel-card">
       <div class="v3-card-header player-intel-header">
-        <div><h2>Player Intel</h2><span>Maps and Coaching</span></div>
-        <button id="player-intel-toggle" class="player-intel-toggle" type="button" aria-expanded="false" aria-controls="player-intel-details">View Details</button>
+        <div><h2>Player Snapshot</h2><span>Context, tendencies, and recent form</span></div>
       </div>
 
-      <div class="player-intel-summary">
-        <div id="intel-best-map" class="player-intel-tile"></div>
-        <div id="intel-worst-map" class="player-intel-tile"></div>
-        <div id="intel-coaching-focus" class="player-intel-tile"></div>
-      </div>
-
-      <div id="player-intel-details" class="player-intel-details" hidden>
-        <section class="player-intel-detail-section map-performance-card">
-          <div class="v3-card-header"><h2>Map Performance</h2><span>Minimum 5 Games</span></div>
-          <div class="map-performance-grid">
-            <div id="best-map-card" class="map-performance-item"></div>
-            <div id="worst-map-card" class="map-performance-item"></div>
-          </div>
-        </section>
-
-        <section class="player-intel-detail-section coaching-card">
-          <div class="v3-card-header"><h2>Coaching Insights</h2><span>Rule-Based Analysis</span></div>
-          <div id="coaching-summary" class="coaching-summary"></div>
-          <div id="coaching-insights" class="coaching-insights-grid"></div>
-        </section>
+      <div class="player-snapshot-grid">
+        <article id="snapshot-recent-form" class="player-snapshot-card"></article>
+        <article id="snapshot-most-played" class="player-snapshot-card"></article>
+        <article id="snapshot-strongest-results" class="player-snapshot-card"></article>
+        <article id="snapshot-toughest-results" class="player-snapshot-card"></article>
+        <article id="snapshot-team-context" class="player-snapshot-card"></article>
+        <article id="snapshot-impact-profile" class="player-snapshot-card snapshot-impact-card"></article>
       </div>
     </section>
 

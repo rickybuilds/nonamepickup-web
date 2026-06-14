@@ -45,49 +45,20 @@
 .v3-kpi-strip span{color:#cbd5e1;font-size:13px;font-weight:800}
 .v3-kpi-strip strong{color:#e5e7eb;font-size:25px;line-height:1;font-weight:950}
 
-/* ---------- Player intel ---------- */
+/* ---------- Player snapshot ---------- */
 .player-intel-card{margin-bottom:16px}
 .player-intel-header{align-items:center}
 .player-intel-header>div>span{display:block;margin-top:4px}
-.player-intel-toggle{flex:0 0 auto;border:1px solid rgba(56,189,248,.38);background:rgba(14,165,233,.1);color:#7dd3fc;border-radius:999px;padding:8px 14px;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
-.player-intel-toggle:hover{border-color:rgba(34,197,94,.5);color:#34d399;box-shadow:0 0 16px rgba(34,197,94,.12)}
-.player-intel-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.player-intel-tile{min-width:0;min-height:78px;border:1px solid rgba(77,166,255,.15);background:rgba(3,8,20,.38);border-radius:14px;padding:13px;display:grid;align-content:center;gap:5px}
-.player-intel-label{color:#94a3b8;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.12em}
-.player-intel-tile strong{min-width:0;color:#e5e7eb;font-size:16px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.player-intel-tile strong a{color:inherit!important}
-.player-intel-tile small{color:#64748b;font-size:10px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.player-intel-details{display:grid;gap:18px;margin-top:18px;padding-top:18px;border-top:1px solid rgba(77,166,255,.14)}
-.player-intel-details[hidden]{display:none}
-.player-intel-detail-section{min-width:0}
-
-/* ---------- Map performance ---------- */
-.map-performance-card{margin-bottom:0}
-.map-performance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.map-performance-item{min-width:0;border:1px solid rgba(77,166,255,.16);background:rgba(3,8,20,.4);border-radius:16px;padding:16px}
-.map-performance-label{margin-bottom:8px;font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.12em}
-.map-performance-name{display:block;color:#dbeafe!important;font-size:22px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.map-performance-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
-.map-performance-stats div{border:1px solid rgba(77,166,255,.13);border-radius:13px;padding:11px;background:rgba(15,23,42,.45)}
-.map-performance-stats span{display:block;color:#94a3b8;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
-.map-performance-stats strong{display:block;margin-top:5px;color:#e5e7eb;font-size:18px;font-weight:950}
-
-/* ---------- Coaching insights ---------- */
-.coaching-card{margin-bottom:0}
-.coaching-summary{color:#94a3b8;font-size:13px;font-weight:800;line-height:1.55;margin-bottom:14px}
-.coaching-insights-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.coaching-insight-card{min-width:0;border:1px solid rgba(77,166,255,.18);background:rgba(3,8,20,.4);border-radius:16px;padding:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
-.coaching-insight-card.strength{border-color:rgba(34,197,94,.42);background:linear-gradient(145deg,rgba(34,197,94,.08),rgba(3,8,20,.44))}
-.coaching-insight-card.focus{border-color:rgba(255,92,92,.42);background:linear-gradient(145deg,rgba(255,92,92,.08),rgba(3,8,20,.44))}
-.coaching-insight-card.neutral{border-color:rgba(56,189,248,.35);background:linear-gradient(145deg,rgba(56,189,248,.07),rgba(3,8,20,.44))}
-.coaching-insight-type{display:block;margin-bottom:8px;color:#94a3b8;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.12em}
-.coaching-insight-card.strength .coaching-insight-type{color:#34d399}
-.coaching-insight-card.focus .coaching-insight-type{color:#ff7b7b}
-.coaching-insight-card.neutral .coaching-insight-type{color:#38bdf8}
-.coaching-insight-card h3{margin:0;color:#dbeafe;font-size:17px;font-weight:950;line-height:1.25}
-.coaching-insight-card h3 a{color:inherit!important}
-.coaching-insight-card p{margin:9px 0 0;color:#94a3b8;font-size:12px;font-weight:750;line-height:1.5}
-.coaching-insight-metric{display:block;margin-top:12px;color:#e5e7eb;font-size:14px;font-weight:950}
+.player-snapshot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.player-snapshot-card{min-width:0;min-height:132px;border:1px solid rgba(77,166,255,.16);background:linear-gradient(145deg,rgba(15,23,42,.65),rgba(3,8,20,.44));border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.snapshot-label{color:#7dd3fc;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.13em}
+.player-snapshot-card>strong{min-width:0;color:#e5e7eb;font-size:18px;font-weight:950;line-height:1.2;overflow-wrap:anywhere}
+.player-snapshot-card>strong a{color:#dbeafe!important}
+.player-snapshot-card>small{color:#72809d;font-size:10px;font-weight:800;line-height:1.45}
+.snapshot-stat-line,.snapshot-impact-metrics{display:flex;flex-wrap:wrap;gap:6px}
+.snapshot-stat-line span,.snapshot-impact-metrics span{padding:5px 7px;border:1px solid rgba(77,166,255,.13);border-radius:999px;background:rgba(3,8,20,.38);color:#aebbd2;font-size:9px;font-weight:900}
+.snapshot-impact-card{border-color:rgba(168,85,247,.24);background:linear-gradient(145deg,rgba(88,28,135,.08),rgba(3,8,20,.44))}
+@media(max-width:1100px){.player-snapshot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* ---------- Hampalyzer section ---------- */
 .v3-hampa-grid{display:grid;grid-template-columns:1fr 2fr;gap:16px;align-items:stretch;margin-bottom:16px}
@@ -321,10 +292,7 @@
   .v3-card{padding:14px!important;border-radius:18px!important}
   .v3-card-header h2{font-size:15px!important}
   .player-intel-header{align-items:flex-start}
-  .player-intel-summary{grid-template-columns:1fr}
-  .player-intel-toggle{padding:7px 11px;font-size:10px}
-  .map-performance-grid{grid-template-columns:1fr}
-  .coaching-insights-grid{grid-template-columns:1fr}
+  .player-snapshot-grid{grid-template-columns:1fr}
   .hero-chart-wrap,.v3-chart-wrap{height:220px!important}
   .stat-tile-grid,.weapon-grid,.class-detail-grid{grid-template-columns:1fr 1fr}
   .class-detail-head{display:block}

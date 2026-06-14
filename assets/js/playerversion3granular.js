@@ -203,8 +203,7 @@ async function loadPlayerV3(){
   setText("kpi-damage",h.linked?compact(h.damage):"-");
 
   const permapRows=Array.isArray(permap.data)?permap.data:[];
-  renderMapExtremes(permapRows);
-  renderCoachingCard(data,recentRows,permapRows);
+  renderPlayerSnapshot(data,recentRows,permapRows);
   renderCombat(h);
   renderFlag(h);
   renderWeapons(weapons);
@@ -557,257 +556,6 @@ function renderRecentMatches(rows,playerId,hidden){
   }).join("")||'<div class="empty-v3">No recent matches</div>');
 }
 
-function buildCoachingMetrics(data,recentRows,permapRows){
-  const completedRecent=(Array.isArray(recentRows)?recentRows:[]).filter(row=>{
-    const id=String(row.id||row.match_id||"");
-    const mapName=String(row.map_name||"");
-    return String(row.status||"").toLowerCase()==="completed"&&
-      !id.startsWith("admin-")&&
-      !id.startsWith("admin-set-")&&
-      !id.startsWith("seed-")&&
-      !mapName.includes("Admin Adjustment");
-  });
-
-  function resultRate(rows){
-    const results=rows.map(row=>getPlayerResult(row,data.player?.id)).filter(result=>result!=="-");
-    const wins=results.filter(result=>result==="Win").length;
-    return{
-      games:results.length,
-      wins,
-      losses:results.filter(result=>result==="Loss").length,
-      ties:results.filter(result=>result==="Tie").length,
-      winPct:results.length?Math.round((wins/results.length)*100):null
-    };
-  }
-
-  const last10Rows=completedRecent.slice(0,10);
-  const previous10Rows=completedRecent.slice(10,20);
-  const recent10=resultRate(last10Rows);
-  const previous10=resultRate(previous10Rows);
-  const recentDeltas=last10Rows
-    .map(row=>row.delta)
-    .filter(value=>value!==null&&value!==undefined&&Number.isFinite(Number(value)))
-    .map(Number);
-  const avgRecentDelta=recentDeltas.length
-    ? recentDeltas.reduce((sum,value)=>sum+value,0)/recentDeltas.length
-    : null;
-
-  const mapExtremes=selectMapExtremes(permapRows,5);
-  const h=data.hampalyzer||{};
-  const hMatches=Number(h.matches||0);
-  const damage=Number(h.damage||0);
-  const damageTaken=Number(h.damage_taken||0);
-  const teamDamage=Number(h.team_damage||0);
-  const classes=(Array.isArray(data.classes)?data.classes:[])
-    .map(row=>({
-      name:String(row.class||row.class_name||"Unknown"),
-      pct:Number(row.pct||0)
-    }))
-    .sort((a,b)=>b.pct-a.pct);
-  const topClass=classes[0]||null;
-
-  return{
-    completedRecentCount:completedRecent.length,
-    recent10,
-    previous10,
-    trendComparisonReady:completedRecent.length>=20&&recent10.games===10&&previous10.games===10,
-    recentWinPctChange:recent10.winPct!==null&&previous10.winPct!==null
-      ? recent10.winPct-previous10.winPct
-      : null,
-    avgRecentDelta,
-    recentDeltaCount:recentDeltas.length,
-    mapExtremes,
-    hMatches,
-    kdr:Number(h.kdr||0),
-    damageRatio:damageTaken>0?damage/damageTaken:null,
-    teamDamageRatio:damage>0?teamDamage/damage:null,
-    topClass,
-    classesAbove10:classes.filter(row=>row.pct>10).length
-  };
-}
-
-function generateCoachingInsights(metrics){
-  const insights=[];
-
-  if(metrics.recent10.games>=10&&metrics.recent10.winPct>=60){
-    insights.push({
-      type:"strength",
-      title:"Positive momentum",
-      explanation:"Recent results are trending well. Keep leaning on the decisions and roles that are producing wins.",
-      supportingMetric:"Last 10: "+metrics.recent10.wins+"-"+metrics.recent10.losses+"-"+metrics.recent10.ties+" ("+metrics.recent10.winPct+"%)",
-      priority:100
-    });
-  }else if(metrics.recent10.games>=10&&metrics.recent10.winPct<=40){
-    insights.push({
-      type:"focus",
-      title:"Recent form review",
-      explanation:"Results over the latest completed matches suggest a useful review window. Start with repeated mistakes in losses.",
-      supportingMetric:"Last 10: "+metrics.recent10.wins+"-"+metrics.recent10.losses+"-"+metrics.recent10.ties+" ("+metrics.recent10.winPct+"%)",
-      priority:100
-    });
-  }
-
-  if(metrics.recentDeltaCount>=10&&metrics.avgRecentDelta>=3){
-    insights.push({
-      type:"strength",
-      title:"Positive Elo trend",
-      explanation:"Recent rating movement indicates consistently positive match impact.",
-      supportingMetric:"Average recent Elo: +"+metrics.avgRecentDelta.toFixed(1),
-      priority:92
-    });
-  }else if(metrics.recentDeltaCount>=10&&metrics.avgRecentDelta<=-3){
-    insights.push({
-      type:"focus",
-      title:"Review recent losses",
-      explanation:"Recent rating movement is negative enough to warrant reviewing positioning, team fights, and late-match decisions.",
-      supportingMetric:"Average recent Elo: "+metrics.avgRecentDelta.toFixed(1),
-      priority:92
-    });
-  }
-
-  const worstMap=metrics.mapExtremes.worst;
-  if(worstMap&&worstMap.win_pct<40){
-    insights.push({
-      type:"focus",
-      title:"Map review focus",
-      explanation:"This qualifying map has the clearest results-based opportunity for focused practice.",
-      supportingMetric:worstMap.w+"-"+worstMap.l+"-"+worstMap.t+" | "+worstMap.win_pct+"% | "+worstMap.completedGames+" games",
-      priority:88,
-      map:worstMap.map
-    });
-  }
-
-  if(metrics.hMatches>=10&&metrics.teamDamageRatio!==null&&metrics.teamDamageRatio>.08){
-    insights.push({
-      type:"focus",
-      title:"Team-damage discipline",
-      explanation:"Cleaner firing lanes and more deliberate spam timing could reduce avoidable damage to teammates.",
-      supportingMetric:"Team damage: "+(metrics.teamDamageRatio*100).toFixed(1)+"% of enemy damage",
-      priority:86
-    });
-  }
-
-  if(metrics.hMatches>=10&&metrics.kdr<.85){
-    insights.push({
-      type:"focus",
-      title:"Survival and trades",
-      explanation:"Prioritize safer engagements, cleaner exits, and fights where teammates can immediately trade.",
-      supportingMetric:"KDR: "+metrics.kdr.toFixed(2)+" over "+metrics.hMatches+" matches",
-      priority:84
-    });
-  }else if(metrics.hMatches>=10&&metrics.kdr>1.25){
-    insights.push({
-      type:"strength",
-      title:"Combat efficiency",
-      explanation:"Your kill-to-death results are a consistent strength across the tracked sample.",
-      supportingMetric:"KDR: "+metrics.kdr.toFixed(2)+" over "+metrics.hMatches+" matches",
-      priority:84
-    });
-  }
-
-  if(metrics.hMatches>=10&&metrics.damageRatio!==null&&metrics.damageRatio<.90){
-    insights.push({
-      type:"focus",
-      title:"Damage trading",
-      explanation:"Look for higher-value engagements and reduce damage taken without a favorable return.",
-      supportingMetric:"Damage dealt/taken: "+metrics.damageRatio.toFixed(2),
-      priority:82
-    });
-  }else if(metrics.hMatches>=10&&metrics.damageRatio!==null&&metrics.damageRatio>1.20){
-    insights.push({
-      type:"strength",
-      title:"Efficient damage trading",
-      explanation:"You are dealing substantially more damage than you receive across the tracked sample.",
-      supportingMetric:"Damage dealt/taken: "+metrics.damageRatio.toFixed(2),
-      priority:82
-    });
-  }
-
-  const bestMap=metrics.mapExtremes.best;
-  if(bestMap&&bestMap.win_pct>60){
-    insights.push({
-      type:"strength",
-      title:"Reliable map",
-      explanation:"This qualifying map is currently your strongest results-based map.",
-      supportingMetric:bestMap.w+"-"+bestMap.l+"-"+bestMap.t+" | "+bestMap.win_pct+"% | "+bestMap.completedGames+" games",
-      priority:78,
-      map:bestMap.map
-    });
-  }
-
-  if(metrics.topClass&&metrics.topClass.pct>=65){
-    insights.push({
-      type:"neutral",
-      title:"Class specialization",
-      explanation:"Your tracked class time is strongly concentrated. This can support mastery, while making secondary-class readiness worth monitoring.",
-      supportingMetric:metrics.topClass.name+": "+metrics.topClass.pct.toFixed(1)+"% of tracked time",
-      priority:64,
-      className:metrics.topClass.name
-    });
-  }else if(metrics.topClass&&metrics.topClass.pct<=35&&metrics.classesAbove10>=4){
-    insights.push({
-      type:"focus",
-      title:"Narrow the active class pool",
-      explanation:"Tracked time is spread across several classes. A smaller primary pool may improve consistency and role-specific decision making.",
-      supportingMetric:metrics.classesAbove10+" classes above 10% usage",
-      priority:64
-    });
-  }
-
-  return insights.sort((a,b)=>b.priority-a.priority).slice(0,3);
-}
-
-function renderCoachingCard(data,recentRows,permapRows){
-  const metrics=buildCoachingMetrics(data,recentRows,permapRows);
-  const insights=generateCoachingInsights(metrics);
-  const primaryInsight=insights[0]||null;
-  let summary="Rule-based insights from existing match, map, class, and Hampalyzer data.";
-
-  if(metrics.trendComparisonReady){
-    const change=metrics.recentWinPctChange;
-    summary+=" Last 10 win rate: "+metrics.recent10.winPct+"% versus "+metrics.previous10.winPct+"% in the previous 10";
-    summary+=(change>0?" (+"+change:change<0?" ("+change:" (no change")+(change!==0?" points).":").");
-  }else if(metrics.completedRecentCount<10){
-    summary+=" More completed match history is needed for recent-form analysis.";
-  }
-  setText("coaching-summary",summary);
-
-  if(primaryInsight){
-    const focusTitle=primaryInsight.map
-      ? '<a href="map.html?map='+encodeURIComponent(primaryInsight.map)+'">'+escapeHtml(primaryInsight.map)+'</a>'
-      : escapeHtml(primaryInsight.title);
-    setHtml("intel-coaching-focus",
-      '<span class="player-intel-label">Coaching Focus</span>'+
-      '<strong class="'+escapeHtml(primaryInsight.type)+'">'+focusTitle+'</strong>'+
-      '<small>'+escapeHtml(primaryInsight.supportingMetric)+'</small>'
-    );
-  }else{
-    setHtml("intel-coaching-focus",
-      '<span class="player-intel-label">Coaching Focus</span>'+
-      '<strong>More history needed</strong>'+
-      '<small>No qualifying insight yet</small>'
-    );
-  }
-
-  if(!insights.length){
-    setHtml("coaching-insights",'<div class="empty-v3">More match history is needed for coaching insights.</div>');
-    return;
-  }
-
-  setHtml("coaching-insights",insights.map(insight=>{
-    const typeLabel=insight.type==="strength"?"Strength":insight.type==="focus"?"Focus Area":"Profile Note";
-    const title=insight.map
-      ? escapeHtml(insight.title)+': <a href="map.html?map='+encodeURIComponent(insight.map)+'">'+escapeHtml(insight.map)+'</a>'
-      : escapeHtml(insight.title);
-    return '<article class="coaching-insight-card '+escapeHtml(insight.type)+'">'+
-      '<span class="coaching-insight-type">'+escapeHtml(typeLabel)+'</span>'+
-      '<h3>'+title+'</h3>'+
-      '<p>'+escapeHtml(insight.explanation)+'</p>'+
-      '<strong class="coaching-insight-metric">'+escapeHtml(insight.supportingMetric)+'</strong>'+
-    '</article>';
-  }).join(""));
-}
-
 function selectMapExtremes(rows,minimumGames=5){
   const eligible=(Array.isArray(rows)?rows:[]).map(row=>{
     const w=Number(row.w||0);
@@ -844,65 +592,129 @@ function selectMapExtremes(rows,minimumGames=5){
   };
 }
 
-function renderMapExtremes(rows){
-  const extremes=selectMapExtremes(rows);
+function normalizeMapResults(rows){
+  return (Array.isArray(rows)?rows:[]).map(row=>{
+    const w=Number(row.w||0);
+    const l=Number(row.l||0);
+    const t=Number(row.t||0);
+    const games=w+l+t||Number(row.gp||0);
+    return{...row,w,l,t,completedGames:games,win_pct:games?Number(row.win_pct??Math.round((w/games)*100)):0};
+  }).filter(row=>row.completedGames>0);
+}
 
-  function renderSummary(targetId,label,row,tone){
+function renderPlayerSnapshot(data,recentRows,permapRows){
+  const playerId=data.player?.id;
+  const recentCompleted=(Array.isArray(recentRows)?recentRows:[])
+    .filter(row=>getPlayerResult(row,playerId)!=="-")
+    .slice(0,10);
+  const recentResults=recentCompleted.map(row=>getPlayerResult(row,playerId));
+  const recentWins=recentResults.filter(result=>result==="Win").length;
+  const recentLosses=recentResults.filter(result=>result==="Loss").length;
+  const recentTies=recentResults.filter(result=>result==="Tie").length;
+  const recentPct=recentResults.length?Math.round((recentWins/recentResults.length)*100):0;
+  const maps=normalizeMapResults(permapRows);
+  const mostPlayed=[...maps].sort((a,b)=>b.completedGames-a.completedGames||b.win_pct-a.win_pct)[0]||null;
+  const extremes=selectMapExtremes(maps,5);
+  const h=data.hampalyzer||{};
+  const classes=(Array.isArray(data.classes)?data.classes:[])
+    .map(row=>({name:classDisplayName(row.class||row.class_name),pct:Number(row.pct||0)}))
+    .sort((a,b)=>b.pct-a.pct);
+  const mainClass=classes[0]||null;
+
+  function mapLink(row){
+    const map=String(row?.map||"Unknown");
+    return '<a href="map.html?map='+encodeURIComponent(map)+'">'+escapeHtml(map)+'</a>';
+  }
+
+  function mapCard(targetId,label,row,extra){
     if(!row){
       setHtml(targetId,
-        '<span class="player-intel-label">'+escapeHtml(label)+'</span>'+
-        '<strong>More history needed</strong>'+
+        '<span class="snapshot-label">'+escapeHtml(label)+'</span>'+
+        '<strong>Not enough map history</strong>'+
         '<small>Minimum 5 completed games</small>'
       );
       return;
     }
-
-    const mapName=String(row.map||"Unknown");
     setHtml(targetId,
-      '<span class="player-intel-label">'+escapeHtml(label)+'</span>'+
-      '<strong class="'+tone+'"><a href="map.html?map='+encodeURIComponent(mapName)+'">'+escapeHtml(mapName)+'</a></strong>'+
-      '<small>'+row.win_pct+'% win rate / '+row.completedGames+' games</small>'
+      '<span class="snapshot-label">'+escapeHtml(label)+'</span>'+
+      '<strong>'+mapLink(row)+'</strong>'+
+      '<div class="snapshot-stat-line"><span>'+row.w+'-'+row.l+'-'+row.t+'</span><span>'+row.win_pct+'%</span><span>'+row.completedGames+' games</span></div>'+
+      (extra?'<small>'+escapeHtml(extra)+'</small>':"")
     );
   }
 
-  function render(targetId,label,row,tone){
-    if(!row){
-      setHtml(targetId,
-        '<div class="map-performance-label '+tone+'">'+escapeHtml(label)+'</div>'+
-        '<div class="empty-v3">Not enough map history</div>'
-      );
-      return;
-    }
+  setHtml("snapshot-recent-form",
+    '<span class="snapshot-label">Recent Form</span>'+
+    '<strong>'+(recentResults.length?recentWins+'-'+recentLosses+'-'+recentTies+' · '+recentPct+'%':"No recent results")+'</strong>'+
+    '<small>'+(recentResults.length?'Last '+recentResults.length+' completed matches':"Completed match sample unavailable")+'</small>'
+  );
 
-    const mapName=String(row.map||"Unknown");
-    setHtml(targetId,
-      '<div class="map-performance-label '+tone+'">'+escapeHtml(label)+'</div>'+
-      '<a class="map-performance-name" href="map.html?map='+encodeURIComponent(mapName)+'">'+escapeHtml(mapName)+'</a>'+
-      '<div class="map-performance-stats">'+
-        '<div><span>Record</span><strong>'+row.w+'-'+row.l+'-'+row.t+'</strong></div>'+
-        '<div><span>Win Rate</span><strong class="'+tone+'">'+row.win_pct+'%</strong></div>'+
-        '<div><span>Games</span><strong>'+row.completedGames+'</strong></div>'+
-      '</div>'
-    );
+  if(mostPlayed){
+    mapCard("snapshot-most-played","Most Played Map",mostPlayed,"Largest completed map sample");
+  }else{
+    setHtml("snapshot-most-played",'<span class="snapshot-label">Most Played Map</span><strong>No map data yet</strong><small>Completed map sample unavailable</small>');
   }
+  mapCard("snapshot-strongest-results","Strongest Results",extremes.best,"Minimum 5 completed games");
+  mapCard("snapshot-toughest-results","Toughest Results",extremes.worst,"Team result trend, not individual blame.");
 
-  renderSummary("intel-best-map","Best Map",extremes.best,"good");
-  renderSummary("intel-worst-map","Worst Map",extremes.worst,"bad");
-  render("best-map-card","Best Map",extremes.best,"good");
-  render("worst-map-card","Worst Map",extremes.worst,"bad");
-}
-
-function setupPlayerIntelToggle(){
-  const toggle=qs("player-intel-toggle");
-  const details=qs("player-intel-details");
-  if(!toggle||!details)return;
-
-  toggle.addEventListener("click",()=>{
-    const expanded=toggle.getAttribute("aria-expanded")==="true";
-    toggle.setAttribute("aria-expanded",String(!expanded));
-    toggle.textContent=expanded?"View Details":"Hide Details";
-    details.hidden=expanded;
+  const teammateElos=[];
+  const playerElos=[];
+  recentCompleted.forEach(match=>{
+    const team=getPlayerTeam(match,playerId);
+    const teammates=team==="BLUE"?(match.blueTeam||[]):team==="RED"?(match.redTeam||[]):[];
+    teammates.forEach(player=>{
+      if(String(player.id)===String(playerId))return;
+      const elo=Number(player.before);
+      if(Number.isFinite(elo)&&elo>0)teammateElos.push(elo);
+    });
+    const playerElo=Number(match.before);
+    if(Number.isFinite(playerElo)&&playerElo>0)playerElos.push(playerElo);
   });
+
+  if(teammateElos.length){
+    const teammateAvg=Math.round(teammateElos.reduce((sum,elo)=>sum+elo,0)/teammateElos.length);
+    const playerAvg=playerElos.length
+      ? Math.round(playerElos.reduce((sum,elo)=>sum+elo,0)/playerElos.length)
+      : null;
+    const difference=playerAvg===null?null:teammateAvg-playerAvg;
+    setHtml("snapshot-team-context",
+      '<span class="snapshot-label">Team Context</span>'+
+      '<strong>Avg teammate Elo '+teammateAvg+'</strong>'+
+      '<div class="snapshot-stat-line">'+
+        (playerAvg===null?"":'<span>Player avg '+playerAvg+'</span>')+
+        (difference===null?"":'<span>Team gap '+(difference>0?"+":"")+difference+'</span>')+
+      '</div>'+
+      '<small>'+teammateElos.length+' visible teammate rating'+(teammateElos.length===1?"":"s")+' across the last '+recentCompleted.length+' completed match'+(recentCompleted.length===1?"":"es")+'.</small>'
+    );
+  }else{
+    setHtml("snapshot-team-context",
+      '<span class="snapshot-label">Team Context</span>'+
+      '<strong>Team context unavailable</strong>'+
+      '<small>No visible teammate Elo values in the recent match sample.</small>'
+    );
+  }
+
+  if(!h.linked){
+    setHtml("snapshot-impact-profile",
+      '<span class="snapshot-label">Impact Profile</span>'+
+      '<strong>Hampalyzer data unavailable</strong>'+
+      '<small>'+(mainClass?escapeHtml(mainClass.name)+' is the most tracked class.':"No tracked class identity yet.")+'</small>'
+    );
+    return;
+  }
+
+  const impactParts=[
+    'KDR '+String(h.kdr??"-"),
+    compact(h.damage)+' enemy damage',
+    fmt(h.caps)+' caps',
+    fmt(h.touches)+' touches'
+  ];
+  setHtml("snapshot-impact-profile",
+    '<span class="snapshot-label">Impact Profile</span>'+
+    '<strong>'+(mainClass?escapeHtml(mainClass.name):"Mixed class identity")+'</strong>'+
+    '<div class="snapshot-impact-metrics">'+impactParts.map(part=>'<span>'+escapeHtml(part)+'</span>').join("")+'</div>'+
+    '<small>Neutral profile from '+fmt(h.matches)+' tracked matches.</small>'
+  );
 }
 
 function renderMapFrequency(rows){
@@ -1516,6 +1328,5 @@ function escapeAttr(v){
 }
 
 document.addEventListener("DOMContentLoaded",()=>{
-  setupPlayerIntelToggle();
   loadPlayerV3();
 });
