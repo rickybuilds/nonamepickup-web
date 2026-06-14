@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NoNamePUGs — Team Fortress Classic Pickup Network. Est. 1999.">
+  <meta name="theme-color" content="#000500">
+  <title>NNP-OS // NoNamePUGs TFC</title>
+
+  <!-- Phosphor fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/nnp.css">
+
+  <style>
+    /* ── Extra layout polish not in nnp.css ── */
+
+    /* Noise texture overlay — very subtle */
+    #noise {
+      position: fixed;
+      inset: 0;
+      z-index: 8998;
+      pointer-events: none;
+      opacity: .025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 128px 128px;
+    }
+
+    /* ── Boot screen ── */
+    #boot-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: var(--p0);
+      display: flex;
+      flex-direction: column;
+      padding: 10vmin 8vmin;
+      overflow: hidden;
+      transition: opacity .4s, transform .4s;
+    }
+    #boot-screen.done {
+      opacity: 0;
+      transform: scale(1.02);
+      pointer-events: none;
+    }
+    #boot-header {
+      font-family: var(--font-term);
+      font-size: clamp(1.4rem, 4vw, 2.2rem);
+      color: var(--g2);
+      margin-bottom: 6px;
+      letter-spacing: .04em;
+    }
+    #boot-header span { color: var(--g3); text-shadow: var(--glow-sm); }
+    #boot-divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--g1), transparent);
+      margin-bottom: 16px;
+      width: 60%;
+    }
+    #boot-lines {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    #boot-progress-wrap {
+      margin-top: 16px;
+      width: min(400px, 80%);
+    }
+    #boot-progress-label {
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      color: var(--g1);
+      margin-bottom: 3px;
+      letter-spacing: .1em;
+    }
+    #boot-progress-bar-outer {
+      height: 6px;
+      border: 1px solid var(--g1);
+      background: var(--p0);
+    }
+    #boot-progress-bar {
+      height: 100%;
+      background: var(--g2);
+      width: 0%;
+      transition: width .2s linear;
+      box-shadow: var(--glow-sm);
+    }
+
+    /* ── Login screen ── */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 4000;
+      background: var(--p0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .5s;
+    }
+    #login-screen.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .login-box {
+      width: min(480px, 92vw);
+      border: 1px solid var(--g2);
+      background: var(--p1);
+      box-shadow: var(--glow-md), inset 0 0 80px rgba(0,15,0,.5);
+    }
+    .login-titlebar {
+      background: var(--g1);
+      padding: 4px 12px;
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      color: var(--p0);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .login-titlebar-dots {
+      display: flex;
+      gap: 5px;
+    }
+    .login-titlebar-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--p0);
+      opacity: .4;
+    }
+    .login-body {
+      padding: 28px 32px 30px;
+    }
+
+    /* ASCII art logo */
+    .ascii-art {
+      font-family: var(--font-mono);
+      font-size: clamp(.42rem, 1.3vw, .58rem);
+      line-height: 1.15;
+      color: var(--g2);
+      text-shadow: var(--glow-sm);
+      white-space: pre;
+      text-align: center;
+      margin-bottom: 18px;
+      letter-spacing: .03em;
+    }
+
+    .login-divider {
+      height: 1px;
+      background: var(--g1);
+      margin: 14px 0;
+    }
+    .login-prompt {
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      color: var(--g1);
+      margin-bottom: 14px;
+      line-height: 1.6;
+    }
+    .login-prompt span { color: var(--g2); }
+
+    .term-field {
+      margin-bottom: 10px;
+    }
+    .term-field-label {
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      color: var(--g1);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .term-field-input {
+      width: 100%;
+      background: var(--p0);
+      border: 1px solid var(--g1);
+      color: var(--g3);
+      font-family: var(--font-mono);
+      font-size: .95rem;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      caret-color: var(--g3);
+      border-radius: 0;
+    }
+    .term-field-input:focus {
+      border-color: var(--g3);
+      box-shadow: var(--glow-sm);
+    }
+    .term-field-input::placeholder { color: var(--g1); opacity: .5; }
+
+    .login-btn {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--g2);
+      color: var(--g3);
+      font-family: var(--font-term);
+      font-size: 1.25rem;
+      letter-spacing: .2em;
+      padding: 9px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background .15s, box-shadow .15s;
+      margin-top: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+    .login-btn:hover {
+      background: rgba(34,197,94,.1);
+      box-shadow: var(--glow-md);
+    }
+    .login-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(74,222,128,.12) 50%, transparent 100%);
+      transform: translateX(-100%);
+    }
+    .login-btn:hover::after {
+      transition: transform .5s;
+      transform: translateX(100%);
+    }
+
+    #login-status {
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      min-height: 1.2em;
+      margin-top: 10px;
+      color: var(--amb);
+    }
+    #login-status.err { color: var(--red); }
+    #login-status.ok  { color: var(--g3); text-shadow: var(--glow-sm); }
+
+    .login-footer {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--dim);
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      color: var(--g1);
+      text-align: center;
+      line-height: 1.7;
+    }
+    .login-footer a { color: var(--g2); }
+    .login-footer a:hover { color: var(--g3); }
+
+    /* ── OS Shell layout ── */
+    #os-shell {
+      display: none;
+      min-height: 100svh;
+      flex-direction: column;
+    }
+    #os-shell.active {
+      display: flex;
+    }
+
+    /* Topbar */
+    #topbar {
+      height: 26px;
+      background: var(--p2);
+      border-bottom: 1px solid var(--g1);
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      gap: 0;
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      user-select: none;
+    }
+    .topbar-brand {
+      font-family: var(--font-term);
+      font-size: 1rem;
+      color: var(--g3);
+      text-shadow: var(--glow-sm);
+      padding: 0 10px 0 4px;
+      border-right: 1px solid var(--dim);
+      margin-right: 4px;
+      cursor: default;
+      letter-spacing: .04em;
+    }
+    .topbar-item {
+      padding: 0 8px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      color: var(--g2);
+      cursor: pointer;
+      transition: background .1s, color .1s;
+      white-space: nowrap;
+    }
+    .topbar-item:hover {
+      background: var(--g1);
+      color: var(--g4);
+    }
+    #topbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-left: 1px solid var(--dim);
+      padding-left: 10px;
+      height: 100%;
+    }
+    #topbar-server-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: .65rem;
+    }
+    #topbar-clock {
+      font-size: .67rem;
+      color: var(--g2);
+      letter-spacing: .03em;
+    }
+    #topbar-handle {
+      color: var(--amb);
+      font-size: .67rem;
+    }
+
+    /* Main area = sidebar + content */
+    #main-area {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      width: 196px;
+      flex-shrink: 0;
+      background: var(--p1);
+      border-right: 1px solid var(--g1);
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #sidebar::-webkit-scrollbar { width: 3px; }
+    #sidebar::-webkit-scrollbar-thumb { background: var(--g1); }
+
+    .sb-section {
+      padding: 8px 0 2px;
+      border-bottom: 1px solid var(--dim);
+    }
+    .sb-section-label {
+      font-family: var(--font-mono);
+      font-size: .58rem;
+      color: var(--g1);
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      padding: 0 10px 4px;
+    }
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px;
+      font-family: var(--font-mono);
+      font-size: .78rem;
+      color: var(--g1);
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: all .1s;
+      white-space: nowrap;
+    }
+    .sb-item:hover {
+      background: var(--dim2);
+      color: var(--g3);
+      border-left-color: var(--g1);
+    }
+    .sb-item.active {
+      background: rgba(34,197,94,.07);
+      color: var(--g4);
+      border-left-color: var(--g3);
+      text-shadow: 0 0 8px rgba(74,222,128,.4);
+    }
+    .sb-icon { width: 13px; text-align: center; font-size: .8rem; opacity: .7; flex-shrink: 0; }
+    .sb-badge {
+      margin-left: auto;
+      font-size: .6rem;
+      background: rgba(74,222,128,.12);
+      color: var(--g2);
+      border: 1px solid var(--g1);
+      padding: 0 4px;
+      min-width: 18px;
+      text-align: center;
+    }
+    .sb-badge.live {
+      background: rgba(220,38,38,.15);
+      border-color: var(--red);
+      color: #f87171;
+      animation: badge-pulse 1.2s ease-in-out infinite;
+    }
+    .sb-badge.queue {
+      background: rgba(217,119,6,.12);
+      border-color: var(--amb);
+      color: var(--amb);
+    }
+
+    /* Server widget in sidebar */
+    #sb-server-widget {
+      margin: 8px 8px 4px;
+      border: 1px solid var(--dim);
+      background: var(--p0);
+      padding: 8px;
+    }
+    .sw-title {
+      font-family: var(--font-mono);
+      font-size: .58rem;
+      color: var(--g1);
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .sw-row {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      color: var(--g1);
+      line-height: 1.8;
+    }
+    .sw-row span:last-child { color: var(--g2); }
+
+    /* Sidebar mobile toggle */
+    #sb-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--g2);
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      padding: 0 8px;
+      cursor: pointer;
+      height: 100%;
+    }
+    #sb-toggle:hover { color: var(--g3); }
+
+    /* Content */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
+    }
+    #content::-webkit-scrollbar { width: 5px; }
+    #content::-webkit-scrollbar-track { background: var(--p0); }
+    #content::-webkit-scrollbar-thumb { background: var(--g1); }
+    #content::-webkit-scrollbar-thumb:hover { background: var(--g2); }
+
+    /* Taskbar */
+    #taskbar {
+      height: 22px;
+      background: var(--p2);
+      border-top: 1px solid var(--g1);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 14px;
+      font-family: var(--font-mono);
+      font-size: .62rem;
+      color: var(--g1);
+      flex-shrink: 0;
+    }
+    #taskbar-path { color: var(--g2); }
+    #taskbar-msg  { color: var(--amb); }
+    #taskbar-right {
+      margin-left: auto;
+      display: flex;
+      gap: 10px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      #sidebar {
+        position: absolute;
+        top: 26px;
+        left: 0;
+        height: calc(100% - 48px);
+        z-index: 150;
+        transform: translateX(-100%);
+        transition: transform .25s;
+        box-shadow: 4px 0 20px rgba(0,0,0,.6);
+      }
+      #sidebar.open {
+        transform: translateX(0);
+      }
+      #sb-toggle { display: flex; align-items: center; }
+      #main-area { position: relative; }
+      #sb-overlay {
+        display: none;
+        position: absolute;
+        inset: 0;
+        z-index: 140;
+        background: rgba(0,0,0,.5);
+      }
+      #sb-overlay.active { display: block; }
+    }
+
+    /* ── Flicker animation for logo ── */
+    @keyframes flicker {
+      0%,19%,21%,23%,25%,54%,56%,100% { opacity: 1; }
+      20%,24%,55% { opacity: .4; }
+    }
+
+    /* ── Page transition ── */
+    #content > * {
+      animation: page-in .15s ease-out;
+    }
+    @keyframes page-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Noise texture -->
+<div id="noise" aria-hidden="true"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     BOOT SCREEN
+═══════════════════════════════════════════════════════════════ -->
+<div id="boot-screen" role="status" aria-live="polite">
+  <div id="boot-header">
+    <span>NNP</span>-OS v1.9.9 &nbsp;[<span>NoNamePUGs</span> Pickup Network]
+  </div>
+  <div id="boot-divider"></div>
+  <div id="boot-lines"></div>
+  <div id="boot-progress-wrap">
+    <div id="boot-progress-label">LOADING SYSTEM...</div>
+    <div id="boot-progress-bar-outer">
+      <div id="boot-progress-bar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     LOGIN TERMINAL
+═══════════════════════════════════════════════════════════════ -->
+<div id="login-screen" role="main" aria-label="Login">
+  <div class="login-box">
+
+    <div class="login-titlebar">
+      <span>NNP-OS :: SECURE LOGIN TERMINAL</span>
+      <div class="login-titlebar-dots">
+        <div class="login-titlebar-dot"></div>
+        <div class="login-titlebar-dot"></div>
+        <div class="login-titlebar-dot"></div>
+      </div>
+    </div>
+
+    <div class="login-body">
+
+      <!-- ASCII art -->
+      <div class="ascii-art" aria-hidden="true">
+ ███╗   ██╗███╗   ██╗██████╗
+ ████╗  ██║████╗  ██║██╔══██╗
+ ██╔██╗ ██║██╔██╗ ██║██████╔╝
+ ██║╚██╗██║██║╚██╗██║██╔═══╝
+ ██║ ╚████║██║ ╚████║██║
+ ╚═╝  ╚═══╝╚═╝  ╚═══╝╚═╝  EST.1999</div>
+
+      <div class="login-divider"></div>
+
+      <div class="login-prompt">
+        Welcome to the <span>NoNamePUGs</span> Pickup Network.<br>
+        This system is for authorized community members.<br>
+        <span>Enter any callsign to continue as guest.</span>
+      </div>
+
+      <form id="login-form" novalidate>
+        <div class="term-field">
+          <div class="term-field-label">Callsign / Handle</div>
+          <input
+            class="term-field-input"
+            id="login-handle"
+            type="text"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="e.g. Soldier_99, FragKing, guest…"
+            maxlength="40"
+            aria-label="Your callsign or handle"
+          >
+        </div>
+
+        <button type="submit" class="login-btn" id="login-submit">
+          ▶ &nbsp; LOGIN
+        </button>
+      </form>
+
+      <div id="login-status" role="status" aria-live="polite"></div>
+
+      <div class="login-footer">
+        Not a member yet?
+        <a href="https://discord.gg/nonamepickups" target="_blank" rel="noopener">Join the Discord</a>
+        to get in the queue.<br>
+        Team Fortress Classic · Est. 1999 · Still the best game ever made.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     OS SHELL
+═══════════════════════════════════════════════════════════════ -->
+<div id="os-shell" role="application" aria-label="NNP-OS">
+
+  <!-- Topbar -->
+  <div id="topbar" role="navigation" aria-label="Main menu">
+
+    <button id="sb-toggle" aria-label="Toggle sidebar" aria-expanded="false">☰</button>
+
+    <div class="topbar-brand" aria-label="NNP-OS">NNP</div>
+
+    <div class="topbar-item" onclick="navigate('home')"       tabindex="0" role="button" aria-label="Home">HOME</div>
+    <div class="topbar-item" onclick="navigate('queue')"      tabindex="0" role="button" aria-label="Queue">QUEUE</div>
+    <div class="topbar-item" onclick="navigate('matches')"    tabindex="0" role="button" aria-label="Matches">MATCHES</div>
+    <div class="topbar-item" onclick="navigate('leaderboard')" tabindex="0" role="button" aria-label="Leaderboard">LADDER</div>
+    <div class="topbar-item" onclick="navigate('analytics')"  tabindex="0" role="button" aria-label="Analytics">STATS</div>
+    <div class="topbar-item" onclick="navigate('maps')"       tabindex="0" role="button" aria-label="Maps">MAPS</div>
+
+    <div id="topbar-right">
+      <div id="topbar-server-status" aria-live="polite">
+        <span class="dot" id="status-dot" aria-hidden="true"></span>
+        <span id="status-text" style="font-size:.62rem;color:var(--g1)">CHECKING…</span>
+      </div>
+      <div id="topbar-clock" aria-label="Current time"></div>
+      <div id="topbar-handle" aria-label="Your handle">GUEST</div>
+      <button id="crt-toggle" onclick="document.body.classList.toggle('crt');this.style.color=document.body.classList.contains('crt')?'var(--g3)':'var(--g1)'" title="Toggle CRT scanlines" style="background:none;border:1px solid var(--dim);color:var(--g1);font-family:var(--font-mono);font-size:.6rem;padding:1px 6px;cursor:pointer;letter-spacing:.08em" aria-pressed="false">CRT</button>
+    </div>
+
+  </div>
+
+  <!-- Main area -->
+  <div id="main-area">
+
+    <!-- Sidebar overlay (mobile) -->
+    <div id="sb-overlay" aria-hidden="true"></div>
+
+    <!-- Sidebar -->
+    <nav id="sidebar" aria-label="Navigation">
+
+      <div class="sb-section">
+        <div class="sb-section-label">Navigate</div>
+        <div class="sb-item active" data-route="home"        onclick="navigate('home')"        role="link" tabindex="0" aria-label="Home">
+          <span class="sb-icon">⌂</span> HOME
+        </div>
+        <div class="sb-item" data-route="queue"       onclick="navigate('queue')"       role="link" tabindex="0" aria-label="Queue">
+          <span class="sb-icon">▶</span> QUEUE
+          <span class="sb-badge queue" id="nav-queue-badge">0/8</span>
+        </div>
+        <div class="sb-item" data-route="matches"     onclick="navigate('matches')"     role="link" tabindex="0" aria-label="Matches">
+          <span class="sb-icon">◈</span> MATCHES
+        </div>
+        <div class="sb-item" data-route="leaderboard" onclick="navigate('leaderboard')" role="link" tabindex="0" aria-label="Leaderboard">
+          <span class="sb-icon">★</span> LEADERBOARD
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-section-label">Data</div>
+        <div class="sb-item" data-route="analytics"   onclick="navigate('analytics')"   role="link" tabindex="0">
+          <span class="sb-icon">≡</span> ANALYTICS
+        </div>
+        <div class="sb-item" data-route="maps"        onclick="navigate('maps')"        role="link" tabindex="0">
+          <span class="sb-icon">⊞</span> MAPS
+        </div>
+        <div class="sb-item" data-route="compare"     onclick="navigate('compare')"     role="link" tabindex="0">
+          <span class="sb-icon">⇔</span> COMPARE
+        </div>
+        <div class="sb-item" data-route="vegas"       onclick="navigate('vegas')"       role="link" tabindex="0">
+          <span class="sb-icon">?</span> VEGAS ODDS
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-section-label">Community</div>
+        <div class="sb-item" data-route="about"       onclick="navigate('about')"       role="link" tabindex="0">
+          <span class="sb-icon">i</span> ABOUT / HOF
+        </div>
+        <div class="sb-item" onclick="window.open('https://discord.gg/nonamepickups','_blank')" role="link" tabindex="0">
+          <span class="sb-icon">⌘</span> DISCORD ↗
+        </div>
+      </div>
+
+      <!-- Server status widget -->
+      <div id="sb-server-widget">
+        <div class="sw-title">// Server Status</div>
+        <div id="server-widget-body">
+          <div class="sw-row"><span>Queue</span><span>—</span></div>
+          <div class="sw-row"><span>Live</span><span>—</span></div>
+        </div>
+      </div>
+
+      <!-- Live indicator -->
+      <div style="padding:8px 8px 10px">
+        <div id="nav-live-wrap" style="display:flex;align-items:center;gap:6px;padding:5px 7px;border:1px solid var(--dim);background:var(--p0);font-family:var(--font-mono);font-size:.7rem;color:var(--g1)">
+          <span class="dot" id="nav-live-dot"></span>
+          <span>LIVE</span>
+          <span class="sb-badge" id="nav-live-badge">0</span>
+        </div>
+      </div>
+
+    </nav>
+
+    <!-- Content area -->
+    <main id="content" role="main" aria-live="polite" aria-label="Page content">
+      <!-- Injected by router -->
+    </main>
+
+  </div><!-- /main-area -->
+
+  <!-- Taskbar -->
+  <div id="taskbar" role="status" aria-live="polite">
+    <span style="color:var(--g1)">NNP-OS&nbsp;</span>
+    <span id="taskbar-path">/home</span>
+    <span id="taskbar-msg"></span>
+    <div id="taskbar-right">
+      <span style="color:var(--g1)">F1:HELP</span>
+      <span style="color:var(--g1)">F5:REFRESH</span>
+      <span style="color:var(--g1)">ESC:MENU</span>
+    </div>
+  </div>
+
+</div><!-- /os-shell -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════════════════════════ -->
+<script src="js/nnp.js"></script>
+
+<script>
+// ── Mobile sidebar toggle ──────────────────────────────────────
+(function() {
+  const toggle   = document.getElementById('sb-toggle');
+  const sidebar  = document.getElementById('sidebar');
+  const overlay  = document.getElementById('sb-overlay');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('active');
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  toggle.addEventListener('click', () => {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  });
+  overlay.addEventListener('click', closeSidebar);
+
+  // Close sidebar when nav item clicked on mobile
+  sidebar.querySelectorAll('.sb-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 640) closeSidebar();
+    });
+  });
+})();
+
+// ── Keyboard nav ──────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Esc → focus sidebar
+  if (e.key === 'Escape') {
+    document.querySelector('.sb-item')?.focus();
+  }
+  // F5 → re-navigate current route
+  if (e.key === 'F5') {
+    e.preventDefault();
+    if (window._currentRoute) navigate(window._currentRoute.route, window._currentRoute.param);
+  }
+});
+
+// ── Topbar keyboard items ──────────────────────────────────────
+document.querySelectorAll('.topbar-item').forEach(item => {
+  item.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') item.click();
+  });
+});
+document.querySelectorAll('.sb-item').forEach(item => {
+  item.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') item.click();
+  });
+});
+</script>
+
+</body>
+</html>
