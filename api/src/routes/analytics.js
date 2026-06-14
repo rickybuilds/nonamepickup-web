@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { safePublicUrl } = require("../helpers/urls");
 
 const IDENTITY_CTES = `
   WITH steam_links AS (
@@ -54,6 +55,27 @@ const IDENTITY_CTES = `
     LEFT JOIN steam_links pk ON pk.steam_id = s.player_key
     LEFT JOIN steam_links sid ON sid.steam_id = s.steam_id
     LEFT JOIN ratings r ON r.player_id = COALESCE(pk.discord_id, sid.discord_id)
+  ),
+  match_stats AS (
+    SELECT
+      MAX(player_id) AS player_id,
+      MAX(player) AS player,
+      identity,
+      match_id,
+      SUM(COALESCE(kills, 0)) AS kills,
+      SUM(COALESCE(deaths_by_enemy, 0) + COALESCE(deaths_by_team, 0) + COALESCE(suicides, 0)) AS deaths,
+      SUM(COALESCE(enemy_damage, 0)) AS enemy_damage,
+      SUM(COALESCE(team_damage, 0)) AS team_damage,
+      SUM(COALESCE(team_kills, 0)) AS team_kills,
+      SUM(COALESCE(suicides, 0)) AS suicides,
+      SUM(COALESCE(flag_captures, 0)) AS flag_captures,
+      SUM(COALESCE(flag_touches, 0)) AS flag_touches,
+      SUM(COALESCE(initial_touches, 0)) AS initial_touches,
+      SUM(COALESCE(flag_time_seconds, 0)) AS flag_time_seconds,
+      SUM(COALESCE(conc_jumps, 0)) AS conc_jumps
+    FROM round_stats
+    WHERE identity IS NOT NULL AND identity != ''
+    GROUP BY identity, match_id
   )
 `;
 
@@ -101,7 +123,9 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
       matches: row.matches == null ? null : Number(row.matches || 0),
       match_id: row.match_id == null ? null : String(row.match_id),
       round_num: row.round_num == null ? null : Number(row.round_num || 0),
-      map: row.map_name || null
+      map: row.map_name || null,
+      hampalyzer_url: safePublicUrl(row.hampalyzer_url),
+      tfcstats_url: safePublicUrl(row.tfcstats_url)
     }));
   }
 
@@ -158,10 +182,28 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             ${expression} AS value,
             match_id,
             round_num,
-            m.map_name
+            m.map_name,
+            m.hampalyzer_url,
+            m.tfcstats_url
           FROM round_stats
           LEFT JOIN matches m USING (match_id)
           WHERE identity IS NOT NULL AND identity != ''
+          ORDER BY value DESC, player COLLATE NOCASE
+          LIMIT ?
+        `, limit);
+
+        const matchRecordQuery = (expression, having = "") => leaders(`${IDENTITY_CTES}
+          SELECT
+            ms.player_id,
+            ms.player,
+            ${expression} AS value,
+            ms.match_id,
+            m.map_name,
+            m.hampalyzer_url,
+            m.tfcstats_url
+          FROM match_stats ms
+          LEFT JOIN matches m USING (match_id)
+          ${having}
           ORDER BY value DESC, player COLLATE NOCASE
           LIMIT ?
         `, limit);
@@ -350,7 +392,29 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               damage: roundRecordQuery("enemy_damage"),
               caps: roundRecordQuery("flag_captures"),
               touches: roundRecordQuery("flag_touches"),
-              conc_jumps: roundRecordQuery("conc_jumps")
+              initial_touches: roundRecordQuery("initial_touches"),
+              flag_time: roundRecordQuery("flag_time_seconds"),
+              conc_jumps: roundRecordQuery("conc_jumps"),
+              suicides: roundRecordQuery("suicides"),
+              team_kills: roundRecordQuery("team_kills"),
+              team_damage: roundRecordQuery("team_damage")
+            },
+            matches: {
+              kills: matchRecordQuery("ms.kills"),
+              enemy_damage: matchRecordQuery("ms.enemy_damage"),
+              caps: matchRecordQuery("ms.flag_captures"),
+              touches: matchRecordQuery("ms.flag_touches"),
+              initial_touches: matchRecordQuery("ms.initial_touches"),
+              flag_time: matchRecordQuery("ms.flag_time_seconds"),
+              conc_jumps: matchRecordQuery("ms.conc_jumps"),
+              suicides: matchRecordQuery("ms.suicides"),
+              team_kills: matchRecordQuery("ms.team_kills"),
+              team_damage: matchRecordQuery("ms.team_damage"),
+              deaths: matchRecordQuery("ms.deaths"),
+              kdr: matchRecordQuery(
+                "ROUND(CAST(ms.kills AS REAL) / NULLIF(ms.deaths, 0), 2)",
+                "WHERE ms.kills >= 10 AND ms.deaths > 0"
+              )
             },
             chaos: {
               suicides: leaders(`${IDENTITY_CTES}
@@ -371,7 +435,42 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
                 ORDER BY value DESC, player COLLATE NOCASE
                 LIMIT ?
               `, limit),
-              team_damage: totalsQuery("SUM(team_damage)")
+              team_damage: totalsQuery("SUM(team_damage)"),
+              deaths: totalsQuery("SUM(deaths)"),
+              worst_kdr: leaders(`${IDENTITY_CTES}
+                SELECT MAX(player_id) AS player_id, MAX(player) AS player,
+                       ROUND(CAST(SUM(kills) AS REAL) / NULLIF(SUM(deaths), 0), 2) AS value,
+                       SUM(kills) + SUM(deaths) AS secondary,
+                       COUNT(DISTINCT match_id) AS matches
+                FROM player_stats
+                WHERE identity IS NOT NULL AND identity != ''
+                GROUP BY identity
+                HAVING SUM(deaths) > 0 AND SUM(kills) + SUM(deaths) >= 25
+                ORDER BY value ASC, secondary DESC, player COLLATE NOCASE
+                LIMIT ?
+              `, limit),
+              team_kills_per_match: leaders(`${IDENTITY_CTES}
+                SELECT MAX(player_id) AS player_id, MAX(player) AS player,
+                       ROUND(CAST(SUM(team_kills) AS REAL) / NULLIF(COUNT(DISTINCT match_id), 0), 2) AS value,
+                       COUNT(DISTINCT match_id) AS matches
+                FROM round_stats
+                WHERE identity IS NOT NULL AND identity != ''
+                GROUP BY identity
+                HAVING COUNT(DISTINCT match_id) >= 10
+                ORDER BY value DESC, player COLLATE NOCASE
+                LIMIT ?
+              `, limit),
+              suicides_per_match: leaders(`${IDENTITY_CTES}
+                SELECT MAX(player_id) AS player_id, MAX(player) AS player,
+                       ROUND(CAST(SUM(suicides) AS REAL) / NULLIF(COUNT(DISTINCT match_id), 0), 2) AS value,
+                       COUNT(DISTINCT match_id) AS matches
+                FROM round_stats
+                WHERE identity IS NOT NULL AND identity != ''
+                GROUP BY identity
+                HAVING COUNT(DISTINCT match_id) >= 10
+                ORDER BY value DESC, player COLLATE NOCASE
+                LIMIT ?
+              `, limit)
             }
           }
         };

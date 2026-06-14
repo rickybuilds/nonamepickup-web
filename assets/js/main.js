@@ -663,10 +663,17 @@ async function loadCompare() {
   const p1Input = document.getElementById("compare-player-1");
   const p2Input = document.getElementById("compare-player-2");
   const runBtn = document.getElementById("compare-run");
+  const swapBtn = document.getElementById("compare-swap");
+  const resetBtn = document.getElementById("compare-reset");
   if (!p1Input || !p2Input || !runBtn) return;
 
   let selectedP1 = null;
   let selectedP2 = null;
+  const p1SelectedEl = document.getElementById("compare-player-1-selected");
+  const p2SelectedEl = document.getElementById("compare-player-2-selected");
+  const emptyEl = document.getElementById("compare-empty");
+  const resultsEl = document.getElementById("compare-results");
+  const statusEl = document.getElementById("compare-status");
 
   async function searchPlayers(query, limit = 12) {
     const q = String(query || "").trim();
@@ -738,7 +745,10 @@ async function loadCompare() {
         players.find(p => p.id === q) ||
         players.find(p => p.name.toLowerCase().includes(q));
 
-      if (match) choose(match);
+      if (match) {
+        choose(match);
+        if (p1Input.value.trim() && p2Input.value.trim()) await runCompare();
+      }
     });
 
     resultsEl.addEventListener("mousedown", e => {
@@ -761,14 +771,14 @@ async function loadCompare() {
   setupBox(
     p1Input,
     document.getElementById("compare-player-1-results"),
-    document.getElementById("compare-player-1-selected"),
+    p1SelectedEl,
     p => selectedP1 = p
   );
 
   setupBox(
     p2Input,
     document.getElementById("compare-player-2-results"),
-    document.getElementById("compare-player-2-selected"),
+    p2SelectedEl,
     p => selectedP2 = p
   );
 
@@ -786,39 +796,96 @@ async function loadCompare() {
   }
 
   async function runCompare() {
+    runBtn.disabled = true;
     const p1 = await resolveTyped(p1Input, selectedP1);
     const p2 = await resolveTyped(p2Input, selectedP2);
 
     if (!p1 || !p2) {
-      document.getElementById("compare-empty").textContent = "Pick two valid players first.";
+      emptyEl.textContent = "Pick two valid players first.";
+      emptyEl.classList.remove("hidden");
+      resultsEl.classList.add("hidden");
+      statusEl.textContent = "Pick two players";
+      runBtn.disabled = false;
       return;
     }
 
     if (p1.id === p2.id) {
-      document.getElementById("compare-empty").textContent = "Pick two different players.";
+      emptyEl.textContent = "Pick two different players.";
+      emptyEl.classList.remove("hidden");
+      resultsEl.classList.add("hidden");
+      statusEl.textContent = "Choose a rival";
+      runBtn.disabled = false;
       return;
     }
 
     selectedP1 = p1;
     selectedP2 = p2;
+    p1Input.value = p1.name;
+    p2Input.value = p2.name;
+    p1SelectedEl.innerHTML = `Selected: ${escapeHtml(p1.name)}${supporterBadge(p1.id)}`;
+    p2SelectedEl.innerHTML = `Selected: ${escapeHtml(p2.name)}${supporterBadge(p2.id)}`;
 
     window.history.replaceState(null, "", `compare.html?p1=${encodeURIComponent(p1.id)}&p2=${encodeURIComponent(p2.id)}`);
 
-    document.getElementById("compare-empty").textContent = "Loading comparison...";
-    document.getElementById("compare-empty").classList.remove("hidden");
-    document.getElementById("compare-results").classList.add("hidden");
+    emptyEl.textContent = "Loading comparison...";
+    emptyEl.classList.remove("hidden");
+    resultsEl.classList.add("hidden");
+    statusEl.textContent = "Loading rivalry";
 
-    const j = await fetchJSON(`/api/compare?p1=${encodeURIComponent(p1.id)}&p2=${encodeURIComponent(p2.id)}`);
+    try {
+      const j = await fetchJSON(`/api/compare?p1=${encodeURIComponent(p1.id)}&p2=${encodeURIComponent(p2.id)}`);
 
-    if (!j.ok || !j.data) {
-      document.getElementById("compare-empty").textContent = j.error || "Comparison failed.";
-      return;
+      if (!j.ok || !j.data) {
+        emptyEl.textContent = j.error || "Comparison failed.";
+        statusEl.textContent = "Comparison unavailable";
+        return;
+      }
+
+      renderCompare(j.data);
+      statusEl.textContent = "Rivalry loaded";
+    } catch (error) {
+      emptyEl.textContent = "Comparison failed.";
+      statusEl.textContent = "Comparison unavailable";
+      console.error("[compare]", error);
+    } finally {
+      runBtn.disabled = false;
     }
-
-    renderCompare(j.data);
   }
 
   runBtn.addEventListener("click", runCompare);
+  swapBtn?.addEventListener("click", async () => {
+    const oldP1 = selectedP1;
+    const oldP2 = selectedP2;
+    const oldP1Value = p1Input.value;
+    selectedP1 = oldP2;
+    selectedP2 = oldP1;
+    p1Input.value = p2Input.value;
+    p2Input.value = oldP1Value;
+    p1SelectedEl.innerHTML = selectedP1
+      ? `Selected: ${escapeHtml(selectedP1.name)}${supporterBadge(selectedP1.id)}`
+      : "No player selected";
+    p2SelectedEl.innerHTML = selectedP2
+      ? `Selected: ${escapeHtml(selectedP2.name)}${supporterBadge(selectedP2.id)}`
+      : "No player selected";
+    if (selectedP1 && selectedP2) await runCompare();
+  });
+
+  resetBtn?.addEventListener("click", () => {
+    selectedP1 = null;
+    selectedP2 = null;
+    p1Input.value = "";
+    p2Input.value = "";
+    p1SelectedEl.textContent = "No player selected";
+    p2SelectedEl.textContent = "No player selected";
+    document.getElementById("compare-player-1-results").classList.remove("show");
+    document.getElementById("compare-player-2-results").classList.remove("show");
+    resultsEl.classList.add("hidden");
+    emptyEl.textContent = "Pick two players to load teammate and opponent stats.";
+    emptyEl.classList.remove("hidden");
+    statusEl.textContent = "Pick two players";
+    window.history.replaceState(null, "", "compare.html");
+    p1Input.focus();
+  });
 
   const params = new URLSearchParams(window.location.search);
   const urlP1 = params.get("p1");
@@ -830,14 +897,18 @@ async function loadCompare() {
       searchPlayers(urlP2)
     ]);
 
-    selectedP1 = p1Matches.find(p => p.id === urlP1) || { id: urlP1, name: urlP1 };
-    selectedP2 = p2Matches.find(p => p.id === urlP2) || { id: urlP2, name: urlP2 };
+    selectedP1 = p1Matches.find(p => p.id === urlP1) || null;
+    selectedP2 = p2Matches.find(p => p.id === urlP2) || null;
 
-    p1Input.value = selectedP1.name;
-    p2Input.value = selectedP2.name;
+    p1Input.value = selectedP1?.name || urlP1;
+    p2Input.value = selectedP2?.name || urlP2;
 
-    document.getElementById("compare-player-1-selected").innerHTML = `Selected: ${escapeHtml(selectedP1.name)}${supporterBadge(selectedP1.id)}`;
-    document.getElementById("compare-player-2-selected").innerHTML = `Selected: ${escapeHtml(selectedP2.name)}${supporterBadge(selectedP2.id)}`;
+    p1SelectedEl.innerHTML = selectedP1
+      ? `Selected: ${escapeHtml(selectedP1.name)}${supporterBadge(selectedP1.id)}`
+      : "No valid player selected";
+    p2SelectedEl.innerHTML = selectedP2
+      ? `Selected: ${escapeHtml(selectedP2.name)}${supporterBadge(selectedP2.id)}`
+      : "No valid player selected";
     await runCompare();
   }
 }
@@ -860,36 +931,57 @@ function renderCompare(data) {
 
   document.getElementById("compare-elo-1").textContent = p1.hidden ? "Elo Hidden" : `${p1.elo ?? "—"} Elo`;
   document.getElementById("compare-elo-2").textContent = p2.hidden ? "Elo Hidden" : `${p2.elo ?? "—"} Elo`;
+  document.getElementById("compare-profile-1").href = `player.html?id=${encodeURIComponent(p1.id || "")}`;
+  document.getElementById("compare-profile-2").href = `player.html?id=${encodeURIComponent(p2.id || "")}`;
 
   document.getElementById("compare-together-gp").textContent = teammate.gp ?? 0;
   document.getElementById("compare-together-record").textContent =
     `${teammate.w || 0}-${teammate.l || 0}-${teammate.t || 0} · ${teammate.win_pct || 0}% win rate`;
+  document.getElementById("compare-together-win-pct").textContent = `${teammate.win_pct || 0}%`;
 
   document.getElementById("compare-h2h-gp").textContent = opponent.gp ?? 0;
   document.getElementById("compare-h2h-record").textContent =
     `${p1.name || "P1"} ${opponent.p1_w || 0} · ${p2.name || "P2"} ${opponent.p2_w || 0} · Ties ${opponent.t || 0}`;
 
-  document.getElementById("compare-p1-wins-label").textContent = `${p1.name || "P1"} Wins`;
-  document.getElementById("compare-p2-wins-label").textContent = `${p2.name || "P2"} Wins`;
+  const p1Wins = Number(opponent.p1_w || 0);
+  const p2Wins = Number(opponent.p2_w || 0);
+  const h2hLeader = p1Wins === p2Wins ? (opponent.gp ? "Tied" : "—") : (p1Wins > p2Wins ? p1.name : p2.name);
+  const h2hDetail = opponent.gp
+    ? `${p1Wins}-${p2Wins}${opponent.t ? `, ${opponent.t} tie${opponent.t === 1 ? "" : "s"}` : ""}`
+    : "no meetings yet";
+  document.getElementById("compare-h2h-leader").textContent = h2hLeader || "—";
+  document.getElementById("compare-h2h-leader-detail").textContent = h2hDetail;
 
-  document.getElementById("compare-p1-wins").textContent = opponent.p1_w ?? 0;
-  document.getElementById("compare-p2-wins").textContent = opponent.p2_w ?? 0;
+  let verdictTitle = "No shared completed matches yet";
+  let verdictText = "These players do not have completed teammate or opponent history yet.";
+  if (opponent.gp > 0) {
+    verdictTitle = p1Wins === p2Wins ? "The head-to-head is tied" : `${p1Wins > p2Wins ? p1.name : p2.name} leads head-to-head`;
+    verdictText = `${p1.name || "Player One"} has ${p1Wins} win${p1Wins === 1 ? "" : "s"} and ${p2.name || "Player Two"} has ${p2Wins}, with ${opponent.t || 0} tie${opponent.t === 1 ? "" : "s"}.`;
+    if (teammate.gp > 0) verdictText += ` As teammates, they win ${teammate.win_pct || 0}% of their games.`;
+  } else if (teammate.gp > 0) {
+    verdictTitle = `${teammate.win_pct || 0}% win rate as teammates`;
+    verdictText = `They are ${teammate.w || 0}-${teammate.l || 0}-${teammate.t || 0} across ${teammate.gp} completed game${teammate.gp === 1 ? "" : "s"} together, with no head-to-head meetings yet.`;
+  }
+  document.getElementById("compare-verdict-title").textContent = verdictTitle;
+  document.getElementById("compare-verdict-text").textContent = verdictText;
 
+  document.getElementById("compare-teammate-summary").textContent = `${teammate.gp || 0} games`;
+  document.getElementById("compare-opponent-summary").textContent = `${opponent.gp || 0} games`;
   document.getElementById("compare-teammate-body").innerHTML = `
-    <tr><td>Games as teammates</td><td class="text-right font-bold">${teammate.gp || 0}</td></tr>
-    <tr><td>Wins together</td><td class="text-right text-emerald-400 font-bold">${teammate.w || 0}</td></tr>
-    <tr><td>Losses together</td><td class="text-right text-red-400 font-bold">${teammate.l || 0}</td></tr>
-    <tr><td>Ties together</td><td class="text-right text-gray-400 font-bold">${teammate.t || 0}</td></tr>
-    <tr><td>Team win rate</td><td class="text-right font-bold">${teammate.win_pct || 0}%</td></tr>
+    <div class="compare-stat-row"><span>Games as teammates</span><strong>${teammate.gp || 0}</strong></div>
+    <div class="compare-stat-row good"><span>Wins together</span><strong>${teammate.w || 0}</strong></div>
+    <div class="compare-stat-row bad"><span>Losses together</span><strong>${teammate.l || 0}</strong></div>
+    <div class="compare-stat-row"><span>Ties together</span><strong>${teammate.t || 0}</strong></div>
+    <div class="compare-stat-row good"><span>Team win rate</span><strong>${teammate.win_pct || 0}%</strong></div>
   `;
 
   document.getElementById("compare-opponent-body").innerHTML = `
-    <tr><td>Games as opponents</td><td class="text-right font-bold">${opponent.gp || 0}</td></tr>
-    <tr><td>${escapeHtml(p1.name || "Player One")} wins</td><td class="text-right text-blue-400 font-bold">${opponent.p1_w || 0}</td></tr>
-    <tr><td>${escapeHtml(p2.name || "Player Two")} wins</td><td class="text-right text-red-400 font-bold">${opponent.p2_w || 0}</td></tr>
-    <tr><td>Ties</td><td class="text-right text-gray-400 font-bold">${opponent.t || 0}</td></tr>
-    <tr><td>${escapeHtml(p1.name || "P1")} win rate</td><td class="text-right font-bold">${opponent.p1_win_pct || 0}%</td></tr>
-    <tr><td>${escapeHtml(p2.name || "P2")} win rate</td><td class="text-right font-bold">${opponent.p2_win_pct || 0}%</td></tr>
+    <div class="compare-stat-row"><span>Games as opponents</span><strong>${opponent.gp || 0}</strong></div>
+    <div class="compare-stat-row blue"><span>${escapeHtml(p1.name || "Player One")} wins</span><strong>${p1Wins}</strong></div>
+    <div class="compare-stat-row red"><span>${escapeHtml(p2.name || "Player Two")} wins</span><strong>${p2Wins}</strong></div>
+    <div class="compare-stat-row"><span>Ties</span><strong>${opponent.t || 0}</strong></div>
+    <div class="compare-stat-row blue"><span>${escapeHtml(p1.name || "P1")} win rate</span><strong>${opponent.p1_win_pct || 0}%</strong></div>
+    <div class="compare-stat-row red"><span>${escapeHtml(p2.name || "P2")} win rate</span><strong>${opponent.p2_win_pct || 0}%</strong></div>
   `;
 
   const body = document.getElementById("compare-matches-body");
@@ -898,20 +990,33 @@ function renderCompare(data) {
     const winner = String(m.winner || "").toUpperCase();
     const relationText = m.relation === "teammate" ? "Teammates" : "Opponents";
     const relationClass = m.relation === "teammate" ? "relation-team" : "relation-opponent";
+    const matchId = m.id ?? m.match_id;
+    const actionLinks = [
+      matchId != null && String(matchId) !== ""
+        ? `<a class="match-action-pill noname" href="match.html?id=${encodeURIComponent(matchId)}">NoName</a>`
+        : "",
+      m.hampalyzer_url
+        ? `<a class="match-action-pill hampalyzer" href="${escapeHtml(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">Hampalyzer</a>`
+        : "",
+      m.tfcstats_url
+        ? `<a class="match-action-pill tfcstats" href="${escapeHtml(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`
+        : ""
+    ].filter(Boolean).join("");
 
     return `
       <tr class="${winnerRowClass(winner)}">
-        <td>${formatDate(m.created_at)}</td>
-        <td><a href="map.html?map=${encodeURIComponent(m.map_name || "")}">${escapeHtml(m.map_name || "Unknown")}</a></td>
-        <td class="${relationClass}">${relationText}</td>
-        <td class="blue-team">${(m.blueTeam || []).map(x => `<a href="player.html?id=${encodeURIComponent(x.id)}">${escapeHtml(x.name)}${supporterBadge(x.id)}</a>`).join(" • ") || "—"}</td>
-        <td class="red-team">${(m.redTeam || []).map(x => `<a href="player.html?id=${encodeURIComponent(x.id)}">${escapeHtml(x.name)}${supporterBadge(x.id)}</a>`).join(" • ") || "—"}</td>
-        <td class="font-mono text-center">${m.score_blue ?? "?"} - ${m.score_red ?? "?"}</td>
-        <td class="text-center font-bold">${winner || "—"}</td>
-        <td class="font-bold">${escapeHtml(m.result || "—")}</td>
+        <td data-label="Date">${escapeHtml(formatDate(m.created_at))}</td>
+        <td data-label="Map"><a href="map.html?map=${encodeURIComponent(m.map_name || "")}">${escapeHtml(m.map_name || "Unknown")}</a></td>
+        <td data-label="Relation"><span class="relation-pill ${relationClass}">${relationText}</span></td>
+        <td data-label="Blue Team" class="blue-team team-links">${(m.blueTeam || []).map(x => `<a href="player.html?id=${encodeURIComponent(x.id)}">${escapeHtml(x.name)}${supporterBadge(x.id)}</a>`).join(" • ") || "—"}</td>
+        <td data-label="Red Team" class="red-team team-links">${(m.redTeam || []).map(x => `<a href="player.html?id=${encodeURIComponent(x.id)}">${escapeHtml(x.name)}${supporterBadge(x.id)}</a>`).join(" • ") || "—"}</td>
+        <td data-label="Score" class="match-score">${escapeHtml(m.score_blue ?? "?")} - ${escapeHtml(m.score_red ?? "?")}</td>
+        <td data-label="Winner"><strong>${escapeHtml(winner || "—")}</strong></td>
+        <td data-label="Result"><strong>${escapeHtml(m.result || "—")}</strong></td>
+        <td data-label="Links"><div class="match-action-links">${actionLinks || "—"}</div></td>
       </tr>
     `;
-  }).join("") || `<tr><td colspan="8" class="py-6 text-center text-gray-500">These two players have no shared completed matches.</td></tr>`;
+  }).join("") || `<tr><td colspan="9" class="empty-match-row">These two players have no shared completed matches.</td></tr>`;
 }
 
 window.fetchJSON=fetchJSON;
