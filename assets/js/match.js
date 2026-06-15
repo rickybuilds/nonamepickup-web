@@ -15,7 +15,6 @@ function formatDate(ts){const d=new Date(Number(ts||0)*1000);if(!Number.isFinite
 function className(s){s=String(s||"unknown");return s.charAt(0).toUpperCase()+s.slice(1);}
 function deltaText(d){d=Number(d||0);return d>0?"+"+d:d<0?String(d):"-";}
 function playerLabel(p){return escapeHtml(p.display_name||p.name||p.player_key||p.steam_id||p.id||"-");}
-function rawName(p){return String(p.display_name||p.name||p.player_key||p.steam_id||p.id||"");}
 function isBlueWinner(m){return String(m.winner||"").toUpperCase()==="BLUE";}
 function isRedWinner(m){return String(m.winner||"").toUpperCase()==="RED";}
 

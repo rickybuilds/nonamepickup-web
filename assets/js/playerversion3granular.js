@@ -363,7 +363,6 @@ function renderMapClassPicker(classes,classMaps){
 
   const topMaps=getTopMapRows().slice(0,9);
   const allSeconds=normalizeClassRows(classes).reduce((s,r)=>s+Number(r.seconds||0),0);
-  const allTop=normalizeClassRows(classes)[0];
 
   let buttons=[
     {
@@ -1203,122 +1202,6 @@ function renderPlayerWeaponList(rows){
           </div>
         `).join("")}
     </div>
-  `;
-}
-
-function renderDrawerTable(rows,cols){
-  if(!Array.isArray(rows)||!rows.length)return `<div class="drawer-loading">No data.</div>`;
-
-  return `
-    <table class="drawer-table">
-      <thead><tr>${cols.map(c=>`<th>${escapeHtml(c.replaceAll("_"," "))}</th>`).join("")}</tr></thead>
-      <tbody>
-        ${rows.slice(0,50).map(r=>`
-          <tr>${cols.map(c=>`<td>${escapeHtml(r[c]??"-")}</td>`).join("")}</tr>
-        `).join("")}
-      </tbody>
-    </table>
-  `;
-}
-
-function renderClassGroupedTable(rows){
-  if(!Array.isArray(rows)||!rows.length)return `<div class="drawer-loading">No data.</div>`;
-
-  const byPlayer=new Map();
-
-  rows.forEach(r=>{
-    const name=String(r.display_name||"-");
-    const list=byPlayer.get(name)||[];
-    list.push(r);
-    byPlayer.set(name,list);
-  });
-
-  const players=[...byPlayer.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-
-  return `
-    <div class="drawer-class-groups">
-      ${players.map(([name,classes])=>`
-        <div class="drawer-class-player">
-          <div class="drawer-class-player-name">${escapeHtml(name)}</div>
-
-          ${classes
-            .sort((a,b)=>Number(b.seconds||0)-Number(a.seconds||0))
-            .map(c=>`
-              <div class="drawer-class-line">
-                <span>${escapeHtml(classDisplayName(c.class_name||"-"))}</span>
-                <b>${playerFormatSeconds(c.seconds)}</b>
-              </div>
-            `).join("")}
-        </div>
-      `).join("")}
-    </div>
-  `;
-}
-
-function renderWeaponGroupedTable(rows){
-  if(!Array.isArray(rows)||!rows.length)return `<div class="drawer-loading">No data.</div>`;
-
-  const byPlayer=new Map();
-
-  rows.forEach(r=>{
-    const name=String(r.display_name||"-");
-    const list=byPlayer.get(name)||[];
-    list.push(r);
-    byPlayer.set(name,list);
-  });
-
-  const players=[...byPlayer.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-
-  return `
-    <div class="drawer-weapon-groups">
-      ${players.map(([name,weapons])=>`
-        <div class="drawer-weapon-player">
-          <div class="drawer-weapon-player-name">${escapeHtml(name)}</div>
-
-          ${weapons
-            .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0))
-            .map(w=>`
-              <div class="drawer-weapon-line">
-                <span class="drawer-weapon-cell">
-                  <i class="weapon-icon ${escapeAttr(w.weapon||"")}"></i>
-                  <span>${escapeHtml(playerWeaponName(w.weapon||"-"))}</span>
-                </span>
-                <b>${Number(w.kills||0)}</b>
-              </div>
-            `).join("")}
-        </div>
-      `).join("")}
-    </div>
-  `;
-}
-
-function renderWeaponDrawerTable(rows){
-  if(!Array.isArray(rows)||!rows.length)return `<div class="drawer-loading">No data.</div>`;
-
-  return `
-    <table class="drawer-table">
-      <thead>
-        <tr>
-          <th>Player</th>
-          <th>Weapon</th>
-          <th>Kills</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.slice(0,50).map(r=>`
-          <tr>
-            <td>${escapeHtml(r.display_name??"-")}</td>
-            <td>
-              <span class="drawer-weapon-cell">
-                <i class="weapon-icon ${escapeAttr(r.weapon||"")}"></i>
-                <span>${escapeHtml(r.weapon||"-")}</span>
-              </span>
-            </td>
-            <td>${escapeHtml(r.kills??"-")}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
   `;
 }
 

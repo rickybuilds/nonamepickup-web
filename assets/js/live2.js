@@ -212,7 +212,6 @@ setText(
 	const h1=liveState?.halfScores?.[0];
   const round1Score=h1?Math.max(Number(h1.blue||0),Number(h1.red||0)):0;
   const current=Number(liveState?.currentScore||0);
-  const saved=Number(liveState?.savedScore||0);
 
     if(!active){
       setText("live2-team1-score",0);
