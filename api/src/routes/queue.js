@@ -14,6 +14,94 @@ function createQueueRouter({
   logRouteError
 }) {
   const router = express.Router();
+  
+const SERVERS_FILE="/root/tfcbot/servers.json";
+
+function splitServerAddress(value){
+  const raw=String(value||"").trim();
+  const [host,port]=raw.split(":");
+  return {host:host||null,port:Number(port||27015)};
+}
+
+function serverKeyFromName(name){
+  const s=String(name||"").toLowerCase();
+  if(s.includes("central 2"))return"central2";
+  if(s.includes("central"))return"central";
+  if(s.includes("east"))return"east";
+  if(s.includes("west"))return"west";
+  return null;
+}
+
+async function readServers(){
+  try{
+    const raw=await fs.promises.readFile(SERVERS_FILE,"utf8");
+    const rows=JSON.parse(raw||"[]");
+    const out={};
+
+    for(const row of Array.isArray(rows)?rows:[]){
+      const key=serverKeyFromName(row.name);
+      if(!key)continue;
+      const addr=splitServerAddress(row.ip);
+      out[key]={...row,host:addr.host,port:addr.port};
+    }
+
+    return out;
+  }catch{
+    return {};
+  }
+}
+
+const { GameDig } = require("gamedig");
+
+const timeleftCache = new Map();
+
+function normalizeTimeleft(value){
+  if(value==null)return null;
+  const s=String(value).trim();
+  if(!s)return null;
+  if(/^\d+$/.test(s)){
+    const sec=Number(s);
+    const m=Math.floor(sec/60);
+    const r=sec%60;
+    return `${m}:${String(r).padStart(2,"0")}`;
+  }
+  return s;
+}
+
+async function queryTimeleft(serverIp,serverPort){
+  if(!serverIp)return null;
+
+  const key=`${serverIp}:${serverPort||27015}`;
+  const now=Date.now();
+  const cached=timeleftCache.get(key);
+
+  if(cached&&now-cached.at<1000)return cached.value;
+
+  try{
+    const state=await GameDig.query({
+      type:"tfc",
+      host:serverIp,
+      port:Number(serverPort||27015),
+      requestRules:true,
+      maxAttempts:1,
+      socketTimeout:1200
+    });
+
+    const rules=state.raw?.rules||{};
+    const value=normalizeTimeleft(
+      rules.amx_timeleft ||
+      rules.timeleft ||
+      rules.mp_timeleft ||
+      null
+    );
+
+    timeleftCache.set(key,{at:now,value});
+    return value;
+  }catch(e){
+    timeleftCache.set(key,{at:now,value:null});
+    return null;
+  }
+}
 
   router.get("/queue",async(req,res)=>{
     try{
@@ -59,7 +147,19 @@ function createQueueRouter({
           .sort((a,b)=>Number(b.updated_at||0)-Number(a.updated_at||0));
       }
 
-      const liveMatches=await readLiveStates();
+      const servers=await readServers();
+		const liveMatches=await Promise.all((await readLiveStates()).map(async live=>{
+		  const server=servers[live.serverKey]||{};
+		  const serverIp=server.host||null;
+		  const serverPort=Number(server.port||27015);
+
+		  return {
+			...live,
+			serverIp,
+			serverPort,
+			timeleft:await queryTimeleft(serverIp,serverPort)
+		  };
+		}));
 
       queueSnapshot = {
         ok:true,
