@@ -919,6 +919,7 @@ function openMatchDrawer(matchId){
 
   drawer.classList.add("open");
   backdrop.classList.add("open");
+  document.body.classList.add("match-drawer-open");
   title.textContent=matchId;
   body.innerHTML='<div class="drawer-loading">Loading match...</div>';
 
@@ -928,6 +929,7 @@ function openMatchDrawer(matchId){
 function closeMatchDrawer(){
   document.getElementById("match-drawer")?.classList.remove("open");
   document.getElementById("match-drawer-backdrop")?.classList.remove("open");
+  document.body.classList.remove("match-drawer-open");
 }
 
 document.getElementById("match-drawer-close")?.addEventListener("click",closeMatchDrawer);
