@@ -3,6 +3,13 @@ const VAR_KEY = "nn_tfc_server_build_vars_v1";
 
 const steps = [
   { title: "Deploy New Server", body: [p("Deploy Ubuntu 26.04 LTS and login as root."), cmd("ssh root@<IP_ADDRESS>"), cmd("timedatectl set-timezone America/New_York\ntimedatectl")] },
+{
+  title: "Configure Firewall - Vultr",
+  body: [
+    p('On <a href="https://vultr.com" target="_blank" rel="noopener noreferrer">vultr.com</a> go to the firewall and add:'),
+    cmd("TCP\nPort: 3306\n<IP_ADDRESS>/32\nDescription: <DISPLAY_NAME>")
+  ]
+},
   { title: "Configure Firewall", body: [cmd("ufw allow 22/tcp\nufw allow 21/tcp\n\nufw allow 27015:27020/tcp\nufw allow 27015:27020/udp\n\nufw allow 33434:33534/udp\n\nufw allow 30000:30100/tcp\nufw allow 49000:50000/tcp\n\nufw allow 7010/tcp\n\nufw enable\nufw status numbered")] },
   { title: "Apply UDP Tuning", body: [p("Create /etc/sysctl.d/99-tfc-udp.conf."), cmd("nano /etc/sysctl.d/99-tfc-udp.conf"), cmd("net.core.rmem_max=16777216\nnet.core.rmem_default=1048576\nnet.core.wmem_max=16777216\nnet.core.wmem_default=1048576\nnet.ipv4.udp_rmem_min=8192\nnet.ipv4.udp_wmem_min=8192", "file contents"), cmd("sysctl --system\nsysctl net.core.rmem_max\nsysctl net.core.wmem_max")] },
   { title: "Install Packages", body: [cmd("apt update\n\napt install -y \\\nscreen \\\nhtop \\\ncurl \\\nwget \\\nunzip \\\nnet-tools \\\nnodejs \\\nnpm\n\nnpm install -g pm2\n\nnode -v\nnpm -v\npm2 -v")] },
@@ -135,7 +142,7 @@ function render() {
       }
 
       const paragraph = document.createElement("p");
-      paragraph.textContent = replaceVars(item.text);
+      paragraph.innerHTML = replaceVars(item.text);
       if (item.type === "warn") paragraph.className = "inline-warn";
       content.appendChild(paragraph);
     });
