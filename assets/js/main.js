@@ -24,6 +24,12 @@ function escapeHtml(str) {
   }[m]));
 }
 
+function escapeAttr(value) {
+  return escapeHtml(
+    String(value ?? "").replace(/[\r\n]/g, "")
+  );
+}
+
 function avatarInitial(name) {
   return String(name || "?").trim().charAt(0).toUpperCase() || "?";
 }
@@ -208,7 +214,11 @@ function applyRandomMapBackground(el, options = {}) {
 
 window.nnHelpers = {
   ...(window.nnHelpers || {}),
+  fetchJSON,
   escapeHtml,
+  escapeAttr,
+  supporterBadge,
+  loadSupporters,
   formatDate,
   winnerRowClass,
   formatSeconds,
@@ -532,7 +542,7 @@ async function loadSupporters(){
 
 function supporterBadge(id){
   return SUPPORTERS.has(String(id))
-    ? '<span class="supporter-badge" title="Server Supporter">💎</span>'
+    ? '<span class="supporter-badge supporter-inline" title="Server Supporter">💎</span>'
     : "";
 }
 

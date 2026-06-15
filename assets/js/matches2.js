@@ -16,7 +16,9 @@
   const $ = (id) => document.getElementById(id);
 
   async function getJSON(url) {
-    if (typeof window.fetchJSON === "function") return window.fetchJSON(url);
+    if (typeof window.nnHelpers?.fetchJSON === "function") {
+      return window.nnHelpers.fetchJSON(url);
+    }
     try {
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -27,14 +29,15 @@
     }
   }
 
-  function esc(value) {
-    if (typeof window.nnHelpers?.escapeHtml === "function") {
-      return window.nnHelpers.escapeHtml(value);
-    }
-    return String(value ?? "").replace(/[&<>"']/g, m => ({
+  const fallbackEscapeHtml = value =>
+    String(value ?? "").replace(/[&<>"']/g, m => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[m]));
-  }
+  const escapeHtml = window.nnHelpers?.escapeHtml || fallbackEscapeHtml;
+  const escapeAttr = window.nnHelpers?.escapeAttr || (value =>
+    escapeHtml(String(value ?? "").replace(/[\r\n]/g, ""))
+  );
+  const supporterBadge = window.nnHelpers?.supporterBadge;
 
   function fmtDate(ts) {
     if (!ts) return "—";
@@ -74,14 +77,28 @@
     };
   }
 
+  function playerId(p) {
+    return p?.id || p?.player_id || p?.discord_id || "";
+  }
+
+  function playerName(p) {
+    const id = playerId(p);
+    return p?.name || p?.display_name || p?.player || id || "unknown";
+  }
+
+  function playerLink(p, className = "") {
+    const id = playerId(p);
+    const href = escapeAttr(`player.html?id=${encodeURIComponent(id)}`);
+    const classAttr = className ? ` class="${escapeAttr(className)}"` : "";
+    const supporter = supporterBadge ? supporterBadge(id) : "";
+    return `<a${classAttr} href="${href}">${escapeHtml(playerName(p))}${supporter}</a>`;
+  }
+
   function rosterHtml(players,teamClass){
   if(!Array.isArray(players)||!players.length)return "—";
-  return `<div class="team-list ${teamClass}">${players.map(p=>{
-  const id=p.id||p.player_id||p.discord_id||"";
-  const name=p.name||p.display_name||p.player||id||"unknown";
-  const supporter=window.supporterBadge&&window.supporterBadge(id)?`<span class="supporter-badge supporter-inline" title="Server Supporter">💎</span>`:"";
-  return `<a href="player.html?id=${encodeURIComponent(id)}">${esc(name)}${supporter}</a>`;
-  }).join(" <span class=\"score-dash\">•</span> ")}</div>`;
+  return `<div class="team-list ${teamClass}">${players.map(p=>
+    playerLink(p)
+  ).join(" <span class=\"score-dash\">•</span> ")}</div>`;
   }
 
   function scoreHtml(m) {
@@ -89,9 +106,9 @@
     const r = m.score_red == null ? "?" : m.score_red;
     return `
       <span class="score-wrap">
-        <span class="score-pill score-blue">${esc(b)}</span>
+        <span class="score-pill score-blue">${escapeHtml(b)}</span>
         <span class="score-dash">-</span>
-        <span class="score-pill score-red">${esc(r)}</span>
+        <span class="score-pill score-red">${escapeHtml(r)}</span>
       </span>
     `;
   }
@@ -102,7 +119,7 @@
     if (w === "BLUE") return `<span class="winner-badge badge-blue">BLUE</span>`;
     if (w === "RED") return `<span class="winner-badge badge-red">RED</span>`;
     if (w === "TIE") return `<span class="winner-badge badge-tie">TIE</span>`;
-    return `<span class="winner-badge badge-pending">${esc(w)}</span>`;
+    return `<span class="winner-badge badge-pending">${escapeHtml(w)}</span>`;
   }
 
   function combinedScore(m) {
@@ -193,17 +210,15 @@
 	  }
 
 	  return players.map(p => {
-		const id = p.id || p.player_id || p.discord_id || "";
-		const name = p.name || p.display_name || p.player || id || "unknown";
 		const hidden = isEloHidden(p);
 		const before = hidden ? "Hidden" : (p.before ?? "—");
-		const after = hidden ? "" : ` → ${esc(p.after ?? "—")}`;
+		const after = hidden ? "" : ` → ${escapeHtml(p.after ?? "—")}`;
 		const delta = p.delta ?? 0;
 
 		return `
 		  <div class="m2-elo-player">
-			<a class="m2-elo-name" href="player.html?id=${encodeURIComponent(id)}">${esc(name)}${window.supporterBadge&&window.supporterBadge(id)?`<span class="supporter-badge supporter-inline" title="Server Supporter">💎</span>`:""}</a>
-			<span class="m2-elo-before-after">${esc(before)}${after}</span>
+			${playerLink(p, "m2-elo-name")}
+			<span class="m2-elo-before-after">${escapeHtml(before)}${after}</span>
 			<span class="m2-elo-delta ${hidden ? "m2-delta-zero" : deltaClass(delta)}">${hidden ? "Hidden" : fmtDelta(delta)}</span>
 		  </div>
 		`;
@@ -215,7 +230,7 @@
 
     if (m.hampalyzer_url) {
       buttons.push(`
-        <a class="m2-report-btn m2-report-hamp" href="${esc(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">
+        <a class="m2-report-btn m2-report-hamp" href="${escapeAttr(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">
           Open Hampalyzer ↗
         </a>
       `);
@@ -223,7 +238,7 @@
 
     if (m.tfcstats_url) {
       buttons.push(`
-        <a class="m2-report-btn m2-report-tfc" href="${esc(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">
+        <a class="m2-report-btn m2-report-tfc" href="${escapeAttr(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">
           Open TFC Stats ↗
         </a>
       `);
@@ -252,8 +267,8 @@
             <div class="m2-expanded-top">
               <div>
                 <p class="m2-expanded-kicker">MATCH REPORT</p>
-                <h3>${esc(m.map_name)} <span>${scoreHtml(m)}</span></h3>
-                <small>${esc(m.id)} · ${fmtDate(m.created_at)} · ${esc(m.status)}</small>
+                <h3>${escapeHtml(m.map_name)} <span>${scoreHtml(m)}</span></h3>
+                <small>${escapeHtml(m.id)} · ${fmtDate(m.created_at)} · ${escapeHtml(m.status)}</small>
               </div>
               <div class="m2-report-actions">
                 ${matchButtons(m)}
@@ -309,17 +324,17 @@
         m.hampalyzer_url ? `<span class="m2-mini-report">report</span>` : "";
 
       const matchId =
-      `<a href="match.html?id=${encodeURIComponent(m.id)}" class="match-id-link">${esc(m.id)}</a>`;
+      `<a href="match.html?id=${encodeURIComponent(m.id)}" class="match-id-link">${escapeHtml(m.id)}</a>`;
 
       const mainRow = `
-        <tr class="${rowClasses}" data-match-id="${esc(m.id)}" title="Click row to expand match details">
+        <tr class="${rowClasses}" data-match-id="${escapeAttr(m.id)}" title="Click row to expand match details">
           <td>
             <span class="m2-expand-caret">${state.expandedMatchId === m.id ? "▾" : "▸"}</span>
             ${matchId}
             ${reportIcon}
           </td>
           <td class="whitespace-nowrap">${fmtDate(m.created_at)}</td>
-          <td><a class="map-link" href="map.html?map=${encodeURIComponent(m.map_name || "")}">${esc(m.map_name)}</a></td>
+          <td><a class="map-link" href="map.html?map=${encodeURIComponent(m.map_name || "")}">${escapeHtml(m.map_name)}</a></td>
           <td>${rosterHtml(m.blueTeam, "blue-team")}</td>
           <td>${rosterHtml(m.redTeam, "red-team")}</td>
           <td class="text-center">${scoreHtml(m)}</td>
@@ -392,7 +407,7 @@
     if (!select) return;
     const unique = Array.from(new Set(maps.filter(Boolean))).sort((a, b) => a.localeCompare(b));
     select.innerHTML = `<option value="all">All Maps</option>` + unique.map(map =>
-      `<option value="${esc(map)}">${esc(map)}</option>`
+      `<option value="${escapeAttr(map)}">${escapeHtml(map)}</option>`
     ).join("");
   }
 

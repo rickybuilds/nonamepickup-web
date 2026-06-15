@@ -4,33 +4,24 @@
 
 (function () {
   const $ = id => document.getElementById(id);
-
-  async function fetchJSON(url) {
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      console.error(`[live2] fetch failed: ${url}`, err);
-      return { ok: false, data: [] };
-    }
-  }
+  const fetchJSON = window.nnHelpers?.fetchJSON;
 let selectedMatchId=null;
 let livePollTimer=null;
 let liveRequestInFlight=false;
 
-  function escapeHtml(str) {
-    if (typeof window.nnHelpers?.escapeHtml === "function") {
-      return window.nnHelpers.escapeHtml(str);
-    }
-    return String(str ?? "").replace(/[&<>"']/g, m => ({
+  const fallbackEscapeHtml = value =>
+    String(value ?? "").replace(/[&<>"']/g, m => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
       '"': "&quot;",
       "'": "&#39;"
     }[m]));
-  }
+  const escapeHtml = window.nnHelpers?.escapeHtml || fallbackEscapeHtml;
+  const escapeAttr = window.nnHelpers?.escapeAttr || (value =>
+    escapeHtml(String(value ?? "").replace(/[\r\n]/g, ""))
+  );
+  const supporterBadge = window.nnHelpers?.supporterBadge;
 
   function setText(id, value) {
     const el = $(id);
@@ -64,7 +55,7 @@ let liveRequestInFlight=false;
 	  }
 
 	  box.innerHTML=states.map(s=>`
-		<button class="live2-match-tab ${String(s.match_id)===String(selectedMatchId)?"active":""}" data-match-id="${escapeHtml(s.match_id)}">
+		<button class="live2-match-tab ${String(s.match_id)===String(selectedMatchId)?"active":""}" data-match-id="${escapeAttr(s.match_id)}">
 		  ${escapeHtml((s.serverKey||"").toUpperCase())}
 		  <span class="live2-tab-sep">•</span>
 		  <small>${escapeHtml(s.map||s.match_id)}</small>
@@ -78,13 +69,20 @@ let liveRequestInFlight=false;
 		});
 	  });
 	}
-  function playerLink(p,cls=""){
-    const rawId=p.id||p.player_id||"";
-    const id=encodeURIComponent(rawId);
-    const rawName=p.name||p.player||p.display_name||p.id||"unknown";
-    const supporter=window.supporterBadge&&window.supporterBadge(rawId)?`<span class="supporter-badge supporter-inline" title="Server Supporter">💎</span>`:"";
-    return `<a class="live2-player-pill ${cls}" href="player.html?id=${id}">${escapeHtml(rawName)}${supporter}</a>`;
-    }
+  function playerId(p) {
+    return p?.id || p?.player_id || "";
+  }
+
+  function playerName(p) {
+    return p?.name || p?.player || p?.display_name || p?.id || "unknown";
+  }
+
+  function playerLink(p, className) {
+    const id = playerId(p);
+    const href = escapeAttr(`player.html?id=${encodeURIComponent(id)}`);
+    const supporter = supporterBadge ? supporterBadge(id) : "";
+    return `<a class="${escapeAttr(className)}" href="${href}">${escapeHtml(playerName(p))}${supporter}</a>`;
+  }
 
   function renderQueue(queue, activeIds) {
     const slots = $("live2-queue-slots");
@@ -102,8 +100,7 @@ let liveRequestInFlight=false;
     slots.innerHTML = Array.from({ length: max }).map((_, i) => {
       const p = players[i];
       if (!p) return `<div class="live2-slot empty">Empty</div>`;
-      const supporter=window.supporterBadge&&window.supporterBadge(p.id)?`<span class="supporter-badge supporter-inline" title="Server Supporter">💎</span>`:"";
-        return `<a class="live2-slot filled" href="player.html?id=${encodeURIComponent(p.id)}">${escapeHtml(p.name)}${supporter}</a>`;
+      return playerLink(p, "live2-slot filled");
     }).join("");
   }
 
@@ -116,13 +113,13 @@ let liveRequestInFlight=false;
 
     if (team1) {
       team1.innerHTML = blue.length
-        ? blue.map(p => playerLink(p)).join("")
+        ? blue.map(p => playerLink(p, "live2-player-pill")).join("")
         : `<div class="live2-empty">No Team 1 roster</div>`;
     }
 
     if (team2) {
       team2.innerHTML = red.length
-        ? red.map(p => playerLink(p)).join("")
+        ? red.map(p => playerLink(p, "live2-player-pill")).join("")
         : `<div class="live2-empty">No Team 2 roster</div>`;
     }
 

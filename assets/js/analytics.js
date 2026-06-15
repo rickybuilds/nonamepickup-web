@@ -3,6 +3,11 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const number = new Intl.NumberFormat("en-US");
   const decimal = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+  const escapeHtml = window.nnHelpers?.escapeHtml;
+  const escapeAttr = window.nnHelpers?.escapeAttr;
+  const fetchJSON = window.nnHelpers?.fetchJSON;
+  const supporterBadge = window.nnHelpers?.supporterBadge;
+  const loadSupporters = window.nnHelpers?.loadSupporters;
 
   const sections = {
     combat: [
@@ -85,9 +90,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function playerName(row) {
     const name = escapeHtml(row.player || "Unknown");
-    const badge = row.id && window.supporterBadge ? window.supporterBadge(row.id) : "";
+    const badge = row.id && supporterBadge ? supporterBadge(row.id) : "";
     return row.id
-      ? `<a href="player.html?id=${encodeURIComponent(row.id)}">${name}${badge}</a>`
+      ? `<a href="${escapeAttr(`player.html?id=${encodeURIComponent(row.id)}`)}">${name}${badge}</a>`
       : `<span title="No linked Discord profile">${name}</span>`;
   }
 
@@ -104,15 +109,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   function recordLinks(row) {
     const links = [];
     if (row.match_id) {
-      links.push(`<a class="analytics-link-pill noname" href="match.html?id=${encodeURIComponent(row.match_id)}">NoName</a>`);
+      links.push(`<a class="analytics-link-pill noname" href="${escapeAttr(`match.html?id=${encodeURIComponent(row.match_id)}`)}">NoName</a>`);
     }
     const hampalyzer = safeExternalUrl(row.hampalyzer_url);
     const tfcstats = safeExternalUrl(row.tfcstats_url);
     if (hampalyzer) {
-      links.push(`<a class="analytics-link-pill hampalyzer" href="${escapeHtml(hampalyzer)}" target="_blank" rel="noopener noreferrer">Hampalyzer</a>`);
+      links.push(`<a class="analytics-link-pill hampalyzer" href="${escapeAttr(hampalyzer)}" target="_blank" rel="noopener noreferrer">Hampalyzer</a>`);
     }
     if (tfcstats) {
-      links.push(`<a class="analytics-link-pill tfcstats" href="${escapeHtml(tfcstats)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`);
+      links.push(`<a class="analytics-link-pill tfcstats" href="${escapeAttr(tfcstats)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`);
     }
     return links.length ? `<span class="analytics-record-links">${links.join("")}</span>` : "";
   }
@@ -169,9 +174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadAnalytics() {
     const error = document.getElementById("analytics-error");
     try {
-      const response = await fetch("/api/analytics?limit=5", { cache: "no-store" });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = await response.json();
+      const payload = await fetchJSON("/api/analytics?limit=5");
       if (!payload.ok || !payload.data) throw new Error(payload.error || "Invalid response");
 
       const data = payload.data;
@@ -201,6 +204,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  if (window.loadSupporters) await window.loadSupporters();
+  if (loadSupporters) await loadSupporters();
   loadAnalytics();
 });

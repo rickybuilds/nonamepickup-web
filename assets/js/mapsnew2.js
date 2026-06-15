@@ -11,31 +11,10 @@
   let currentSort = "games";
 
   const $ = id => document.getElementById(id);
-
-  async function fetchJSONLocal(url) {
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) {
-      console.error(`[mapnew2] failed ${url}`, e);
-      return { ok: false, data: [] };
-    }
-  }
-
-  function esc(str) {
-    if (typeof window.nnHelpers?.escapeHtml === "function") {
-      return window.nnHelpers.escapeHtml(str);
-    }
-    return String(str ?? "").replace(/[&<>"']/g, m => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    }[m]));
-  }
-
+  const fetchJSON = window.nnHelpers?.fetchJSON;
+  const escapeHtml = window.nnHelpers?.escapeHtml;
+  const escapeAttr = window.nnHelpers?.escapeAttr;
+  const supporterBadge = window.nnHelpers?.supporterBadge;
   const fmtDate = window.nnHelpers.formatDate;
 
   function pct(part, total, digits = 1) {
@@ -44,13 +23,13 @@
 
 function playerLink(p,cls=""){
   const rawId=p.id||p.player_id||"";
-  const id=encodeURIComponent(rawId);
-  const name=esc(p.name||p.player||p.display_name||p.id||"Unknown");
-  const supporter=window.supporterBadge
-    ? window.supporterBadge(rawId)
+  const href=escapeAttr(`player.html?id=${encodeURIComponent(rawId)}`);
+  const name=escapeHtml(p.name||p.player||p.display_name||p.id||"Unknown");
+  const supporter=supporterBadge
+    ? supporterBadge(rawId)
     : "";
 
-  return `<a class="${cls}" href="player.html?id=${id}">${name}${supporter}</a>`;
+  return `<a class="${escapeAttr(cls)}" href="${href}">${name}${supporter}</a>`;
 }
 
   function teamList(arr, cls) {
@@ -167,9 +146,9 @@ function playerLink(p,cls=""){
     const rows = allMatches;
     body.innerHTML = rows.map(m => {
       const winner = String(m.winner || "").toUpperCase();
-      const matchId = esc(m.id || "—");
+      const matchId = escapeHtml(m.id || "—");
       const matchCell = m.hampalyzer_url
-        ? `<a class="match-link" href="${esc(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">${matchId}</a>`
+        ? `<a class="match-link" href="${escapeAttr(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">${matchId}</a>`
         : `<span class="match-link">${matchId}</span>`;
 
       return `
@@ -346,8 +325,8 @@ function playerLink(p,cls=""){
   if(mostPlayedEl){
     mostPlayedEl.innerHTML=
       escapeHtml(most?.player||"—")+
-      (window.supporterBadge&&most?.id
-        ? window.supporterBadge(most.id)
+      (supporterBadge&&most?.id
+        ? supporterBadge(most.id)
         : "");
   }
 
@@ -405,8 +384,8 @@ function playerLink(p,cls=""){
     setupTabs();
 
     const [playersRes, matchesRes] = await Promise.all([
-      fetchJSONLocal(`/api/map/${encodeURIComponent(mapName)}/players`),
-      fetchJSONLocal(`/api/map/${encodeURIComponent(mapName)}/matches`)
+      fetchJSON(`/api/map/${encodeURIComponent(mapName)}/players`),
+      fetchJSON(`/api/map/${encodeURIComponent(mapName)}/matches`)
     ]);
 
     allPlayers = playersRes.data || [];

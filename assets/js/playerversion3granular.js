@@ -14,8 +14,16 @@ let currentHampa=null;
 const playerFormatSeconds=window.nnHelpers.formatSeconds;
 const playerNormName=window.nnHelpers.normName;
 const playerWeaponName=window.nnHelpers.weaponName;
+const canonicalFetchJSON=window.nnHelpers?.fetchJSON;
+const supporterBadge=window.nnHelpers?.supporterBadge;
 
 async function fetchJSON(url){
+  if(typeof canonicalFetchJSON==="function"){
+    const result=await canonicalFetchJSON(url);
+    return result?.ok===false
+      ? {...result,data:null,error:result.error||"Request failed"}
+      : result;
+  }
   try{
     const res=await fetch(url,{cache:"no-store"});
     if(!res.ok)throw new Error("HTTP "+res.status);
@@ -30,12 +38,14 @@ function qs(id){return document.getElementById(id);}
 function setText(id,value){const el=qs(id);if(el)el.textContent=value;}
 function setHtml(id,value){const el=qs(id);if(el)el.innerHTML=value;}
 
-function escapeHtml(str){
-  if(typeof window.nnHelpers?.escapeHtml==="function")return window.nnHelpers.escapeHtml(str);
-  return String(str??"").replace(/[&<>"']/g,function(m){
+const fallbackEscapeHtml=str=>
+  String(str??"").replace(/[&<>"']/g,function(m){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m];
   });
-}
+const escapeHtml=window.nnHelpers?.escapeHtml||fallbackEscapeHtml;
+const escapeAttr=window.nnHelpers?.escapeAttr||(value=>
+  escapeHtml(String(value??"").replace(/[\r\n]/g,""))
+);
 
 function fmt(n){
   const v=Number(n||0);
@@ -160,7 +170,7 @@ async function loadPlayerV3(){
   );
 
   const playerName=player.name||playerId;
-  const playerBadge=window.supporterBadge?window.supporterBadge(playerId):"";
+  const playerBadge=supporterBadge?supporterBadge(playerId):"";
 
   setHtml("player-name-v3",escapeHtml(playerName)+playerBadge);
   requestAnimationFrame(fitPlayerName);
@@ -272,8 +282,8 @@ function renderWeapons(weapons){
       : "0.0";
 
     return (
-      '<div class="weapon-row" title="'+escapeHtml(playerWeaponName(w.weapon_class))+'">'+
-        '<span><i class="weapon-icon '+escapeHtml(w.weapon_class||"")+'"></i></span>'+
+      '<div class="weapon-row" title="'+escapeAttr(playerWeaponName(w.weapon_class))+'">'+
+        '<span><i class="weapon-icon '+escapeAttr(w.weapon_class||"")+'"></i></span>'+
         '<span class="weapon-name">'+escapeHtml(playerWeaponName(w.weapon_class))+'</span>'+
         '<strong>'+fmt(kills)+' <small>'+pct+'%</small></strong>'+
       '</div>'
@@ -380,7 +390,7 @@ function renderMapClassPicker(classes,classMaps){
   }
 
   el.innerHTML=buttons.map(btn=>
-    '<button class="map-class-button '+(selectedClassMap===btn.key?"active":"")+'" data-map="'+escapeHtml(btn.key)+'">'+
+    '<button class="map-class-button '+(selectedClassMap===btn.key?"active":"")+'" data-map="'+escapeAttr(btn.key)+'">'+
       '<span><b class="map-class-name">'+escapeHtml(btn.name)+'</b><small class="map-class-meta">'+escapeHtml(btn.meta)+'</small></span>'+
       '<b class="map-class-top">'+escapeHtml(btn.top)+'</b>'+
     '</button>'
@@ -412,7 +422,7 @@ function renderClassBrowser(classes,h){
   selectedClassIndex=Math.min(selectedClassIndex,classes.length-1);
 
   tabs.innerHTML=classes.map((c,i)=>
-    '<button class="class-tab '+(i===selectedClassIndex?"active":"")+'" data-index="'+i+'">'+
+    '<button class="class-tab '+(i===selectedClassIndex?"active":"")+'" data-index="'+escapeAttr(i)+'">'+
       escapeHtml(classDisplayName(c.class))+
     '</button>'
   ).join("");
@@ -534,7 +544,7 @@ function renderRecentMatches(rows,playerId,hidden){
 
   return '<div class="recent-match-row">'+
     '<span class="recent-time">'+relativeTime(m.created_at)+'</span>'+
-    '<a class="map recent-map" href="map.html?map='+encodeURIComponent(m.map_name||"")+'">'+escapeHtml(m.map_name||"Unknown")+'</a>'+
+    '<a class="map recent-map" href="'+escapeAttr("map.html?map="+encodeURIComponent(m.map_name||""))+'">'+escapeHtml(m.map_name||"Unknown")+'</a>'+
     '<button class="match-id-pill" data-match-id="'+escapeAttr(m.match_id||m.id)+'">'+escapeHtml(m.match_id||m.id||"-")+'</button>'+
     '<span class="recent-score">'+(m.score_blue??"?")+" - "+(m.score_red??"?")+'</span>'+
     '<span class="'+cls+' recent-result">'+result+'</span>'+
@@ -610,7 +620,7 @@ function renderPlayerSnapshot(data,recentRows,permapRows){
 
   function mapLink(row){
     const map=String(row?.map||"Unknown");
-    return '<a href="map.html?map='+encodeURIComponent(map)+'">'+escapeHtml(map)+'</a>';
+    return '<a href="'+escapeAttr("map.html?map="+encodeURIComponent(map))+'">'+escapeHtml(map)+'</a>';
   }
 
   function mapCard(targetId,label,row,extra){
@@ -752,7 +762,7 @@ function renderMapFrequency(rows){
       const pct=total?Math.round((Number(row.gp||0)/total)*100):0;
       return '<div class="map-donut-item">'+
         '<i class="map-donut-dot" style="background:'+colors[i]+';color:'+colors[i]+'"></i>'+
-        '<a href="map.html?map='+encodeURIComponent(row.map||"")+'">'+escapeHtml(row.map||"Unknown")+'</a>'+
+        '<a href="'+escapeAttr("map.html?map="+encodeURIComponent(row.map||""))+'">'+escapeHtml(row.map||"Unknown")+'</a>'+
         '<span>'+pct+'% - '+(row.gp||0)+'</span>'+
       '</div>';
     }).join("");
@@ -795,7 +805,7 @@ function renderHeatmap(targetId,rows){
   matrix.forEach((row,dayIndex)=>{
     html+='<div class="heat-label">'+days[dayIndex]+"</div>";
     row.forEach((value,hourIndex)=>{
-      html+='<div class="heat-cell heat-'+heatLevel(value,max)+'" title="'+days[dayIndex]+" "+hours[hourIndex]+": "+value+' matches"></div>';
+      html+='<div class="heat-cell heat-'+heatLevel(value,max)+'" title="'+escapeAttr(days[dayIndex]+" "+hours[hourIndex]+": "+value+" matches")+'"></div>';
     });
   });
 
@@ -888,9 +898,9 @@ function renderPeopleList(id,rows,type){
       ? window.nnHelpers.avatarHtml(r.name,avatarUrl,"nn-avatar-rel")
       : '<span class="nn-avatar nn-avatar-rel"><span class="nn-avatar-fallback">'+escapeHtml(playerInitial(r.name))+"</span></span>";
     return '<div class="mini-person">'+
-      '<a class="mini-avatar" href="player.html?id='+encodeURIComponent(r.id)+'">'+avatar+'</a>'+
+      '<a class="mini-avatar" href="'+escapeAttr("player.html?id="+encodeURIComponent(r.id))+'">'+avatar+'</a>'+
       '<div>'+
-        '<a href="player.html?id='+encodeURIComponent(r.id)+'"><strong>'+escapeHtml(r.name)+'</strong></a>'+
+        '<a href="'+escapeAttr("player.html?id="+encodeURIComponent(r.id))+'"><strong>'+escapeHtml(r.name)+'</strong></a>'+
         '<small>'+r.gp+' matches</small>'+
       '</div>'+
       '<div class="mini-stat '+(type==="teammate"?"good":"bad")+'">'+pct+'% Win%</div>'+
@@ -1044,7 +1054,7 @@ const currentMvpBadge=renderDrawerMvpBadge(currentMvp);
       <div class="drawer-link-row">
         ${m.hampalyzer_url?`<a href="${escapeAttr(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">Hampalyzer</a>`:""}
         ${m.tfcstats_url?`<a href="${escapeAttr(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`:""}
-        <a href="match.html?id=${encodeURIComponent(m.id||m.match_id)}">View Full Match</a>
+        <a href="${escapeAttr(`match.html?id=${encodeURIComponent(m.id||m.match_id)}`)}">View Full Match</a>
       </div>
     </div>
 
@@ -1186,7 +1196,7 @@ function renderPlayerWeaponList(rows){
         .map(w=>`
           <div class="drawer-simple-row weapon">
             <span class="drawer-weapon-cell">
-              <i class="weapon-icon ${escapeHtml(w.weapon||"")}"></i>
+              <i class="weapon-icon ${escapeAttr(w.weapon||"")}"></i>
               <span>${escapeHtml(playerWeaponName(w.weapon||"-"))}</span>
             </span>
             <b>${Number(w.kills||0)}</b>
@@ -1270,7 +1280,7 @@ function renderWeaponGroupedTable(rows){
             .map(w=>`
               <div class="drawer-weapon-line">
                 <span class="drawer-weapon-cell">
-                  <i class="weapon-icon ${escapeHtml(w.weapon||"")}"></i>
+                  <i class="weapon-icon ${escapeAttr(w.weapon||"")}"></i>
                   <span>${escapeHtml(playerWeaponName(w.weapon||"-"))}</span>
                 </span>
                 <b>${Number(w.kills||0)}</b>
@@ -1300,7 +1310,7 @@ function renderWeaponDrawerTable(rows){
             <td>${escapeHtml(r.display_name??"-")}</td>
             <td>
               <span class="drawer-weapon-cell">
-                <i class="weapon-icon ${escapeHtml(r.weapon||"")}"></i>
+                <i class="weapon-icon ${escapeAttr(r.weapon||"")}"></i>
                 <span>${escapeHtml(r.weapon||"-")}</span>
               </span>
             </td>
@@ -1310,10 +1320,6 @@ function renderWeaponDrawerTable(rows){
       </tbody>
     </table>
   `;
-}
-
-function escapeAttr(v){
-  return String(v??"").replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;");
 }
 
 document.addEventListener("DOMContentLoaded",()=>{

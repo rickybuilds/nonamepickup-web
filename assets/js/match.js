@@ -3,13 +3,12 @@
 const matchFormatSeconds=window.nnHelpers.formatSeconds;
 const matchNormName=window.nnHelpers.normName;
 const matchWeaponName=window.nnHelpers.weaponName;
+const supporterBadge=window.nnHelpers?.supporterBadge;
 
 function qs(id){return document.getElementById(id);}
-function escapeHtml(v){
-  if(typeof window.nnHelpers?.escapeHtml==="function")return window.nnHelpers.escapeHtml(v);
-  return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-}
-function escapeAttr(v){return escapeHtml(String(v??"").replace(/[\r\n]/g,""));}
+const fallbackEscapeHtml=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const escapeHtml=window.nnHelpers?.escapeHtml||fallbackEscapeHtml;
+const escapeAttr=window.nnHelpers?.escapeAttr||(v=>escapeHtml(String(v??"").replace(/[\r\n]/g,"")));
 function fmt(n){const v=Number(n||0);return Number.isFinite(v)?v.toLocaleString():"-";}
 function formatDate(ts){const d=new Date(Number(ts||0)*1000);if(!Number.isFinite(d.getTime()))return"-";return d.toLocaleString([], {month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});}
 
@@ -87,8 +86,8 @@ function renderMatch(m){
     </section>
 
     <div class="match-links">
-      ${m.hampalyzer_url?`<a href="${escapeHtml(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">Hampalyzer</a>`:""}
-      ${m.tfcstats_url?`<a href="${escapeHtml(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`:""}
+      ${m.hampalyzer_url?`<a href="${escapeAttr(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">Hampalyzer</a>`:""}
+      ${m.tfcstats_url?`<a href="${escapeAttr(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`:""}
       <a href="matches.html">Back to Matches</a>
     </div>
 
@@ -196,7 +195,7 @@ function resolveRoundTeam(row,blue,red,statsRows){
 function roundPlayerLabel(row,blue,red,statsRows){
   const rosterPlayer=findRosterPlayerForRoundRow(row,blue,red,statsRows);
   if(rosterPlayer?.id){
-    return `<a href="player.html?id=${encodeURIComponent(rosterPlayer.id)}">${playerLabel(rosterPlayer)}</a>`;
+    return `<a href="${escapeAttr(`player.html?id=${encodeURIComponent(rosterPlayer.id)}`)}">${playerLabel(rosterPlayer)}</a>`;
   }
   return escapeHtml(row.display_name||row.player_key||row.steam_id||"-");
 }
@@ -273,7 +272,7 @@ function renderRoundSections(rounds,roundPlayerStats,roundMvps,blue,red,statsRow
             <button
               type="button"
               class="round-tab ${number===firstRound?"active":""}"
-              data-round-tab="${number}"
+              data-round-tab="${escapeAttr(number)}"
               role="tab"
               aria-selected="${number===firstRound?"true":"false"}"
             >Round ${number}</button>
@@ -335,7 +334,7 @@ function renderRoundDetail(number,rows,roundMvps,blue,red,statsRows,isActive){
   return `
     <div
       class="round-detail-panel ${isActive?"active":""}"
-      data-round-panel="${number}"
+      data-round-panel="${escapeAttr(number)}"
       role="tabpanel"
       ${isActive?"":"hidden"}
     >
@@ -453,7 +452,7 @@ function renderMatchPlayer(teamPlayer,statsRows,classRows,weaponRows){
   return `
     <div class="match-player-card">
       <div class="match-player-top">
-        <a href="player.html?id=${encodeURIComponent(teamPlayer.id)}">${playerLabel(teamPlayer)}${window.supporterBadge?window.supporterBadge(teamPlayer.id):""}</a>
+        <a href="${escapeAttr(`player.html?id=${encodeURIComponent(teamPlayer.id)}`)}">${playerLabel(teamPlayer)}${supporterBadge?supporterBadge(teamPlayer.id):""}</a>
         <b class="${d>0?"delta-pos":d<0?"delta-neg":""}">${deltaText(d)}</b>
       </div>
 
@@ -476,7 +475,7 @@ function renderMatchPlayer(teamPlayer,statsRows,classRows,weaponRows){
           <div class="match-mini-title">Weapons Used</div>
           ${weapons.length?weapons.map(w=>`
             <div class="match-mini-row">
-              <span class="weapon-cell"><i class="weapon-icon ${escapeHtml(w.weapon||"")}"></i><span>${escapeHtml(matchWeaponName(w.weapon||"-"))}</span></span>
+              <span class="weapon-cell"><i class="weapon-icon ${escapeAttr(w.weapon||"")}"></i><span>${escapeHtml(matchWeaponName(w.weapon||"-"))}</span></span>
               <b>${fmt(w.kills)}</b>
             </div>
           `).join(""):'<div class="match-mini-row"><span>-</span><b>-</b></div>'}
