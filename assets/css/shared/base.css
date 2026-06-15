@@ -25,3 +25,4 @@
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{margin:0;font-family:'Orbitron',system-ui,sans-serif;font-weight:500;color:var(--text);background:var(--bg);}
+button{font-family:inherit;}
