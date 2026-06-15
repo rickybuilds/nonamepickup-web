@@ -1,0 +1,19 @@
+@media (max-width:1100px){
+  .site-header-inner{grid-template-columns:auto minmax(0,1fr);gap:10px 18px;padding:12px 18px;}
+  .nn-logo{font-size:34px;}
+  .site-nav{justify-content:flex-start;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none;}
+  .site-nav::-webkit-scrollbar{display:none;}
+  .site-search,.site-header-inner>.search-wrap{grid-column:1/-1;}
+  .site-header-inner>.search-wrap{width:100%;min-width:0;}
+  .site-search{height:38px;}
+}
+@media (max-width:700px){
+  .site-header-inner{grid-template-columns:1fr;min-height:0;padding:6px 9px;gap:5px;}
+  .nn-logo{font-size:25px;white-space:nowrap;}
+  .site-nav{width:100%;justify-content:center;flex-wrap:wrap;overflow-x:visible;gap:4px;padding:0 0 1px;}
+  .site-nav a,.site-nav a:link,.site-nav a:visited{min-height:26px;padding:4px 7px;font-size:10px;letter-spacing:.04em;}
+  .site-nav .nav-live,.site-nav .nav-live:link,.site-nav .nav-live:visited{min-height:26px;padding:4px 7px;text-shadow:0 0 6px rgba(251,146,60,.48);}
+  .site-search,.site-header-inner>.search-wrap{grid-column:1;}
+  .site-header-inner>.search-wrap{margin:0;}
+  .site-search{height:31px;padding:0 10px;font-size:11px;border-radius:11px;}
+}

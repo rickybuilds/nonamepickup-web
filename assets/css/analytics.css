@@ -331,6 +331,10 @@
 }
 
 @media (max-width: 700px) {
+  .analytics-card .analytics-link-pill {
+    font-size: 10px;
+  }
+
   .analytics-page main {
     width: 100%;
     padding: 8px 6px 28px;

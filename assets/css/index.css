@@ -358,13 +358,13 @@
 
 .cyber-kpi,.cyber-kpi.cyber-gold{min-height:auto;border-radius:18px;padding:14px;}
 
-.cyber-kpi span{font-size:9px;margin-bottom:6px;}
+.cyber-kpi span{font-size:10px;margin-bottom:6px;}
 
 .cyber-kpi strong{font-size:26px;line-height:1.05;}
 
 .cyber-kpi small{font-size:11px;margin-top:8px;}
 
-.cyber-kpi .kpi-title{font-size:9px}
+.cyber-kpi .kpi-title,.cyber-kpi .kpi-secondary-label{font-size:10px}
 
 .cyber-kpi .kpi-main-name,.cyber-kpi.cyber-gold .kpi-main-name{font-size:25px}
 
@@ -394,13 +394,13 @@
 
 .cyber-panel-header h3{font-size:22px;line-height:1;}
 
-.cyber-panel-header span{font-size:9px;}
+.cyber-panel-header span{font-size:10px;}
 
 .cyber-scroll{max-height:420px;overflow:auto;padding-right:4px;}
 
 .cyber-table{font-size:10px;min-width:420px;}
 
-.cyber-table thead th{font-size:8px;padding:8px 6px;}
+.cyber-table thead th{font-size:10px;padding:8px 6px;}
 
 .cyber-table td,.cyber-table th{padding:8px 6px;}
 

@@ -183,7 +183,7 @@ transform:translateY(-1px);
 
 .live2-match-top h2{font-size:clamp(18px,6.4vw,26px);line-height:.9;margin:2px 0 8px;padding-right:4px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-.live2-match-id{display:inline-flex!important;width:62px;max-width:62px;justify-content:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px;padding:5px 4px;justify-self:end;}
+.live2-match-id{display:inline-flex!important;width:62px;max-width:62px;justify-content:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;padding:5px 4px;justify-self:end;}
 
 .live2-scoreboard{grid-template-columns:minmax(0,1fr) 58px minmax(0,1fr);gap:8px;align-items:center;width:100%;overflow:hidden;}
 
@@ -195,7 +195,7 @@ transform:translateY(-1px);
 
 .live2-vs{width:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0;}
 
-.live2-vs small,#live2-round-label{font-size:8px;margin:0 0 4px;white-space:nowrap;}
+.live2-vs small,#live2-round-label{font-size:10px;margin:0 0 4px;white-space:nowrap;}
 
 .live2-vs span{font-size:16px;line-height:1;}
 

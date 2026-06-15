@@ -4,8 +4,6 @@
 // Path: /assets/js/playerversion3granular.js
 // =============================================
 
-console.log("[PlayerV3] JS loaded");
-
 let eloChartV3=null;
 let mapDonutChartV3=null;
 let selectedClassIndex=0;
@@ -18,10 +16,8 @@ const playerNormName=window.nnHelpers.normName;
 const playerWeaponName=window.nnHelpers.weaponName;
 
 async function fetchJSON(url){
-  console.log("[PlayerV3] fetch",url);
   try{
     const res=await fetch(url,{cache:"no-store"});
-    console.log("[PlayerV3] response",url,res.status);
     if(!res.ok)throw new Error("HTTP "+res.status);
     return await res.json();
   }catch(e){
@@ -124,10 +120,7 @@ function statTile(label,value,sub){
 }
 
 async function loadPlayerV3(){
-  console.log("[PlayerV3] loadPlayerV3 called");
-
   const playerId=new URLSearchParams(window.location.search).get("id");
-  console.log("[PlayerV3] playerId",playerId);
 
   if(!playerId){
     setText("player-name-v3","No player selected");
@@ -137,7 +130,6 @@ async function loadPlayerV3(){
   const enc=encodeURIComponent(playerId);
 
   const v3=await fetchJSON("/api/player/"+enc+"/v3");
-  console.log("[PlayerV3] v3 payload",v3);
 
   if(!v3.ok||!v3.data){
     setText("player-name-v3","Player not found");
@@ -146,10 +138,8 @@ async function loadPlayerV3(){
   }
 
   const recent=await fetchJSON("/api/player/"+enc+"/recent?limit=300");
-  console.log("[PlayerV3] recent payload",recent);
 
   const permap=await fetchJSON("/api/player/"+enc+"/permap");
-  console.log("[PlayerV3] permap payload",permap);
 
   const data=v3.data;
   const player=data.player||{};
@@ -171,9 +161,8 @@ async function loadPlayerV3(){
 
   const playerName=player.name||playerId;
   const playerBadge=window.supporterBadge?window.supporterBadge(playerId):"";
-  const supporterHtml=playerBadge?'<span class="supporter-badge" title="Server Supporter">'+playerBadge+'</span>':"";
 
-  setHtml("player-name-v3",escapeHtml(playerName)+supporterHtml);
+  setHtml("player-name-v3",escapeHtml(playerName)+playerBadge);
   requestAnimationFrame(fitPlayerName);
   window.addEventListener("resize",fitPlayerName);
 
@@ -221,8 +210,6 @@ async function loadPlayerV3(){
   renderMapFrequency(permapRows);
   renderActivityHeatmaps(recentRows);
   renderRelationshipLists(recentRows,playerId);
-
-  console.log("[PlayerV3] render complete");
 }
 
 function formatMatchDate(ts){

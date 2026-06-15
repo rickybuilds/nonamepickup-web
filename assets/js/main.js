@@ -514,15 +514,20 @@ async function loadIndex() {
 
 //supporters
 let SUPPORTERS = new Set();
+let supportersPromise = null;
 
 async function loadSupporters(){
-  try{
-    const res = await fetch("/api/supporters");
-    const json = await res.json();
-    SUPPORTERS = new Set((json.supporters || []).map(String));
-  }catch{
-    SUPPORTERS = new Set();
-  }
+  if(supportersPromise)return supportersPromise;
+  supportersPromise=(async()=>{
+    try{
+      const res = await fetch("/api/supporters");
+      const json = await res.json();
+      SUPPORTERS = new Set((json.supporters || []).map(String));
+    }catch{
+      SUPPORTERS = new Set();
+    }
+  })();
+  return supportersPromise;
 }
 
 function supporterBadge(id){

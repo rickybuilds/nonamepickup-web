@@ -304,9 +304,18 @@
   .activity-heatmap{grid-template-columns:36px repeat(12,16px)!important;gap:4px!important;justify-content:center!important}
   .heat-cell{width:15px!important;height:15px!important;min-height:15px!important;border-radius:4px!important}
   .heat-label{font-size:10px!important;text-align:right!important;padding-right:4px!important}
-  .heat-hour{font-size:8px!important}
-  .recent-match-row{grid-template-columns:62px 1fr 44px!important;font-size:11px!important}
+  .heat-hour{font-size:10px!important}
+  .snapshot-label,.snapshot-stat-line span,.snapshot-impact-metrics span,.match-id-pill,.drawer-round-stats span{font-size:10px}
+  #top-weapons.weapon-grid{grid-template-columns:1fr!important}
+  #top-weapons .weapon-row{grid-template-columns:38px minmax(0,1fr) auto!important;gap:6px;padding:6px 8px}
+  #top-weapons .weapon-icon{width:38px!important;height:38px!important;min-width:38px!important}
+  #top-weapons .weapon-name{font-size:12px}
+  #top-weapons .weapon-row strong{min-width:0;gap:4px;font-size:12px}
+  #top-weapons .weapon-row strong small{font-size:10px}
+  .recent-match-row{grid-template-columns:58px minmax(70px,1fr) 42px 44px!important;gap:5px!important;font-size:10px!important;white-space:nowrap}
   .recent-match-row>:nth-child(4),.recent-match-row>:nth-child(5){display:none!important}
+  .recent-map{min-width:0}
+  .recent-delta{white-space:nowrap}
   .donut-frequency{display:flex!important;flex-direction:column!important}
   .map-donut-wrap,.map-donut-wrap canvas{width:150px!important;height:150px!important}
   .class-matrix-row{grid-template-columns:82px 58px 1fr 45px}

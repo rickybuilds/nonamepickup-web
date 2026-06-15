@@ -1,6 +1,6 @@
 "use strict";
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const number = new Intl.NumberFormat("en-US");
   const decimal = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
@@ -85,8 +85,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function playerName(row) {
     const name = escapeHtml(row.player || "Unknown");
+    const badge = row.id && window.supporterBadge ? window.supporterBadge(row.id) : "";
     return row.id
-      ? `<a href="player.html?id=${encodeURIComponent(row.id)}">${name}</a>`
+      ? `<a href="player.html?id=${encodeURIComponent(row.id)}">${name}${badge}</a>`
       : `<span title="No linked Discord profile">${name}</span>`;
   }
 
@@ -197,5 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  if (window.loadSupporters) await window.loadSupporters();
   loadAnalytics();
 });

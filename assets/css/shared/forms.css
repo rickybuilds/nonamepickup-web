@@ -1,0 +1,23 @@
+.site-search{
+  width:100%;
+  min-width:0;
+  height:44px;
+  padding:0 16px;
+  border-radius:14px;
+  font-family:'Orbitron',sans-serif;
+  font-size:12px;
+}
+#global-search{color:#e0f2fe!important;background:rgba(8,15,29,.88);border:1px solid rgba(77,166,255,.24);transition:.2s ease;}
+#global-search::placeholder{color:#64748b;}
+#global-search:focus{border-color:var(--tfc-blue);box-shadow:0 0 20px rgba(77,166,255,.18);outline:none;}
+.search-wrap{position:relative;}
+#search-dropdown{display:none;position:absolute;top:calc(100% + 10px);left:0;right:0;z-index:9999;overflow:hidden;border-radius:18px;background:rgba(15,23,42,.98);border:1px solid rgba(77,166,255,.35);box-shadow:0 20px 50px rgba(0,0,0,.45),0 0 30px rgba(77,166,255,.18);backdrop-filter:blur(12px);}
+#search-dropdown.show{display:block;}
+.search-result{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-bottom:1px solid rgba(148,163,184,.1);}
+.search-result-player{display:flex;align-items:center;gap:10px;min-width:0;}
+.search-result-player>div{min-width:0;}
+.search-result:hover,.search-result.active{background:rgba(77,166,255,.16);}
+.search-result strong{display:block;color:#e0f2fe;font-size:14px;font-weight:900;}
+.search-result small{display:block;color:#94a3b8;font-size:11px;margin-top:3px;}
+.search-result>span{color:#60a5fa;font-weight:900;font-size:13px;}
+.search-empty{padding:14px;color:#94a3b8;font-size:13px;}
