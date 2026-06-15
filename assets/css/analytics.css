@@ -151,9 +151,8 @@
   gap: 16px;
 }
 
-.analytics-grid-featured {
-  grid-template-columns: 1fr;
-}
+.analytics-grid-featured{grid-template-columns:repeat(2,minmax(0,1fr));}
+.analytics-grid-featured .analytics-card{border-color:rgba(251,191,36,.38);}
 
 .analytics-card {
   overflow: hidden;
@@ -334,6 +333,8 @@
   .analytics-card .analytics-link-pill {
     font-size: 10px;
   }
+
+  .analytics-grid-featured{grid-template-columns:1fr;}
 
   .analytics-page main {
     width: 100%;

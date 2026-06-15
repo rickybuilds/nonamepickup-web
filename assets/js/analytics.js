@@ -118,23 +118,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function rowContext(row, type, recordType) {
-    const details = [];
-    if (recordType === "round" || recordType === true) {
-      if (row.map) details.push(escapeHtml(row.map));
-      if (row.round_num) details.push(`Round ${number.format(row.round_num)}`);
-    } else if (recordType === "match") {
-      if (row.map) details.push(escapeHtml(row.map));
-    } else if (row.secondary != null) {
-      details.push(`${number.format(row.secondary)} ${type === "percent" ? "caps" : "kills"}`);
-    } else if (row.matches != null && type !== "games") {
-      details.push(`${number.format(row.matches)} matches`);
-    }
-
-    const unit = type === "decimal" || type === "percent" || type === "time"
-      ? ""
-      : ` ${escapeHtml(type)}`;
-    return `${formatValue(row.value, type)}${unit}${details.length ? `<small>${details.join(" · ")}</small>` : ""}${recordLinks(row)}`;
+  const details = [];
+  if (recordType === "round" || recordType === true) {
+    if (row.map) details.push(escapeHtml(row.map));
+    if (row.round_num) details.push(`Round ${number.format(row.round_num)}`);
+  } else if (recordType === "match") {
+    if (row.map) details.push(escapeHtml(row.map));
+  } else if (recordType === "mvp-rate") {
+    details.push(`${number.format(row.secondary || 0)} MVPs / ${number.format(row.matches || 0)} games`);
+  } else if (row.secondary != null) {
+    details.push(`${number.format(row.secondary)} ${type === "percent" ? "caps" : "kills"}`);
+  } else if (row.matches != null && type !== "games") {
+    details.push(`${number.format(row.matches)} matches`);
   }
+
+  const unit = type === "decimal" || type === "percent" || type === "time"
+    ? ""
+    : ` ${escapeHtml(type)}`;
+  return `${formatValue(row.value, type)}${unit}${details.length ? `<small>${details.join(" · ")}</small>` : ""}${recordLinks(row)}`;
+}
 
   function renderCard(title, rows, type, note, recordType = false, featured = false) {
     const list = (rows || []).map((row, index) => `
@@ -181,9 +183,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         number.format(data.summary?.player_rounds || 0);
       document.getElementById("analytics-updated").textContent =
         `Updated ${new Date(Number(data.generated_at || 0) * 1000).toLocaleString()}`;
-
       document.getElementById("analytics-mvps").innerHTML =
-        renderCard("Match MVPs", data.mvps, "MVP games", "COUNT(DISTINCT match_id)", false, true);
+        renderCard("Match MVPs", data.mvps, "MVP games", "Total matches where player earned MVP", false, true);
+      document.getElementById("analytics-mvp-rate").innerHTML =
+        renderCard("MVP Efficiency", data.mvp_rate, "percent", "MVPs / games played; minimum 25 games", "mvp-rate", true);
       renderSection("analytics-combat", data.combat, sections.combat);
       renderSection("analytics-flags", data.flags, sections.flags);
       renderSection("analytics-roles", data.roles, sections.roles);

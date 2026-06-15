@@ -162,6 +162,46 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           LIMIT ?
         `, limit);
 
+        const mvpRate = leaders(`${MVP_CTES},
+          player_games AS (
+            SELECT
+              COALESCE(pk.discord_id, sid.discord_id) AS player_id,
+              COALESCE(
+                r.display_name,
+                s.display_name,
+                s.player_key,
+                s.steam_id,
+                'Unknown'
+              ) AS player,
+              COALESCE(
+                pk.discord_id,
+                sid.discord_id,
+                NULLIF(s.player_key, ''),
+                NULLIF(s.steam_id, ''),
+                LOWER(TRIM(s.display_name))
+              ) AS identity,
+              COUNT(DISTINCT s.match_id) AS games
+            FROM match_player_stats s
+            LEFT JOIN steam_links pk ON pk.steam_id = s.player_key
+            LEFT JOIN steam_links sid ON sid.steam_id = s.steam_id
+            LEFT JOIN ratings r ON r.player_id = COALESCE(pk.discord_id, sid.discord_id)
+            GROUP BY identity
+          )
+          SELECT
+            MAX(pg.player_id) AS player_id,
+            MAX(pg.player) AS player,
+            ROUND(100.0 * COUNT(DISTINCT mr.match_id) / NULLIF(MAX(pg.games), 0), 2) AS value,
+            COUNT(DISTINCT mr.match_id) AS secondary,
+            MAX(pg.games) AS matches
+          FROM player_games pg
+          LEFT JOIN mvp_rows mr ON mr.identity = pg.identity
+          WHERE pg.identity IS NOT NULL AND pg.identity != ''
+          GROUP BY pg.identity
+          HAVING MAX(pg.games) >= 25
+          ORDER BY value DESC, secondary DESC, matches DESC, player COLLATE NOCASE
+          LIMIT ?
+        `, limit);
+
         const totalsQuery = (expression, extra = "") => leaders(`${IDENTITY_CTES}
           SELECT
             MAX(player_id) AS player_id,
@@ -313,6 +353,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               player_rounds: Number(summary.player_rounds || 0)
             },
             mvps,
+            mvp_rate: mvpRate,
             combat: {
               games: totalsQuery("COUNT(DISTINCT match_id)"),
               kills: totalsQuery("SUM(kills)"),
