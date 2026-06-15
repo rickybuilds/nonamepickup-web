@@ -327,7 +327,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
                 FROM player_stats
                 WHERE identity IS NOT NULL AND identity != ''
                 GROUP BY identity
-                HAVING SUM(deaths) > 0 AND SUM(kills) >= 25
+                HAVING SUM(deaths) > 0 AND COUNT(DISTINCT match_id) >= 25
                 ORDER BY value DESC, secondary DESC, player COLLATE NOCASE
                 LIMIT ?
               `, limit),

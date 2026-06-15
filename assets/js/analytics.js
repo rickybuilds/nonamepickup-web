@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ["games", "Most Games Played", "games"],
       ["kills", "Career Kills", "kills"],
       ["enemy_damage", "Enemy Damage", "damage"],
-      ["kdr", "Career KDR", "decimal", "Minimum 25 kills"],
+      ["kdr", "Career KDR", "decimal", "Minimum 25 games"],
       ["round_kills", "Highest Round Kills", "kills", null, true],
       ["round_damage", "Highest Round Damage", "damage", null, true]
     ],
