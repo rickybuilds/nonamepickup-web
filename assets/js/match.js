@@ -1,14 +1,14 @@
 "use strict";
 
-const matchFormatSeconds=window.nnHelpers.formatSeconds;
-const matchNormName=window.nnHelpers.normName;
-const matchWeaponName=window.nnHelpers.weaponName;
-const supporterBadge=window.nnHelpers?.supporterBadge;
+const nn = window.nnHelpers || {};
+const matchFormatSeconds = nn.formatSeconds || (s => `${Number(s || 0)}s`);
+const matchNormName = nn.normName || (v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
+const matchWeaponName = nn.weaponName || (v => v);
+const pageSupporterBadge = nn.supporterBadge || (() => "");
 
 function qs(id){return document.getElementById(id);}
-const fallbackEscapeHtml=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-const escapeHtml=window.nnHelpers?.escapeHtml||fallbackEscapeHtml;
-const escapeAttr=window.nnHelpers?.escapeAttr||(v=>escapeHtml(String(v??"").replace(/[\r\n]/g,"")));
+const matchEscapeHtml=window.nnHelpers?.escapeHtml||window.escapeHtml;
+const matchEscapeAttr=window.nnHelpers?.escapeAttr||window.escapeAttr;
 function fmt(n){const v=Number(n||0);return Number.isFinite(v)?v.toLocaleString():"-";}
 function formatDate(ts){const d=new Date(Number(ts||0)*1000);if(!Number.isFinite(d.getTime()))return"-";return d.toLocaleString([], {month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});}
 
@@ -101,12 +101,14 @@ function renderMatch(m){
     </div>
   `;
 
-  window.setMapImageFromName(qs("match-map-image"), mapName, {
-    containerSelector: ".match-map-wrap",
-    fallbackSrc: "assets/images/maps/NoMap.webp"
-  });
-  bindRoundTabs(root);
-}
+	if (typeof window.setMapImageFromName === "function") {
+	  window.setMapImageFromName(qs("match-map-image"), mapName, {
+		containerSelector: ".match-map-wrap",
+		fallbackSrc: "assets/images/maps/NoMap.webp"
+	  });
+	}
+	  bindRoundTabs(root);
+	}
 
 function playerKeys(teamPlayer,stats){
   return [
@@ -451,7 +453,7 @@ function renderMatchPlayer(teamPlayer,statsRows,classRows,weaponRows){
   return `
     <div class="match-player-card">
       <div class="match-player-top">
-        <a href="${escapeAttr(`player.html?id=${encodeURIComponent(teamPlayer.id)}`)}">${playerLabel(teamPlayer)}${supporterBadge?supporterBadge(teamPlayer.id):""}</a>
+        <a href="${escapeAttr(`player.html?id=${encodeURIComponent(teamPlayer.id)}`)}">${playerLabel(teamPlayer)}${pageSupporterBadge(teamPlayer.id)}</a>
         <b class="${d>0?"delta-pos":d<0?"delta-neg":""}">${deltaText(d)}</b>
       </div>
 

@@ -154,7 +154,9 @@ let liveRequestInFlight=false;
     const active = !!liveState?.active || !!liveMatch;
 
     $("live2-idle-state")?.classList.toggle("hidden", active);
-    $("live2-last-cap")?.classList.toggle("hidden", !liveState?.lastCap);
+	$("live2-last-cap")?.classList.toggle("hidden", !liveState?.lastCap);
+	$("live2-timeleft-card")?.classList.toggle("hidden", !active);
+	setText("live2-timeleft", active ? (liveState?.timeleft || "—") : "—");
 
     const pill = $("live2-status-pill");
     if (pill) pill.textContent = active ? "LIVE" : "STANDBY";

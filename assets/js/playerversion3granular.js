@@ -11,11 +11,12 @@ let selectedClassMap="__all";
 let currentClasses=[];
 let currentClassMaps=[];
 let currentHampa=null;
-const playerFormatSeconds=window.nnHelpers.formatSeconds;
-const playerNormName=window.nnHelpers.normName;
-const playerWeaponName=window.nnHelpers.weaponName;
-const canonicalFetchJSON=window.nnHelpers?.fetchJSON;
-const supporterBadge=window.nnHelpers?.supporterBadge;
+const nn = window.nnHelpers || {};
+const playerFormatSeconds = nn.formatSeconds || (s => `${Number(s || 0)}s`);
+const playerNormName = nn.normName || (v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
+const playerWeaponName = nn.weaponName || (v => v);
+const canonicalFetchJSON = nn.fetchJSON;
+const pageSupporterBadge = nn.supporterBadge || (() => "");
 
 async function fetchJSON(url){
   if(typeof canonicalFetchJSON==="function"){
@@ -38,14 +39,8 @@ function qs(id){return document.getElementById(id);}
 function setText(id,value){const el=qs(id);if(el)el.textContent=value;}
 function setHtml(id,value){const el=qs(id);if(el)el.innerHTML=value;}
 
-const fallbackEscapeHtml=str=>
-  String(str??"").replace(/[&<>"']/g,function(m){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m];
-  });
-const escapeHtml=window.nnHelpers?.escapeHtml||fallbackEscapeHtml;
-const escapeAttr=window.nnHelpers?.escapeAttr||(value=>
-  escapeHtml(String(value??"").replace(/[\r\n]/g,""))
-);
+const playerEscapeHtml=window.nnHelpers?.escapeHtml||window.escapeHtml;
+const playerEscapeAttr=window.nnHelpers?.escapeAttr||window.escapeAttr;
 
 function fmt(n){
   const v=Number(n||0);
@@ -170,7 +165,7 @@ async function loadPlayerV3(){
   );
 
   const playerName=player.name||playerId;
-  const playerBadge=supporterBadge?supporterBadge(playerId):"";
+  const playerBadge=pageSupporterBadge(playerId);
 
   setHtml("player-name-v3",escapeHtml(playerName)+playerBadge);
   requestAnimationFrame(fitPlayerName);
