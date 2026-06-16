@@ -1,7 +1,7 @@
 // =============================================
 // NoName TFC Pickups Player V3 Granular
 // Map-filtered class identity version
-// Path: /assets/js/playerversion3granular.js
+// Path: /assets/js/player.js
 // =============================================
 
 let eloChartV3=null;

@@ -1,6 +1,6 @@
 // =============================================
 // NoName TFC Pickups — Map Intel V2
-// Path: /assets/js/mapsnew2.js
+// Path: /assets/js/maps.js
 // =============================================
 
 (() => {
