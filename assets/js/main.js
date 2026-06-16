@@ -54,8 +54,8 @@ function formatDate(ts) {
 
 function calcWinPct(record) {
   const [w, l, t] = String(record || "0-0-0").split("-").map(n => Number(n) || 0);
-  const total = w + l + t;
-  return total ? `${Math.round((w / total) * 100)}%` : "—";
+  const decided = w + l;
+  return decided ? `${Math.round((w / decided) * 100)}%` : "0%";
 }
 
 function winnerRowClass(winner) {

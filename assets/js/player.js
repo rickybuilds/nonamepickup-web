@@ -589,7 +589,8 @@ function normalizeMapResults(rows){
     const l=Number(row.l||0);
     const t=Number(row.t||0);
     const games=w+l+t||Number(row.gp||0);
-    return{...row,w,l,t,completedGames:games,win_pct:games?Number(row.win_pct??Math.round((w/games)*100)):0};
+    const decided=w+l;
+    return{...row,w,l,t,completedGames:games,win_pct:decided?Number(row.win_pct??Math.round((w/decided)*100)):0};
   }).filter(row=>row.completedGames>0);
 }
 
@@ -602,7 +603,8 @@ function renderPlayerSnapshot(data,recentRows,permapRows){
   const recentWins=recentResults.filter(result=>result==="Win").length;
   const recentLosses=recentResults.filter(result=>result==="Loss").length;
   const recentTies=recentResults.filter(result=>result==="Tie").length;
-  const recentPct=recentResults.length?Math.round((recentWins/recentResults.length)*100):0;
+  const recentDecided=recentWins+recentLosses;
+  const recentPct=recentDecided?Math.round((recentWins/recentDecided)*100):0;
   const maps=normalizeMapResults(permapRows);
   const mostPlayed=[...maps].sort((a,b)=>b.completedGames-a.completedGames||b.win_pct-a.win_pct)[0]||null;
   const extremes=selectMapExtremes(maps,5);
@@ -843,10 +845,12 @@ function renderRelationshipLists(rows,playerId){
         avatarmedium:p.avatarmedium||null,
         avatarfull:p.avatarfull||null,
         gp:0,
-        wins:0
+        wins:0,
+        losses:0
       };
       rec.gp++;
       if(result==="Win")rec.wins++;
+      else if(result==="Loss")rec.losses++;
       teammates.set(key,rec);
     });
 
@@ -859,26 +863,35 @@ function renderRelationshipLists(rows,playerId){
         avatarmedium:p.avatarmedium||null,
         avatarfull:p.avatarfull||null,
         gp:0,
-        wins:0
+        wins:0,
+        losses:0
       };
       rec.gp++;
       if(result==="Win")rec.wins++;
+      else if(result==="Loss")rec.losses++;
       opponents.set(key,rec);
     });
   });
 
   const bestTeam=[...teammates.values()]
     .filter(x=>x.gp>=2)
-    .sort((a,b)=>(b.wins/b.gp)-(a.wins/a.gp)||b.gp-a.gp)
+    .sort((a,b)=>relationshipWinPct(b)-relationshipWinPct(a)||b.gp-a.gp)
     .slice(0,3);
 
   const toughOpps=[...opponents.values()]
     .filter(x=>x.gp>=2)
-    .sort((a,b)=>(a.wins/a.gp)-(b.wins/b.gp)||b.gp-a.gp)
+    .sort((a,b)=>relationshipWinPct(a)-relationshipWinPct(b)||b.gp-a.gp)
     .slice(0,3);
 
   renderPeopleList("best-teammates",bestTeam,"teammate");
   renderPeopleList("toughest-opponents",toughOpps,"opponent");
+}
+
+function relationshipWinPct(row){
+  const wins=Number(row.wins||0);
+  const losses=Number(row.losses||0);
+  const decided=wins+losses;
+  return decided?wins/decided:0;
 }
 
 function renderPeopleList(id,rows,type){
@@ -886,7 +899,7 @@ function renderPeopleList(id,rows,type){
   if(!el)return;
 
   el.innerHTML=rows.map(r=>{
-    const pct=r.gp?Math.round((r.wins/r.gp)*100):0;
+    const pct=Math.round(relationshipWinPct(r)*100);
     const avatarUrl=r.avatarfull||r.avatarmedium||r.avatar||"";
     const avatar=typeof window.nnHelpers?.avatarHtml==="function"
       ? window.nnHelpers.avatarHtml(r.name,avatarUrl,"nn-avatar-rel")

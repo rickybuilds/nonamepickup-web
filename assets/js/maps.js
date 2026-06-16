@@ -116,11 +116,18 @@ function playerLink(p,cls=""){
     const body = $("map-v2-players-body");
     if (!body) return;
 
-    const rows = [...allPlayers].sort((a, b) => {
+    let playerRows = [...allPlayers];
+    if (currentSort === "winrate") {
+      const qualifiedRows = playerRows.filter(p => Number(p.gp || 0) >= 10);
+      // Require 10+ games for Best Win Rate rankings when sufficient sample exists. Fall back to all players for low-sample maps.
+      if (qualifiedRows.length) playerRows = qualifiedRows;
+    }
+
+    const rows = playerRows.sort((a, b) => {
       if (currentSort === "winrate") {
         const aw = Number(a.winRate || 0);
         const bw = Number(b.winRate || 0);
-        return bw - aw || Number(b.gp || 0) - Number(a.gp || 0);
+        return bw - aw || Number(b.gp || 0) - Number(a.gp || 0) || Number(b.w || 0) - Number(a.w || 0);
       }
       if (currentSort === "wins") {
         return Number(b.w || 0) - Number(a.w || 0) || Number(b.gp || 0) - Number(a.gp || 0);

@@ -129,13 +129,15 @@ function createCompareRouter({
         };
       });
 
-      if (stats.teammate.gp) {
-        stats.teammate.win_pct = Math.round((stats.teammate.w / stats.teammate.gp) * 100);
+      const teammateDecided = stats.teammate.w + stats.teammate.l;
+      if (teammateDecided) {
+        stats.teammate.win_pct = Math.round((stats.teammate.w / teammateDecided) * 100);
       }
 
-      if (stats.opponent.gp) {
-        stats.opponent.p1_win_pct = Math.round((stats.opponent.p1_w / stats.opponent.gp) * 100);
-        stats.opponent.p2_win_pct = Math.round((stats.opponent.p2_w / stats.opponent.gp) * 100);
+      const opponentDecided = stats.opponent.p1_w + stats.opponent.p2_w;
+      if (opponentDecided) {
+        stats.opponent.p1_win_pct = Math.round((stats.opponent.p1_w / opponentDecided) * 100);
+        stats.opponent.p2_win_pct = Math.round((stats.opponent.p2_w / opponentDecided) * 100);
       }
 
       res.json({

@@ -77,7 +77,7 @@ router.get("/players/search",(req,res)=>{
         const wins=Number(row.wins||0);
         const losses=Number(row.losses||0);
         const ties=Number(row.ties||0);
-        const total=wins+losses+ties;
+        const decided=wins+losses;
         return{
           id:String(row.id),
           player:row.player||String(row.id),
@@ -87,7 +87,7 @@ router.get("/players/search",(req,res)=>{
           losses,
           ties,
           record:`${wins}-${losses}-${ties}`,
-          win_pct:total?Math.round((wins/total)*100):0,
+          win_pct:decided?Math.round((wins/decided)*100):0,
           steam_id:row.steam_id||null,
           steam_id64:row.steam_id64||null,
           personaname:row.personaname||null,
@@ -279,6 +279,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
     const losses=Number(record?.losses||0);
     const ties=Number(record?.ties||0);
     const games=wins+losses+ties;
+    const decided=wins+losses;
 
     const kills=Number(hStats?.kills||0);
     const deaths=Number(hStats?.deaths||0);
@@ -314,7 +315,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
           ties,
           games,
           record:`${wins}-${losses}-${ties}`,
-          win_pct:games?Math.round((wins/games)*100):0
+          win_pct:decided?Math.round((wins/decided)*100):0
         },
         hampalyzer:{
           linked:!!steamId,
@@ -480,7 +481,8 @@ router.get("/player/:id/permap", (req, res) => {
 
     const out = Array.from(box.values()).map(b => {
       const avgDelta = b.gp ? Math.round(b.sumDelta / b.gp) : 0;
-      const winPct   = (b.w + b.l + b.t) ? Math.round((b.w / (b.w + b.l + b.t)) * 100) : 0;
+      const decided = b.w + b.l;
+      const winPct   = decided ? Math.round((b.w / decided) * 100) : 0;
       return { map: b.map, gp: b.gp, w: b.w, l: b.l, t: b.t, win_pct: winPct, avg_delta: avgDelta };
     });
 

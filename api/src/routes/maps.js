@@ -56,15 +56,18 @@ function createMapsRouter({
       ORDER BY w DESC, gp DESC
     `).all(map);
 
-      const out = rows.map(r => ({
-        id: String(r.player_id),
-        player: r.player,
-        gp: r.gp || 0,
-        w: r.w || 0,
-        l: r.l || 0,
-        t: r.t || 0,
-        winRate: (r.w + r.l + r.t) > 0 ? ((r.w / (r.w + r.l + r.t)) * 100).toFixed(1) : "0.0"
-      }));
+      const out = rows.map(r => {
+        const decided = (r.w || 0) + (r.l || 0);
+        return {
+          id: String(r.player_id),
+          player: r.player,
+          gp: r.gp || 0,
+          w: r.w || 0,
+          l: r.l || 0,
+          t: r.t || 0,
+          winRate: decided > 0 ? (((r.w || 0) / decided) * 100).toFixed(1) : "0.0"
+        };
+      });
 
       res.json({ ok: true, data: out });
     } catch (e) {
