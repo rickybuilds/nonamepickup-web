@@ -1,51 +1,43 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="NoName TFC Pickup live queue, match statistics, player rankings, and map intelligence.">
-<link rel="canonical" href="https://nonamepickup.servehalflife.com/">
-<meta property="og:type" content="website">
-<meta property="og:title" content="NoName TFC Pickups">
-<meta property="og:description" content="Live queue, match statistics, player rankings, and map intelligence for NoName TFC Pickups.">
-<meta property="og:url" content="https://nonamepickup.servehalflife.com/">
-<meta name="twitter:card" content="summary">
-<title>NoName TFC Pickups</title>
-
-<!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NoName TFC Pickup live queue, match highlights, player milestones, and community statistics.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NoName TFC Pickups">
+  <meta property="og:description" content="Live queue, match highlights, player milestones, and community statistics for NoName TFC Pickups.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC Pickups</title>
 
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
-
   <link rel="stylesheet" href="assets/css/app.css?v=20260615">
   <link rel="stylesheet" href="assets/css/style.css?v=20260615">
-  <link rel="stylesheet" href="assets/css/index.css?v=20260615">
-
-<script src="assets/js/main.js?v=20260615" defer></script>
-  
-  <!-- Modern Fonts -->
+  <link rel="stylesheet" href="assets/css/index.css?v=20260617">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script src="assets/js/main.js?v=20260615" defer></script>
+  <script src="assets/js/index.js?v=20260617" defer></script>
 </head>
-
-<body class="bg-[#0a0c10] text-gray-200 index-page">
-
+<body class="index-page">
   <header class="site-header">
     <div class="site-header-inner">
-
       <div class="nn-logo" aria-label="NoName TFC">
         <span class="logo-nn">NN</span>
         <span class="logo-slash">//</span>
         <span class="logo-tfc">TFC</span>
       </div>
-      
-      <nav class="site-nav">
+
+      <nav class="site-nav" aria-label="Primary navigation">
         <a href="index.html" aria-current="page">Home</a>
         <a href="live.html" class="nav-live">LIVE</a>
         <a href="matches.html">Matches</a>
         <a href="leaderboard.html">Leaderboard</a>
         <a href="analytics.html">Analytics</a>
         <a href="compare.html">Compare</a>
-
       </nav>
 
       <input
@@ -62,117 +54,137 @@
     </div>
   </header>
 
-  <main class="page-main-spacing max-w-[1500px] mx-auto px-8 py-10">
-    <h1 class="sr-only">NoName TFC Pickup Statistics</h1>
-    <div class="cyber-shell">
+  <main class="home-main" aria-labelledby="home-title">
+    <h1 id="home-title" class="sr-only">NoName TFC Pickups Homepage</h1>
 
-      <!-- KPI Section -->
-      <section class="cyber-kpi-grid">
-        <div class="cyber-kpi">
-          <span class="kpi-title">Total Matches</span>
-          <strong id="total-matches" class="kpi-main-name">—</strong>
-          <small class="kpi-main-note kpi-note-list">
-            <span><b id="kpi-1d">—</b> last 24 hours</span>
-            <span><b id="kpi-7d">—</b> last 7 days</span>
-            <span><b id="kpi-30d">—</b> last 30 days</span>
-          </small>
+    <section class="home-hero-grid" aria-label="NoName TFC live overview">
+      <article class="home-hero-card">
+        <div class="home-hero-content">
+          <p class="home-eyebrow">WELCOME TO</p>
+          <h2><span>NONAME</span><span><span class="home-title-blue">TFC</span> PICKUPS</span></h2>
+          <p class="home-hero-copy">The home of competitive Team Fortress Classic pickups.<br>Stats. History. Community.</p>
         </div>
 
-        <div class="cyber-kpi">
-          <span class="kpi-title">Unique Players</span>
-          <strong id="unique-players" class="kpi-main-name">—</strong>
-          <small class="kpi-main-note">Lifetime</small>
-          <div class="kpi-divider"></div>
-          <span class="kpi-secondary-label">Active Players</span>
-          <strong id="unique-players-30d" class="kpi-secondary-name">—</strong>
-          <small class="kpi-secondary-note">last 30 days</small>
-        </div>
-
-        <div class="cyber-kpi">
-          <span class="kpi-title">Close Games</span>
-          <strong id="close-games" class="kpi-main-name">—</strong>
-          <small class="kpi-main-note close-games-stats">
-            <span><b id="ties-count">—</b> ties</span>
-            <span><b id="under-15-count">—</b> &lt;15</span>
-            <span><b id="under-25-count">—</b> &lt;25</span>
-            <span><b id="blowout-count">—</b> blowouts</span>
-          </small>
-        </div>
-        <div class="cyber-kpi">
-          <span class="kpi-title">Most Active</span>
-          <strong id="most-active" class="kpi-main-name">—</strong>
-          <small id="most-active-note" class="kpi-main-note">last 30 days</small>
-          <div class="kpi-divider"></div>
-          <span class="kpi-secondary-label">2nd Most Active</span>
-          <strong id="most-active-runner" class="kpi-secondary-name">—</strong>
-          <small id="most-active-runner-note" class="kpi-secondary-note">last 30 days</small>
-        </div>
-
-        <div class="cyber-kpi cyber-green">
-          <span class="kpi-title">Current Win Streak</span>
-          <strong id="longest-streak" class="kpi-main-name">—</strong>
-          <small id="longest-streak-note" class="kpi-main-note">hot right now</small>
-          <div class="kpi-divider"></div>
-          <span class="kpi-secondary-label">2nd Highest Active Streak</span>
-          <strong id="streak-runner" class="kpi-secondary-name">—</strong>
-          <small id="streak-runner-note" class="kpi-secondary-note">active streak</small>
-        </div>
-
-        <div class="cyber-kpi cyber-gold">
-          <span class="kpi-title">MVP Leader</span>
-          <strong id="mvp-leader" class="kpi-main-name">—</strong>
-          <small id="mvp-leader-note" class="kpi-main-note">game MVPs</small>
-          <div class="kpi-divider"></div>
-          <span class="kpi-secondary-label">Highest MVP Rate</span>
-          <strong id="mvp-rate-leader" class="kpi-secondary-name">—</strong>
-          <small id="mvp-rate-note" class="kpi-secondary-note">minimum 25 games</small>
-        </div>
-      </section>
-
-      <!-- Main Content -->
-      <section class="cyber-main-grid">
-        <div class="cyber-panel cyber-wide">
-          <div class="cyber-panel-header">
-            <h3>Top Elo Surge</h3>
-            <span>Last 30 Days</span>
+        <div class="home-hero-stats" aria-label="Community totals">
+          <div>
+            <span id="hero-matches">-</span>
+            <small>Matches Played</small>
+            <ul class="hero-match-breakdown" aria-label="Recent match activity">
+              <li><b id="hero-matches-1d">-</b><small>24 Hours</small></li>
+              <li><b id="hero-matches-7d">-</b><small>7 Days</small></li>
+              <li><b id="hero-matches-30d">-</b><small>30 Days</small></li>
+            </ul>
           </div>
-          <div class="cyber-scroll index-player-scroll">
-            <table id="top-players-table" class="cyber-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Player</th>
-                  <th>Record</th>
-                  <th>Win%</th>
-                  <th>Δ Elo</th>
-                </tr>
-              </thead>
-              <tbody id="top-players-body"></tbody>
-            </table>
+          <div>
+            <span id="hero-players">-</span>
+            <small>Players Battled</small>
+          </div>
+          <div>
+            <span id="hero-years">-</span>
+            <small id="hero-history-unit">Years Active</small>
+            <em id="hero-history-since">Since -</em>
           </div>
         </div>
+      </article>
 
-        <div class="cyber-panel">
-          <div class="cyber-panel-header">
-            <h3>Map Intel</h3>
-            <span>Average Scores</span>
-          </div>
-          <div class="cyber-scroll index-map-scroll">
-            <table id="map-averages-table" class="cyber-table">
-              <thead>
-                <tr>
-                  <th>Map</th>
-                  <th>Games</th>
-                  <th>Avg</th>
-                </tr>
-              </thead>
-              <tbody id="map-averages-body"></tbody>
-            </table>
+      <article class="home-panel live-now-card" aria-live="polite" aria-labelledby="live-now-title">
+        <div class="home-panel-title">
+          <h2 id="live-now-title"><span class="live-dot"></span>Live Right Now</h2>
+        </div>
+        <div class="queue-status">
+          <span>Queue Status</span>
+          <strong id="live-queue-count">0 / 8</strong>
+          <div id="live-queue-dots" class="queue-dots" aria-label="Queue slots"></div>
+          <small id="live-estimate">Estimated start unavailable</small>
+        </div>
+        <div class="live-match-box">
+          <span>Live Match</span>
+          <strong id="live-map">No active match</strong>
+          <div class="live-score-row">
+            <div class="score-blue"><small>Blue</small><b id="live-blue-score">0</b></div>
+            <span>VS</span>
+            <div class="score-red"><small>Red</small><b id="live-red-score">0</b></div>
           </div>
         </div>
-      </section>
+        <a class="home-action-button" href="live.html">Watch Live</a>
+      </article>
 
-    </div>
+      <article class="home-panel newswire-card" aria-labelledby="newswire-title">
+        <div class="home-panel-title with-link">
+          <h2 id="newswire-title">NoName Newswire</h2>
+          <a href="analytics.html">View All</a>
+        </div>
+        <div id="newswire-list" class="milestone-list"></div>
+      </article>
+    </section>
+
+    <section class="stat-card-grid" aria-label="Key community stats">
+      <article class="mini-stat-card accent-blue">
+        <img class="kpi-class-art" alt="" aria-hidden="true" loading="lazy" decoding="async" hidden>
+        <span>Most Active</span>
+        <em>Queue Goblin</em>
+        <strong id="card-most-active">-</strong>
+        <small id="card-most-active-note">last 30 days</small>
+      </article>
+      <article class="mini-stat-card accent-green">
+        <img class="kpi-class-art" alt="" aria-hidden="true" loading="lazy" decoding="async" hidden>
+        <span>Current Win Streak</span>
+        <em id="card-streak-flavor">Carried by Someone Else</em>
+        <strong id="card-streak">-</strong>
+        <small id="card-streak-note">hot right now</small>
+      </article>
+      <article class="mini-stat-card accent-purple">
+        <img class="kpi-class-art" alt="" aria-hidden="true" loading="lazy" decoding="async" hidden>
+        <span>Elo Surge 30D</span>
+        <em>Newest Adderall Abuser</em>
+        <strong id="card-elo-surge">-</strong>
+        <small id="card-elo-note">last 30 days</small>
+      </article>
+      <article class="mini-stat-card accent-gold">
+        <img class="kpi-class-art" alt="" aria-hidden="true" loading="lazy" decoding="async" hidden>
+        <span>MVP Leader</span>
+        <em>Main Character Syndrome</em>
+        <strong id="card-mvp-leader">-</strong>
+        <small id="card-mvp-note">game MVPs</small>
+      </article>
+      <article class="mini-stat-card accent-orange">
+        <img class="kpi-class-art" alt="" aria-hidden="true" loading="lazy" decoding="async" hidden>
+        <span>Highest MVP Rate</span>
+        <em>Stat Padding Expert</em>
+        <strong id="card-mvp-rate">-</strong>
+        <small id="card-mvp-rate-note">minimum 25 games</small>
+      </article>
+      <article class="mini-stat-card accent-cyan">
+        <img class="kpi-class-art" alt="" aria-hidden="true" loading="lazy" decoding="async" hidden>
+        <span>Most Played Map</span>
+        <em>Worst Map</em>
+        <strong id="card-map">-</strong>
+        <small id="card-map-note">games played</small>
+      </article>
+    </section>
+
+    <section class="home-content-grid main-grid" aria-label="Community leaders and maps">
+      <article class="home-panel spotlight-card" aria-labelledby="spotlight-title">
+        <div class="home-panel-title">
+          <h2 id="spotlight-title">Community Spotlight</h2>
+        </div>
+        <div id="spotlight-list" class="spotlight-list"></div>
+      </article>
+
+      <article class="home-panel hall-card" aria-labelledby="hall-title">
+        <div class="home-panel-title">
+          <h2 id="hall-title">Player Legends</h2>
+        </div>
+        <div id="legends-list" class="record-list"></div>
+      </article>
+
+      <article class="home-panel top-maps-card" aria-labelledby="top-maps-title">
+        <div class="home-panel-title">
+          <h2 id="top-maps-title">Top Maps By Games</h2>
+        </div>
+        <div id="top-maps-list" class="top-map-list"></div>
+      </article>
+    </section>
   </main>
 </body>
 </html>
