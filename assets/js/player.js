@@ -11,6 +11,9 @@ let selectedClassMap="__all";
 let currentClasses=[];
 let currentClassMaps=[];
 let currentHampa=null;
+let currentBreakdown=null;
+let currentBreakdownMode="totals";
+let currentBreakdownFilter="overall";
 const nn = window.nnHelpers || {};
 const playerFormatSeconds = nn.formatSeconds || (s => `${Number(s || 0)}s`);
 const playerNormName = nn.normName || (v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
@@ -142,9 +145,11 @@ async function loadPlayerV3(){
     return;
   }
 
-  const recent=await fetchJSON("/api/player/"+enc+"/recent?limit=300");
-
-  const permap=await fetchJSON("/api/player/"+enc+"/permap");
+  const [recent,permap,breakdown]=await Promise.all([
+    fetchJSON("/api/player/"+enc+"/recent?limit=300"),
+    fetchJSON("/api/player/"+enc+"/permap"),
+    fetchJSON("/api/player/"+enc+"/breakdown")
+  ]);
 
   const data=v3.data;
   const player=data.player||{};
@@ -197,7 +202,7 @@ async function loadPlayerV3(){
   setText("kpi-damage",h.linked?compact(h.damage):"-");
 
   const permapRows=Array.isArray(permap.data)?permap.data:[];
-  renderPlayerSnapshot(data,recentRows,permapRows);
+  renderPlayerBreakdown(breakdown?.ok?breakdown.data:null);
   renderCombat(h);
   renderFlag(h);
   renderWeapons(weapons);
@@ -547,167 +552,215 @@ function renderRecentMatches(rows,playerId,hidden){
   }).join("")||'<div class="empty-v3">No recent matches</div>');
 }
 
-function selectMapExtremes(rows,minimumGames=5){
-  const eligible=(Array.isArray(rows)?rows:[]).map(row=>{
-    const w=Number(row.w||0);
-    const l=Number(row.l||0);
-    const t=Number(row.t||0);
-    return{
-      ...row,
-      w,
-      l,
-      t,
-      completedGames:w+l+t,
-      win_pct:Number(row.win_pct||0),
-      avg_delta:Number(row.avg_delta||0)
-    };
-  }).filter(row=>row.completedGames>=minimumGames);
+const BREAKDOWN_STAT_ROWS=[
+  ["Kills","kills"],
+  ["Deaths","deaths"],
+  ["Enemy Damage","enemy_damage"],
+  ["Team Damage","team_damage"],
+  ["Damage Taken","damage_taken"],
+  ["CK","conceded_kills"],
+  ["SG","sentry_kills"],
+  ["CJ","conc_jumps"],
+  ["Caps","caps"],
+  ["Touches","touches"],
+  ["Initial Touches","initial_touches"],
+  ["Flag Time","flag_time"],
+  ["Objectives","objectives"]
+];
 
-  const byName=(a,b)=>String(a.map||"").localeCompare(String(b.map||""));
-  const best=[...eligible].sort((a,b)=>
-    b.win_pct-a.win_pct||
-    b.avg_delta-a.avg_delta||
-    b.completedGames-a.completedGames||
-    byName(a,b)
-  )[0]||null;
-  const worst=[...eligible].sort((a,b)=>
-    a.win_pct-b.win_pct||
-    a.avg_delta-b.avg_delta||
-    b.completedGames-a.completedGames||
-    byName(a,b)
-  )[0]||null;
+const BREAKDOWN_SPLITS=[
+  {key:"overall",label:"Overall"},
+  {key:"offense",label:"Offense"},
+  {key:"defense",label:"Defense"}
+];
 
-  return{
-    best,
-    worst:eligible.length>1?worst:null
-  };
-}
-
-function normalizeMapResults(rows){
-  return (Array.isArray(rows)?rows:[]).map(row=>{
-    const w=Number(row.w||0);
-    const l=Number(row.l||0);
-    const t=Number(row.t||0);
-    const games=w+l+t||Number(row.gp||0);
-    const decided=w+l;
-    return{...row,w,l,t,completedGames:games,win_pct:decided?Number(row.win_pct??Math.round((w/decided)*100)):0};
-  }).filter(row=>row.completedGames>0);
-}
-
-function renderPlayerSnapshot(data,recentRows,permapRows){
-  const playerId=data.player?.id;
-  const recentCompleted=(Array.isArray(recentRows)?recentRows:[])
-    .filter(row=>getPlayerResult(row,playerId)!=="-")
-    .slice(0,10);
-  const recentResults=recentCompleted.map(row=>getPlayerResult(row,playerId));
-  const recentWins=recentResults.filter(result=>result==="Win").length;
-  const recentLosses=recentResults.filter(result=>result==="Loss").length;
-  const recentTies=recentResults.filter(result=>result==="Tie").length;
-  const recentDecided=recentWins+recentLosses;
-  const recentPct=recentDecided?Math.round((recentWins/recentDecided)*100):0;
-  const maps=normalizeMapResults(permapRows);
-  const mostPlayed=[...maps].sort((a,b)=>b.completedGames-a.completedGames||b.win_pct-a.win_pct)[0]||null;
-  const extremes=selectMapExtremes(maps,5);
-  const h=data.hampalyzer||{};
-  const classes=(Array.isArray(data.classes)?data.classes:[])
-    .map(row=>({name:classDisplayName(row.class||row.class_name),pct:Number(row.pct||0)}))
-    .sort((a,b)=>b.pct-a.pct);
-  const mainClass=classes[0]||null;
-
-  function mapLink(row){
-    const map=String(row?.map||"Unknown");
-    return '<a href="'+escapeAttr("map.html?map="+encodeURIComponent(map))+'">'+escapeHtml(map)+'</a>';
+function formatBreakdownNumber(value,mode){
+  const n=Number(value||0);
+  if(!Number.isFinite(n))return "-";
+  if(mode==="perMatch"){
+    if(Math.abs(n)>=100)return n.toLocaleString(undefined,{maximumFractionDigits:1});
+    return n.toLocaleString(undefined,{minimumFractionDigits:n%1?1:0,maximumFractionDigits:2});
   }
+  return Math.round(n).toLocaleString();
+}
 
-  function mapCard(targetId,label,row,extra){
-    if(!row){
-      setHtml(targetId,
-        '<span class="snapshot-label">'+escapeHtml(label)+'</span>'+
-        '<strong>Not enough map history</strong>'+
-        '<small>Minimum 5 completed games</small>'
-      );
+function formatBreakdownTime(value){
+  const total=Math.max(0,Number(value||0));
+  if(!Number.isFinite(total))return "0s";
+  if(total>=3600){
+    let hours=Math.floor(total/3600);
+    let minutes=Math.round((total%3600)/60);
+    if(minutes>=60){
+      hours+=1;
+      minutes=0;
+    }
+    return hours+"h"+(minutes?(" "+minutes+"m"):"");
+  }
+  if(total>=60){
+    const minutes=total/60;
+    const rounded=Number(minutes.toFixed(1));
+    return rounded.toLocaleString(undefined,{maximumFractionDigits:1})+"m";
+  }
+  return Math.round(total)+"s";
+}
+
+function formatBreakdownValue(key,value,mode){
+  if(key==="flag_time")return formatBreakdownTime(value);
+  return formatBreakdownNumber(value,mode);
+}
+
+function formatBreakdownPct(value){
+  const n=Number(value||0);
+  if(!Number.isFinite(n))return "0%";
+  return n.toLocaleString(undefined,{maximumFractionDigits:1})+"%";
+}
+
+function formatWeaponKillsPerMatch(kills,matches){
+  const totalKills=Number(kills||0);
+  const totalMatches=Number(matches||0);
+  if(!Number.isFinite(totalKills)||!Number.isFinite(totalMatches)||totalMatches<=0)return "0 / match";
+  const avg=totalKills/totalMatches;
+  if(avg>0&&avg<0.01)return "<0.01 / match";
+  return avg.toLocaleString(undefined,{minimumFractionDigits:avg%1?2:0,maximumFractionDigits:2})+" / match";
+}
+
+function getOverallBreakdownMatches(){
+  const sample=currentBreakdown?.sample||{};
+  return Number(sample.splits?.overall?.matches||sample.matches||0);
+}
+
+function renderBreakdownTabs(data){
+  const tabs=qs("breakdown-tabs");
+  if(!tabs)return;
+  const hasRoundSplits=!!data?.sample?.hasRoundSplits;
+  const allowed=BREAKDOWN_SPLITS.filter(split=>split.key==="overall"||hasRoundSplits);
+  if(!allowed.some(split=>split.key===currentBreakdownFilter))currentBreakdownFilter="overall";
+  tabs.innerHTML=allowed.map(split=>
+    '<button type="button" role="tab" class="breakdown-tab '+(currentBreakdownFilter===split.key?"active":"")+'" data-breakdown-filter="'+escapeAttr(split.key)+'" aria-selected="'+(currentBreakdownFilter===split.key?"true":"false")+'">'+escapeHtml(split.label)+'</button>'
+  ).join("");
+}
+
+function syncBreakdownButtons(){
+  document.querySelectorAll(".breakdown-mode").forEach(btn=>{
+    const active=btn.dataset.breakdownMode===currentBreakdownMode;
+    btn.classList.toggle("active",active);
+    btn.setAttribute("aria-pressed",active?"true":"false");
+  });
+}
+
+function bindBreakdownControls(){
+  const card=qs("player-breakdown-card");
+  if(!card||card.dataset.bound==="1")return;
+  card.dataset.bound="1";
+  card.addEventListener("click",event=>{
+    const target=event.target?.closest?event.target:event.target?.parentElement;
+    if(!target)return;
+    const modeButton=target.closest("[data-breakdown-mode]");
+    if(modeButton){
+      currentBreakdownMode=modeButton.dataset.breakdownMode==="perMatch"?"perMatch":"totals";
+      renderPlayerBreakdown(currentBreakdown);
       return;
     }
-    setHtml(targetId,
-      '<span class="snapshot-label">'+escapeHtml(label)+'</span>'+
-      '<strong>'+mapLink(row)+'</strong>'+
-      '<div class="snapshot-stat-line"><span>'+row.w+'-'+row.l+'-'+row.t+'</span><span>'+row.win_pct+'%</span><span>'+row.completedGames+' games</span></div>'+
-      (extra?'<small>'+escapeHtml(extra)+'</small>':"")
-    );
-  }
+    const filterButton=target.closest("[data-breakdown-filter]");
+    if(filterButton){
+      currentBreakdownFilter=filterButton.dataset.breakdownFilter||"overall";
+      renderPlayerBreakdown(currentBreakdown);
+    }
+  });
+}
 
-  setHtml("snapshot-recent-form",
-    '<span class="snapshot-label">Recent Form</span>'+
-    '<strong>'+(recentResults.length?recentWins+'-'+recentLosses+'-'+recentTies+' · '+recentPct+'%':"No recent results")+'</strong>'+
-    '<small>'+(recentResults.length?'Last '+recentResults.length+' completed matches':"Completed match sample unavailable")+'</small>'
+function renderBreakdownClasses(rows){
+  const classes=Array.isArray(rows)?rows:[];
+  if(!classes.length)return '<div class="breakdown-empty">No class usage tracked yet.</div>';
+  return '<div class="breakdown-class-list">'+classes.map(row=>{
+    const seconds=Number(row.seconds||0);
+    const pct=Math.max(0,Math.min(100,Number(row.pct||0)));
+    const avg=Number(row.avgSecondsPerMatch||0);
+    const cleanPct=Number(pct.toFixed(1));
+    return '<div class="breakdown-class-row">'+
+      '<div class="breakdown-class-main">'+
+        '<strong>'+escapeHtml(classDisplayName(row.class||row.class_name||"-"))+'</strong>'+
+        '<span>'+escapeHtml(formatBreakdownTime(seconds))+' tracked</span>'+
+      '</div>'+
+      '<div class="breakdown-class-track" aria-hidden="true"><i style="width:'+escapeAttr(String(cleanPct))+'%"></i></div>'+
+      '<div class="breakdown-class-meta">'+
+        '<b>'+escapeHtml(formatBreakdownPct(cleanPct))+'</b>'+
+        '<span>'+escapeHtml(fmt(row.matches))+' matches</span>'+
+        '<span>Avg '+escapeHtml(formatBreakdownTime(avg))+'</span>'+
+      '</div>'+
+    '</div>';
+  }).join("")+'</div>';
+}
+
+function renderBreakdownStats(stats){
+  return '<div class="breakdown-stat-grid">'+BREAKDOWN_STAT_ROWS.map(([label,key])=>
+    '<div class="breakdown-stat-tile">'+
+      '<span>'+escapeHtml(label)+'</span>'+
+      '<strong>'+escapeHtml(formatBreakdownValue(key,stats?.[key],currentBreakdownMode))+'</strong>'+
+    '</div>'
+  ).join("")+'</div>';
+}
+
+function renderBreakdownWeapons(rows){
+  const weapons=Array.isArray(rows)?rows:[];
+  if(!weapons.length)return '<div class="breakdown-empty">No weapon usage tracked yet.</div>';
+  const overallMatches=getOverallBreakdownMatches();
+  const avgSuffix=currentBreakdownFilter==="overall"?"":" overall";
+  return '<div class="breakdown-weapon-list">'+weapons.map(row=>{
+    const value=currentBreakdownMode==="perMatch"
+      ? formatWeaponKillsPerMatch(row.kills,overallMatches).replace(" / match"," /"+avgSuffix+" match")
+      : fmt(row.kills)+" kills";
+    return '<div class="breakdown-weapon-row">'+
+      '<span class="breakdown-weapon-name">'+
+        '<i class="weapon-icon '+escapeAttr(row.weapon||"")+'"></i>'+
+        '<b>'+escapeHtml(playerWeaponName(row.weapon||"-"))+'</b>'+
+      '</span>'+
+      '<strong>'+escapeHtml(value)+'</strong>'+
+    '</div>';
+  }).join("")+'</div>';
+}
+
+function renderPlayerBreakdown(data){
+  bindBreakdownControls();
+  currentBreakdown=data&&data.stats?data:null;
+  syncBreakdownButtons();
+  renderBreakdownTabs(currentBreakdown);
+
+  const body=qs("player-breakdown-body");
+  if(!body)return;
+
+  const hasData=!!currentBreakdown&&(
+    Number(currentBreakdown.sample?.matches||0)>0 ||
+    Number(currentBreakdown.sample?.rounds||0)>0 ||
+    (Array.isArray(currentBreakdown.classes)&&currentBreakdown.classes.length>0) ||
+    (Array.isArray(currentBreakdown.weapons)&&currentBreakdown.weapons.length>0)
   );
 
-  if(mostPlayed){
-    mapCard("snapshot-most-played","Most Played Map",mostPlayed,"Largest completed map sample");
-  }else{
-    setHtml("snapshot-most-played",'<span class="snapshot-label">Most Played Map</span><strong>No map data yet</strong><small>Completed map sample unavailable</small>');
-  }
-  mapCard("snapshot-strongest-results","Strongest Results",extremes.best,"Minimum 5 completed games");
-  mapCard("snapshot-toughest-results","Toughest Results",extremes.worst,"Team result trend, not individual blame.");
-
-  const teammateElos=[];
-  const playerElos=[];
-  recentCompleted.forEach(match=>{
-    const team=getPlayerTeam(match,playerId);
-    const teammates=team==="BLUE"?(match.blueTeam||[]):team==="RED"?(match.redTeam||[]):[];
-    teammates.forEach(player=>{
-      if(String(player.id)===String(playerId))return;
-      const elo=Number(player.before);
-      if(Number.isFinite(elo)&&elo>0)teammateElos.push(elo);
-    });
-    const playerElo=Number(match.before);
-    if(Number.isFinite(playerElo)&&playerElo>0)playerElos.push(playerElo);
-  });
-
-  if(teammateElos.length){
-    const teammateAvg=Math.round(teammateElos.reduce((sum,elo)=>sum+elo,0)/teammateElos.length);
-    const playerAvg=playerElos.length
-      ? Math.round(playerElos.reduce((sum,elo)=>sum+elo,0)/playerElos.length)
-      : null;
-    const difference=playerAvg===null?null:teammateAvg-playerAvg;
-    setHtml("snapshot-team-context",
-      '<span class="snapshot-label">Team Context</span>'+
-      '<strong>Avg teammate Elo '+teammateAvg+'</strong>'+
-      '<div class="snapshot-stat-line">'+
-        (playerAvg===null?"":'<span>Player avg '+playerAvg+'</span>')+
-        (difference===null?"":'<span>Team gap '+(difference>0?"+":"")+difference+'</span>')+
-      '</div>'+
-      '<small>'+teammateElos.length+' visible teammate rating'+(teammateElos.length===1?"":"s")+' across the last '+recentCompleted.length+' completed match'+(recentCompleted.length===1?"":"es")+'.</small>'
-    );
-  }else{
-    setHtml("snapshot-team-context",
-      '<span class="snapshot-label">Team Context</span>'+
-      '<strong>Team context unavailable</strong>'+
-      '<small>No visible teammate Elo values in the recent match sample.</small>'
-    );
-  }
-
-  if(!h.linked){
-    setHtml("snapshot-impact-profile",
-      '<span class="snapshot-label">Impact Profile</span>'+
-      '<strong>Hampalyzer data unavailable</strong>'+
-      '<small>'+(mainClass?escapeHtml(mainClass.name)+' is the most tracked class.':"No tracked class identity yet.")+'</small>'
-    );
+  if(!hasData){
+    body.innerHTML='<div class="empty-v3">No breakdown data yet</div>';
     return;
   }
 
-  const impactParts=[
-    'KDR '+String(h.kdr??"-"),
-    compact(h.damage)+' enemy damage',
-    fmt(h.caps)+' caps',
-    fmt(h.touches)+' touches'
-  ];
-  setHtml("snapshot-impact-profile",
-    '<span class="snapshot-label">Impact Profile</span>'+
-    '<strong>'+(mainClass?escapeHtml(mainClass.name):"Mixed class identity")+'</strong>'+
-    '<div class="snapshot-impact-metrics">'+impactParts.map(part=>'<span>'+escapeHtml(part)+'</span>').join("")+'</div>'+
-    '<small>Neutral profile from '+fmt(h.matches)+' tracked matches.</small>'
-  );
+  const statBucket=currentBreakdown.stats?.[currentBreakdownFilter]||currentBreakdown.stats?.overall||{};
+  const selectedStats=currentBreakdownMode==="perMatch"?(statBucket.perMatch||{}):(statBucket.totals||{});
+  const sample=currentBreakdown.sample||{};
+  const splitNote=currentBreakdownFilter==="overall"
+    ? fmt(sample.matches)+" tracked matches"
+    : fmt(sample.splits?.[currentBreakdownFilter]?.matches)+" split matches";
+
+  body.innerHTML=
+    '<section class="breakdown-section breakdown-classes">'+
+      '<div class="breakdown-section-head"><h3>Classes Played</h3><span>'+escapeHtml(fmt(Array.isArray(currentBreakdown.classes)?currentBreakdown.classes.length:0))+' classes</span></div>'+
+      '<div class="breakdown-panel-scroll">'+renderBreakdownClasses(currentBreakdown.classes)+'</div>'+
+    '</section>'+
+    '<section class="breakdown-section breakdown-core">'+
+      '<div class="breakdown-section-head"><h3>Core Stats</h3><span>'+escapeHtml(splitNote)+'</span></div>'+
+      '<div class="breakdown-panel-scroll">'+renderBreakdownStats(selectedStats)+'</div>'+
+    '</section>'+
+    '<section class="breakdown-section breakdown-weapons">'+
+      '<div class="breakdown-section-head"><h3>Weapons Used</h3><span>'+escapeHtml(fmt(Array.isArray(currentBreakdown.weapons)?currentBreakdown.weapons.length:0))+' weapons</span></div>'+
+      '<div class="breakdown-panel-scroll">'+renderBreakdownWeapons(currentBreakdown.weapons)+'</div>'+
+    '</section>';
 }
 
 function renderMapFrequency(rows){

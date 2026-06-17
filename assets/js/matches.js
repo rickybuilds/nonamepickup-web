@@ -419,6 +419,19 @@
     return `${blue} - ${red}`;
   }
 
+  function fitTopMapKpi() {
+    const el = $("m2-top-map");
+    if (!el) return;
+    el.style.fontSize = "";
+    const base = Number.parseFloat(getComputedStyle(el).fontSize) || 33;
+    const min = 18;
+    let size = base;
+    while (el.scrollWidth > el.clientWidth && size > min) {
+      size -= 1;
+      el.style.fontSize = `${size}px`;
+    }
+  }
+
   async function loadKpis() {
     const [summary, outcomes, maps] = await Promise.all([
       getJSON("/api/stats/summary"),
@@ -438,7 +451,10 @@
       const pct = o.total ? ((Number(o.ties || 0) / Number(o.total)) * 100).toFixed(1) : "—";
       $("m2-tie-pct").textContent = pct === "—" ? "—" : `${pct}% of matches`;
     }
-    if ($("m2-top-map")) $("m2-top-map").textContent = topMap?.map || "—";
+    if ($("m2-top-map")) {
+      $("m2-top-map").textContent = topMap?.map || "—";
+      fitTopMapKpi();
+    }
     if ($("m2-top-map-games")) $("m2-top-map-games").textContent = topMap ? `${topMap.games} games` : "—";
     if ($("m2-avg-score")) $("m2-avg-score").textContent = calcAverageScore(state.all);
   }
@@ -473,6 +489,8 @@
       state.expandedMatchId = null;
       applyFilters(true);
     });
+
+    window.addEventListener("resize", fitTopMapKpi);
 
     $("m2-prev-page")?.addEventListener("click", () => {
       if (state.currentPage <= 1) return;

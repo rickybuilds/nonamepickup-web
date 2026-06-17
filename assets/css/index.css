@@ -921,7 +921,13 @@ filter:
   }
 
   .kpi-class-art {
-    display: none;
+    display: block;
+    right: 10px;
+    bottom: -24px;
+    width: min(36%, 92px);
+    height: 115%;
+    opacity: .45;
+    pointer-events: none;
   }
 
   .main-grid > .home-panel {

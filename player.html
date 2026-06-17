@@ -84,18 +84,24 @@
       <div><span>Damage</span><strong id="kpi-damage" class="purple">—</strong></div>
     </section>
 
-    <section class="v3-card player-intel-card">
-      <div class="v3-card-header player-intel-header">
-        <div><h2>Player Snapshot</h2><span>Context, tendencies, and recent form</span></div>
+    <section id="player-breakdown-card" class="v3-card player-intel-card player-breakdown-card">
+      <div class="player-breakdown-wip" aria-hidden="true">
+        <strong>WORK IN PROGRESS</strong>
+        <span>Granular class + weapon attribution coming soon</span>
+      </div>
+      <div class="v3-card-header player-intel-header player-breakdown-header">
+        <div><h2>Player Breakdown</h2><span>Hampalyzer totals and role splits</span></div>
+        <div class="breakdown-controls" aria-label="Player breakdown controls">
+          <div class="breakdown-toggle" role="group" aria-label="Breakdown mode">
+            <button type="button" class="breakdown-mode active" data-breakdown-mode="totals">Lifetime</button>
+            <button type="button" class="breakdown-mode" data-breakdown-mode="perMatch">Per Match Avg</button>
+          </div>
+          <div id="breakdown-tabs" class="breakdown-tabs" role="tablist" aria-label="Breakdown split"></div>
+        </div>
       </div>
 
-      <div class="player-snapshot-grid">
-        <article id="snapshot-recent-form" class="player-snapshot-card"></article>
-        <article id="snapshot-most-played" class="player-snapshot-card"></article>
-        <article id="snapshot-strongest-results" class="player-snapshot-card"></article>
-        <article id="snapshot-toughest-results" class="player-snapshot-card"></article>
-        <article id="snapshot-team-context" class="player-snapshot-card"></article>
-        <article id="snapshot-impact-profile" class="player-snapshot-card snapshot-impact-card"></article>
+      <div id="player-breakdown-body" class="player-breakdown-body">
+        <div class="empty-v3">Loading player breakdown...</div>
       </div>
     </section>
 
