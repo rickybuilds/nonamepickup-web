@@ -3,39 +3,6 @@
   position: relative;
 }
 
-.map-v2-page main,
-.map-page main {
-  width: min(calc(100% - (var(--page-gutter-desktop) * 2)), 2200px);
-  max-width: 2200px !important;
-  position: relative;
-  z-index: 1;
-  margin-inline: auto;
-}
-
-.map-v2-page main {
-  width: min(calc(100% - (var(--page-gutter-desktop) * 2)), 2200px);
-  max-width: 2200px !important;
-  position: relative;
-  z-index: 1;
-  margin-inline: auto;
-}
-
-.map-v2-shell {
-  position: relative;
-  overflow: visible;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.map-v2-shell::before {
-  display: none;
-  content: none;
-}
-
 .map-v2-hero,
 .map-v2-kpis,
 .map-v2-top-grid,
@@ -252,7 +219,7 @@
 .tag-red { color: #fb7185; background: rgba(190,18,60,.18); border: 1px solid rgba(251,113,133,.34); }
 
 .map-v2-actions {
-  display: flex;
+  display: none !important;
   gap: 14px;
   justify-content: flex-end;
   align-items: flex-start;
@@ -620,19 +587,12 @@
   .map-v2-hero { grid-template-columns: 1fr; }
   .map-v2-thumb-wrap { width: 100%; height: 240px; min-width: 0; }
   .map-v2-hero-intel { width: 100%; grid-template-columns: 1fr; grid-template-rows: auto; }
-  .map-v2-actions { justify-content: flex-start; }
   .map-v2-kpis { grid-template-columns: 1fr; }
   .rivalry-grid { grid-template-columns: 1fr; }
   .outcome-layout { grid-template-columns: 1fr; }
   .donut-box { height: 220px; }
-  .map-v2-shell { padding: 0; }
 }
 
-
-/* mapnew2 update: controls removed, page always displays all loaded matches */
-.map-v2-actions {
-  display: none !important;
-}
 
 .map-v2-page,
 .map-page {
@@ -640,10 +600,6 @@
 }
 
 @media(max-width:700px){
-
-.map-v2-page main,.map-page main{width:calc(100% - (var(--mobile-page-gutter) * 2))!important;margin-inline:auto!important;padding:10px 0 28px!important;overflow-x:visible;}
-
-.map-v2-shell{padding:0!important;border-radius:0!important;overflow:visible!important;max-width:100%;}
 
 .map-v2-hero{grid-template-columns:1fr!important;gap:12px;margin-bottom:12px;}
 

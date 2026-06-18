@@ -1,12 +1,7 @@
 /* ---------- Page shell ---------- */
 .player-v3-page,.player-v3-page *,.player-v3-page *::before,.player-v3-page *::after{box-sizing:border-box}
 .player-v3-page button{font-family:inherit}
-.player-v3-main{position:relative;z-index:1;width:min(calc(100% - (var(--page-gutter-desktop) * 2)),1760px);max-width:1760px;margin:0 auto;padding:28px 0 34px}
-.player-v3-shell{position:relative;overflow:visible;border-radius:0;padding:0;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
-.player-v3-shell::before{display:none;content:none}
-.player-v3-shell::after{display:none;content:none}
-.player-v3-shell>*{position:relative;z-index:1}
-.player-v3-main,.player-v3-shell,.player-v3-hero,.v3-card,.v3-kpi-strip,.player-granular-card,.granular-grid,.granular-panel,.v3-hampa-grid,.v3-class-lab,.v3-main-grid,.v3-bottom-grid{min-width:0}
+.player-v3-hero,.v3-card,.v3-kpi-strip,.player-granular-card,.granular-grid,.granular-panel,.v3-hampa-grid,.v3-class-lab,.v3-main-grid,.v3-bottom-grid{min-width:0}
 .v3-card,.v3-kpi-strip,.player-granular-card,.granular-panel{max-width:100%}
 
 /* ---------- Hero ---------- */
@@ -105,6 +100,124 @@
 .granular-event-badges i.official{border-color:rgba(34,197,94,.25);color:#86efac}
 .granular-event-badges i.uncertain{border-color:rgba(251,146,60,.34);color:#fed7aa}
 .granular-load-more{align-self:center;margin-top:12px}
+.granular-class-toggle {
+  appearance: none;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+.granular-class-toggle::-moz-focus-inner {
+  border: 0;
+}
+.granular-class-summary{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+}
+.granular-class-name{
+  color:#67d8ff;
+  font-weight:800;
+  font-size:18px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.granular-class-meta,
+.granular-class-top{
+  color:#93a4bd;
+  font-size:12px;
+  line-height:1.3;
+}
+.granular-class-summary b {
+  color: #67d8ff;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.granular-class-summary span {
+  color: #93a4bd;
+  font-size: 12px;
+}
+.granular-class-weapons {
+  display: none;
+  margin-top: 10px;
+}
+.granular-class-group.open .granular-class-weapons {
+  display: grid;
+  gap: 8px;
+}
+.granular-objective-toggle {
+  appearance: none;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+.granular-objective-toggle::-moz-focus-inner {
+  border: 0;
+}
+.granular-objective-weapons {
+  display: none;
+  margin-top: 10px;
+}
+.granular-objective-group.open .granular-objective-weapons {
+  display: grid;
+  gap: 8px;
+}
+.granular-objective-class-group {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(56, 189, 248, .16);
+  border-radius: 12px;
+  background: rgba(2, 8, 23, .28);
+}
+.granular-objective-class-group + .granular-objective-class-group {
+  margin-top: 10px;
+}
+.granular-objective-class-head strong {
+  color: #67d8ff;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.granular-objective-class-head span {
+  color: #91a4bd;
+  font-size: 11px;
+}
+.granular-objective-group {
+  cursor: default;
+}
+.granular-objective-class-head {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 2px 2px 4px;
+}
+.granular-objective-class-weapons {
+  display: none;
+  margin-top: 8px;
+}
+.granular-objective-class-group.open .granular-objective-class-weapons {
+  display: grid;
+  gap: 8px;
+}
 @media(max-width:1200px){
   .granular-grid{grid-template-columns:1fr 1fr}
   .granular-events-panel{grid-column:1 / -1}
@@ -334,8 +447,6 @@
 }
 
 @media(max-width:800px){
-  .player-v3-main{width:calc(100% - (var(--mobile-page-gutter) * 2))!important;margin-inline:auto!important;padding:10px 0 28px!important}
-  .player-v3-shell{width:100%;padding:0!important;border-radius:0!important;overflow:visible!important}
   .player-v3-hero,.v3-kpi-strip,.player-granular-card,.granular-grid,.granular-panel,.granular-event-row,.v3-hampa-grid,.v3-class-lab,.v3-main-grid,.v3-bottom-grid,.activity-heatmap,.recent-match-list,.recent-match-row,#top-weapons,.match-drawer-body{min-width:0;max-width:100%}
   .identity-card{flex-direction:column!important;align-items:center!important;text-align:center!important;min-height:0!important;padding:16px!important}
   #player-name-v3{
@@ -411,147 +522,4 @@
   .drawer-table{display:block;overflow-x:auto}
   .drawer-round-head{align-items:flex-start;flex-direction:column}
   .drawer-round-head span{text-align:left}
-}
-
-.granular-class-toggle {
-  appearance: none;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 0;
-}
-
-.granular-class-toggle::-moz-focus-inner {
-  border: 0;
-}
-
-.granular-class-summary{
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  gap:2px;
-}
-
-.granular-class-name{
-  color:#67d8ff;
-  font-weight:800;
-  font-size:18px;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-}
-
-.granular-class-meta,
-.granular-class-top{
-  color:#93a4bd;
-  font-size:12px;
-  line-height:1.3;
-}
-
-.granular-class-summary b {
-  color: #67d8ff;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.granular-class-summary span {
-  color: #93a4bd;
-  font-size: 12px;
-}
-
-.granular-class-weapons {
-  display: none;
-  margin-top: 10px;
-}
-
-.granular-class-group.open .granular-class-weapons {
-  display: grid;
-  gap: 8px;
-}
-
-.granular-objective-toggle {
-  appearance: none;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 0;
-}
-
-.granular-objective-toggle::-moz-focus-inner {
-  border: 0;
-}
-
-.granular-objective-weapons {
-  display: none;
-  margin-top: 10px;
-}
-
-.granular-objective-group.open .granular-objective-weapons {
-  display: grid;
-  gap: 8px;
-}
-
-.granular-objective-class-group {
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid rgba(56, 189, 248, .16);
-  border-radius: 12px;
-  background: rgba(2, 8, 23, .28);
-}
-
-.granular-objective-class-group + .granular-objective-class-group {
-  margin-top: 10px;
-}
-
-.granular-objective-class-head strong {
-  color: #67d8ff;
-  font-size: 13px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.granular-objective-class-head span {
-  color: #91a4bd;
-  font-size: 11px;
-}
-
-.granular-objective-group {
-  cursor: default;
-}
-
-.granular-objective-toggle,
-.granular-objective-class-head {
-  cursor: pointer;
-}
-
-.granular-objective-class-head {
-  appearance: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  padding: 2px 2px 4px;
-}
-
-.granular-objective-class-weapons {
-  display: none;
-  margin-top: 8px;
-}
-
-.granular-objective-class-group.open .granular-objective-class-weapons {
-  display: grid;
-  gap: 8px;
 }

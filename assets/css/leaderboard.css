@@ -2,22 +2,6 @@
   color: #dbeafe;
 }
 
-.leaderboard-shell {
-  position: relative;
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.leaderboard-shell::before {
-  display: none;
-  content: none;
-}
-
 .leaderboard-hero {
   position: relative;
   z-index: 1;
@@ -262,19 +246,6 @@
 }
 
 @media (max-width: 700px) {
-  .leaderboard-page main {
-    width: calc(100% - (var(--mobile-page-gutter) * 2));
-    margin-inline: auto;
-    padding: 10px 0 28px;
-    overflow-x: visible;
-  }
-
-  .leaderboard-shell {
-    max-width: 100%;
-    padding: 0;
-    border-radius: 0;
-  }
-
   .leaderboard-summary {
     grid-template-columns: 1fr;
   }

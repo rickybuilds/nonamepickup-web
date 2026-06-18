@@ -14,6 +14,7 @@
   --shell-sheen-color:rgba(251,146,60,.06);
 }
 .live2-page{
+  --page-main-width:2200px;
   --shell-border:rgba(251,146,60,.30);
   --shell-glow:rgba(251,146,60,.15);
   --shell-blur:8px;
