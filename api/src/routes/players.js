@@ -442,20 +442,28 @@ function buildGranularPlayerPayload(identity,options={}){
     `).all(...identityWhere.params,...OFFICIAL_KILL_CLASS_CONFIDENCES,...matchParams,limit));
 
     const favoriteVictims=timedGranularQuery(`${timingPrefix}:favoriteVictims`,()=>db.prepare(`
-      SELECT
-        e.victim_discord_id,
-        e.victim_steam_id,
-        e.victim_key,
-        COALESCE(NULLIF(MAX(e.victim_name),''),NULLIF(MIN(e.victim_name),''),NULLIF(e.victim_key,''),'Unknown') AS victim_name,
-        COUNT(*) AS kills
-      FROM match_kill_events e
-      WHERE ${identityWhere.sql}
-        AND COALESCE(e.is_enemy_kill,1)=1
-        ${matchFilter}
-      GROUP BY e.victim_discord_id,e.victim_steam_id,e.victim_key
-      ORDER BY kills DESC,victim_name
-      LIMIT 25
-    `).all(...identityWhere.params,...matchParams));
+    SELECT
+      e.victim_discord_id,
+      e.victim_steam_id,
+      e.victim_key,
+      COALESCE(
+        NULLIF(r.display_name,''),
+        NULLIF(MAX(e.victim_name),''),
+        NULLIF(MIN(e.victim_name),''),
+        NULLIF(e.victim_key,''),
+        'Unknown'
+      ) AS victim_name,
+      COUNT(*) AS kills
+    FROM match_kill_events e
+    LEFT JOIN ratings r
+      ON CAST(r.player_id AS TEXT)=CAST(e.victim_discord_id AS TEXT)
+    WHERE ${identityWhere.sql}
+      AND COALESCE(e.is_enemy_kill,1)=1
+      ${matchFilter}
+    GROUP BY e.victim_discord_id,e.victim_steam_id,e.victim_key
+    ORDER BY kills DESC,victim_name
+    LIMIT 25
+  `).all(...identityWhere.params,...matchParams));
 
     const aliasHistory=timedGranularQuery(`${timingPrefix}:aliasHistory`,()=>db.prepare(`
       SELECT

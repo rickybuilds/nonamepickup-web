@@ -1,37 +1,26 @@
 :root {
-  --page-hero-image: url("../../images/home/home-hero.webp");
+  --page-hero-image: url("/assets/images/headers/header-blue-01.webp");
   --page-hero-accent: rgba(77,166,255,.24);
   --page-hero-accent-2: rgba(251,146,60,.10);
 }
 
-.matches-page {
-  --page-hero-image: url("../../images/maps/raiden9.webp");
-}
-
-.leaderboard-page {
-  --page-hero-image: url("../../images/maps/phantom_lg.webp");
-}
-
-.analytics-page {
-  --page-hero-image: url("../../images/maps/nexus_b4.webp");
-}
-
-.compare-page {
-  --page-hero-image: url("../../images/maps/mortality_lg.webp");
-}
-
-.player-v3-page {
-  --page-hero-image: url("../../images/maps/monkey_lg.webp");
-}
-
-.map-v2-page,
-.map-page {
-  --page-hero-image: url("../../images/maps/voltage_lg.webp");
+.matches-page main.page-main-spacing,
+.leaderboard-page main.page-main-spacing,
+.analytics-page main.page-main-spacing,
+.map-v2-page main.page-main-spacing,
+.map-page main.page-main-spacing,
+.live2-page main.page-main-spacing,
+.live-page main.page-main-spacing,
+.compare-page main.compare-main,
+.player-v3-page main.player-v3-main,
+.matches-page main.match-main {
+  width: min(96vw, var(--page-main-width)) !important;
+  margin: 0 auto;
+  padding: 28px 0 34px !important;
 }
 
 .live2-page,
 .live-page {
-  --page-hero-image: url("../../images/maps/shutdown2_lg2.webp");
   --page-hero-accent: rgba(251,146,60,.42);
   --page-hero-accent-2: rgba(248,113,113,.18);
 }
@@ -81,11 +70,9 @@
   inset: 0;
   z-index: 0;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.035), transparent 36%),
-    linear-gradient(90deg, rgba(77,166,255,.10) 1px, transparent 1px),
-    linear-gradient(rgba(77,166,255,.08) 1px, transparent 1px);
-  background-size: auto, 42px 42px, 42px 42px;
-  opacity: .52;
+    radial-gradient(circle at 18% 24%, var(--page-hero-accent), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.04), transparent 36%);
+  opacity: .46;
   pointer-events: none;
 }
 
@@ -152,10 +139,8 @@
 .live2-page .live2-hero::before,
 .live-page .live2-hero::before {
   background:
-    radial-gradient(circle at 8% 28%, rgba(251,146,60,.24), transparent 18%),
-    linear-gradient(90deg, rgba(251,146,60,.12) 1px, transparent 1px),
-    linear-gradient(rgba(251,146,60,.08) 1px, transparent 1px);
-  background-size: auto, 42px 42px, 42px 42px;
+    radial-gradient(circle at 8% 28%, rgba(251,146,60,.28), transparent 20%),
+    radial-gradient(circle at 78% 12%, rgba(248,113,113,.14), transparent 34%);
 }
 
 @media (max-width: 900px) {
@@ -172,5 +157,19 @@
     min-height: 0;
     padding: 20px;
     border-radius: 22px;
+  }
+
+  .matches-page main.page-main-spacing,
+  .leaderboard-page main.page-main-spacing,
+  .analytics-page main.page-main-spacing,
+  .map-v2-page main.page-main-spacing,
+  .map-page main.page-main-spacing,
+  .live2-page main.page-main-spacing,
+  .live-page main.page-main-spacing,
+  .compare-page main.compare-main,
+  .player-v3-page main.player-v3-main,
+  .matches-page main.match-main {
+    width: calc(100vw - 16px) !important;
+    padding-top: 16px !important;
   }
 }

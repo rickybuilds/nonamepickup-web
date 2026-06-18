@@ -23,6 +23,9 @@ let granularEventsLoading=false;
 let granularEventsLoaded=false;
 let granularEventsObserver=null;
 let granularRequestSeq=0;
+let granularOpenClassKeys=new Set();
+let granularOpenObjectiveKeys=new Set();
+let granularOpenObjectiveClassKeys=new Set();
 const nn = window.nnHelpers || {};
 const playerFormatSeconds = nn.formatSeconds || (s => `${Number(s || 0)}s`);
 const playerNormName = nn.normName || (v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
@@ -127,12 +130,19 @@ function getPlayerResult(match,playerId){
 }
 
 function fitPlayerName(){
-  const el=qs("player-name-v3");
+  const el=document.getElementById("player-name-v3");
   if(!el)return;
-  let size=64;
+
+  let size = window.innerWidth <= 800 ? 32 : 64;
+  const minSize = window.innerWidth <= 800 ? 18 : 24;
+
   el.style.lineHeight="1.08";
+  el.style.whiteSpace="nowrap";
+  el.style.overflow="hidden";
+  el.style.textOverflow="ellipsis";
   el.style.fontSize=size+"px";
-  while(el.scrollWidth>el.clientWidth&&size>24){
+
+  while(el.scrollWidth > el.clientWidth && size > minSize){
     size--;
     el.style.fontSize=size+"px";
   }
@@ -736,13 +746,31 @@ function renderGranularClassWeapons(rows){
   const displayRows=aggregateGranularWeaponRows(rows)
     .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
   const groups=groupRows(displayRows,"displayClass");
-  const classNames=Object.keys(groups);
+  const classNames=Object.keys(groups)
+    .sort((a,b)=>{
+      const aKills=groups[a].reduce((sum,row)=>sum+Number(row.kills||0),0);
+      const bKills=groups[b].reduce((sum,row)=>sum+Number(row.kills||0),0);
+      return bKills-aKills||String(a).localeCompare(String(b));
+    });
+
   if(!classNames.length)return '<div class="granular-empty">No class weapon kills found.</div>';
+
   return classNames.map(className=>{
-    const total=groups[className].reduce((sum,row)=>sum+Number(row.kills||0),0);
-    return '<article class="granular-group">'+
-      '<div class="granular-group-head"><strong>'+escapeHtml(classDisplayName(className))+'</strong><span>'+fmt(total)+' kills</span></div>'+
-      groups[className].slice(0,8).map(row=>granularWeaponRow(row)).join("")+
+    const classRows=groups[className]
+      .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
+    const total=classRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
+    const classKey=normalizeGranularClass(className);
+    const isOpen=granularOpenClassKeys.has(classKey);
+    const topWeapon=classRows[0]?.weapon?playerWeaponName(classRows[0].weapon):"-";
+
+    return '<article class="granular-group granular-class-group '+(isOpen?"open":"")+'" data-granular-class-key="'+escapeAttr(classKey)+'">'+
+      '<button type="button" class="granular-group-head granular-class-toggle" data-granular-class-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
+        '<div class="granular-class-summary">'+
+          '<strong class="granular-class-name">'+escapeHtml(classDisplayName(className))+'</strong>'+
+          '<span class="granular-class-meta">'+fmt(total)+' kills • '+fmt(classRows.length)+' weapons • top: '+escapeHtml(topWeapon)+'</span>'+
+        '</div>'+
+      '</button>'+
+      '<div class="granular-class-weapons" '+(isOpen?"":'hidden')+'>'+classRows.slice(0,8).map(row=>granularWeaponRow(row)).join("")+'</div>'+
     '</article>';
   }).join("");
 }
@@ -770,21 +798,61 @@ function granularClassLabel(className){
   return GRANULAR_CLASS_LABELS[cls]||classDisplayName(cls);
 }
 
+function renderObjectiveClassWeaponGroups(rows,objectiveKey){
+  const groups=groupRows(rows,"displayClass");
+  const classNames=Object.keys(groups)
+    .sort((a,b)=>{
+      const aKills=groups[a].reduce((sum,row)=>sum+Number(row.kills||0),0);
+      const bKills=groups[b].reduce((sum,row)=>sum+Number(row.kills||0),0);
+      return bKills-aKills||String(a).localeCompare(String(b));
+    });
+
+  return classNames.map(className=>{
+    const classRows=groups[className]
+      .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
+    const total=classRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
+    const classKey=objectiveKey+"|"+normalizeGranularClass(className);
+    const isOpen=granularOpenObjectiveClassKeys.has(classKey);
+
+    return '<div class="granular-objective-class-group '+(isOpen?"open":"")+'" data-granular-objective-class-key="'+escapeAttr(classKey)+'">'+
+      '<button type="button" class="granular-objective-class-head" data-granular-objective-class-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
+        '<strong>'+escapeHtml(classDisplayName(className))+'</strong>'+
+        '<span>'+fmt(total)+' kills • '+fmt(classRows.length)+' weapons</span>'+
+      '</button>'+
+      '<div class="granular-objective-class-weapons" '+(isOpen?"":'hidden')+'>'+
+        classRows.slice(0,6).map(row=>granularWeaponRow(row)).join("")+
+      '</div>'+
+    '</div>';
+  }).join("");
+}
+
 function renderGranularSpecialKills(flagRows,concedRows){
   const hasFlag=Array.isArray(flagRows)&&flagRows.length;
   const hasConced=Array.isArray(concedRows)&&concedRows.length;
   if(!hasFlag&&!hasConced)return '<div class="granular-empty">No objective kill events found.</div>';
-  function block(title,rows){
+
+  function block(title,rows,key){
     const safeRows=aggregateGranularWeaponRows(rows)
       .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
-    return '<article class="granular-mini-block">'+
-      '<div class="granular-group-head"><strong>'+escapeHtml(title)+'</strong><span>'+fmt(safeRows.reduce((sum,row)=>sum+Number(row.kills||0),0))+' kills</span></div>'+
-      (safeRows.length?safeRows.slice(0,6).map(row=>{
-        return granularWeaponRow(row,row.displayClass||granularDisplayClassForWeapon(row.weapon,row.class));
-      }).join(""):'<div class="granular-empty">No '+escapeHtml(title.toLowerCase())+' found.</div>')+
+
+    const total=safeRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
+    const topWeapon=safeRows[0]?.weapon?playerWeaponName(safeRows[0].weapon):"-";
+    const isOpen=granularOpenObjectiveKeys.has(key);
+
+    return '<article class="granular-mini-block granular-objective-group '+(isOpen?"open":"")+'" data-granular-objective-key="'+escapeAttr(key)+'">'+
+      '<button type="button" class="granular-group-head granular-objective-toggle" data-granular-objective-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
+        '<div class="granular-class-summary">'+
+          '<strong class="granular-class-name">'+escapeHtml(title)+'</strong>'+
+          '<span class="granular-class-meta">'+fmt(total)+' kills • '+fmt(safeRows.length)+' weapons • top: '+escapeHtml(topWeapon)+'</span>'+
+        '</div>'+
+      '</button>'+
+      '<div class="granular-objective-weapons" '+(isOpen?"":'hidden')+'>'+
+        (safeRows.length?renderObjectiveClassWeaponGroups(safeRows,key):'<div class="granular-empty">No '+escapeHtml(title.toLowerCase())+' found.</div>')+
+      '</div>'+
     '</article>';
   }
-  return block("Flag Carrier Kills",flagRows)+block("Conced Kills",concedRows);
+
+  return block("Flag Carrier Kills",flagRows,"flag")+block("Conced Kills",concedRows,"conced");
 }
 
 function renderGranularVictims(rows){
@@ -884,6 +952,8 @@ function resetGranularState(){
   currentGranular=null;
   currentGranularEvents=null;
   granularMatchFilter="";
+  granularOpenClassKeys=new Set();
+  granularOpenObjectiveKeys=new Set();
   granularSummaryLoading=false;
   granularSampleLoading=false;
   granularSampleLoaded=false;
@@ -1057,11 +1127,68 @@ function bindGranularControls(){
     reloadGranularForActiveFilter();
   });
   card.addEventListener("click",event=>{
+    const classToggle=event.target.closest("[data-granular-class-toggle]");
+    if(classToggle){
+      const group=classToggle.closest(".granular-class-group");
+      const weapons=group?.querySelector(".granular-class-weapons");
+      const classKey=group?.dataset?.granularClassKey||"";
+      const isOpen=!group.classList.contains("open");
+      group?.classList.toggle("open",isOpen);
+      if(weapons)weapons.hidden=!isOpen;
+      classToggle.setAttribute("aria-expanded",isOpen?"true":"false");
+      if(classKey){
+        if(isOpen)granularOpenClassKeys.add(classKey);
+        else granularOpenClassKeys.delete(classKey);
+      }
+      if(isOpen&&group)hydrateLazyWeaponIcons(group);
+      return;
+    }
+
     const loadEvents=event.target.closest("[data-granular-load-events]");
     if(loadEvents){
       loadGranularEvents(0,false);
       return;
     }
+
+      const objectiveToggle=event.target.closest("[data-granular-objective-toggle]");
+        if(objectiveToggle){
+          const group=objectiveToggle.closest(".granular-objective-group");
+          const weapons=group?.querySelector(".granular-objective-weapons");
+          const key=group?.dataset?.granularObjectiveKey||"";
+          const isOpen=!group.classList.contains("open");
+
+          group?.classList.toggle("open",isOpen);
+          if(weapons)weapons.hidden=!isOpen;
+          objectiveToggle.setAttribute("aria-expanded",isOpen?"true":"false");
+
+          if(key){
+            if(isOpen)granularOpenObjectiveKeys.add(key);
+            else granularOpenObjectiveKeys.delete(key);
+          }
+
+          if(isOpen&&group)hydrateLazyWeaponIcons(group);
+          return;
+        }
+        const objectiveClassToggle=event.target.closest("[data-granular-objective-class-toggle]");
+          if(objectiveClassToggle){
+            const group=objectiveClassToggle.closest(".granular-objective-class-group");
+            const weapons=group?.querySelector(".granular-objective-class-weapons");
+            const key=group?.dataset?.granularObjectiveClassKey||"";
+            const isOpen=!group.classList.contains("open");
+
+            group?.classList.toggle("open",isOpen);
+            if(weapons)weapons.hidden=!isOpen;
+            objectiveClassToggle.setAttribute("aria-expanded",isOpen?"true":"false");
+
+            if(key){
+              if(isOpen)granularOpenObjectiveClassKeys.add(key);
+              else granularOpenObjectiveClassKeys.delete(key);
+            }
+
+            if(isOpen&&group)hydrateLazyWeaponIcons(group);
+            return;
+          }
+
     const loadMore=event.target.closest("[data-granular-load-more]");
     if(loadMore){
       const offset=Number(loadMore.dataset.granularLoadMore||0);

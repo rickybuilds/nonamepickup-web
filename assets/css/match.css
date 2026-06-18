@@ -4,8 +4,8 @@
    ========================================================= */
 
 .matches-page .match-main button{font-family:inherit}
-.match-main{position:relative;z-index:1;width:min(96vw,1760px);margin:0 auto;padding:34px 18px 52px}
-.match-shell{position:relative;overflow:visible;border-radius:0;padding:28px;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+.match-main{position:relative;z-index:1;width:min(96vw,1760px);margin:0 auto;padding:28px 0 34px}
+.match-shell{position:relative;overflow:visible;border-radius:0;padding:0;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
 .match-shell::before{display:none;content:none}
 .match-shell::after{display:none;content:none}
 .match-shell>*{position:relative;z-index:1}

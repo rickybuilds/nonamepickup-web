@@ -2,9 +2,13 @@
   min-height: 100vh;
   color: #fff;
   background:
-    radial-gradient(circle at 20% 20%, rgba(251, 146, 60, 0.18), transparent 35%),
-    radial-gradient(circle at 80% 30%, rgba(59, 130, 246, 0.15), transparent 35%),
-    linear-gradient(135deg, #050816, #0f172a);
+    radial-gradient(circle at 30% 20%, rgba(77,166,255,.08) 0%, transparent 50%),
+    radial-gradient(circle at 82% 8%, rgba(251,146,60,.08) 0%, transparent 42%),
+    linear-gradient(var(--page-grid-blue) 1px, transparent 1px),
+    linear-gradient(90deg, var(--page-grid-blue) 1px, transparent 1px),
+    var(--page-bg);
+  background-size: 200% 200%, 180% 180%, 42px 42px, 42px 42px, auto;
+  animation: bgShift 45s linear infinite;
 }
 
 .vegas-wrap {

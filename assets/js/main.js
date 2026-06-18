@@ -214,6 +214,39 @@ function applyRandomMapBackground(el, options = {}) {
   return mapName;
 }
 
+async function initRandomPageHero() {
+  const heroPages = [
+    "matches-page",
+    "leaderboard-page",
+    "analytics-page",
+    "compare-page",
+    "live2-page",
+    "live-page",
+    "player-v3-page",
+    "map-v2-page",
+    "map-page"
+  ];
+  if (!heroPages.some(className => document.body.classList.contains(className))) return;
+
+  try {
+    const res = await fetch("assets/images/headers/manifest.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const files = await res.json();
+    const headers = Array.isArray(files)
+      ? files.map(file => String(file || "").trim()).filter(file => file && !/[\\/]/.test(file))
+      : [];
+    if (!headers.length) return;
+
+    const picked = headers[Math.floor(Math.random() * headers.length)];
+    const cacheKey = Date.now().toString(36);
+    const heroImageUrl = `url("/assets/images/headers/${picked}?v=${cacheKey}")`;
+      document.documentElement.style.setProperty("--page-hero-image", heroImageUrl);
+      document.body.style.setProperty("--page-hero-image", heroImageUrl);
+  } catch {
+    // Keep the CSS fallback header if the manifest is unavailable.
+  }
+}
+
 window.nnHelpers = {
   ...(window.nnHelpers || {}),
   fetchJSON,
@@ -229,7 +262,8 @@ window.nnHelpers = {
   weaponName,
   avatarHtml,
   setMapImageFromName,
-  applyRandomMapBackground
+  applyRandomMapBackground,
+  initRandomPageHero
 };
 window.setMapImageFromName = setMapImageFromName;
 window.applyRandomMapBackground = applyRandomMapBackground;
@@ -928,6 +962,7 @@ window.supporterBadge=supporterBadge;
 // ==================== INIT ====================
 document.addEventListener("DOMContentLoaded",async()=>{
   // loadSupporters once, before any page-specific loaders
+  initRandomPageHero();
   await loadSupporters();
   initQueueToast();
   initGlobalSearch();
