@@ -19,7 +19,6 @@
 .record-line .good{color:#34d399}
 
 /* ---------- Cards / shared ---------- */
-.v3-card,.v3-kpi-strip{background:linear-gradient(145deg,rgba(15,23,42,.91),rgba(8,13,26,.93));border:1px solid rgba(77,166,255,.23);box-shadow:0 20px 48px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.025)}
 .v3-card{border-radius:22px;padding:22px}
 .v3-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:16px}
 .v3-card-header h2{margin:0;color:#dbeafe;font-size:18px;font-weight:950}
@@ -61,7 +60,7 @@
 .granular-summary-strip span{display:block;color:#8ea0c7;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
 .granular-summary-strip strong{display:block;margin-top:5px;color:#e5e7eb;font-size:20px;font-weight:950;line-height:1}
 .granular-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.granular-panel{min-width:0;border:1px solid rgba(77,166,255,.15);background:linear-gradient(145deg,rgba(15,23,42,.58),rgba(3,8,20,.42));border-radius:16px;padding:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);display:flex;flex-direction:column}
+.granular-panel{min-width:0;padding:14px;display:flex;flex-direction:column}
 .granular-panel-head{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
 .granular-panel-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
 .granular-panel-head span{color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;text-align:right}

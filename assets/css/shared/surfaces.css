@@ -89,3 +89,69 @@ thead th,
 .odds-grid div {
   background: var(--surface-bg) !important;
 }
+
+.v3-card,
+.v3-kpi-strip {
+  border:1px solid rgba(77,166,255,.23);
+  box-shadow:0 20px 48px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.granular-panel {
+  border:1px solid rgba(77,166,255,.15);
+  border-radius:16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.matches2-kpi {
+  border:1px solid rgba(77,166,255,.25);
+  border-radius:24px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 18px 35px rgba(0,0,0,.28);
+}
+
+.matches2-filter-bar {
+  border:1px solid rgba(77,166,255,.24);
+  border-radius:24px;
+  box-shadow:0 16px 36px rgba(0,0,0,.28);
+}
+
+.matches2-panel {
+  border:1px solid rgba(77,166,255,.24);
+  border-radius:28px;
+  box-shadow:0 20px 50px rgba(0,0,0,.35);
+}
+
+.live2-panel,
+.live2-match-card {
+  border:1px solid rgba(77,166,255,.22);
+  border-radius:28px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 22px 50px rgba(0,0,0,.36);
+}
+
+.map-v2-kpi,
+.map-v2-panel,
+.rivalry-card {
+  border:1px solid rgba(77,166,255,.22);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 22px 50px rgba(0,0,0,.36);
+}
+
+.analytics-card {
+  border:1px solid rgba(96,165,250,.18);
+  border-radius:20px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 18px 40px rgba(0,0,0,.2);
+}
+
+.leaderboard-summary article {
+  border:1px solid rgba(77,166,255,.28);
+  border-radius:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 18px 35px rgba(0,0,0,.28);
+}
+
+.leaderboard-toolbar {
+  border:1px solid rgba(148,163,184,.14);
+  border-radius:18px;
+}
+
+.leaderboard-table-wrap {
+  border:1px solid rgba(148,163,184,.12);
+  border-radius:20px;
+}
