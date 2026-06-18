@@ -1,6 +1,4 @@
 // =============================================
-// NoName TFC Pickups Player V3 Granular
-// Map-filtered class identity version
 // Path: /assets/js/player.js
 // =============================================
 
@@ -253,9 +251,9 @@ async function loadPlayerV3(){
   setText("steam-line",player.steam_id?"SteamID: "+player.steam_id:"SteamID: Not linked");
 
   setText("kpi-matches",fmt(ratings.games));
-  setText("kpi-wins",fmt(ratings.wins));
-  setText("kpi-losses",fmt(ratings.losses));
-  setText("kpi-ties",fmt(ratings.ties));
+  setText("kpi-peak-elo",ratings.hidden?"Hidden":ratings.peak_elo);
+  setText("kpi-best-streak",fmt(ratings.best_streak));
+  setText("kpi-pugs-week",ratings.pugs_per_week ?? "0.0");
   setText("kpi-winpct",(ratings.win_pct??0)+"%");
   const mvpGames=Number(h.mvp_games||0);
   const mvpPct=ratings.games>0? Math.round((mvpGames/ratings.games)*100): 0;

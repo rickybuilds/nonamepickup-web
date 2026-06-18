@@ -730,6 +730,55 @@ router.get("/player/:discordId/v3",(req,res)=>{
       WHERE rc.player_id=? AND m.status='completed'
     `).get(discordId);
 
+    const historyRows=db.prepare(`
+      SELECT
+        rc.match_id,
+        rc.before,
+        rc.after,
+        rc.delta,
+        rc.ts,
+        m.winner,
+        m.blue_ids,
+        m.red_ids
+      FROM rating_changes rc
+      LEFT JOIN matches m ON m.match_id=rc.match_id
+      WHERE rc.player_id=?
+        AND m.status='completed'
+      ORDER BY rc.ts ASC
+    `).all(discordId);
+
+    let peakElo=Number(player.rating||0);
+    let bestStreak=0;
+    let currentStreak=0;
+    let firstMatchTs=null;
+    let lastMatchTs=null;
+
+    for(const row of historyRows){
+      peakElo=Math.max(peakElo,Number(row.after||row.before||0));
+
+      if(!firstMatchTs)firstMatchTs=Number(row.ts||0);
+      lastMatchTs=Number(row.ts||0)||lastMatchTs;
+
+      let team=null;
+      try{
+        const blueIds=parseIdList(row.blue_ids);
+        const redIds=parseIdList(row.red_ids);
+        if(blueIds.includes(discordId))team="BLUE";
+        else if(redIds.includes(discordId))team="RED";
+      }catch{}
+
+      if(team&&row.winner===team){
+        currentStreak++;
+        bestStreak=Math.max(bestStreak,currentStreak);
+      }else if(row.winner&&row.winner!=="TIE"){
+        currentStreak=0;
+      }
+    }
+
+    const activeWeeks=firstMatchTs&&lastMatchTs
+      ? Math.max(1,(lastMatchTs-firstMatchTs)/604800)
+      : 1;
+
     const classMapRows=steamId?db.prepare(`
       SELECT
         m.map_name AS map,
@@ -811,7 +860,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
     const ties=Number(record?.ties||0);
     const games=wins+losses+ties;
     const decided=wins+losses;
-
+    const pugsPerWeek=games?Number((games/activeWeeks).toFixed(1)):0;
     const kills=Number(hStats?.kills||0);
     const deaths=Number(hStats?.deaths||0);
     const hMatches=Number(hStats?.matches||0);
@@ -841,6 +890,9 @@ router.get("/player/:discordId/v3",(req,res)=>{
           elo:player.hide_elo?null:player.rating,
           hidden:!!player.hide_elo,
           rank:player.hide_elo?null:Number(rankRow?.rank||0),
+          peak_elo:peakElo,
+          best_streak:bestStreak,
+          pugs_per_week:pugsPerWeek,
           wins,
           losses,
           ties,
