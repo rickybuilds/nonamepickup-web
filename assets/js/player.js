@@ -16,6 +16,8 @@ let currentGranular=null;
 let currentGranularEvents=null;
 let granularMatchFilter="";
 let granularSummaryLoading=false;
+let granularSampleLoading=false;
+let granularSampleLoaded=false;
 let granularEventsLoading=false;
 let granularEventsLoaded=false;
 let granularEventsObserver=null;
@@ -631,7 +633,9 @@ function granularWeaponRow(row,extra){
 }
 
 function fmtGranularSample(value){
-  return value===null||value===undefined?"-":fmt(value);
+  if(!granularSampleLoaded)return"Loading...";
+  if(value===null||value===undefined)return"-";
+  return fmt(value);
 }
 
 function renderGranularClassWeapons(rows){
@@ -739,6 +743,8 @@ function resetGranularState(){
   currentGranularEvents=null;
   granularMatchFilter="";
   granularSummaryLoading=false;
+  granularSampleLoading=false;
+  granularSampleLoaded=false;
   granularEventsLoading=false;
   granularEventsLoaded=false;
   if(granularEventsObserver){
@@ -783,8 +789,25 @@ function scheduleGranularSummaryLoad(playerId){
       currentGranular=result?.ok?result.data:null;
       renderPlayerGranular(currentGranular,null);
       observeGranularEvents();
+      scheduleGranularSampleLoad(requestedPlayerId);
     },0);
   });
+}
+
+async function scheduleGranularSampleLoad(playerId){
+  const requestedPlayerId=String(playerId||"");
+  if(!requestedPlayerId||granularSampleLoading||granularSampleLoaded||!currentGranular)return;
+  granularSampleLoading=true;
+  const url="/api/player/"+encodeURIComponent(requestedPlayerId)+"/granular?limit=50&includeSample=1";
+  const result=await fetchJSON(url);
+  granularSampleLoading=false;
+  granularSampleLoaded=true;
+  if(String(currentPlayerId)!==requestedPlayerId)return;
+  const sampled=result?.ok?result.data:null;
+  if(sampled?.sample&&currentGranular){
+    currentGranular={...currentGranular,sample:sampled.sample};
+  }
+  renderPlayerGranular(currentGranular);
 }
 
 function observeGranularEvents(){
