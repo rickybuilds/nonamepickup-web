@@ -443,7 +443,8 @@ function buildGranularPlayerPayload(identity,options={}){
       SELECT
         COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
         e.weapon,
-        COUNT(*) AS kills
+        COUNT(*) AS kills,
+        COUNT(DISTINCT e.match_id) AS matchesWithKill
       FROM match_kill_events e
       WHERE ${identityWhere.sql}
         AND ${officialWhere}
@@ -474,7 +475,8 @@ function buildGranularPlayerPayload(identity,options={}){
       SELECT
         COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
         e.weapon,
-        COUNT(*) AS kills
+        COUNT(*) AS kills,
+        COUNT(DISTINCT e.match_id) AS matchesWithKill
       FROM match_kill_events e
       WHERE ${identityWhere.sql}
         AND ${officialWhere}
@@ -489,7 +491,8 @@ function buildGranularPlayerPayload(identity,options={}){
       SELECT
         COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
         e.weapon,
-        COUNT(*) AS kills
+        COUNT(*) AS kills,
+        COUNT(DISTINCT e.match_id) AS matchesWithKill
       FROM match_kill_events e
       WHERE ${identityWhere.sql}
         AND ${officialWhere}
@@ -578,7 +581,11 @@ function buildGranularPlayerPayload(identity,options={}){
       classWeapons:classWeapons.map(row=>({
         class:row.class,
         weapon:row.weapon,
-        kills:Number(row.kills||0)
+        kills:Number(row.kills||0),
+        matchesWithKill:Number(row.matchesWithKill||0),
+        killsPerMatch:Number(row.matchesWithKill||0)>0
+          ? Number(row.kills||0)/Number(row.matchesWithKill||0)
+          : 0
       })),
       roleWeapons:roleWeapons.map(row=>({
         role:row.role,
@@ -589,12 +596,20 @@ function buildGranularPlayerPayload(identity,options={}){
       flagCarrierKills:flagCarrierKills.map(row=>({
         class:row.class,
         weapon:row.weapon,
-        kills:Number(row.kills||0)
+        kills:Number(row.kills||0),
+        matchesWithKill:Number(row.matchesWithKill||0),
+        killsPerMatch:Number(row.matchesWithKill||0)>0
+          ? Number(row.kills||0)/Number(row.matchesWithKill||0)
+          : 0
       })),
       concededKills:concededKills.map(row=>({
         class:row.class,
         weapon:row.weapon,
-        kills:Number(row.kills||0)
+        kills:Number(row.kills||0),
+        matchesWithKill:Number(row.matchesWithKill||0),
+        killsPerMatch:Number(row.matchesWithKill||0)>0
+          ? Number(row.kills||0)/Number(row.matchesWithKill||0)
+          : 0
       })),
       favoriteVictims:favoriteVictims.map(row=>({
         victimDiscordId:row.victim_discord_id||null,

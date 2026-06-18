@@ -13,9 +13,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260615">
   <link rel="stylesheet" href="assets/css/style.css?v=20260615">
-  <link rel="stylesheet" href="assets/css/player.css?v=20260615">
+  <link rel="stylesheet" href="assets/css/player.css?v=20260617d">
   <script src="assets/js/main.js?v=20260615" defer></script>
-  <script src="assets/js/player.js?v=20260615" defer></script>
+  <script src="assets/js/player.js?v=20260617i" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -87,11 +87,14 @@
     <section id="player-granular-card" class="v3-card player-granular-card">
       <div class="v3-card-header player-granular-header">
         <div>
-          <h2>Player V4 Granular</h2>
+          <h2>Kill Event Analysis</h2>
           <span>Built from individual Hampalyzer kill events with class attribution.</span>
         </div>
         <div class="granular-controls" aria-label="Granular event controls">
           <label for="granular-match-filter">Match ID</label>
+          <select id="granular-match-select" aria-label="Recent match filter" disabled>
+            <option value="">Recent matches unavailable</option>
+          </select>
           <input id="granular-match-filter" type="text" placeholder="Optional match filter">
           <button id="granular-match-apply" type="button">Apply</button>
           <button id="granular-match-clear" type="button">Clear</button>

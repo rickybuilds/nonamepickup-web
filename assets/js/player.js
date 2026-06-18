@@ -22,6 +22,7 @@ let granularSampleFailed=false;
 let granularEventsLoading=false;
 let granularEventsLoaded=false;
 let granularEventsObserver=null;
+let granularRequestSeq=0;
 const nn = window.nnHelpers || {};
 const playerFormatSeconds = nn.formatSeconds || (s => `${Number(s || 0)}s`);
 const playerNormName = nn.normName || (v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
@@ -267,6 +268,7 @@ async function loadPlayerV3(){
     .reverse();
 
   renderEloChartV3(eloValues,!!ratings.hidden);
+  populateGranularMatchSelect(recentRows);
   renderRecentMatches(recentRows,playerId,!!ratings.hidden);
   renderMapFrequency(permapRows);
   renderActivityHeatmaps(recentRows);
@@ -284,6 +286,16 @@ function formatMatchDate(ts){
     hour:"numeric",
     minute:"2-digit"
   });
+}
+
+function formatGranularMatchOption(row){
+  const matchId=getRecentMatchId(row);
+  const map=row?.map_name||row?.map||"Unknown map";
+  return matchId+" — "+map+" — "+formatMatchDate(row?.created_at);
+}
+
+function getRecentMatchId(row){
+  return String(row?.id||row?.match_id||row?.matchId||row?.match||"");
 }
 
 function renderCombat(h){
@@ -623,14 +635,94 @@ function groupRows(rows,key){
 }
 
 function granularWeaponRow(row,extra){
+  const showClassWeaponRates=!granularMatchFilter&&Number(row.matchesWithKill||0)>0;
+  const rate=Number(row.killsPerMatch||0);
+  const value=showClassWeaponRates
+    ? '<span class="granular-weapon-stats"><b>'+fmt(row.kills)+' kills</b><b>'+fmt(row.matchesWithKill)+' matches</b><b>'+escapeHtml(formatGranularRate(rate))+' K/M</b></span>'
+    : '<strong>'+fmt(row.kills)+' kills</strong>';
   return '<div class="granular-row granular-weapon-row">'+
     '<span class="granular-weapon-cell">'+
       weaponIconMarkup(row.weapon)+
       '<b>'+escapeHtml(playerWeaponName(row.weapon||"-"))+'</b>'+
       (extra?'<small>'+escapeHtml(extra)+'</small>':"")+
     '</span>'+
-    '<strong>'+fmt(row.kills)+' kills</strong>'+
+    value+
   '</div>';
+}
+
+function formatGranularRate(value){
+  const n=Number(value||0);
+  if(!Number.isFinite(n))return"0.0";
+  return n.toFixed(1);
+}
+
+const GRANULAR_WEAPON_CLASS_OVERRIDES={
+  sentrygun:"Engineer",
+  emp:"Engineer",
+  railgun:"Engineer",
+  assaultcannon:"HWGuy",
+  rocketlauncher:"Soldier",
+  nailgrenade:"Soldier",
+  mirv:"Demoman",
+  pipelauncher:"Demoman",
+  yellowgrenlauncher:"Demoman",
+  grenlauncher:"Demoman"
+};
+
+function normalizeGranularWeapon(value){
+  return String(value||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+}
+
+function granularOverrideClassForWeapon(weapon){
+  const weaponKey=normalizeGranularWeapon(playerWeaponName(weapon)||weapon);
+  return GRANULAR_WEAPON_CLASS_OVERRIDES[weaponKey]||"";
+}
+
+function granularDisplayClassForWeapon(weapon,sourceClass,context={}){
+  const weaponKey=normalizeGranularWeapon(playerWeaponName(weapon)||weapon);
+  if(weaponKey==="singleshotgun"&&context.demomanSourceClasses?.has(normalizeGranularClass(sourceClass))){
+    return"Demoman";
+  }
+  return granularOverrideClassForWeapon(weapon)||granularClassLabel(sourceClass);
+}
+
+function granularAggregationContext(rows){
+  const demomanSourceClasses=new Set();
+  (Array.isArray(rows)?rows:[]).forEach(row=>{
+    const weaponKey=normalizeGranularWeapon(playerWeaponName(row.weapon)||row.weapon);
+    const override=granularOverrideClassForWeapon(row.weapon);
+    if(override==="Demoman"&&weaponKey!=="singleshotgun"){
+      demomanSourceClasses.add(normalizeGranularClass(row.class));
+    }
+  });
+  return{demomanSourceClasses};
+}
+
+function aggregateGranularWeaponRows(rows){
+  const merged=new Map();
+  const context=granularAggregationContext(rows);
+  (Array.isArray(rows)?rows:[]).forEach(row=>{
+    const displayClass=granularDisplayClassForWeapon(row.weapon,row.class,context);
+    // Merge only within the displayed class. Generic weapons like Grenade stay split by class.
+    const key=normalizeGranularClass(displayClass)+"|"+normalizeGranularWeapon(row.weapon);
+    const current=merged.get(key)||{
+      ...row,
+      class:displayClass,
+      displayClass,
+      kills:0,
+      matchesWithKill:0,
+      killsPerMatch:0
+    };
+    current.kills+=Number(row.kills||0);
+    current.matchesWithKill+=Number(row.matchesWithKill||0);
+    merged.set(key,current);
+  });
+  return [...merged.values()].map(row=>({
+    ...row,
+    killsPerMatch:Number(row.matchesWithKill||0)>0
+      ? Number(row.kills||0)/Number(row.matchesWithKill||0)
+      : 0
+  }));
 }
 
 function fmtGranularSample(value){
@@ -641,7 +733,9 @@ function fmtGranularSample(value){
 }
 
 function renderGranularClassWeapons(rows){
-  const groups=groupRows(rows,"class");
+  const displayRows=aggregateGranularWeaponRows(rows)
+    .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
+  const groups=groupRows(displayRows,"displayClass");
   const classNames=Object.keys(groups);
   if(!classNames.length)return '<div class="granular-empty">No class weapon kills found.</div>';
   return classNames.map(className=>{
@@ -681,10 +775,13 @@ function renderGranularSpecialKills(flagRows,concedRows){
   const hasConced=Array.isArray(concedRows)&&concedRows.length;
   if(!hasFlag&&!hasConced)return '<div class="granular-empty">No objective kill events found.</div>';
   function block(title,rows){
-    const safeRows=Array.isArray(rows)?rows:[];
+    const safeRows=aggregateGranularWeaponRows(rows)
+      .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
     return '<article class="granular-mini-block">'+
       '<div class="granular-group-head"><strong>'+escapeHtml(title)+'</strong><span>'+fmt(safeRows.reduce((sum,row)=>sum+Number(row.kills||0),0))+' kills</span></div>'+
-      (safeRows.length?safeRows.slice(0,6).map(row=>granularWeaponRow(row,granularClassLabel(row.class))).join(""):'<div class="granular-empty">No '+escapeHtml(title.toLowerCase())+' found.</div>')+
+      (safeRows.length?safeRows.slice(0,6).map(row=>{
+        return granularWeaponRow(row,row.displayClass||granularDisplayClassForWeapon(row.weapon,row.class));
+      }).join(""):'<div class="granular-empty">No '+escapeHtml(title.toLowerCase())+' found.</div>')+
     '</article>';
   }
   return block("Flag Carrier Kills",flagRows)+block("Conced Kills",concedRows);
@@ -695,10 +792,17 @@ function renderGranularVictims(rows){
   if(!victims.length)return '<div class="granular-empty">No victim data found.</div>';
   return '<div class="granular-list">'+victims.slice(0,16).map((row,index)=>
     '<div class="granular-row">'+
-      '<span><b>#'+(index+1)+' '+escapeHtml(row.victimName||"Unknown")+'</b><small>'+escapeHtml(row.victimDiscordId||row.victimSteamId||row.victimKey||"unresolved")+'</small></span>'+
+      '<span><b>#'+(index+1)+' '+granularVictimLink(row)+'</b><small>'+escapeHtml(row.victimDiscordId||row.victimSteamId||row.victimKey||"unresolved")+'</small></span>'+
       '<strong>'+fmt(row.kills)+' kills</strong>'+
     '</div>'
   ).join("")+'</div>';
+}
+
+function granularVictimLink(row){
+  const name=row?.victimName||"Unknown";
+  const id=row?.victimDiscordId||row?.victimSteamId||row?.victimKey||"";
+  if(!id||id==="unresolved")return escapeHtml(name);
+  return '<a class="granular-player-link" href="'+escapeAttr("player.html?id="+encodeURIComponent(id))+'">'+escapeHtml(name)+'</a>';
 }
 
 function renderGranularAliases(rows){
@@ -724,7 +828,7 @@ function renderGranularEvents(data){
       '<span class="granular-event-kill">'+
         weaponIconMarkup(event.weapon)+
         '<b>'+escapeHtml(playerWeaponName(event.weapon||"-"))+'</b>'+
-        '<small>'+escapeHtml(classDisplayName(event.attacker?.class||"Unknown"))+' vs '+escapeHtml(event.victim?.name||"Unknown")+'</small>'+
+        '<small>'+escapeHtml(granularEventClassText(event))+' vs '+escapeHtml(event.victim?.name||"Unknown")+'</small>'+
       '</span>'+
       '<span class="granular-event-badges">'+
         '<i class="'+escapeAttr(attribution)+'">'+escapeHtml(attribution)+'</i>'+
@@ -735,6 +839,11 @@ function renderGranularEvents(data){
   }).join("")+'</div>';
 }
 
+function granularEventClassText(event){
+  const sourceClass=event?.attacker?.class||"Unknown";
+  return granularDisplayClassForWeapon(event?.weapon,sourceClass);
+}
+
 function granularEventsUrl(offset=0){
   if(!currentPlayerId)return "";
   const params=new URLSearchParams({limit:"100",offset:String(offset)});
@@ -742,8 +851,33 @@ function granularEventsUrl(offset=0){
   return "/api/player/"+encodeURIComponent(currentPlayerId)+"/granular/events?"+params.toString();
 }
 
+function granularSummaryUrl(playerId,includeSample=false){
+  const params=new URLSearchParams({limit:"50"});
+  if(includeSample)params.set("includeSample","1");
+  if(granularMatchFilter)params.set("matchId",granularMatchFilter);
+  return "/api/player/"+encodeURIComponent(playerId)+"/granular?"+params.toString();
+}
+
 function cleanGranularMatchFilter(value){
   return String(value||"").trim().slice(0,100);
+}
+
+function populateGranularMatchSelect(rows){
+  const select=qs("granular-match-select");
+  if(!select)return;
+  const matches=(Array.isArray(rows)?rows:[])
+    .filter(row=>getRecentMatchId(row))
+    .slice(0,10);
+  if(!matches.length){
+    select.innerHTML='<option value="">No recent matches</option>';
+    select.disabled=true;
+    return;
+  }
+  select.disabled=false;
+  select.innerHTML='<option value="">Recent match...</option>'+matches.map(row=>{
+    const matchId=getRecentMatchId(row);
+    return '<option value="'+escapeAttr(matchId)+'">'+escapeHtml(formatGranularMatchOption(row))+'</option>';
+  }).join("");
 }
 
 function resetGranularState(){
@@ -756,12 +890,15 @@ function resetGranularState(){
   granularSampleFailed=false;
   granularEventsLoading=false;
   granularEventsLoaded=false;
+  granularRequestSeq++;
   if(granularEventsObserver){
     granularEventsObserver.disconnect();
     granularEventsObserver=null;
   }
   const input=qs("granular-match-filter");
   if(input)input.value="";
+  const select=qs("granular-match-select");
+  if(select)select.value="";
 }
 
 function renderPlayerGranularLoading(){
@@ -784,33 +921,65 @@ function renderPlayerGranularLoading(){
     '</div>';
 }
 
-function scheduleGranularSummaryLoad(playerId){
+function resetGranularSampleState(){
+  granularSampleLoading=false;
+  granularSampleLoaded=false;
+  granularSampleFailed=false;
+}
+
+function resetGranularEventsState(){
+  granularEventsLoading=false;
+  granularEventsLoaded=false;
+  currentGranularEvents=null;
+}
+
+function scheduleGranularSummaryLoad(playerId,options={}){
   const requestedPlayerId=String(playerId||"");
-  if(!requestedPlayerId||granularSummaryLoading)return;
+  if(!requestedPlayerId)return;
+  const shouldReset=options.reset!==false;
+  if(granularSummaryLoading&&!shouldReset)return;
+  const requestSeq=shouldReset?++granularRequestSeq:granularRequestSeq;
+  if(options.reset!==false){
+    currentGranular=null;
+    resetGranularSampleState();
+    resetGranularEventsState();
+    renderPlayerGranularLoading();
+  }
   granularSummaryLoading=true;
   requestAnimationFrame(()=>{
     setTimeout(async()=>{
-      const url="/api/player/"+encodeURIComponent(requestedPlayerId)+"/granular?limit=50";
+      const url=granularSummaryUrl(requestedPlayerId,false);
       const result=await fetchJSON(url);
       granularSummaryLoading=false;
-      if(String(currentPlayerId)!==requestedPlayerId)return;
+      if(String(currentPlayerId)!==requestedPlayerId||requestSeq!==granularRequestSeq)return;
       currentGranular=result?.ok?result.data:null;
-      renderPlayerGranular(currentGranular,null);
+      renderPlayerGranular(currentGranular);
       observeGranularEvents();
       scheduleGranularSampleLoad(requestedPlayerId);
     },0);
   });
 }
 
+function reloadGranularForActiveFilter(){
+  if(!currentPlayerId)return;
+  if(granularEventsObserver){
+    granularEventsObserver.disconnect();
+    granularEventsObserver=null;
+  }
+  scheduleGranularSummaryLoad(currentPlayerId);
+  loadGranularEvents(0,false);
+}
+
 async function scheduleGranularSampleLoad(playerId){
   const requestedPlayerId=String(playerId||"");
   if(!requestedPlayerId||granularSampleLoading||granularSampleLoaded||!currentGranular)return;
+  const requestSeq=granularRequestSeq;
   granularSampleLoading=true;
-  const url="/api/player/"+encodeURIComponent(requestedPlayerId)+"/granular?limit=50&includeSample=1";
+  const url=granularSummaryUrl(requestedPlayerId,true);
   const result=await fetchJSON(url);
   granularSampleLoading=false;
   granularSampleLoaded=true;
-  if(String(currentPlayerId)!==requestedPlayerId)return;
+  if(String(currentPlayerId)!==requestedPlayerId||requestSeq!==granularRequestSeq)return;
   const sampled=result?.ok?result.data:null;
   granularSampleFailed=!sampled?.sample;
   if(sampled?.sample&&currentGranular){
@@ -838,6 +1007,9 @@ function observeGranularEvents(){
 
 async function loadGranularEvents(offset=0,append=false){
   if(granularEventsLoading)return;
+  const requestedPlayerId=String(currentPlayerId||"");
+  const requestedFilter=granularMatchFilter;
+  const requestSeq=granularRequestSeq;
   const body=qs("granular-events-panel");
   if(body&&!append)body.innerHTML='<div class="empty-v3">Loading granular events...</div>';
   const url=granularEventsUrl(offset);
@@ -845,6 +1017,7 @@ async function loadGranularEvents(offset=0,append=false){
   granularEventsLoading=true;
   const result=await fetchJSON(url);
   granularEventsLoading=false;
+  if(String(currentPlayerId)!==requestedPlayerId||requestedFilter!==granularMatchFilter||requestSeq!==granularRequestSeq)return;
   const next=result?.ok?result.data:null;
   if(append&&currentGranularEvents&&next){
     next.events=[...(currentGranularEvents.events||[]),...(next.events||[])];
@@ -860,25 +1033,28 @@ function bindGranularControls(){
   card.dataset.bound="1";
   qs("granular-match-apply")?.addEventListener("click",()=>{
     granularMatchFilter=cleanGranularMatchFilter(qs("granular-match-filter")?.value);
-    granularEventsLoaded=false;
-    currentGranularEvents=null;
-    loadGranularEvents(0,false);
+    reloadGranularForActiveFilter();
   });
   qs("granular-match-clear")?.addEventListener("click",()=>{
     granularMatchFilter="";
     const input=qs("granular-match-filter");
     if(input)input.value="";
-    granularEventsLoaded=false;
-    currentGranularEvents=null;
-    loadGranularEvents(0,false);
+    const select=qs("granular-match-select");
+    if(select)select.value="";
+    reloadGranularForActiveFilter();
   });
   qs("granular-match-filter")?.addEventListener("keydown",event=>{
     if(event.key==="Enter"){
       granularMatchFilter=cleanGranularMatchFilter(event.currentTarget.value);
-      granularEventsLoaded=false;
-      currentGranularEvents=null;
-      loadGranularEvents(0,false);
+      reloadGranularForActiveFilter();
     }
+  });
+  qs("granular-match-select")?.addEventListener("change",event=>{
+    const input=qs("granular-match-filter");
+    const value=event.currentTarget.value||"";
+    if(input)input.value=value;
+    granularMatchFilter=cleanGranularMatchFilter(value);
+    reloadGranularForActiveFilter();
   });
   card.addEventListener("click",event=>{
     const loadEvents=event.target.closest("[data-granular-load-events]");
