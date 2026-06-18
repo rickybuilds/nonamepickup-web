@@ -9,6 +9,9 @@
   --page-grid-blue:rgba(77,166,255,.08);
   --page-grid-orange:rgba(251,146,60,.055);
   --page-main-width:2200px;
+  --page-gutter-desktop:2vw;
+  --page-gutter-mobile:8px;
+  --mobile-page-gutter:var(--page-gutter-mobile);
   --shell-padding:34px;
   --shell-radius:36px;
   --shell-bg:rgba(10,12,22,.94);
@@ -24,6 +27,6 @@
 }
 
 *{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{margin:0;font-family:'Orbitron',system-ui,sans-serif;font-weight:500;color:var(--text);background:var(--bg);}
+html{scroll-behavior:smooth;overflow-x:hidden;}
+body{margin:0;font-family:'Orbitron',system-ui,sans-serif;font-weight:500;color:var(--text);background:var(--bg);overflow-x:hidden;}
 button{font-family:inherit;}

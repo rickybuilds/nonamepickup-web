@@ -558,7 +558,7 @@ function buildGranularPlayerPayload(identity,options={}){
           : 0
       })),
       favoriteVictims:favoriteVictims.map(row=>({
-        victimDiscordId:row.victim_discord_id||null,
+        victimId:row.victim_discord_id||row.victim_steam_id||row.victim_key||null,
         victimSteamId:row.victim_steam_id||null,
         victimKey:row.victim_key||null,
         victimName:row.victim_name,

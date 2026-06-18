@@ -759,13 +759,11 @@ function renderGranularClassWeapons(rows){
     const total=classRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
     const classKey=normalizeGranularClass(className);
     const isOpen=granularOpenClassKeys.has(classKey);
-    const topWeapon=classRows[0]?.weapon?playerWeaponName(classRows[0].weapon):"-";
-
     return '<article class="granular-group granular-class-group '+(isOpen?"open":"")+'" data-granular-class-key="'+escapeAttr(classKey)+'">'+
       '<button type="button" class="granular-group-head granular-class-toggle" data-granular-class-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
         '<div class="granular-class-summary">'+
           '<strong class="granular-class-name">'+escapeHtml(classDisplayName(className))+'</strong>'+
-          '<span class="granular-class-meta">'+fmt(total)+' kills • '+fmt(classRows.length)+' weapons • top: '+escapeHtml(topWeapon)+'</span>'+
+          '<span class="granular-class-meta">'+fmt(total)+' kills • '+fmt(classRows.length)+' weapons</span>'+
         '</div>'+
       '</button>'+
       '<div class="granular-class-weapons" '+(isOpen?"":'hidden')+'>'+classRows.slice(0,8).map(row=>granularWeaponRow(row)).join("")+'</div>'+
@@ -834,14 +832,13 @@ function renderGranularSpecialKills(flagRows,concedRows){
       .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
 
     const total=safeRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
-    const topWeapon=safeRows[0]?.weapon?playerWeaponName(safeRows[0].weapon):"-";
     const isOpen=granularOpenObjectiveKeys.has(key);
 
     return '<article class="granular-mini-block granular-objective-group '+(isOpen?"open":"")+'" data-granular-objective-key="'+escapeAttr(key)+'">'+
       '<button type="button" class="granular-group-head granular-objective-toggle" data-granular-objective-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
         '<div class="granular-class-summary">'+
           '<strong class="granular-class-name">'+escapeHtml(title)+'</strong>'+
-          '<span class="granular-class-meta">'+fmt(total)+' kills • '+fmt(safeRows.length)+' weapons • top: '+escapeHtml(topWeapon)+'</span>'+
+          '<span class="granular-class-meta">'+fmt(total)+' kills • '+fmt(safeRows.length)+' weapons</span>'+
         '</div>'+
       '</button>'+
       '<div class="granular-objective-weapons" '+(isOpen?"":'hidden')+'>'+
@@ -858,7 +855,7 @@ function renderGranularVictims(rows){
   if(!victims.length)return '<div class="granular-empty">No victim data found.</div>';
   return '<div class="granular-list">'+victims.slice(0,16).map((row,index)=>
     '<div class="granular-row">'+
-      '<span><b>#'+(index+1)+' '+granularVictimLink(row)+'</b><small>'+escapeHtml(row.victimDiscordId||row.victimSteamId||row.victimKey||"unresolved")+'</small></span>'+
+      '<span><b>#'+(index+1)+' '+granularVictimLink(row)+'</b></span>'+
       '<strong>'+fmt(row.kills)+' kills</strong>'+
     '</div>'
   ).join("")+'</div>';
@@ -866,7 +863,7 @@ function renderGranularVictims(rows){
 
 function granularVictimLink(row){
   const name=row?.victimName||"Unknown";
-  const id=row?.victimDiscordId||row?.victimSteamId||row?.victimKey||"";
+  const id=row?.victimId||row?.victimDiscordId||row?.victimSteamId||row?.victimKey||"";
   if(!id||id==="unresolved")return escapeHtml(name);
   return '<a class="granular-player-link" href="'+escapeAttr("player.html?id="+encodeURIComponent(id))+'">'+escapeHtml(name)+'</a>';
 }

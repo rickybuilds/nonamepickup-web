@@ -1,10 +1,13 @@
 /* ---------- Page shell ---------- */
+.player-v3-page,.player-v3-page *,.player-v3-page *::before,.player-v3-page *::after{box-sizing:border-box}
 .player-v3-page button{font-family:inherit}
-.player-v3-main{position:relative;z-index:1;width:min(96vw,1760px);margin:0 auto;padding:28px 0 34px}
+.player-v3-main{position:relative;z-index:1;width:min(calc(100% - (var(--page-gutter-desktop) * 2)),1760px);max-width:1760px;margin:0 auto;padding:28px 0 34px}
 .player-v3-shell{position:relative;overflow:visible;border-radius:0;padding:0;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
 .player-v3-shell::before{display:none;content:none}
 .player-v3-shell::after{display:none;content:none}
 .player-v3-shell>*{position:relative;z-index:1}
+.player-v3-main,.player-v3-shell,.player-v3-hero,.v3-card,.v3-kpi-strip,.player-granular-card,.granular-grid,.granular-panel,.v3-hampa-grid,.v3-class-lab,.v3-main-grid,.v3-bottom-grid{min-width:0}
+.v3-card,.v3-kpi-strip,.player-granular-card,.granular-panel{max-width:100%}
 
 /* ---------- Hero ---------- */
 .player-v3-hero{display:grid;grid-template-columns:minmax(0,.8fr) minmax(700px,1.2fr);gap:26px;align-items:stretch;margin-bottom:18px}
@@ -63,13 +66,15 @@
 .granular-summary-strip span{display:block;color:#8ea0c7;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
 .granular-summary-strip strong{display:block;margin-top:5px;color:#e5e7eb;font-size:20px;font-weight:950;line-height:1}
 .granular-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.granular-panel{min-width:0;max-height:380px;border:1px solid rgba(77,166,255,.15);background:linear-gradient(145deg,rgba(15,23,42,.58),rgba(3,8,20,.42));border-radius:16px;padding:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);display:flex;flex-direction:column}
+.granular-panel{min-width:0;border:1px solid rgba(77,166,255,.15);background:linear-gradient(145deg,rgba(15,23,42,.58),rgba(3,8,20,.42));border-radius:16px;padding:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);display:flex;flex-direction:column}
 .granular-panel-head{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
 .granular-panel-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
 .granular-panel-head span{color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;text-align:right}
 .granular-panel-help{flex:0 0 auto;margin:-4px 0 12px;color:#7f8faa;font-size:10px;font-weight:800;line-height:1.35}
 .granular-panel-scroll{min-height:0;overflow-y:auto;padding-right:4px}
-.granular-class-panel{max-height:380px}
+.granular-class-panel,.granular-special-panel{max-height:none}
+.granular-class-panel .granular-panel-scroll,.granular-special-panel .granular-panel-scroll{overflow:visible;padding-right:0}
+.granular-victim-panel,.granular-alias-panel{max-height:380px}
 .granular-events-panel{grid-column:2 / span 2;max-height:470px}
 .granular-group,.granular-mini-block{display:grid;gap:7px;margin-bottom:10px;padding:10px;border:1px solid rgba(77,166,255,.12);border-radius:13px;background:rgba(3,8,20,.28)}
 .granular-group:last-child,.granular-mini-block:last-child{margin-bottom:0}
@@ -329,12 +334,14 @@
 }
 
 @media(max-width:800px){
-  .player-v3-main{width:100%!important;padding:10px 8px 28px!important}
-  .player-v3-shell{padding:12px!important;border-radius:0!important;overflow:visible!important}
+  .player-v3-main{width:calc(100% - (var(--mobile-page-gutter) * 2))!important;margin-inline:auto!important;padding:10px 0 28px!important}
+  .player-v3-shell{width:100%;padding:0!important;border-radius:0!important;overflow:visible!important}
+  .player-v3-hero,.v3-kpi-strip,.player-granular-card,.granular-grid,.granular-panel,.granular-event-row,.v3-hampa-grid,.v3-class-lab,.v3-main-grid,.v3-bottom-grid,.activity-heatmap,.recent-match-list,.recent-match-row,#top-weapons,.match-drawer-body{min-width:0;max-width:100%}
   .identity-card{flex-direction:column!important;align-items:center!important;text-align:center!important;min-height:0!important;padding:16px!important}
   #player-name-v3{
   font-size:clamp(22px,8vw,32px)!important;
-  white-space:nowrap!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere;
 }
   .elo-line,.record-line{font-size:14px!important}
   .steam-line{font-size:11px!important}
@@ -349,7 +356,9 @@
   .granular-controls input,.granular-controls select{grid-column:1 / -1}
   .granular-summary-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
   .granular-grid{grid-template-columns:1fr}
-  .granular-panel,.granular-class-panel,.granular-events-panel{grid-column:auto;max-height:380px}
+  .granular-panel{grid-column:auto}
+  .granular-class-panel,.granular-special-panel{max-height:none}
+  .granular-victim-panel,.granular-alias-panel,.granular-events-panel{max-height:380px}
   .granular-event-row{grid-template-columns:1fr;align-items:start}
   .granular-event-badges{grid-column:auto;justify-content:flex-start}
   .granular-event-kill{align-items:flex-start}
@@ -362,18 +371,18 @@
   .map-class-picker{grid-template-columns:1fr!important}
   .map-class-button{grid-template-columns:1fr}
   .map-class-top{text-align:left}
-  .activity-heatmap{grid-template-columns:36px repeat(12,16px)!important;gap:4px!important;justify-content:center!important}
-  .heat-cell{width:15px!important;height:15px!important;min-height:15px!important;border-radius:4px!important}
+  .activity-heatmap{grid-template-columns:minmax(28px,34px) repeat(12,minmax(0,1fr))!important;gap:4px!important;justify-content:stretch!important;width:100%;overflow:hidden}
+  .heat-cell{width:100%!important;aspect-ratio:1 / 1;height:auto!important;min-height:0!important;border-radius:4px!important}
   .heat-label{font-size:10px!important;text-align:right!important;padding-right:4px!important}
   .heat-hour{font-size:10px!important}
   .match-id-pill,.drawer-round-stats span{font-size:10px}
   #top-weapons.weapon-grid{grid-template-columns:1fr!important}
-  #top-weapons .weapon-row{grid-template-columns:38px minmax(0,1fr) auto!important;gap:6px;padding:6px 8px}
+  #top-weapons .weapon-row{grid-template-columns:38px minmax(0,1fr) minmax(52px,auto)!important;gap:6px;padding:6px 8px}
   #top-weapons .weapon-icon{width:38px!important;height:38px!important;min-width:38px!important}
   #top-weapons .weapon-name{font-size:12px}
   #top-weapons .weapon-row strong{min-width:0;gap:4px;font-size:12px}
   #top-weapons .weapon-row strong small{font-size:10px}
-  .recent-match-row{grid-template-columns:58px minmax(70px,1fr) 42px 44px!important;gap:5px!important;font-size:10px!important;white-space:nowrap}
+  .recent-match-row{grid-template-columns:58px minmax(0,1fr) 42px 44px!important;gap:5px!important;font-size:10px!important;white-space:nowrap}
   .recent-match-row>:nth-child(4),.recent-match-row>:nth-child(5){display:none!important}
   .recent-map{min-width:0}
   .recent-delta{white-space:nowrap}
@@ -396,6 +405,10 @@
   .match-drawer-head{position:sticky;top:0;z-index:2;flex:0 0 auto;padding-top:calc(18px + env(safe-area-inset-top));background:#070b14}
   .match-drawer-close{position:relative;z-index:3;flex:0 0 38px;touch-action:manipulation}
   .match-drawer-title{font-size:20px}
+  .drawer-section,.drawer-table,.drawer-score,.drawer-link-row,.drawer-teams-grid,.drawer-stat-grid,.drawer-round-stats{min-width:0;max-width:100%}
+  .drawer-teams-grid,.drawer-stat-grid{grid-template-columns:1fr}
+  .drawer-score{flex-wrap:wrap}
+  .drawer-table{display:block;overflow-x:auto}
   .drawer-round-head{align-items:flex-start;flex-direction:column}
   .drawer-round-head span{text-align:left}
 }
@@ -485,10 +498,6 @@
   gap: 8px;
 }
 
-.granular-objective-group {
-  cursor: pointer;
-}
-
 .granular-objective-class-group {
   display: grid;
   gap: 8px;
@@ -500,13 +509,6 @@
 
 .granular-objective-class-group + .granular-objective-class-group {
   margin-top: 10px;
-}
-
-.granular-objective-class-head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 2px 2px 4px;
 }
 
 .granular-objective-class-head strong {
@@ -532,6 +534,9 @@
 
 .granular-objective-class-head {
   appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   width: 100%;
   border: 0;
   background: transparent;
@@ -549,11 +554,4 @@
 .granular-objective-class-group.open .granular-objective-class-weapons {
   display: grid;
   gap: 8px;
-}
-.granular-class-panel,
-.granular-special-panel,
-.granular-victim-panel,
-.granular-alias-panel,
-.granular-events-panel {
-  max-height: 380px;
 }
