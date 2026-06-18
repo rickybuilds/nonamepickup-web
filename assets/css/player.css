@@ -1,9 +1,9 @@
 /* ---------- Page shell ---------- */
 .player-v3-page button{font-family:inherit}
 .player-v3-main{position:relative;z-index:1;width:min(96vw,1760px);margin:0 auto;padding:34px 18px 52px}
-.player-v3-shell{position:relative;overflow:hidden;border-radius:34px;padding:28px;background:linear-gradient(145deg,rgba(7,11,22,.95),rgba(5,10,20,.92));border:1px solid rgba(77,166,255,.28);box-shadow:0 0 70px rgba(77,166,255,.13),0 28px 90px rgba(0,0,0,.45),inset 0 0 70px rgba(255,255,255,.025);backdrop-filter:blur(10px)}
-.player-v3-shell::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 42% 18%,rgba(77,166,255,.10),transparent 36%),radial-gradient(circle at 82% 72%,rgba(168,85,247,.08),transparent 30%);opacity:.95}
-.player-v3-shell::after{content:"";position:absolute;inset:1px;border-radius:33px;pointer-events:none;border:1px solid rgba(255,255,255,.035)}
+.player-v3-shell{position:relative;overflow:visible;border-radius:0;padding:28px;background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+.player-v3-shell::before{display:none;content:none}
+.player-v3-shell::after{display:none;content:none}
 .player-v3-shell>*{position:relative;z-index:1}
 
 /* ---------- Hero ---------- */
@@ -330,7 +330,7 @@
 
 @media(max-width:800px){
   .player-v3-main{width:100%!important;padding:10px 8px 28px!important}
-  .player-v3-shell{padding:12px!important;border-radius:18px!important}
+  .player-v3-shell{padding:12px!important;border-radius:0!important;overflow:visible!important}
   .identity-card{flex-direction:column!important;align-items:center!important;text-align:center!important;min-height:0!important;padding:16px!important}
   #player-name-v3{font-size:32px!important;line-height:1.15!important;word-break:break-word}
   .elo-line,.record-line{font-size:14px!important}

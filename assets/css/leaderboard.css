@@ -4,25 +4,18 @@
 
 .leaderboard-shell {
   position: relative;
-  overflow: hidden;
-  border: 1px solid var(--shell-border);
-  border-radius: var(--shell-radius);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
   padding: var(--shell-padding);
-  background: var(--shell-bg);
-  box-shadow:
-    0 0 80px var(--shell-glow),
-    inset 0 0 60px rgba(255, 255, 255, .03);
-  backdrop-filter: blur(var(--shell-blur));
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .leaderboard-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(120deg, transparent 0%, var(--shell-sheen-color) var(--shell-sheen-stop), transparent 60%);
-  filter: blur(30px);
-  opacity: .7;
+  display: none;
+  content: none;
 }
 
 .leaderboard-hero {
@@ -269,7 +262,7 @@
 
   .leaderboard-shell {
     padding: 12px;
-    border-radius: 20px;
+    border-radius: 0;
   }
 
   .leaderboard-summary {

@@ -4,23 +4,18 @@
 
 .analytics-shell {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   padding: var(--shell-padding);
-  border: 1px solid var(--shell-border);
-  border-radius: var(--shell-radius);
-  background: var(--shell-bg);
-  box-shadow: 0 0 80px var(--shell-glow), inset 0 0 60px rgba(255, 255, 255, .03);
-  backdrop-filter: blur(var(--shell-blur));
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .analytics-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(120deg, transparent 0%, var(--shell-sheen-color) var(--shell-sheen-stop), transparent 60%);
-  filter: blur(30px);
-  opacity: .7;
+  display: none;
+  content: none;
 }
 
 .analytics-hero,
@@ -343,7 +338,7 @@
 
   .analytics-shell {
     padding: 16px 12px;
-    border-radius: 20px;
+    border-radius: 0;
   }
 
   .analytics-summary,

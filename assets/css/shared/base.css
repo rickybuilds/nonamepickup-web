@@ -2,10 +2,10 @@
   --tfc-blue:#4da6ff;
   --tfc-red:#ff5c5c;
   --tfc-orange:#fb923c;
-  --bg:#05070d;
+  --bg:#030711;
   --text:#e5e7eb;
   --muted:#94a3b8;
-  --page-bg:#05070d;
+  --page-bg:#030711;
   --page-grid-blue:rgba(77,166,255,.08);
   --page-grid-orange:rgba(251,146,60,.055);
   --page-main-width:2200px;
@@ -20,6 +20,7 @@
   --page-glow-left:rgba(77,166,255,.16);
   --page-glow-left-width:42%;
   --page-glow-height:220px;
+  --surface-bg:rgba(8,13,26,.92);
 }
 
 *{box-sizing:border-box;}

@@ -1,7 +1,7 @@
 .live2-page{--page-main-width:2200px;position:relative;background:radial-gradient(circle at 30% 20%,rgba(251,146,60,.08) 0%,transparent 50%),linear-gradient(rgba(77,166,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(77,166,255,.08) 1px,transparent 1px),#05070d;background-size:200% 200%,42px 42px,42px 42px,auto;animation:bgShift 45s linear infinite;}
 .live2-page main{width:min(98vw,var(--page-main-width));max-width:none!important;position:relative;z-index:1;}
-.live2-shell{position:relative;overflow:hidden;border-radius:36px;padding:34px;background:rgba(7,11,22,.94);border:1px solid rgba(251,146,60,.30);box-shadow:0 0 95px rgba(251,146,60,.14),inset 0 0 70px rgba(255,255,255,.035);backdrop-filter:blur(12px);}
-.live2-shell::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,transparent 0%,rgba(251,146,60,.06) 42%,rgba(77,166,255,.05) 61%,transparent 74%);filter:blur(28px);opacity:.9;}
+.live2-shell{position:relative;overflow:visible;border-radius:0;padding:34px;background:transparent;border:0;box-shadow:none;backdrop-filter:none;}
+.live2-shell::before{display:none;content:none;}
 .live2-hero,.live2-layout,.live2-bottom-grid{position:relative;z-index:1;}
 .live2-hero{display:grid;grid-template-columns:360px minmax(0,1fr);gap:20px;align-items:stretch;margin-bottom:18px;}
 .live2-hero>div:first-child{align-self:start;}
@@ -175,7 +175,7 @@ transform:translateY(-1px);
 
 .live2-page main{width:100%!important;padding:0 6px!important;overflow-x:hidden;}
 
-.live2-shell{padding:10px;border-radius:20px;overflow:hidden;}
+.live2-shell{padding:10px;border-radius:0;overflow:visible;}
 
 .live2-layout-watch{display:flex;flex-direction:column;gap:10px;}
 

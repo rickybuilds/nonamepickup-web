@@ -20,25 +20,18 @@
 
 .map-v2-shell {
   position: relative;
-  overflow: hidden;
-  border-radius: 36px;
+  overflow: visible;
+  border-radius: 0;
   padding: 34px;
-  background: rgba(7, 11, 22, .94);
-  border: 1px solid rgba(77,166,255,.28);
-  box-shadow:
-    0 0 90px rgba(77,166,255,.13),
-    inset 0 0 70px rgba(255,255,255,.035);
-  backdrop-filter: blur(12px);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .map-v2-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(120deg, transparent 0%, rgba(77,166,255,.055) 44%, rgba(56,189,248,.04) 60%, transparent 74%);
-  filter: blur(30px);
-  opacity: .8;
+  display: none;
+  content: none;
 }
 
 .map-v2-hero,
@@ -655,7 +648,7 @@
 
 .map-v2-page main,.map-page main{width:100%!important;padding:8px 6px 28px!important;overflow-x:hidden;}
 
-.map-v2-shell{padding:10px!important;border-radius:20px!important;overflow:hidden;}
+.map-v2-shell{padding:10px!important;border-radius:0!important;overflow:visible!important;}
 
 .map-v2-hero{grid-template-columns:1fr!important;gap:12px;margin-bottom:12px;}
 
