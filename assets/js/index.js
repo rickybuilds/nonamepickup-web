@@ -18,15 +18,8 @@
     liveInFlight: false
   };
 
-  const CLASS_ART = [
-    "Demomanold_tfc.png",
-    "Heavyold_tfc.png",
-    "Medicold_tfc.png",
-    "Pyroold_tfc.png",
-    "Scoutold_tfc.png",
-    "Sniperold_tfc.png",
-    "Soldierold_tfc.png"
-  ];
+  const CLASS_ART_PATH = "assets/images/classes/";
+  const CLASS_ART_MANIFEST = `${CLASS_ART_PATH}manifest.json`;
 
   function setText(id, value) {
     const el = $(id);
@@ -75,13 +68,28 @@
     return copy;
   }
 
-  function assignKpiClassArt() {
+  async function loadClassArtManifest() {
+    try {
+      const res = await fetch(CLASS_ART_MANIFEST, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const files = await res.json();
+      if (!Array.isArray(files)) return [];
+      return files
+        .map(file => String(file || "").trim())
+        .filter(file => file && !/[\\/]/.test(file));
+    } catch {
+      return [];
+    }
+  }
+
+  async function assignKpiClassArt() {
     const slots = [...document.querySelectorAll(".mini-stat-card .kpi-class-art")];
-    const art = shuffled(CLASS_ART).slice(0, slots.length);
+    if (!slots.length) return;
+    const art = shuffled(await loadClassArtManifest()).slice(0, slots.length);
     slots.forEach((img, index) => {
       const file = art[index];
       if (!file) return;
-      img.src = `assets/images/classes/${file}`;
+      img.src = `${CLASS_ART_PATH}${file}`;
       img.addEventListener("error", () => {
         img.hidden = true;
         img.removeAttribute("src");
