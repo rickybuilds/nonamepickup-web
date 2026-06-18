@@ -60,14 +60,15 @@
 .granular-summary-strip div{min-width:0;border:1px solid rgba(77,166,255,.14);background:linear-gradient(145deg,rgba(15,23,42,.62),rgba(3,8,20,.42));border-radius:14px;padding:12px}
 .granular-summary-strip span{display:block;color:#8ea0c7;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
 .granular-summary-strip strong{display:block;margin-top:5px;color:#e5e7eb;font-size:20px;font-weight:950;line-height:1}
-.granular-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.granular-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .granular-panel{min-width:0;max-height:380px;border:1px solid rgba(77,166,255,.15);background:linear-gradient(145deg,rgba(15,23,42,.58),rgba(3,8,20,.42));border-radius:16px;padding:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);display:flex;flex-direction:column}
 .granular-panel-head{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
 .granular-panel-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
 .granular-panel-head span{color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;text-align:right}
+.granular-panel-help{flex:0 0 auto;margin:-4px 0 12px;color:#7f8faa;font-size:10px;font-weight:800;line-height:1.35}
 .granular-panel-scroll{min-height:0;overflow-y:auto;padding-right:4px}
-.granular-class-panel,.granular-role-panel{max-height:440px}
-.granular-events-panel{grid-column:1 / -1;max-height:470px}
+.granular-class-panel{max-height:440px}
+.granular-events-panel{grid-column:1 / span 2;max-height:470px}
 .granular-group,.granular-mini-block{display:grid;gap:7px;margin-bottom:10px;padding:10px;border:1px solid rgba(77,166,255,.12);border-radius:13px;background:rgba(3,8,20,.28)}
 .granular-group:last-child,.granular-mini-block:last-child{margin-bottom:0}
 .granular-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -338,7 +339,7 @@
   .granular-controls input{grid-column:1 / -1}
   .granular-summary-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
   .granular-grid{grid-template-columns:1fr}
-  .granular-panel,.granular-class-panel,.granular-role-panel,.granular-events-panel{grid-column:auto;max-height:430px}
+  .granular-panel,.granular-class-panel,.granular-events-panel{grid-column:auto;max-height:430px}
   .granular-event-row{grid-template-columns:1fr;align-items:start}
   .granular-event-badges{grid-column:auto;justify-content:flex-start}
   .granular-event-kill{align-items:flex-start}
