@@ -1,0 +1,176 @@
+:root {
+  --page-hero-image: url("../../images/home/home-hero.webp");
+  --page-hero-accent: rgba(77,166,255,.24);
+  --page-hero-accent-2: rgba(251,146,60,.10);
+}
+
+.matches-page {
+  --page-hero-image: url("../../images/maps/raiden9.webp");
+}
+
+.leaderboard-page {
+  --page-hero-image: url("../../images/maps/phantom_lg.webp");
+}
+
+.analytics-page {
+  --page-hero-image: url("../../images/maps/nexus_b4.webp");
+}
+
+.compare-page {
+  --page-hero-image: url("../../images/maps/mortality_lg.webp");
+}
+
+.player-v3-page {
+  --page-hero-image: url("../../images/maps/monkey_lg.webp");
+}
+
+.map-v2-page,
+.map-page {
+  --page-hero-image: url("../../images/maps/voltage_lg.webp");
+}
+
+.live2-page,
+.live-page {
+  --page-hero-image: url("../../images/maps/shutdown2_lg2.webp");
+  --page-hero-accent: rgba(251,146,60,.42);
+  --page-hero-accent-2: rgba(248,113,113,.18);
+}
+
+.matches-page .matches2-hero,
+.leaderboard-page .leaderboard-hero,
+.analytics-page .analytics-hero,
+.compare-page .compare-header,
+.live2-page .live2-hero,
+.live-page .live2-hero,
+.player-v3-page .player-v3-hero,
+.map-v2-page .map-v2-hero,
+.map-page .map-v2-hero,
+.matches-page .match-top-grid {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 230px;
+  margin-bottom: 24px;
+  padding: clamp(24px, 2.4vw, 38px);
+  border: 1px solid rgba(77,166,255,.26);
+  border-radius: 28px;
+  background:
+    linear-gradient(90deg, rgba(3,7,17,.97), rgba(3,7,17,.82) 42%, rgba(3,7,17,.46) 68%, rgba(3,7,17,.82)),
+    radial-gradient(circle at 18% 25%, var(--page-hero-accent), transparent 42%),
+    radial-gradient(circle at 86% 18%, var(--page-hero-accent-2), transparent 36%),
+    var(--page-hero-image) center / cover no-repeat,
+    var(--surface-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 26px 70px rgba(0,0,0,.36),
+    0 0 48px rgba(77,166,255,.10);
+}
+
+.matches-page .matches2-hero::before,
+.leaderboard-page .leaderboard-hero::before,
+.analytics-page .analytics-hero::before,
+.compare-page .compare-header::before,
+.live2-page .live2-hero::before,
+.live-page .live2-hero::before,
+.player-v3-page .player-v3-hero::before,
+.map-v2-page .map-v2-hero::before,
+.map-page .map-v2-hero::before,
+.matches-page .match-top-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent 36%),
+    linear-gradient(90deg, rgba(77,166,255,.10) 1px, transparent 1px),
+    linear-gradient(rgba(77,166,255,.08) 1px, transparent 1px);
+  background-size: auto, 42px 42px, 42px 42px;
+  opacity: .52;
+  pointer-events: none;
+}
+
+.matches-page .matches2-hero::after,
+.leaderboard-page .leaderboard-hero::after,
+.analytics-page .analytics-hero::after,
+.compare-page .compare-header::after,
+.live2-page .live2-hero::after,
+.live-page .live2-hero::after,
+.player-v3-page .player-v3-hero::after,
+.map-v2-page .map-v2-hero::after,
+.map-page .map-v2-hero::after,
+.matches-page .match-top-grid::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 42%;
+  z-index: 0;
+  background: linear-gradient(180deg, transparent, rgba(3,7,17,.88));
+  pointer-events: none;
+}
+
+.matches-page .matches2-hero > *,
+.leaderboard-page .leaderboard-hero > *,
+.analytics-page .analytics-hero > *,
+.compare-page .compare-header > *,
+.live2-page .live2-hero > *,
+.live-page .live2-hero > *,
+.player-v3-page .player-v3-hero > *,
+.map-v2-page .map-v2-hero > *,
+.map-page .map-v2-hero > *,
+.matches-page .match-top-grid > * {
+  position: relative;
+  z-index: 1;
+}
+
+.live2-page::before,
+.live-page::before {
+  background: radial-gradient(ellipse at top left, rgba(251,146,60,.32), transparent 72%);
+}
+
+.live2-page::after,
+.live-page::after {
+  content: "";
+  position: fixed;
+  top: 76px;
+  right: 0;
+  z-index: 0;
+  width: 48%;
+  height: 280px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at top right, rgba(251,146,60,.20), transparent 72%);
+}
+
+.live2-page .live2-hero,
+.live-page .live2-hero {
+  border-color: rgba(251,146,60,.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 28px 76px rgba(0,0,0,.42),
+    0 0 62px rgba(251,146,60,.18);
+}
+
+.live2-page .live2-hero::before,
+.live-page .live2-hero::before {
+  background:
+    radial-gradient(circle at 8% 28%, rgba(251,146,60,.24), transparent 18%),
+    linear-gradient(90deg, rgba(251,146,60,.12) 1px, transparent 1px),
+    linear-gradient(rgba(251,146,60,.08) 1px, transparent 1px);
+  background-size: auto, 42px 42px, 42px 42px;
+}
+
+@media (max-width: 900px) {
+  .matches-page .matches2-hero,
+  .leaderboard-page .leaderboard-hero,
+  .analytics-page .analytics-hero,
+  .compare-page .compare-header,
+  .live2-page .live2-hero,
+  .live-page .live2-hero,
+  .player-v3-page .player-v3-hero,
+  .map-v2-page .map-v2-hero,
+  .map-page .map-v2-hero,
+  .matches-page .match-top-grid {
+    min-height: 0;
+    padding: 20px;
+    border-radius: 22px;
+  }
+}
