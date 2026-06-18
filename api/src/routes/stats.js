@@ -149,49 +149,6 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
     }
   });
 
-  router.get("/stats/mostGamesAndTies", (req, res) => {
-    try {
-      const result = cached('mostGamesAndTies', () => {
-        const totalTies = db
-          .prepare("SELECT COUNT(*) AS c FROM matches WHERE LOWER(winner)='tie'")
-          .get().c;
-
-        const rows = db.prepare(`
-        SELECT
-          rc.player_id,
-          COALESCE(r.display_name, rc.player_id) AS player,
-          date(datetime(m.created_at, 'unixepoch', '-6 hours')) AS day,
-          COUNT(DISTINCT m.match_id) AS games
-        FROM rating_changes rc
-        JOIN matches m ON m.match_id = rc.match_id
-        LEFT JOIN ratings r ON r.player_id = rc.player_id
-        WHERE m.status='completed'
-        GROUP BY rc.player_id, day
-        HAVING games = (
-          SELECT MAX(cnt) FROM (
-            SELECT COUNT(DISTINCT m2.match_id) AS cnt
-            FROM rating_changes rc2
-            JOIN matches m2 ON m2.match_id = rc2.match_id
-            WHERE m2.status='completed'
-            GROUP BY rc2.player_id, date(datetime(m2.created_at, 'unixepoch', '-6 hours'))
-          )
-        )
-        ORDER BY games DESC, player ASC
-      `).all();
-
-        return {
-          totalTies,
-          mostGames: rows.map(r => ({ player: r.player, count: r.games, date: r.day }))
-        };
-      });
-
-      res.json({ ok: true, ...result });
-    } catch (err) {
-      logRouteError("[/api/stats/mostGamesAndTies]", err);
-      sendError(res, 500, "stats_mostGamesAndTies_failed");
-    }
-  });
-
   router.get("/stats/summary", (req, res) => {
     try {
       const data = cached('stats_summary', () => {
