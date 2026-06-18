@@ -11,9 +11,14 @@ let selectedClassMap="__all";
 let currentClasses=[];
 let currentClassMaps=[];
 let currentHampa=null;
-let currentBreakdown=null;
-let currentBreakdownMode="totals";
-let currentBreakdownFilter="overall";
+let currentPlayerId=null;
+let currentGranular=null;
+let currentGranularEvents=null;
+let granularMatchFilter="";
+let granularSummaryLoading=false;
+let granularEventsLoading=false;
+let granularEventsLoaded=false;
+let granularEventsObserver=null;
 const nn = window.nnHelpers || {};
 const playerFormatSeconds = nn.formatSeconds || (s => `${Number(s || 0)}s`);
 const playerNormName = nn.normName || (v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
@@ -40,7 +45,13 @@ async function fetchJSON(url){
 
 function qs(id){return document.getElementById(id);}
 function setText(id,value){const el=qs(id);if(el)el.textContent=value;}
-function setHtml(id,value){const el=qs(id);if(el)el.innerHTML=value;}
+function setHtml(id,value){
+  const el=qs(id);
+  if(el){
+    el.innerHTML=value;
+    requestAnimationFrame(()=>hydrateLazyWeaponIcons(el));
+  }
+}
 
 const playerEscapeHtml=window.nnHelpers?.escapeHtml||window.escapeHtml;
 const playerEscapeAttr=window.nnHelpers?.escapeAttr||window.escapeAttr;
@@ -127,6 +138,43 @@ function statTile(label,value,sub){
   return '<div class="stat-tile"><span>'+escapeHtml(label)+'</span><strong>'+escapeHtml(value)+'</strong>'+(sub?'<span class="sub">'+escapeHtml(sub)+'</span>':"")+'</div>';
 }
 
+let lazyWeaponObserver=null;
+
+function revealLazyWeaponIcon(el){
+  const cls=el?.dataset?.lazyWeapon||"";
+  if(cls)el.classList.add(cls);
+  el?.removeAttribute("data-lazy-weapon");
+}
+
+function getLazyWeaponObserver(){
+  if(lazyWeaponObserver||!("IntersectionObserver" in window))return lazyWeaponObserver;
+  lazyWeaponObserver=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(!entry.isIntersecting)return;
+      revealLazyWeaponIcon(entry.target);
+      lazyWeaponObserver.unobserve(entry.target);
+    });
+  },{rootMargin:"320px 0px"});
+  return lazyWeaponObserver;
+}
+
+function hydrateLazyWeaponIcons(root=document){
+  const icons=root.querySelectorAll?.(".weapon-icon[data-lazy-weapon]");
+  if(!icons?.length)return;
+  const observer=getLazyWeaponObserver();
+  icons.forEach(icon=>{
+    if(observer){
+      observer.observe(icon);
+    }else{
+      revealLazyWeaponIcon(icon);
+    }
+  });
+}
+
+function weaponIconMarkup(weaponClass){
+  return '<i class="weapon-icon" data-lazy-weapon="'+escapeAttr(weaponClass||"")+'"></i>';
+}
+
 async function loadPlayerV3(){
   const playerId=new URLSearchParams(window.location.search).get("id");
 
@@ -135,21 +183,22 @@ async function loadPlayerV3(){
     return;
   }
 
+  currentPlayerId=playerId;
   const enc=encodeURIComponent(playerId);
+  resetGranularState();
+  renderPlayerGranularLoading();
 
-  const v3=await fetchJSON("/api/player/"+enc+"/v3");
+  const [v3,recent,permap]=await Promise.all([
+    fetchJSON("/api/player/"+enc+"/v3"),
+    fetchJSON("/api/player/"+enc+"/recent?limit=300"),
+    fetchJSON("/api/player/"+enc+"/permap")
+  ]);
 
   if(!v3.ok||!v3.data){
     setText("player-name-v3","Player not found");
     setHtml("combat-stats",'<div class="empty-v3">V3 API failed. Check console.</div>');
     return;
   }
-
-  const [recent,permap,breakdown]=await Promise.all([
-    fetchJSON("/api/player/"+enc+"/recent?limit=300"),
-    fetchJSON("/api/player/"+enc+"/permap"),
-    fetchJSON("/api/player/"+enc+"/breakdown")
-  ]);
 
   const data=v3.data;
   const player=data.player||{};
@@ -202,7 +251,6 @@ async function loadPlayerV3(){
   setText("kpi-damage",h.linked?compact(h.damage):"-");
 
   const permapRows=Array.isArray(permap.data)?permap.data:[];
-  renderPlayerBreakdown(breakdown?.ok?breakdown.data:null);
   renderCombat(h);
   renderFlag(h);
   renderWeapons(weapons);
@@ -220,6 +268,7 @@ async function loadPlayerV3(){
   renderMapFrequency(permapRows);
   renderActivityHeatmaps(recentRows);
   renderRelationshipLists(recentRows,playerId);
+  scheduleGranularSummaryLoad(playerId);
 }
 
 function formatMatchDate(ts){
@@ -283,7 +332,7 @@ function renderWeapons(weapons){
 
     return (
       '<div class="weapon-row" title="'+escapeAttr(playerWeaponName(w.weapon_class))+'">'+
-        '<span><i class="weapon-icon '+escapeAttr(w.weapon_class||"")+'"></i></span>'+
+        '<span>'+weaponIconMarkup(w.weapon_class)+'</span>'+
         '<span class="weapon-name">'+escapeHtml(playerWeaponName(w.weapon_class))+'</span>'+
         '<strong>'+fmt(kills)+' <small>'+pct+'%</small></strong>'+
       '</div>'
@@ -552,215 +601,317 @@ function renderRecentMatches(rows,playerId,hidden){
   }).join("")||'<div class="empty-v3">No recent matches</div>');
 }
 
-const BREAKDOWN_STAT_ROWS=[
-  ["Kills","kills"],
-  ["Deaths","deaths"],
-  ["Enemy Damage","enemy_damage"],
-  ["Team Damage","team_damage"],
-  ["Damage Taken","damage_taken"],
-  ["CK","conceded_kills"],
-  ["SG","sentry_kills"],
-  ["CJ","conc_jumps"],
-  ["Caps","caps"],
-  ["Touches","touches"],
-  ["Initial Touches","initial_touches"],
-  ["Flag Time","flag_time"],
-  ["Objectives","objectives"]
-];
-
-const BREAKDOWN_SPLITS=[
-  {key:"overall",label:"Overall"},
-  {key:"offense",label:"Offense"},
-  {key:"defense",label:"Defense"}
-];
-
-function formatBreakdownNumber(value,mode){
-  const n=Number(value||0);
-  if(!Number.isFinite(n))return "-";
-  if(mode==="perMatch"){
-    if(Math.abs(n)>=100)return n.toLocaleString(undefined,{maximumFractionDigits:1});
-    return n.toLocaleString(undefined,{minimumFractionDigits:n%1?1:0,maximumFractionDigits:2});
-  }
-  return Math.round(n).toLocaleString();
+function formatEventTime(row){
+  if(row?.eventTimeText)return row.eventTimeText;
+  const seconds=Number(row?.eventTimeSeconds);
+  if(!Number.isFinite(seconds)||seconds<0)return "-";
+  const mins=Math.floor(seconds/60);
+  const secs=Math.floor(seconds%60);
+  return mins+":"+String(secs).padStart(2,"0");
 }
 
-function formatBreakdownTime(value){
-  const total=Math.max(0,Number(value||0));
-  if(!Number.isFinite(total))return "0s";
-  if(total>=3600){
-    let hours=Math.floor(total/3600);
-    let minutes=Math.round((total%3600)/60);
-    if(minutes>=60){
-      hours+=1;
-      minutes=0;
-    }
-    return hours+"h"+(minutes?(" "+minutes+"m"):"");
-  }
-  if(total>=60){
-    const minutes=total/60;
-    const rounded=Number(minutes.toFixed(1));
-    return rounded.toLocaleString(undefined,{maximumFractionDigits:1})+"m";
-  }
-  return Math.round(total)+"s";
+function groupRows(rows,key){
+  return (Array.isArray(rows)?rows:[]).reduce((groups,row)=>{
+    const groupKey=String(row?.[key]||"Unknown");
+    if(!groups[groupKey])groups[groupKey]=[];
+    groups[groupKey].push(row);
+    return groups;
+  },{});
 }
 
-function formatBreakdownValue(key,value,mode){
-  if(key==="flag_time")return formatBreakdownTime(value);
-  return formatBreakdownNumber(value,mode);
+function granularWeaponRow(row,extra){
+  return '<div class="granular-row granular-weapon-row">'+
+    '<span class="granular-weapon-cell">'+
+      weaponIconMarkup(row.weapon)+
+      '<b>'+escapeHtml(playerWeaponName(row.weapon||"-"))+'</b>'+
+      (extra?'<small>'+escapeHtml(extra)+'</small>':"")+
+    '</span>'+
+    '<strong>'+fmt(row.kills)+' kills</strong>'+
+  '</div>';
 }
 
-function formatBreakdownPct(value){
-  const n=Number(value||0);
-  if(!Number.isFinite(n))return "0%";
-  return n.toLocaleString(undefined,{maximumFractionDigits:1})+"%";
+function fmtGranularSample(value){
+  return value===null||value===undefined?"-":fmt(value);
 }
 
-function formatWeaponKillsPerMatch(kills,matches){
-  const totalKills=Number(kills||0);
-  const totalMatches=Number(matches||0);
-  if(!Number.isFinite(totalKills)||!Number.isFinite(totalMatches)||totalMatches<=0)return "0 / match";
-  const avg=totalKills/totalMatches;
-  if(avg>0&&avg<0.01)return "<0.01 / match";
-  return avg.toLocaleString(undefined,{minimumFractionDigits:avg%1?2:0,maximumFractionDigits:2})+" / match";
+function renderGranularClassWeapons(rows){
+  const groups=groupRows(rows,"class");
+  const classNames=Object.keys(groups);
+  if(!classNames.length)return '<div class="granular-empty">No official class weapon kills yet.</div>';
+  return classNames.map(className=>{
+    const total=groups[className].reduce((sum,row)=>sum+Number(row.kills||0),0);
+    return '<article class="granular-group">'+
+      '<div class="granular-group-head"><strong>'+escapeHtml(classDisplayName(className))+'</strong><span>'+fmt(total)+' kills</span></div>'+
+      groups[className].slice(0,8).map(row=>granularWeaponRow(row)).join("")+
+    '</article>';
+  }).join("");
 }
 
-function getOverallBreakdownMatches(){
-  const sample=currentBreakdown?.sample||{};
-  return Number(sample.splits?.overall?.matches||sample.matches||0);
-}
-
-function renderBreakdownTabs(data){
-  const tabs=qs("breakdown-tabs");
-  if(!tabs)return;
-  const hasRoundSplits=!!data?.sample?.hasRoundSplits;
-  const allowed=BREAKDOWN_SPLITS.filter(split=>split.key==="overall"||hasRoundSplits);
-  if(!allowed.some(split=>split.key===currentBreakdownFilter))currentBreakdownFilter="overall";
-  tabs.innerHTML=allowed.map(split=>
-    '<button type="button" role="tab" class="breakdown-tab '+(currentBreakdownFilter===split.key?"active":"")+'" data-breakdown-filter="'+escapeAttr(split.key)+'" aria-selected="'+(currentBreakdownFilter===split.key?"true":"false")+'">'+escapeHtml(split.label)+'</button>'
-  ).join("");
-}
-
-function syncBreakdownButtons(){
-  document.querySelectorAll(".breakdown-mode").forEach(btn=>{
-    const active=btn.dataset.breakdownMode===currentBreakdownMode;
-    btn.classList.toggle("active",active);
-    btn.setAttribute("aria-pressed",active?"true":"false");
+function renderGranularRoleWeapons(rows){
+  const normalized=(Array.isArray(rows)?rows:[]).map(row=>({
+    ...row,
+    role:String(row.role||"unknown").toLowerCase()
+  }));
+  const groups=groupRows(normalized,"role");
+  const roles=Object.keys(groups).sort((a,b)=>{
+    const order={offense:0,defense:1,unknown:2};
+    return (order[a]??9)-(order[b]??9)||a.localeCompare(b);
   });
+  if(!roles.length)return '<div class="granular-empty">No role weapon data yet.</div>';
+  return roles.map(role=>{
+    const label=role.charAt(0).toUpperCase()+role.slice(1);
+    return '<article class="granular-group">'+
+      '<div class="granular-group-head"><strong>'+escapeHtml(label)+'</strong><span>'+fmt(groups[role].length)+' rows</span></div>'+
+      groups[role].slice(0,8).map(row=>granularWeaponRow(row,classDisplayName(row.class))).join("")+
+    '</article>';
+  }).join("");
 }
 
-function bindBreakdownControls(){
-  const card=qs("player-breakdown-card");
-  if(!card||card.dataset.bound==="1")return;
-  card.dataset.bound="1";
-  card.addEventListener("click",event=>{
-    const target=event.target?.closest?event.target:event.target?.parentElement;
-    if(!target)return;
-    const modeButton=target.closest("[data-breakdown-mode]");
-    if(modeButton){
-      currentBreakdownMode=modeButton.dataset.breakdownMode==="perMatch"?"perMatch":"totals";
-      renderPlayerBreakdown(currentBreakdown);
-      return;
-    }
-    const filterButton=target.closest("[data-breakdown-filter]");
-    if(filterButton){
-      currentBreakdownFilter=filterButton.dataset.breakdownFilter||"overall";
-      renderPlayerBreakdown(currentBreakdown);
-    }
-  });
+function renderGranularSpecialKills(flagRows,concedRows){
+  function block(title,rows){
+    const safeRows=Array.isArray(rows)?rows:[];
+    return '<article class="granular-mini-block">'+
+      '<div class="granular-group-head"><strong>'+escapeHtml(title)+'</strong><span>'+fmt(safeRows.reduce((sum,row)=>sum+Number(row.kills||0),0))+' kills</span></div>'+
+      (safeRows.length?safeRows.slice(0,6).map(row=>granularWeaponRow(row,classDisplayName(row.class))).join(""):'<div class="granular-empty">None tracked yet.</div>')+
+    '</article>';
+  }
+  return block("Flag Carrier Kills",flagRows)+block("Conced Kills",concedRows);
 }
 
-function renderBreakdownClasses(rows){
-  const classes=Array.isArray(rows)?rows:[];
-  if(!classes.length)return '<div class="breakdown-empty">No class usage tracked yet.</div>';
-  return '<div class="breakdown-class-list">'+classes.map(row=>{
-    const seconds=Number(row.seconds||0);
-    const pct=Math.max(0,Math.min(100,Number(row.pct||0)));
-    const avg=Number(row.avgSecondsPerMatch||0);
-    const cleanPct=Number(pct.toFixed(1));
-    return '<div class="breakdown-class-row">'+
-      '<div class="breakdown-class-main">'+
-        '<strong>'+escapeHtml(classDisplayName(row.class||row.class_name||"-"))+'</strong>'+
-        '<span>'+escapeHtml(formatBreakdownTime(seconds))+' tracked</span>'+
-      '</div>'+
-      '<div class="breakdown-class-track" aria-hidden="true"><i style="width:'+escapeAttr(String(cleanPct))+'%"></i></div>'+
-      '<div class="breakdown-class-meta">'+
-        '<b>'+escapeHtml(formatBreakdownPct(cleanPct))+'</b>'+
-        '<span>'+escapeHtml(fmt(row.matches))+' matches</span>'+
-        '<span>Avg '+escapeHtml(formatBreakdownTime(avg))+'</span>'+
-      '</div>'+
-    '</div>';
-  }).join("")+'</div>';
-}
-
-function renderBreakdownStats(stats){
-  return '<div class="breakdown-stat-grid">'+BREAKDOWN_STAT_ROWS.map(([label,key])=>
-    '<div class="breakdown-stat-tile">'+
-      '<span>'+escapeHtml(label)+'</span>'+
-      '<strong>'+escapeHtml(formatBreakdownValue(key,stats?.[key],currentBreakdownMode))+'</strong>'+
+function renderGranularVictims(rows){
+  const victims=Array.isArray(rows)?rows:[];
+  if(!victims.length)return '<div class="granular-empty">No victim data yet.</div>';
+  return '<div class="granular-list">'+victims.slice(0,16).map((row,index)=>
+    '<div class="granular-row">'+
+      '<span><b>#'+(index+1)+' '+escapeHtml(row.victimName||"Unknown")+'</b><small>'+escapeHtml(row.victimDiscordId||row.victimSteamId||row.victimKey||"unresolved")+'</small></span>'+
+      '<strong>'+fmt(row.kills)+' kills</strong>'+
     '</div>'
   ).join("")+'</div>';
 }
 
-function renderBreakdownWeapons(rows){
-  const weapons=Array.isArray(rows)?rows:[];
-  if(!weapons.length)return '<div class="breakdown-empty">No weapon usage tracked yet.</div>';
-  const overallMatches=getOverallBreakdownMatches();
-  const avgSuffix=currentBreakdownFilter==="overall"?"":" overall";
-  return '<div class="breakdown-weapon-list">'+weapons.map(row=>{
-    const value=currentBreakdownMode==="perMatch"
-      ? formatWeaponKillsPerMatch(row.kills,overallMatches).replace(" / match"," /"+avgSuffix+" match")
-      : fmt(row.kills)+" kills";
-    return '<div class="breakdown-weapon-row">'+
-      '<span class="breakdown-weapon-name">'+
-        '<i class="weapon-icon '+escapeAttr(row.weapon||"")+'"></i>'+
-        '<b>'+escapeHtml(playerWeaponName(row.weapon||"-"))+'</b>'+
+function renderGranularAliases(rows){
+  const aliases=Array.isArray(rows)?rows:[];
+  if(!aliases.length)return '<div class="granular-empty">No alias history yet.</div>';
+  return '<div class="granular-list">'+aliases.slice(0,16).map(row=>
+    '<div class="granular-row">'+
+      '<span><b>'+escapeHtml(row.name||"Unknown")+'</b></span>'+
+      '<strong>'+fmt(row.kills)+' kills</strong>'+
+    '</div>'
+  ).join("")+'</div>';
+}
+
+function renderGranularEvents(data){
+  const events=Array.isArray(data?.events)?data.events:[];
+  if(!events.length)return '<div class="granular-empty">No granular events found for this filter.</div>';
+  return '<div class="granular-event-list">'+events.map(event=>{
+    const matchId=event.matchId||"-";
+    const attribution=event.attacker?.classAttribution==="uncertain"?"uncertain":"official";
+    return '<div class="granular-event-row">'+
+      '<button type="button" class="match-id-pill granular-match-pill" data-match-id="'+escapeAttr(matchId)+'">'+escapeHtml(matchId)+'</button>'+
+      '<span class="granular-event-meta">'+escapeHtml(event.map||"Unknown map")+' · R'+escapeHtml(event.round||"-")+' · '+escapeHtml(formatEventTime(event))+'</span>'+
+      '<span class="granular-event-kill">'+
+        weaponIconMarkup(event.weapon)+
+        '<b>'+escapeHtml(playerWeaponName(event.weapon||"-"))+'</b>'+
+        '<small>'+escapeHtml(classDisplayName(event.attacker?.class||"Unknown"))+' vs '+escapeHtml(event.victim?.name||"Unknown")+'</small>'+
       '</span>'+
-      '<strong>'+escapeHtml(value)+'</strong>'+
+      '<span class="granular-event-badges">'+
+        '<i class="'+escapeAttr(attribution)+'">'+escapeHtml(attribution)+'</i>'+
+        (event.flags?.flagCarrierKill?'<i>flag carrier</i>':"")+
+        (event.flags?.conced?'<i>conced</i>':"")+
+      '</span>'+
     '</div>';
   }).join("")+'</div>';
 }
 
-function renderPlayerBreakdown(data){
-  bindBreakdownControls();
-  currentBreakdown=data&&data.stats?data:null;
-  syncBreakdownButtons();
-  renderBreakdownTabs(currentBreakdown);
+function granularEventsUrl(offset=0){
+  if(!currentPlayerId)return "";
+  const params=new URLSearchParams({limit:"100",offset:String(offset)});
+  if(granularMatchFilter)params.set("matchId",granularMatchFilter);
+  return "/api/player/"+encodeURIComponent(currentPlayerId)+"/granular/events?"+params.toString();
+}
 
-  const body=qs("player-breakdown-body");
+function cleanGranularMatchFilter(value){
+  return String(value||"").trim().slice(0,100);
+}
+
+function resetGranularState(){
+  currentGranular=null;
+  currentGranularEvents=null;
+  granularMatchFilter="";
+  granularSummaryLoading=false;
+  granularEventsLoading=false;
+  granularEventsLoaded=false;
+  if(granularEventsObserver){
+    granularEventsObserver.disconnect();
+    granularEventsObserver=null;
+  }
+  const input=qs("granular-match-filter");
+  if(input)input.value="";
+}
+
+function renderPlayerGranularLoading(){
+  bindGranularControls();
+  const body=qs("player-granular-body");
+  if(!body)return;
+  body.innerHTML=
+    '<div class="granular-summary-strip">'+
+      '<div><span>Event Kills</span><strong>Loading...</strong></div>'+
+      '<div><span>Matches</span><strong>Loading...</strong></div>'+
+      '<div><span>Official Class Kills</span><strong>Loading...</strong></div>'+
+      '<div><span>Uncertain</span><strong>Loading...</strong></div>'+
+    '</div>'+
+    '<div class="granular-grid">'+
+      '<section class="granular-panel granular-class-panel"><div class="granular-panel-head"><h3>Class Weapon Breakdown</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading granular class weapons...</div></div></section>'+
+      '<section class="granular-panel granular-role-panel"><div class="granular-panel-head"><h3>Role Weapon Breakdown</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading offense / defense weapons...</div></div></section>'+
+      '<section class="granular-panel granular-special-panel"><div class="granular-panel-head"><h3>Objective Kills</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading objective kills...</div></div></section>'+
+      '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading nemesis table...</div></div></section>'+
+      '<section class="granular-panel granular-alias-panel"><div class="granular-panel-head"><h3>Alias History</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading aliases...</div></div></section>'+
+      '<section class="granular-panel granular-events-panel"><div class="granular-panel-head"><h3>Match Drilldown</h3><span>Waiting</span></div><div id="granular-events-panel" class="granular-panel-scroll"><div class="granular-empty">Full events load when this section enters view.</div></div><button type="button" class="granular-load-more" data-granular-load-events="1">Load Events</button></section>'+
+    '</div>';
+}
+
+function scheduleGranularSummaryLoad(playerId){
+  const requestedPlayerId=String(playerId||"");
+  if(!requestedPlayerId||granularSummaryLoading)return;
+  granularSummaryLoading=true;
+  requestAnimationFrame(()=>{
+    setTimeout(async()=>{
+      const url="/api/player/"+encodeURIComponent(requestedPlayerId)+"/granular?limit=50";
+      const result=await fetchJSON(url);
+      granularSummaryLoading=false;
+      if(String(currentPlayerId)!==requestedPlayerId)return;
+      currentGranular=result?.ok?result.data:null;
+      renderPlayerGranular(currentGranular,null);
+      observeGranularEvents();
+    },0);
+  });
+}
+
+function observeGranularEvents(){
+  const card=qs("player-granular-card");
+  if(!card||granularEventsLoaded||granularEventsLoading)return;
+  if(granularEventsObserver)granularEventsObserver.disconnect();
+  if(!("IntersectionObserver" in window)){
+    return;
+  }
+  granularEventsObserver=new IntersectionObserver(entries=>{
+    if(entries.some(entry=>entry.isIntersecting)){
+      granularEventsObserver.disconnect();
+      granularEventsObserver=null;
+      loadGranularEvents(0,false);
+    }
+  },{rootMargin:"180px 0px",threshold:.12});
+  granularEventsObserver.observe(card);
+}
+
+async function loadGranularEvents(offset=0,append=false){
+  if(granularEventsLoading)return;
+  const body=qs("granular-events-panel");
+  if(body&&!append)body.innerHTML='<div class="empty-v3">Loading granular events...</div>';
+  const url=granularEventsUrl(offset);
+  if(!url)return;
+  granularEventsLoading=true;
+  const result=await fetchJSON(url);
+  granularEventsLoading=false;
+  const next=result?.ok?result.data:null;
+  if(append&&currentGranularEvents&&next){
+    next.events=[...(currentGranularEvents.events||[]),...(next.events||[])];
+  }
+  currentGranularEvents=next;
+  granularEventsLoaded=!!next;
+  renderPlayerGranular(currentGranular,currentGranularEvents);
+}
+
+function bindGranularControls(){
+  const card=qs("player-granular-card");
+  if(!card||card.dataset.bound==="1")return;
+  card.dataset.bound="1";
+  qs("granular-match-apply")?.addEventListener("click",()=>{
+    granularMatchFilter=cleanGranularMatchFilter(qs("granular-match-filter")?.value);
+    granularEventsLoaded=false;
+    currentGranularEvents=null;
+    loadGranularEvents(0,false);
+  });
+  qs("granular-match-clear")?.addEventListener("click",()=>{
+    granularMatchFilter="";
+    const input=qs("granular-match-filter");
+    if(input)input.value="";
+    granularEventsLoaded=false;
+    currentGranularEvents=null;
+    loadGranularEvents(0,false);
+  });
+  qs("granular-match-filter")?.addEventListener("keydown",event=>{
+    if(event.key==="Enter"){
+      granularMatchFilter=cleanGranularMatchFilter(event.currentTarget.value);
+      granularEventsLoaded=false;
+      currentGranularEvents=null;
+      loadGranularEvents(0,false);
+    }
+  });
+  card.addEventListener("click",event=>{
+    const loadEvents=event.target.closest("[data-granular-load-events]");
+    if(loadEvents){
+      loadGranularEvents(0,false);
+      return;
+    }
+    const loadMore=event.target.closest("[data-granular-load-more]");
+    if(loadMore){
+      const offset=Number(loadMore.dataset.granularLoadMore||0);
+      loadGranularEvents(offset,true);
+    }
+  });
+}
+
+function renderPlayerGranular(data,eventsData){
+  bindGranularControls();
+  currentGranular=data&&data.source?data:null;
+  if(arguments.length>=2)currentGranularEvents=eventsData||null;
+  const body=qs("player-granular-body");
   if(!body)return;
 
-  const hasData=!!currentBreakdown&&(
-    Number(currentBreakdown.sample?.matches||0)>0 ||
-    Number(currentBreakdown.sample?.rounds||0)>0 ||
-    (Array.isArray(currentBreakdown.classes)&&currentBreakdown.classes.length>0) ||
-    (Array.isArray(currentBreakdown.weapons)&&currentBreakdown.weapons.length>0)
-  );
-
-  if(!hasData){
-    body.innerHTML='<div class="empty-v3">No breakdown data yet</div>';
+  if(!currentGranular||!currentGranular.source?.granularAvailable){
+    body.innerHTML='<div class="empty-v3">No granular kill-event data yet.</div>';
     return;
   }
 
-  const statBucket=currentBreakdown.stats?.[currentBreakdownFilter]||currentBreakdown.stats?.overall||{};
-  const selectedStats=currentBreakdownMode==="perMatch"?(statBucket.perMatch||{}):(statBucket.totals||{});
-  const sample=currentBreakdown.sample||{};
-  const splitNote=currentBreakdownFilter==="overall"
-    ? fmt(sample.matches)+" tracked matches"
-    : fmt(sample.splits?.[currentBreakdownFilter]?.matches)+" split matches";
+  const sample=currentGranular.sample||{};
+  const fallbackEvents=Array.isArray(currentGranular.matchDrilldown)?currentGranular.matchDrilldown:[];
+  const hasLoadedEvents=granularEventsLoaded&&currentGranularEvents;
+  const events=hasLoadedEvents?currentGranularEvents:{
+    events:fallbackEvents,
+    total:null,
+    hasMore:false,
+    limit:fallbackEvents.length,
+    offset:0
+  };
+  const loaded=Array.isArray(events.events)?events.events.length:0;
+  const total=events.total===null||events.total===undefined?null:Number(events.total||loaded);
+  const eventCountLabel=!hasLoadedEvents
+    ? (loaded?fmt(loaded)+" preview":"Events not loaded")
+    : (total===null?fmt(loaded)+" events":fmt(loaded)+" / "+fmt(total)+" events");
+  const nextOffset=loaded;
+  const eventAction=granularEventsLoading
+    ? '<button type="button" class="granular-load-more" disabled>Loading Events</button>'
+    : (!hasLoadedEvents
+        ? '<button type="button" class="granular-load-more" data-granular-load-events="1">Load Events</button>'
+        : (events.hasMore?'<button type="button" class="granular-load-more" data-granular-load-more="'+escapeAttr(String(nextOffset))+'">Load More Events</button>':""));
 
   body.innerHTML=
-    '<section class="breakdown-section breakdown-classes">'+
-      '<div class="breakdown-section-head"><h3>Classes Played</h3><span>'+escapeHtml(fmt(Array.isArray(currentBreakdown.classes)?currentBreakdown.classes.length:0))+' classes</span></div>'+
-      '<div class="breakdown-panel-scroll">'+renderBreakdownClasses(currentBreakdown.classes)+'</div>'+
-    '</section>'+
-    '<section class="breakdown-section breakdown-core">'+
-      '<div class="breakdown-section-head"><h3>Core Stats</h3><span>'+escapeHtml(splitNote)+'</span></div>'+
-      '<div class="breakdown-panel-scroll">'+renderBreakdownStats(selectedStats)+'</div>'+
-    '</section>'+
-    '<section class="breakdown-section breakdown-weapons">'+
-      '<div class="breakdown-section-head"><h3>Weapons Used</h3><span>'+escapeHtml(fmt(Array.isArray(currentBreakdown.weapons)?currentBreakdown.weapons.length:0))+' weapons</span></div>'+
-      '<div class="breakdown-panel-scroll">'+renderBreakdownWeapons(currentBreakdown.weapons)+'</div>'+
-    '</section>';
+    '<div class="granular-summary-strip">'+
+      '<div><span>Event Kills</span><strong>'+escapeHtml(fmtGranularSample(sample.kills))+'</strong></div>'+
+      '<div><span>Matches</span><strong>'+escapeHtml(fmtGranularSample(sample.matches))+'</strong></div>'+
+      '<div><span>Official Class Kills</span><strong>'+escapeHtml(fmtGranularSample(sample.officialClassKills))+'</strong></div>'+
+      '<div><span>Uncertain</span><strong>'+escapeHtml(fmtGranularSample(sample.uncertainClassKills))+'</strong></div>'+
+    '</div>'+
+    '<div class="granular-grid">'+
+      '<section class="granular-panel granular-class-panel"><div class="granular-panel-head"><h3>Class Weapon Breakdown</h3><span>'+fmt(currentGranular.classWeapons?.length)+' rows</span></div><div class="granular-panel-scroll">'+renderGranularClassWeapons(currentGranular.classWeapons)+'</div></section>'+
+      '<section class="granular-panel granular-role-panel"><div class="granular-panel-head"><h3>Role Weapon Breakdown</h3><span>Offense / Defense</span></div><div class="granular-panel-scroll">'+renderGranularRoleWeapons(currentGranular.roleWeapons)+'</div></section>'+
+      '<section class="granular-panel granular-special-panel"><div class="granular-panel-head"><h3>Objective Kills</h3><span>Flag + conced</span></div><div class="granular-panel-scroll">'+renderGranularSpecialKills(currentGranular.flagCarrierKills,currentGranular.concededKills)+'</div></section>'+
+      '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Nemesis table</span></div><div class="granular-panel-scroll">'+renderGranularVictims(currentGranular.favoriteVictims)+'</div></section>'+
+      '<section class="granular-panel granular-alias-panel"><div class="granular-panel-head"><h3>Alias History</h3><span>Kill-event names</span></div><div class="granular-panel-scroll">'+renderGranularAliases(currentGranular.aliasHistory)+'</div></section>'+
+      '<section class="granular-panel granular-events-panel"><div class="granular-panel-head"><h3>Match Drilldown</h3><span>'+escapeHtml(eventCountLabel)+'</span></div><div id="granular-events-panel" class="granular-panel-scroll">'+renderGranularEvents(events)+'</div>'+eventAction+'</section>'+
+    '</div>';
+  hydrateLazyWeaponIcons(body);
 }
 
 function renderMapFrequency(rows){
@@ -1138,6 +1289,7 @@ const currentMvpBadge=renderDrawerMvpBadge(currentMvp);
       ${renderPlayerWeaponList(weapons)}
     </div>
   `;
+  hydrateLazyWeaponIcons(body);
 }
 
 function renderDrawerMvpBadge(mvp){
@@ -1256,7 +1408,7 @@ function renderPlayerWeaponList(rows){
         .map(w=>`
           <div class="drawer-simple-row weapon">
             <span class="drawer-weapon-cell">
-              <i class="weapon-icon ${escapeAttr(w.weapon||"")}"></i>
+              ${weaponIconMarkup(w.weapon)}
               <span>${escapeHtml(playerWeaponName(w.weapon||"-"))}</span>
             </span>
             <b>${Number(w.kills||0)}</b>

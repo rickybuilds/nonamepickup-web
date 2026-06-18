@@ -46,45 +46,58 @@
 .v3-kpi-strip span{color:#cbd5e1;font-size:13px;font-weight:800}
 .v3-kpi-strip strong{color:#e5e7eb;font-size:25px;line-height:1;font-weight:950}
 
-/* ---------- Player breakdown ---------- */
-.player-intel-card{margin-bottom:16px}
-.player-intel-header{align-items:center}
-.player-intel-header>div>span{display:block;margin-top:4px}
-.player-breakdown-card{position:relative;overflow:hidden}
-.player-breakdown-wip{pointer-events:none;position:absolute;left:-44px;right:-44px;top:118px;z-index:5;padding:11px 52px 12px;text-align:center;transform:rotate(-1.5deg);background:linear-gradient(90deg,rgba(3,8,20,.08),rgba(251,146,60,.24) 18%,rgba(3,8,20,.72) 50%,rgba(56,189,248,.19) 82%,rgba(3,8,20,.08));border-top:1px solid rgba(251,146,60,.46);border-bottom:1px solid rgba(56,189,248,.34);box-shadow:0 0 26px rgba(251,146,60,.18),0 0 42px rgba(56,189,248,.12),inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(7px)}
-.player-breakdown-wip strong{display:block;color:#fed7aa;font-size:18px;font-weight:950;letter-spacing:.22em;text-transform:uppercase;text-shadow:0 0 14px rgba(251,146,60,.48)}
-.player-breakdown-wip span{display:block;margin-top:4px;color:#bae6fd;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;line-height:1.25;text-shadow:0 0 10px rgba(56,189,248,.35)}
-.player-breakdown-header{align-items:flex-start}
-.breakdown-controls{display:grid;gap:8px;justify-items:end;min-width:0}
-.breakdown-toggle,.breakdown-tabs{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
-.breakdown-toggle button,.breakdown-tabs button{border:1px solid rgba(77,166,255,.2);background:rgba(3,8,20,.44);color:#aebbd2;border-radius:999px;padding:7px 11px;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
-.breakdown-toggle button.active,.breakdown-tabs button.active{color:#06111f;background:linear-gradient(90deg,#38bdf8,#22d3ee);border-color:transparent;box-shadow:0 0 16px rgba(56,189,248,.24)}
-.player-breakdown-body{display:grid;grid-template-columns:minmax(260px,.95fr) minmax(320px,1.2fr) minmax(260px,.9fr);gap:14px;align-items:start}
-.breakdown-section{min-width:0;max-height:360px;border:1px solid rgba(77,166,255,.15);background:linear-gradient(145deg,rgba(15,23,42,.58),rgba(3,8,20,.42));border-radius:16px;padding:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);display:flex;flex-direction:column}
-.breakdown-section-head{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
-.breakdown-section-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
-.breakdown-section-head span{color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;text-align:right}
-.breakdown-panel-scroll{min-height:0;overflow-y:auto;padding-right:4px}
-.breakdown-empty{color:#94a3b8;font-size:12px;font-weight:850;padding:12px;border:1px dashed rgba(77,166,255,.17);border-radius:12px;text-align:center}
-.breakdown-class-list,.breakdown-weapon-list{display:grid;gap:8px}
-.breakdown-class-row{display:grid;grid-template-columns:minmax(92px,.8fr) minmax(80px,1fr) minmax(96px,.75fr);gap:10px;align-items:center;padding:9px 10px;border:1px solid rgba(77,166,255,.12);border-radius:12px;background:rgba(3,8,20,.32)}
-.breakdown-class-main{min-width:0}
-.breakdown-class-main strong{display:block;color:#e5e7eb;font-size:13px;font-weight:950;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.breakdown-class-main span,.breakdown-class-meta span{display:block;color:#7f8faa;font-size:9px;font-weight:850;line-height:1.35}
-.breakdown-class-track{height:7px;border-radius:999px;background:rgba(30,41,59,.86);overflow:hidden;border:1px solid rgba(77,166,255,.1)}
-.breakdown-class-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#2563eb,#22d3ee,#22c55e);box-shadow:0 0 12px rgba(34,211,238,.34)}
-.breakdown-class-meta{text-align:right;min-width:0}
-.breakdown-class-meta b{display:block;color:#7dd3fc;font-size:12px;font-weight:950;line-height:1.1}
-.breakdown-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.breakdown-stat-tile{min-width:0;min-height:56px;border:1px solid rgba(77,166,255,.13);background:rgba(3,8,20,.38);border-radius:12px;padding:10px;display:grid;align-content:center;gap:5px}
-.breakdown-stat-tile span{color:#8ea0c7;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
-.breakdown-stat-tile strong{min-width:0;color:#e5e7eb;font-size:16px;line-height:1;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.breakdown-weapon-row{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;min-height:46px;padding:8px 10px;border:1px solid rgba(77,166,255,.12);border-radius:12px;background:rgba(3,8,20,.32)}
-.breakdown-weapon-name{min-width:0;display:flex;align-items:center;gap:10px;color:#e5e7eb;font-weight:950}
-.breakdown-weapon-name .weapon-icon{width:34px!important;height:34px!important;min-width:34px!important}
-.breakdown-weapon-name b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
-.breakdown-weapon-row strong{color:#dbeafe;font-size:13px;font-weight:950;text-align:right;white-space:nowrap}
-@media(max-width:1200px){.player-breakdown-body{grid-template-columns:1fr 1fr}.breakdown-core{grid-column:1 / -1;grid-row:1}.breakdown-classes{grid-column:1}.breakdown-weapons{grid-column:2}}
+/* ---------- Player V4 granular ---------- */
+.granular-empty{color:#94a3b8;font-size:12px;font-weight:850;padding:12px;border:1px dashed rgba(77,166,255,.17);border-radius:12px;text-align:center}
+.player-granular-card{margin-bottom:16px}
+.player-granular-header{align-items:flex-start}
+.granular-controls{display:grid;grid-template-columns:auto minmax(180px,260px) auto auto;align-items:center;gap:8px}
+.granular-controls label{color:#7dd3fc;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.12em}
+.granular-controls input{min-width:0;border:1px solid rgba(77,166,255,.22);background:rgba(3,8,20,.5);color:#dbeafe;border-radius:999px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:850;outline:none}
+.granular-controls input:focus{border-color:rgba(56,189,248,.58);box-shadow:0 0 18px rgba(56,189,248,.18)}
+.granular-controls button,.granular-load-more{border:1px solid rgba(77,166,255,.22);background:rgba(3,8,20,.48);color:#cbd5e1;border-radius:999px;padding:8px 12px;font-family:inherit;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
+.granular-controls button:hover,.granular-load-more:hover{color:#06111f;background:linear-gradient(90deg,#38bdf8,#22d3ee);border-color:transparent;box-shadow:0 0 16px rgba(56,189,248,.22)}
+.granular-summary-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.granular-summary-strip div{min-width:0;border:1px solid rgba(77,166,255,.14);background:linear-gradient(145deg,rgba(15,23,42,.62),rgba(3,8,20,.42));border-radius:14px;padding:12px}
+.granular-summary-strip span{display:block;color:#8ea0c7;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+.granular-summary-strip strong{display:block;margin-top:5px;color:#e5e7eb;font-size:20px;font-weight:950;line-height:1}
+.granular-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.granular-panel{min-width:0;max-height:380px;border:1px solid rgba(77,166,255,.15);background:linear-gradient(145deg,rgba(15,23,42,.58),rgba(3,8,20,.42));border-radius:16px;padding:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);display:flex;flex-direction:column}
+.granular-panel-head{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.granular-panel-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+.granular-panel-head span{color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;text-align:right}
+.granular-panel-scroll{min-height:0;overflow-y:auto;padding-right:4px}
+.granular-class-panel,.granular-role-panel{max-height:440px}
+.granular-events-panel{grid-column:1 / -1;max-height:470px}
+.granular-group,.granular-mini-block{display:grid;gap:7px;margin-bottom:10px;padding:10px;border:1px solid rgba(77,166,255,.12);border-radius:13px;background:rgba(3,8,20,.28)}
+.granular-group:last-child,.granular-mini-block:last-child{margin-bottom:0}
+.granular-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.granular-group-head strong{min-width:0;color:#7dd3fc;font-size:12px;font-weight:950;text-transform:uppercase;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.granular-group-head span{color:#94a3b8;font-size:10px;font-weight:950;white-space:nowrap}
+.granular-list{display:grid;gap:7px}
+.granular-row{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 10px;border:1px solid rgba(77,166,255,.11);border-radius:11px;background:rgba(3,8,20,.32)}
+.granular-row span{min-width:0}
+.granular-row b{display:block;min-width:0;color:#e5e7eb;font-size:12px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.granular-row small{display:block;margin-top:3px;color:#7f8faa;font-size:9px;font-weight:850;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.granular-row strong{color:#dbeafe;font-size:12px;font-weight:950;text-align:right;white-space:nowrap}
+.granular-weapon-cell{display:flex;align-items:center;gap:9px}
+.granular-weapon-cell .weapon-icon,.granular-event-kill .weapon-icon{width:30px!important;height:30px!important;min-width:30px!important}
+.granular-event-list{display:grid;gap:8px}
+.granular-event-row{display:grid;grid-template-columns:118px minmax(160px,.8fr) minmax(220px,1fr) minmax(150px,auto);align-items:center;gap:10px;padding:9px 10px;border:1px solid rgba(77,166,255,.12);border-radius:12px;background:rgba(3,8,20,.32)}
+.granular-event-meta{min-width:0;color:#94a3b8;font-size:11px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.granular-event-kill{min-width:0;display:flex;align-items:center;gap:9px;color:#e5e7eb}
+.granular-event-kill b{font-size:12px;font-weight:950;white-space:nowrap}
+.granular-event-kill small{min-width:0;color:#94a3b8;font-size:10px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.granular-event-badges{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:5px}
+.granular-event-badges i{font-style:normal;border:1px solid rgba(77,166,255,.16);background:rgba(15,23,42,.55);color:#aebbd2;border-radius:999px;padding:3px 7px;font-size:8px;font-weight:950;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.granular-event-badges i.official{border-color:rgba(34,197,94,.25);color:#86efac}
+.granular-event-badges i.uncertain{border-color:rgba(251,146,60,.34);color:#fed7aa}
+.granular-load-more{align-self:center;margin-top:12px}
+@media(max-width:1200px){
+  .granular-grid{grid-template-columns:1fr 1fr}
+  .granular-events-panel{grid-column:1 / -1}
+  .granular-event-row{grid-template-columns:100px minmax(120px,.8fr) minmax(180px,1fr)}
+  .granular-event-badges{grid-column:1 / -1;justify-content:flex-start}
+}
 
 /* ---------- Hampalyzer section ---------- */
 .v3-hampa-grid{display:grid;grid-template-columns:1fr 2fr;gap:16px;align-items:stretch;margin-bottom:16px}
@@ -319,18 +332,16 @@
   .v3-card{padding:14px!important;border-radius:18px!important}
   .v3-card-header h2{font-size:15px!important}
   .player-intel-header{align-items:flex-start}
-  .player-breakdown-wip{position:relative;left:auto;top:auto;right:auto;width:auto;margin:-2px 0 12px;padding:9px 12px;transform:none;border-radius:14px}
-  .player-breakdown-wip strong{font-size:11px}
-  .player-breakdown-wip span{font-size:8px}
-  .player-breakdown-header{display:grid;gap:12px}
-  .breakdown-controls{justify-items:stretch}
-  .breakdown-toggle,.breakdown-tabs{justify-content:flex-start}
-  .player-breakdown-body{grid-template-columns:1fr}
-  .breakdown-section{max-height:420px}
-  .breakdown-core,.breakdown-classes,.breakdown-weapons{grid-column:auto;grid-row:auto}
-  .breakdown-class-row{grid-template-columns:minmax(0,1fr);gap:7px}
-  .breakdown-class-meta{text-align:left;display:flex;flex-wrap:wrap;gap:6px 10px}
-  .breakdown-stat-grid{grid-template-columns:1fr 1fr}
+  .player-granular-header{display:grid;gap:12px}
+  .granular-controls{grid-template-columns:1fr 1fr;align-items:stretch}
+  .granular-controls label{grid-column:1 / -1}
+  .granular-controls input{grid-column:1 / -1}
+  .granular-summary-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .granular-grid{grid-template-columns:1fr}
+  .granular-panel,.granular-class-panel,.granular-role-panel,.granular-events-panel{grid-column:auto;max-height:430px}
+  .granular-event-row{grid-template-columns:1fr;align-items:start}
+  .granular-event-badges{grid-column:auto;justify-content:flex-start}
+  .granular-event-kill{align-items:flex-start}
   .hero-chart-wrap,.v3-chart-wrap{height:220px!important}
   .stat-tile-grid,.weapon-grid,.class-detail-grid{grid-template-columns:1fr 1fr}
   .class-detail-head{display:block}
@@ -343,7 +354,7 @@
   .heat-cell{width:15px!important;height:15px!important;min-height:15px!important;border-radius:4px!important}
   .heat-label{font-size:10px!important;text-align:right!important;padding-right:4px!important}
   .heat-hour{font-size:10px!important}
-  .breakdown-toggle button,.breakdown-tabs button,.match-id-pill,.drawer-round-stats span{font-size:10px}
+  .match-id-pill,.drawer-round-stats span{font-size:10px}
   #top-weapons.weapon-grid{grid-template-columns:1fr!important}
   #top-weapons .weapon-row{grid-template-columns:38px minmax(0,1fr) auto!important;gap:6px;padding:6px 8px}
   #top-weapons .weapon-icon{width:38px!important;height:38px!important;min-width:38px!important}

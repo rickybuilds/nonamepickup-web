@@ -84,24 +84,21 @@
       <div><span>Damage</span><strong id="kpi-damage" class="purple">—</strong></div>
     </section>
 
-    <section id="player-breakdown-card" class="v3-card player-intel-card player-breakdown-card">
-      <div class="player-breakdown-wip" aria-hidden="true">
-        <strong>WORK IN PROGRESS</strong>
-        <span>Granular class + weapon attribution coming soon</span>
-      </div>
-      <div class="v3-card-header player-intel-header player-breakdown-header">
-        <div><h2>Player Breakdown</h2><span>Hampalyzer totals and role splits</span></div>
-        <div class="breakdown-controls" aria-label="Player breakdown controls">
-          <div class="breakdown-toggle" role="group" aria-label="Breakdown mode">
-            <button type="button" class="breakdown-mode active" data-breakdown-mode="totals">Lifetime</button>
-            <button type="button" class="breakdown-mode" data-breakdown-mode="perMatch">Per Match Avg</button>
-          </div>
-          <div id="breakdown-tabs" class="breakdown-tabs" role="tablist" aria-label="Breakdown split"></div>
+    <section id="player-granular-card" class="v3-card player-granular-card">
+      <div class="v3-card-header player-granular-header">
+        <div>
+          <h2>Player V4 Granular</h2>
+          <span>Kill events, class attribution, victims, and aliases</span>
+        </div>
+        <div class="granular-controls" aria-label="Granular event controls">
+          <label for="granular-match-filter">Match ID</label>
+          <input id="granular-match-filter" type="text" placeholder="Optional match filter">
+          <button id="granular-match-apply" type="button">Apply</button>
+          <button id="granular-match-clear" type="button">Clear</button>
         </div>
       </div>
-
-      <div id="player-breakdown-body" class="player-breakdown-body">
-        <div class="empty-v3">Loading player breakdown...</div>
+      <div id="player-granular-body" class="player-granular-body">
+        <div class="empty-v3">Loading granular kill events...</div>
       </div>
     </section>
 

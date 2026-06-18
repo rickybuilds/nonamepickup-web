@@ -30,6 +30,41 @@ function initializeSchema(db) {
 `);
 
   db.exec(`
+  CREATE TABLE IF NOT EXISTS match_kill_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id TEXT NOT NULL,
+    source_url TEXT,
+    round_num INTEGER NOT NULL,
+    event_time_seconds INTEGER,
+    event_time_text TEXT,
+    attacker_key TEXT NOT NULL,
+    attacker_steam_id TEXT,
+    attacker_discord_id TEXT,
+    attacker_name TEXT,
+    attacker_team TEXT,
+    attacker_role TEXT,
+    attacker_class TEXT,
+    attacker_class_confidence TEXT,
+    weapon TEXT NOT NULL,
+    victim_name TEXT,
+    victim_key TEXT,
+    victim_steam_id TEXT,
+    victim_discord_id TEXT,
+    victim_team TEXT,
+    is_enemy_kill INTEGER DEFAULT 1,
+    is_team_kill INTEGER DEFAULT 0,
+    is_conced INTEGER DEFAULT 0,
+    is_flag_carrier_kill INTEGER DEFAULT 0,
+    source_confidence TEXT NOT NULL DEFAULT 'exact'
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_mke_player_victim_full
+    ON match_kill_events(attacker_discord_id, victim_discord_id, victim_steam_id, victim_key);
+  CREATE INDEX IF NOT EXISTS idx_mke_player_event_order
+    ON match_kill_events(attacker_discord_id, match_id, round_num, event_time_seconds, id);
+`);
+
+  db.exec(`
   CREATE INDEX IF NOT EXISTS idx_matches_status     ON matches(status);
   CREATE INDEX IF NOT EXISTS idx_matches_created_at ON matches(created_at);
   CREATE INDEX IF NOT EXISTS idx_matches_map        ON matches(map_name);
@@ -41,6 +76,7 @@ function initializeSchema(db) {
   CREATE INDEX IF NOT EXISTS idx_rc_match           ON rating_changes(match_id);
   CREATE INDEX IF NOT EXISTS idx_rc_player_match
     ON rating_changes(player_id, match_id);
+
 `);
 }
 

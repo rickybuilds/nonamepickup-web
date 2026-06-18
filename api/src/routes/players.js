@@ -224,6 +224,501 @@ function roundTeamExpression(){
   return "LOWER(REPLACE(REPLACE(REPLACE(TRIM(s.team_name),' ',''),'_',''),'-',''))";
 }
 
+const OFFICIAL_KILL_CLASS_CONFIDENCES=[
+  "exact_single_class_round",
+  "exact_timeline_match",
+  "exact_after_pause_clamped"
+];
+
+function resolvePlayerIdentity(playerId){
+  const player=db.prepare(`
+    SELECT player_id,display_name
+    FROM ratings
+    WHERE CAST(player_id AS TEXT)=?
+  `).get(playerId);
+
+  const steamRows=safeTableRead(()=>db.prepare(`
+    SELECT steam_id
+    FROM player_steam_ids
+    WHERE CAST(discord_id AS TEXT)=?
+      AND steam_id IS NOT NULL
+      AND steam_id!=''
+    ORDER BY is_primary DESC, steam_id
+  `).all(playerId),[]);
+
+  const directSteam=String(playerId||"").startsWith("STEAM_")?[String(playerId)]:[];
+  const steamIds=[...new Set([...steamRows.map(row=>String(row.steam_id||"")).filter(Boolean),...directSteam])];
+
+  return{
+    id:String(player?.player_id||playerId),
+    name:player?.display_name||String(playerId),
+    steam_id:steamIds[0]||null,
+    steamIds,
+    requestedId:String(playerId||"")
+  };
+}
+
+function killEventIdentityWhere(identity,alias=""){
+  const prefix=alias?alias+".":"";
+  const clauses=[`CAST(${prefix}attacker_discord_id AS TEXT)=?`];
+  const params=[identity.id];
+  if(identity.steamIds.length){
+    clauses.push(`(
+      (${prefix}attacker_discord_id IS NULL OR ${prefix}attacker_discord_id='')
+      AND ${prefix}attacker_steam_id IN (${placeholders(identity.steamIds)})
+    )`);
+    params.push(...identity.steamIds);
+  }
+  return{
+    sql:"("+clauses.join(" OR ")+")",
+    params
+  };
+}
+
+function fastKillEventIdentityWhere(identity,alias=""){
+  const prefix=alias?alias+".":"";
+  const requested=String(identity.requestedId||identity.id||"");
+  if(requested.startsWith("STEAM_")){
+    const steamIds=identity.steamIds.length?identity.steamIds:[requested];
+    return{
+      sql:`${prefix}attacker_steam_id IN (${placeholders(steamIds)})`,
+      params:steamIds
+    };
+  }
+  return{
+    sql:`CAST(${prefix}attacker_discord_id AS TEXT)=?`,
+    params:[identity.id]
+  };
+}
+
+function timedGranularQuery(label,fn){
+  console.time(label);
+  try{
+    return fn();
+  }finally{
+    console.timeEnd(label);
+  }
+}
+
+function ensureGranularIndexes(){
+  safeTableRead(()=>{
+    db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_mke_player_victim_full
+      ON match_kill_events(attacker_discord_id, victim_discord_id, victim_steam_id, victim_key)
+    `).run();
+    db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_mke_player_event_order
+      ON match_kill_events(attacker_discord_id, match_id, round_num, event_time_seconds, id)
+    `).run();
+    db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_mke_steam_event_fast
+      ON match_kill_events(attacker_steam_id, match_id, round_num, event_time_seconds, id)
+    `).run();
+  },null);
+}
+
+function officialKillConfidenceWhere(alias=""){
+  const prefix=alias?alias+".":"";
+  return `${prefix}attacker_class_confidence IN (${placeholders(OFFICIAL_KILL_CLASS_CONFIDENCES)})`;
+}
+
+function killEventSourceConfidence(confidence){
+  return OFFICIAL_KILL_CLASS_CONFIDENCES.includes(String(confidence||""))?"official":"uncertain";
+}
+
+function mapKillDrilldownRow(row){
+  return{
+    id:Number(row.id||0),
+    matchId:row.match_id,
+    map:row.map_name||null,
+    created_at:row.created_at||null,
+    round:Number(row.round_num||0),
+    eventTimeSeconds:row.event_time_seconds===null?null:Number(row.event_time_seconds||0),
+    eventTimeText:row.event_time_text||null,
+    weapon:row.weapon,
+    victim:{
+      name:row.victim_name||null,
+      key:row.victim_key||null,
+      discord_id:row.victim_discord_id||null,
+      steam_id:row.victim_steam_id||null,
+      team:row.victim_team||null
+    },
+    attacker:{
+      name:row.attacker_name||null,
+      team:row.attacker_team||null,
+      role:row.attacker_role||null,
+      class:row.attacker_class||null,
+      classConfidence:row.attacker_class_confidence||null,
+      classAttribution:killEventSourceConfidence(row.attacker_class_confidence)
+    },
+    flags:{
+      enemyKill:!!row.is_enemy_kill,
+      teamKill:!!row.is_team_kill,
+      conced:!!row.is_conced,
+      flagCarrierKill:!!row.is_flag_carrier_kill
+    },
+    sourceConfidence:row.source_confidence||null,
+    sourceUrl:row.source_url||null
+  };
+}
+
+function emptyGranularPayload(identity,granularAvailable=false){
+  return{
+    player:{
+      id:identity.id,
+      name:identity.name,
+      steam_id:identity.steam_id
+    },
+    source:{
+      table:"match_kill_events",
+      granularAvailable,
+      officialClassConfidences:OFFICIAL_KILL_CLASS_CONFIDENCES,
+      uncertainClassConfidences:[
+        "unknown_timeline_gap",
+        "victim_name_unresolved"
+      ]
+    },
+    sample:{
+      kills:0,
+      enemyKills:0,
+      teamKills:0,
+      concededKills:0,
+      flagCarrierKills:0,
+      matches:0,
+      rounds:0,
+      officialClassKills:0,
+      uncertainClassKills:0
+    },
+    classWeapons:[],
+    roleWeapons:[],
+    flagCarrierKills:[],
+    concededKills:[],
+    favoriteVictims:[],
+    aliasHistory:[],
+    matchDrilldown:[]
+  };
+}
+
+function buildGranularPlayerPayload(identity,options={}){
+  const limit=positiveInt(options.limit,50,1,250);
+  const matchId=options.matchId?cleanString(options.matchId,100):"";
+  const includeSample=String(options.includeSample||"")==="1";
+  const identityWhere=fastKillEventIdentityWhere(identity,"e");
+  const officialWhere=officialKillConfidenceWhere("e");
+  const matchFilter=matchId?"AND e.match_id=?":"";
+  const matchParams=matchId?[matchId]:[];
+  const timingPrefix=`granular:${identity.id}${matchId?":"+matchId:""}`;
+
+  return safeTableRead(()=>{
+    ensureGranularIndexes();
+    const sample=includeSample?timedGranularQuery(`${timingPrefix}:sample`,()=>db.prepare(`
+      SELECT
+        COUNT(*) AS kills,
+        SUM(CASE WHEN COALESCE(e.is_enemy_kill,0)=1 THEN 1 ELSE 0 END) AS enemyKills,
+        SUM(CASE WHEN COALESCE(e.is_team_kill,0)=1 THEN 1 ELSE 0 END) AS teamKills,
+        SUM(CASE WHEN COALESCE(e.is_conced,0)=1 THEN 1 ELSE 0 END) AS concededKills,
+        SUM(CASE WHEN COALESCE(e.is_flag_carrier_kill,0)=1 THEN 1 ELSE 0 END) AS flagCarrierKills,
+        SUM(CASE WHEN ${officialWhere} THEN 1 ELSE 0 END) AS officialClassKills,
+        SUM(CASE WHEN NOT (${officialWhere}) THEN 1 ELSE 0 END) AS uncertainClassKills
+      FROM match_kill_events e
+      WHERE ${identityWhere.sql}
+        ${matchFilter}
+    `).get(
+      ...OFFICIAL_KILL_CLASS_CONFIDENCES,
+      ...OFFICIAL_KILL_CLASS_CONFIDENCES,
+      ...identityWhere.params,
+      ...matchParams
+    )):null;
+
+    const sampleDistinct=includeSample?timedGranularQuery(`${timingPrefix}:sampleDistinct`,()=>db.prepare(`
+      SELECT
+        COUNT(DISTINCT e.match_id) AS matches,
+        COUNT(DISTINCT e.match_id || ':' || e.round_num) AS rounds
+      FROM match_kill_events e
+      WHERE ${identityWhere.sql}
+        ${matchFilter}
+    `).get(...identityWhere.params,...matchParams)):null;
+
+    const classWeapons=timedGranularQuery(`${timingPrefix}:classWeapons`,()=>db.prepare(`
+      SELECT
+        COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
+        e.weapon,
+        COUNT(*) AS kills
+      FROM match_kill_events e
+      WHERE ${identityWhere.sql}
+        AND ${officialWhere}
+        AND COALESCE(e.is_enemy_kill,1)=1
+        ${matchFilter}
+      GROUP BY class,e.weapon
+      ORDER BY kills DESC,class,e.weapon
+      LIMIT ?
+    `).all(...identityWhere.params,...OFFICIAL_KILL_CLASS_CONFIDENCES,...matchParams,limit));
+
+    const roleWeapons=timedGranularQuery(`${timingPrefix}:roleWeapons`,()=>db.prepare(`
+      SELECT
+        COALESCE(NULLIF(e.attacker_role,''),'unknown') AS role,
+        COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
+        e.weapon,
+        COUNT(*) AS kills
+      FROM match_kill_events e
+      WHERE ${identityWhere.sql}
+        AND ${officialWhere}
+        AND COALESCE(e.is_enemy_kill,1)=1
+        ${matchFilter}
+      GROUP BY role,class,e.weapon
+      ORDER BY role,kills DESC,class,e.weapon
+      LIMIT ?
+    `).all(...identityWhere.params,...OFFICIAL_KILL_CLASS_CONFIDENCES,...matchParams,limit));
+
+    const flagCarrierKills=timedGranularQuery(`${timingPrefix}:flagCarrierKills`,()=>db.prepare(`
+      SELECT
+        COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
+        e.weapon,
+        COUNT(*) AS kills
+      FROM match_kill_events e
+      WHERE ${identityWhere.sql}
+        AND ${officialWhere}
+        AND COALESCE(e.is_flag_carrier_kill,0)=1
+        ${matchFilter}
+      GROUP BY class,e.weapon
+      ORDER BY kills DESC,class,e.weapon
+      LIMIT ?
+    `).all(...identityWhere.params,...OFFICIAL_KILL_CLASS_CONFIDENCES,...matchParams,limit));
+
+    const concededKills=timedGranularQuery(`${timingPrefix}:concededKills`,()=>db.prepare(`
+      SELECT
+        COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
+        e.weapon,
+        COUNT(*) AS kills
+      FROM match_kill_events e
+      WHERE ${identityWhere.sql}
+        AND ${officialWhere}
+        AND COALESCE(e.is_conced,0)=1
+        ${matchFilter}
+      GROUP BY class,e.weapon
+      ORDER BY kills DESC,class,e.weapon
+      LIMIT ?
+    `).all(...identityWhere.params,...OFFICIAL_KILL_CLASS_CONFIDENCES,...matchParams,limit));
+
+    const favoriteVictims=timedGranularQuery(`${timingPrefix}:favoriteVictims`,()=>db.prepare(`
+      SELECT
+        e.victim_discord_id,
+        e.victim_steam_id,
+        e.victim_key,
+        COALESCE(NULLIF(MAX(e.victim_name),''),NULLIF(MIN(e.victim_name),''),NULLIF(e.victim_key,''),'Unknown') AS victim_name,
+        COUNT(*) AS kills
+      FROM match_kill_events e
+      WHERE ${identityWhere.sql}
+        AND COALESCE(e.is_enemy_kill,1)=1
+        ${matchFilter}
+      GROUP BY e.victim_discord_id,e.victim_steam_id,e.victim_key
+      ORDER BY kills DESC,victim_name
+      LIMIT 25
+    `).all(...identityWhere.params,...matchParams));
+
+    const aliasHistory=timedGranularQuery(`${timingPrefix}:aliasHistory`,()=>db.prepare(`
+      SELECT
+        COALESCE(NULLIF(e.attacker_name,''),'Unknown') AS name,
+        COUNT(*) AS kills
+      FROM match_kill_events e
+      WHERE ${identityWhere.sql}
+        ${matchFilter}
+      GROUP BY name
+      ORDER BY kills DESC,name
+      LIMIT 25
+    `).all(...identityWhere.params,...matchParams));
+
+    const drilldown=timedGranularQuery(`${timingPrefix}:matchDrilldown`,()=>db.prepare(`
+      SELECT
+        e.id,
+        e.match_id,
+        e.source_url,
+        e.round_num,
+        e.event_time_seconds,
+        e.event_time_text,
+        e.attacker_name,
+        e.attacker_team,
+        e.attacker_role,
+        e.attacker_class,
+        e.attacker_class_confidence,
+        e.weapon,
+        e.victim_name,
+        e.victim_key,
+        e.victim_steam_id,
+        e.victim_discord_id,
+        e.victim_team,
+        e.is_enemy_kill,
+        e.is_team_kill,
+        e.is_conced,
+        e.is_flag_carrier_kill,
+        e.source_confidence,
+        m.map_name,
+        m.created_at
+      FROM match_kill_events e
+      LEFT JOIN matches m ON m.match_id=e.match_id
+      WHERE ${identityWhere.sql}
+        ${matchFilter}
+      ORDER BY COALESCE(m.created_at,0) DESC,e.match_id DESC,e.round_num,e.event_time_seconds,e.id
+      LIMIT ?
+    `).all(...identityWhere.params,...matchParams,limit));
+
+    return{
+      ...emptyGranularPayload(identity,true),
+      sample:{
+        kills:includeSample?Number(sample?.kills||0):null,
+        enemyKills:includeSample?Number(sample?.enemyKills||0):null,
+        teamKills:includeSample?Number(sample?.teamKills||0):null,
+        concededKills:includeSample?Number(sample?.concededKills||0):null,
+        flagCarrierKills:includeSample?Number(sample?.flagCarrierKills||0):null,
+        matches:includeSample?Number(sampleDistinct?.matches||0):null,
+        rounds:includeSample?Number(sampleDistinct?.rounds||0):null,
+        officialClassKills:includeSample?Number(sample?.officialClassKills||0):null,
+        uncertainClassKills:includeSample?Number(sample?.uncertainClassKills||0):null
+      },
+      classWeapons:classWeapons.map(row=>({
+        class:row.class,
+        weapon:row.weapon,
+        kills:Number(row.kills||0)
+      })),
+      roleWeapons:roleWeapons.map(row=>({
+        role:row.role,
+        class:row.class,
+        weapon:row.weapon,
+        kills:Number(row.kills||0)
+      })),
+      flagCarrierKills:flagCarrierKills.map(row=>({
+        class:row.class,
+        weapon:row.weapon,
+        kills:Number(row.kills||0)
+      })),
+      concededKills:concededKills.map(row=>({
+        class:row.class,
+        weapon:row.weapon,
+        kills:Number(row.kills||0)
+      })),
+      favoriteVictims:favoriteVictims.map(row=>({
+        victimDiscordId:row.victim_discord_id||null,
+        victimSteamId:row.victim_steam_id||null,
+        victimKey:row.victim_key||null,
+        victimName:row.victim_name,
+        kills:Number(row.kills||0)
+      })),
+      aliasHistory:aliasHistory.map(row=>({
+        name:row.name,
+        kills:Number(row.kills||0)
+      })),
+      matchDrilldown:drilldown.map(mapKillDrilldownRow)
+    };
+  },emptyGranularPayload(identity,false));
+}
+
+router.get("/player/:id/granular",(req,res)=>{
+  try{
+    const playerId=cleanString(req.params.id,100);
+    if(!playerId)return sendError(res,400,"invalid_player");
+
+    const identity=resolvePlayerIdentity(playerId);
+    const data=buildGranularPlayerPayload(identity,{
+      limit:positiveInt(req.query.limit,50,1,250),
+      matchId:req.query.matchId,
+      includeSample:req.query.includeSample
+    });
+
+    res.setHeader("Cache-Control","public, max-age=5, stale-while-revalidate=20");
+    res.json({ok:true,data});
+  }catch(error){
+    logRouteError("[/api/player/:id/granular]",error);
+    sendError(res,500,"player_granular_failed");
+  }
+});
+
+router.get("/player/:id/granular/events",(req,res)=>{
+  try{
+    const playerId=cleanString(req.params.id,100);
+    if(!playerId)return sendError(res,400,"invalid_player");
+
+    const identity=resolvePlayerIdentity(playerId);
+    const limit=positiveInt(req.query.limit,100,1,500);
+    const offset=positiveInt(req.query.offset,0,0,100000);
+    const matchId=req.query.matchId?cleanString(req.query.matchId,100):"";
+    const identityWhere=fastKillEventIdentityWhere(identity,"e");
+    const matchFilter=matchId?"AND e.match_id=?":"";
+    const matchParams=matchId?[matchId]:[];
+    const timingPrefix=`granular:${identity.id}:events${matchId?":"+matchId:""}`;
+
+    const data=safeTableRead(()=>{
+      ensureGranularIndexes();
+
+      const rows=timedGranularQuery(`${timingPrefix}:matchDrilldown`,()=>db.prepare(`
+        SELECT
+          e.id,
+          e.match_id,
+          e.source_url,
+          e.round_num,
+          e.event_time_seconds,
+          e.event_time_text,
+          e.attacker_name,
+          e.attacker_team,
+          e.attacker_role,
+          e.attacker_class,
+          e.attacker_class_confidence,
+          e.weapon,
+          e.victim_name,
+          e.victim_key,
+          e.victim_steam_id,
+          e.victim_discord_id,
+          e.victim_team,
+          e.is_enemy_kill,
+          e.is_team_kill,
+          e.is_conced,
+          e.is_flag_carrier_kill,
+          e.source_confidence,
+          m.map_name,
+          m.created_at
+        FROM match_kill_events e
+        LEFT JOIN matches m ON m.match_id=e.match_id
+        WHERE ${identityWhere.sql}
+          ${matchFilter}
+        ORDER BY COALESCE(m.created_at,0) DESC,e.match_id DESC,e.round_num,e.event_time_seconds,e.id
+        LIMIT ? OFFSET ?
+      `).all(...identityWhere.params,...matchParams,limit+1,offset));
+
+      const hasMore=rows.length>limit;
+      const pageRows=hasMore?rows.slice(0,limit):rows;
+
+      return{
+        player:{
+          id:identity.id,
+          name:identity.name,
+          steam_id:identity.steam_id
+        },
+        total:null,
+        hasMore,
+        limit,
+        offset,
+        events:pageRows.map(mapKillDrilldownRow)
+      };
+    },{
+      player:{
+        id:identity.id,
+        name:identity.name,
+        steam_id:identity.steam_id
+      },
+      total:null,
+      hasMore:false,
+      limit,
+      offset,
+      events:[]
+    });
+
+    res.setHeader("Cache-Control","public, max-age=5, stale-while-revalidate=20");
+    res.json({ok:true,data});
+  }catch(error){
+    logRouteError("[/api/player/:id/granular/events]",error);
+    sendError(res,500,"player_granular_events_failed");
+  }
+});
+
 // Player Breakdown - aggregate Hampalyzer totals for the future breakdown UI.
 router.get("/player/:id/breakdown",(req,res)=>{
   try{

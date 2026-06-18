@@ -59,31 +59,33 @@ text-shadow:0 1px 0 rgba(255,255,255,.28);
 /* Shared weapon presentation */
 .weapon-cell,.drawer-weapon-cell{display:inline-flex;align-items:center;gap:8px;}
 .weapon-icon{display:inline-block;width:46px!important;height:46px!important;min-width:46px!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important;vertical-align:middle;transform:none!important;image-rendering:auto!important;filter:drop-shadow(0 0 8px rgba(56,189,248,.35));}
-.weapon-1{background-image:url('/assets/images/icons/fraggrenade.png')!important;}
-.weapon-2{background-image:url('/assets/images/icons/nailgrenade.png')!important;}
-.weapon-3{background-image:url('/assets/images/icons/mirv.png')!important;}
-.weapon-4{background-image:url('/assets/images/icons/emp.png')!important;}
-.weapon-5{background-image:url('/assets/images/icons/supernailgun.png')!important;}
-.weapon-6{background-image:url('/assets/images/icons/nailgun.png')!important;}
-.weapon-7{background-image:url('/assets/images/icons/crowbar.png')!important;}
-.weapon-8{background-image:url('/assets/images/icons/spanner.png')!important;}
-.weapon-9{background-image:url('/assets/images/icons/medkit.png')!important;}
-.weapon-10{background-image:url('/assets/images/icons/shotgun.png')!important;}
-.weapon-11{background-image:url('/assets/images/icons/supershotgun.png')!important;}
-.weapon-12{background-image:url('/assets/images/icons/rocketlauncher.png')!important;}
-.weapon-13{background-image:url('/assets/images/icons/assaultcannon.png')!important;}
-.weapon-15{background-image:url('/assets/images/icons/sentrygun.png')!important;}
-.weapon-16{background-image:url('/assets/images/icons/dispenser.png')!important;}
-.weapon-18{background-image:url('/assets/images/icons/grenadelauncher.png')!important;}
-.weapon-19{background-image:url('/assets/images/icons/bluegrenadelauncher.png')!important;}
-.weapon-20{background-image:url('/assets/images/icons/detpack1.png')!important;}
-.weapon-21{background-image:url('/assets/images/icons/flamethrower.png')!important;}
-.weapon-24{background-image:url('/assets/images/icons/gasgrenade.png')!important;}
-.weapon-25{background-image:url('/assets/images/icons/knife.png')!important;}
-.weapon-26{background-image:url('/assets/images/icons/sniperheadshot.png')!important;}
-.weapon-27{background-image:url('/assets/images/icons/sniperrifle.png')!important;}
-.weapon-28{background-image:url('/assets/images/icons/autosniperrifle.png')!important;}
-.weapon-29{background-image:url('/assets/images/icons/infectiondeath.png')!important;}
+.weapon-1{background-image:url('/assets/images/icons/webp/fraggrenade.webp')!important;}
+.weapon-2{background-image:url('/assets/images/icons/webp/nailgrenade.webp')!important;}
+.weapon-3{background-image:url('/assets/images/icons/webp/mirv.webp')!important;}
+.weapon-4{background-image:url('/assets/images/icons/webp/emp.webp')!important;}
+.weapon-5{background-image:url('/assets/images/icons/webp/supernailgun.webp')!important;}
+.weapon-6{background-image:url('/assets/images/icons/webp/nailgun.webp')!important;}
+.weapon-7{background-image:url('/assets/images/icons/webp/crowbar.webp')!important;}
+.weapon-8{background-image:url('/assets/images/icons/webp/spanner.webp')!important;}
+.weapon-9{background-image:url('/assets/images/icons/webp/medkit.webp')!important;}
+.weapon-10{background-image:url('/assets/images/icons/webp/shotgun.webp')!important;}
+.weapon-11{background-image:url('/assets/images/icons/webp/supershotgun.webp')!important;}
+.weapon-12{background-image:url('/assets/images/icons/webp/rocketlauncher.webp')!important;}
+.weapon-13{background-image:url('/assets/images/icons/webp/assaultcannon.webp')!important;}
+.weapon-14{background-image:url('/assets/images/icons/webp/railgun.webp')!important;}
+.weapon-15{background-image:url('/assets/images/icons/webp/sentrygun.webp')!important;}
+.weapon-16{background-image:url('/assets/images/icons/webp/dispenser.webp')!important;}
+.weapon-18{background-image:url('/assets/images/icons/webp/grenadelauncher.webp')!important;}
+.weapon-19{background-image:url('/assets/images/icons/webp/bluegrenadelauncher.webp')!important;}
+.weapon-20{background-image:url('/assets/images/icons/webp/detpack1.webp')!important;}
+.weapon-21{background-image:url('/assets/images/icons/webp/flamethrower.webp')!important;}
+.weapon-22{background-image:url('/assets/images/icons/webp/napalm.webp')!important;}
+.weapon-24{background-image:url('/assets/images/icons/webp/gasgrenade.webp')!important;}
+.weapon-25{background-image:url('/assets/images/icons/webp/knife.webp')!important;}
+.weapon-26{background-image:url('/assets/images/icons/webp/sniperheadshot.webp')!important;}
+.weapon-27{background-image:url('/assets/images/icons/webp/sniperrifle.webp')!important;}
+.weapon-28{background-image:url('/assets/images/icons/webp/autosniperrifle.webp')!important;}
+.weapon-29{background-image:url('/assets/images/icons/webp/infectiondeath.webp')!important;}
 /* Cards / Tables */
 .card{background:rgba(15,23,42,.72);border:1px solid rgba(77,166,255,.18);border-radius:18px;transition:.2s ease;}
 .card:hover{border-color:rgba(77,166,255,.45);box-shadow:0 0 30px rgba(77,166,255,.12);}
