@@ -47,7 +47,7 @@
 .granular-empty{color:#94a3b8;font-size:12px;font-weight:850;padding:12px;border:1px dashed rgba(77,166,255,.17);border-radius:12px;text-align:center}
 .player-granular-card{margin-bottom:16px}
 .player-granular-header{align-items:flex-start}
-.granular-controls{display:grid;grid-template-columns:auto minmax(220px,340px) minmax(180px,260px) auto auto;align-items:center;gap:8px}
+.granular-controls{display:grid;grid-template-columns:auto minmax(150px,230px) auto minmax(210px,320px) auto minmax(170px,240px) auto auto;align-items:center;gap:8px}
 .granular-controls label{color:#7dd3fc;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.12em}
 .granular-controls input,.granular-controls select{min-width:0;border:1px solid rgba(77,166,255,.22);background:rgba(3,8,20,.5);color:#dbeafe;border-radius:999px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:850;outline:none}
 .granular-controls select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#7dd3fc 50%),linear-gradient(135deg,#7dd3fc 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:30px}
@@ -55,10 +55,14 @@
 .granular-controls input:focus,.granular-controls select:focus{border-color:rgba(56,189,248,.58);box-shadow:0 0 18px rgba(56,189,248,.18)}
 .granular-controls button,.granular-load-more{border:1px solid rgba(77,166,255,.22);background:rgba(3,8,20,.48);color:#cbd5e1;border-radius:999px;padding:8px 12px;font-family:inherit;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
 .granular-controls button:hover,.granular-load-more:hover{color:#06111f;background:linear-gradient(90deg,#38bdf8,#22d3ee);border-color:transparent;box-shadow:0 0 16px rgba(56,189,248,.22)}
-.granular-summary-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.granular-summary-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .granular-summary-strip div{min-width:0;border:1px solid rgba(77,166,255,.14);background:linear-gradient(145deg,rgba(15,23,42,.62),rgba(3,8,20,.42));border-radius:14px;padding:12px}
 .granular-summary-strip span{display:block;color:#8ea0c7;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
 .granular-summary-strip strong{display:block;margin-top:5px;color:#e5e7eb;font-size:20px;font-weight:950;line-height:1}
+.granular-record-kpi{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end}
+.granular-summary-strip .granular-record-kpi span{display:grid;gap:3px;color:#e5e7eb;font-size:inherit;letter-spacing:0;text-transform:none}
+.granular-record-kpi b{display:block;color:#e5e7eb;font-size:20px;font-weight:950;line-height:1}
+.granular-record-kpi em{display:block;color:#8ea0c7;font-style:normal;font-size:9px;font-weight:950;letter-spacing:.08em;line-height:1;text-transform:uppercase}
 .granular-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .granular-panel{min-width:0;padding:14px;display:flex;flex-direction:column}
 .granular-panel-head{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
@@ -132,6 +136,8 @@
   font-size:12px;
   line-height:1.3;
 }
+.granular-class-meta-line{display:block}
+.granular-class-record{white-space:nowrap}
 .granular-class-summary b {
   color: #67d8ff;
   letter-spacing: .08em;
@@ -465,6 +471,8 @@
   .granular-controls label{grid-column:1 / -1}
   .granular-controls input,.granular-controls select{grid-column:1 / -1}
   .granular-summary-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .granular-record-tile{grid-column:1 / -1}
+  .granular-record-kpi b{font-size:24px}
   .granular-grid{grid-template-columns:1fr}
   .granular-panel{grid-column:auto}
   .granular-class-panel,.granular-special-panel{max-height:none}
@@ -492,10 +500,29 @@
   #top-weapons .weapon-name{font-size:12px}
   #top-weapons .weapon-row strong{min-width:0;gap:4px;font-size:12px}
   #top-weapons .weapon-row strong small{font-size:10px}
-  .recent-match-row{grid-template-columns:58px minmax(0,1fr) 42px 44px!important;gap:5px!important;font-size:10px!important;white-space:nowrap}
-  .recent-match-row>:nth-child(4),.recent-match-row>:nth-child(5){display:none!important}
-  .recent-map{min-width:0}
-  .recent-delta{white-space:nowrap}
+  .granular-class-meta{font-size:11px}
+  .granular-class-record{font-size:10px}
+  .recent-match-list{gap:6px!important;padding-right:6px!important}
+  .recent-match-row{
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-areas:
+      "time delta"
+      "map match"
+      "score result";
+    gap:5px 8px!important;
+    align-items:center!important;
+    min-height:0!important;
+    padding:10px 0!important;
+    font-size:12px!important;
+    white-space:normal!important;
+  }
+  .recent-match-row>*{min-width:0}
+  .recent-time{grid-area:time;white-space:nowrap;color:#cbd5e1}
+  .recent-map{grid-area:map;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+  .recent-match-row .match-id-pill{grid-area:match;justify-self:end;max-width:100%;font-size:10px}
+  .recent-score{grid-area:score;text-align:left;white-space:nowrap;color:#cbd5e1}
+  .recent-result{grid-area:result;justify-self:end;white-space:nowrap}
+  .recent-delta{grid-area:delta;justify-self:end;white-space:nowrap}
   .donut-frequency{display:flex!important;flex-direction:column!important}
   .map-donut-wrap,.map-donut-wrap canvas{width:150px!important;height:150px!important}
   .class-matrix-row{grid-template-columns:82px 58px 1fr 45px}

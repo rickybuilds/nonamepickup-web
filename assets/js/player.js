@@ -12,7 +12,9 @@ let currentHampa=null;
 let currentPlayerId=null;
 let currentGranular=null;
 let currentGranularEvents=null;
+let granularMapFilter="";
 let granularMatchFilter="";
+let granularRecentMatches=[];
 let granularSummaryLoading=false;
 let granularSampleLoading=false;
 let granularSampleLoaded=false;
@@ -276,6 +278,7 @@ async function loadPlayerV3(){
     .reverse();
 
   renderEloChartV3(eloValues,!!ratings.hidden);
+  populateGranularMapSelect(recentRows);
   populateGranularMatchSelect(recentRows);
   renderRecentMatches(recentRows,playerId,!!ratings.hidden);
   renderMapFrequency(permapRows);
@@ -304,6 +307,10 @@ function formatGranularMatchOption(row){
 
 function getRecentMatchId(row){
   return String(row?.id||row?.match_id||row?.matchId||row?.match||"");
+}
+
+function getRecentMatchMap(row){
+  return String(row?.map_name||row?.map||"").trim();
 }
 
 function renderCombat(h){
@@ -740,10 +747,66 @@ function fmtGranularSample(value){
   return fmt(value);
 }
 
-function renderGranularClassWeapons(rows){
+function fmtGranularRecord(sample){
+  if(!granularSampleLoaded)return"Loading...";
+  if(granularSampleFailed)return"Unavailable";
+  if(!sample)return"-";
+  return fmt(sample.wins)+" / "+fmt(sample.losses)+" / "+fmt(sample.ties);
+}
+
+function granularRecordKpiHtml(sample){
+  if(!granularSampleLoaded||granularSampleFailed||!sample){
+    return '<strong>'+escapeHtml(fmtGranularRecord(sample))+'</strong>';
+  }
+  return '<strong class="granular-record-kpi">'+
+    '<span><b>'+escapeHtml(fmt(sample.wins))+'</b><em>W</em></span>'+
+    '<span><b>'+escapeHtml(fmt(sample.losses))+'</b><em>L</em></span>'+
+    '<span><b>'+escapeHtml(fmt(sample.ties))+'</b><em>T</em></span>'+
+  '</strong>';
+}
+
+function granularClassSummaryByClass(rows){
+  const byClass=new Map();
+  (Array.isArray(rows)?rows:[]).forEach(row=>{
+    byClass.set(normalizeGranularClass(row.class),row);
+  });
+  return byClass;
+}
+
+function granularClassMetaHtml(total,weapons,summary){
+  const base=fmt(total)+" kills - "+fmt(weapons)+" weapons";
+  if(!summary)return '<span class="granular-class-meta-line">'+escapeHtml(base)+'</span>';
+  const record=fmt(summary.matches)+" games - "+fmt(summary.wins)+" W / "+fmt(summary.losses)+" L / "+fmt(summary.ties)+" T";
+  return '<span class="granular-class-meta-line">'+escapeHtml(base)+'</span>'+
+    '<span class="granular-class-meta-line granular-class-record">'+escapeHtml(record)+'</span>';
+}
+
+function objectiveSummaryByKey(rows){
+  const byKey=new Map();
+  (Array.isArray(rows)?rows:[]).forEach(row=>{
+    byKey.set(String(row.objective||""),row);
+  });
+  return byKey;
+}
+
+function objectiveClassSummaryByKey(rows){
+  const byKey=new Map();
+  (Array.isArray(rows)?rows:[]).forEach(row=>{
+    byKey.set(String(row.objective||"")+"|"+normalizeGranularClass(row.class),row);
+  });
+  return byKey;
+}
+
+function formatObjectiveMeta(total,weapons,summary){
+  const games=summary?Number(summary.matches||0):0;
+  return fmt(total)+" kills - "+fmt(weapons)+" weapons - "+fmt(games)+" games";
+}
+
+function renderGranularClassWeapons(rows,classSummaryRows){
   const displayRows=aggregateGranularWeaponRows(rows)
     .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
   const groups=groupRows(displayRows,"displayClass");
+  const classSummary=granularClassSummaryByClass(classSummaryRows);
   const classNames=Object.keys(groups)
     .sort((a,b)=>{
       const aKills=groups[a].reduce((sum,row)=>sum+Number(row.kills||0),0);
@@ -758,12 +821,13 @@ function renderGranularClassWeapons(rows){
       .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
     const total=classRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
     const classKey=normalizeGranularClass(className);
+    const summary=classSummary.get(classKey);
     const isOpen=granularOpenClassKeys.has(classKey);
     return '<article class="granular-group granular-class-group '+(isOpen?"open":"")+'" data-granular-class-key="'+escapeAttr(classKey)+'">'+
       '<button type="button" class="granular-group-head granular-class-toggle" data-granular-class-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
         '<div class="granular-class-summary">'+
           '<strong class="granular-class-name">'+escapeHtml(classDisplayName(className))+'</strong>'+
-          '<span class="granular-class-meta">'+fmt(total)+' kills • '+fmt(classRows.length)+' weapons</span>'+
+          '<span class="granular-class-meta">'+granularClassMetaHtml(total,classRows.length,summary)+'</span>'+
         '</div>'+
       '</button>'+
       '<div class="granular-class-weapons" '+(isOpen?"":'hidden')+'>'+classRows.slice(0,8).map(row=>granularWeaponRow(row)).join("")+'</div>'+
@@ -794,7 +858,7 @@ function granularClassLabel(className){
   return GRANULAR_CLASS_LABELS[cls]||classDisplayName(cls);
 }
 
-function renderObjectiveClassWeaponGroups(rows,objectiveKey){
+function renderObjectiveClassWeaponGroups(rows,objectiveKey,classSummary){
   const groups=groupRows(rows,"displayClass");
   const classNames=Object.keys(groups)
     .sort((a,b)=>{
@@ -808,12 +872,13 @@ function renderObjectiveClassWeaponGroups(rows,objectiveKey){
       .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
     const total=classRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
     const classKey=objectiveKey+"|"+normalizeGranularClass(className);
+    const summary=classSummary.get(classKey);
     const isOpen=granularOpenObjectiveClassKeys.has(classKey);
 
     return '<div class="granular-objective-class-group '+(isOpen?"open":"")+'" data-granular-objective-class-key="'+escapeAttr(classKey)+'">'+
       '<button type="button" class="granular-objective-class-head" data-granular-objective-class-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
         '<strong>'+escapeHtml(classDisplayName(className))+'</strong>'+
-        '<span>'+fmt(total)+' kills • '+fmt(classRows.length)+' weapons</span>'+
+        '<span>'+escapeHtml(formatObjectiveMeta(total,classRows.length,summary))+'</span>'+
       '</button>'+
       '<div class="granular-objective-class-weapons" '+(isOpen?"":'hidden')+'>'+
         classRows.slice(0,6).map(row=>granularWeaponRow(row)).join("")+
@@ -822,10 +887,12 @@ function renderObjectiveClassWeaponGroups(rows,objectiveKey){
   }).join("");
 }
 
-function renderGranularSpecialKills(flagRows,concedRows){
+function renderGranularSpecialKills(flagRows,concedRows,summaryRows,classSummaryRows){
   const hasFlag=Array.isArray(flagRows)&&flagRows.length;
   const hasConced=Array.isArray(concedRows)&&concedRows.length;
   if(!hasFlag&&!hasConced)return '<div class="granular-empty">No objective kill events found.</div>';
+  const objectiveSummary=objectiveSummaryByKey(summaryRows);
+  const objectiveClassSummary=objectiveClassSummaryByKey(classSummaryRows);
 
   function block(title,rows,key){
     const safeRows=aggregateGranularWeaponRows(rows)
@@ -838,11 +905,11 @@ function renderGranularSpecialKills(flagRows,concedRows){
       '<button type="button" class="granular-group-head granular-objective-toggle" data-granular-objective-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
         '<div class="granular-class-summary">'+
           '<strong class="granular-class-name">'+escapeHtml(title)+'</strong>'+
-          '<span class="granular-class-meta">'+fmt(total)+' kills • '+fmt(safeRows.length)+' weapons</span>'+
+          '<span class="granular-class-meta">'+escapeHtml(formatObjectiveMeta(total,safeRows.length,objectiveSummary.get(key)))+'</span>'+
         '</div>'+
       '</button>'+
       '<div class="granular-objective-weapons" '+(isOpen?"":'hidden')+'>'+
-        (safeRows.length?renderObjectiveClassWeaponGroups(safeRows,key):'<div class="granular-empty">No '+escapeHtml(title.toLowerCase())+' found.</div>')+
+        (safeRows.length?renderObjectiveClassWeaponGroups(safeRows,key,objectiveClassSummary):'<div class="granular-empty">No '+escapeHtml(title.toLowerCase())+' found.</div>')+
       '</div>'+
     '</article>';
   }
@@ -910,6 +977,7 @@ function granularEventClassText(event){
 function granularEventsUrl(offset=0){
   if(!currentPlayerId)return "";
   const params=new URLSearchParams({limit:"100",offset:String(offset)});
+  if(granularMapFilter)params.set("map",granularMapFilter);
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
   return "/api/player/"+encodeURIComponent(currentPlayerId)+"/granular/events?"+params.toString();
 }
@@ -917,8 +985,13 @@ function granularEventsUrl(offset=0){
 function granularSummaryUrl(playerId,includeSample=false){
   const params=new URLSearchParams({limit:"50"});
   if(includeSample)params.set("includeSample","1");
+  if(granularMapFilter)params.set("map",granularMapFilter);
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
   return "/api/player/"+encodeURIComponent(playerId)+"/granular?"+params.toString();
+}
+
+function cleanGranularMapFilter(value){
+  return String(value||"").trim().slice(0,200);
 }
 
 function cleanGranularMatchFilter(value){
@@ -930,6 +1003,7 @@ function populateGranularMatchSelect(rows){
   if(!select)return;
   const matches=(Array.isArray(rows)?rows:[])
     .filter(row=>getRecentMatchId(row))
+    .filter(row=>!granularMapFilter||getRecentMatchMap(row)===granularMapFilter)
     .slice(0,10);
   if(!matches.length){
     select.innerHTML='<option value="">No recent matches</option>';
@@ -943,9 +1017,28 @@ function populateGranularMatchSelect(rows){
   }).join("");
 }
 
+function populateGranularMapSelect(rows){
+  const select=qs("granular-map-select");
+  if(!select)return;
+  granularRecentMatches=Array.isArray(rows)?rows:[];
+  const maps=[...new Set(granularRecentMatches.map(getRecentMatchMap).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b));
+  if(!maps.length){
+    select.innerHTML='<option value="">No maps</option>';
+    select.disabled=true;
+    return;
+  }
+  select.disabled=false;
+  select.innerHTML='<option value="">All maps</option>'+maps.map(map=>
+    '<option value="'+escapeAttr(map)+'">'+escapeHtml(map)+'</option>'
+  ).join("");
+  select.value=granularMapFilter;
+}
+
 function resetGranularState(){
   currentGranular=null;
   currentGranularEvents=null;
+  granularMapFilter="";
   granularMatchFilter="";
   granularOpenClassKeys=new Set();
   granularOpenObjectiveKeys=new Set();
@@ -962,6 +1055,8 @@ function resetGranularState(){
   }
   const input=qs("granular-match-filter");
   if(input)input.value="";
+  const mapSelect=qs("granular-map-select");
+  if(mapSelect)mapSelect.value="";
   const select=qs("granular-match-select");
   if(select)select.value="";
 }
@@ -974,6 +1069,7 @@ function renderPlayerGranularLoading(){
     '<div class="granular-summary-strip">'+
       '<div><span>Event Kills</span><strong>Loading...</strong></div>'+
       '<div><span>Matches</span><strong>Loading...</strong></div>'+
+      '<div class="granular-record-tile"><span>W / L / T</span><strong>Loading...</strong></div>'+
       '<div><span>Official Class Kills</span><strong>Loading...</strong></div>'+
       '<div><span>Uncertain</span><strong>Loading...</strong></div>'+
     '</div>'+
@@ -1073,6 +1169,7 @@ function observeGranularEvents(){
 async function loadGranularEvents(offset=0,append=false){
   if(granularEventsLoading)return;
   const requestedPlayerId=String(currentPlayerId||"");
+  const requestedMapFilter=granularMapFilter;
   const requestedFilter=granularMatchFilter;
   const requestSeq=granularRequestSeq;
   const body=qs("granular-events-panel");
@@ -1082,7 +1179,7 @@ async function loadGranularEvents(offset=0,append=false){
   granularEventsLoading=true;
   const result=await fetchJSON(url);
   granularEventsLoading=false;
-  if(String(currentPlayerId)!==requestedPlayerId||requestedFilter!==granularMatchFilter||requestSeq!==granularRequestSeq)return;
+  if(String(currentPlayerId)!==requestedPlayerId||requestedMapFilter!==granularMapFilter||requestedFilter!==granularMatchFilter||requestSeq!==granularRequestSeq)return;
   const next=result?.ok?result.data:null;
   if(append&&currentGranularEvents&&next){
     next.events=[...(currentGranularEvents.events||[]),...(next.events||[])];
@@ -1097,22 +1194,40 @@ function bindGranularControls(){
   if(!card||card.dataset.bound==="1")return;
   card.dataset.bound="1";
   qs("granular-match-apply")?.addEventListener("click",()=>{
+    granularMapFilter=cleanGranularMapFilter(qs("granular-map-select")?.value);
     granularMatchFilter=cleanGranularMatchFilter(qs("granular-match-filter")?.value);
+    populateGranularMatchSelect(granularRecentMatches);
     reloadGranularForActiveFilter();
   });
   qs("granular-match-clear")?.addEventListener("click",()=>{
+    granularMapFilter="";
     granularMatchFilter="";
     const input=qs("granular-match-filter");
     if(input)input.value="";
+    const mapSelect=qs("granular-map-select");
+    if(mapSelect)mapSelect.value="";
     const select=qs("granular-match-select");
     if(select)select.value="";
+    populateGranularMatchSelect(granularRecentMatches);
     reloadGranularForActiveFilter();
   });
   qs("granular-match-filter")?.addEventListener("keydown",event=>{
     if(event.key==="Enter"){
+      granularMapFilter=cleanGranularMapFilter(qs("granular-map-select")?.value);
       granularMatchFilter=cleanGranularMatchFilter(event.currentTarget.value);
+      populateGranularMatchSelect(granularRecentMatches);
       reloadGranularForActiveFilter();
     }
+  });
+  qs("granular-map-select")?.addEventListener("change",event=>{
+    granularMapFilter=cleanGranularMapFilter(event.currentTarget.value);
+    granularMatchFilter="";
+    const input=qs("granular-match-filter");
+    if(input)input.value="";
+    populateGranularMatchSelect(granularRecentMatches);
+    const matchSelect=qs("granular-match-select");
+    if(matchSelect)matchSelect.value="";
+    reloadGranularForActiveFilter();
   });
   qs("granular-match-select")?.addEventListener("change",event=>{
     const input=qs("granular-match-filter");
@@ -1230,12 +1345,13 @@ function renderPlayerGranular(data,eventsData){
     '<div class="granular-summary-strip">'+
       '<div><span>Event Kills</span><strong>'+escapeHtml(fmtGranularSample(sample.kills))+'</strong></div>'+
       '<div><span>Matches</span><strong>'+escapeHtml(fmtGranularSample(sample.matches))+'</strong></div>'+
+      '<div class="granular-record-tile"><span>W / L / T</span>'+granularRecordKpiHtml(sample)+'</div>'+
       '<div><span>Official Class Kills</span><strong>'+escapeHtml(fmtGranularSample(sample.officialClassKills))+'</strong></div>'+
       '<div><span>Uncertain</span><strong>'+escapeHtml(fmtGranularSample(sample.uncertainClassKills))+'</strong></div>'+
     '</div>'+
     '<div class="granular-grid">'+
-      '<section class="granular-panel granular-class-panel"><div class="granular-panel-head"><h3>Class Weapon Breakdown</h3><span>'+fmt(currentGranular.classWeapons?.length)+' rows</span></div><p class="granular-panel-help">What weapons this player gets kills with while playing each class.</p><div class="granular-panel-scroll">'+renderGranularClassWeapons(currentGranular.classWeapons)+'</div></section>'+
-      '<section class="granular-panel granular-special-panel"><div class="granular-panel-head"><h3>Objective Kills</h3><span>Flag + conced</span></div><p class="granular-panel-help">Flag carrier kills and conceded kills.</p><div class="granular-panel-scroll">'+renderGranularSpecialKills(currentGranular.flagCarrierKills,currentGranular.concededKills)+'</div></section>'+
+      '<section class="granular-panel granular-class-panel"><div class="granular-panel-head"><h3>Class Weapon Breakdown</h3><span>'+fmt(currentGranular.classWeapons?.length)+' rows</span></div><p class="granular-panel-help">What weapons this player gets kills with while playing each class.</p><div class="granular-panel-scroll">'+renderGranularClassWeapons(currentGranular.classWeapons,currentGranular.classSummary)+'</div></section>'+
+      '<section class="granular-panel granular-special-panel"><div class="granular-panel-head"><h3>Objective Kills</h3><span>Flag + conced</span></div><p class="granular-panel-help">Flag carrier kills and conceded kills.</p><div class="granular-panel-scroll">'+renderGranularSpecialKills(currentGranular.flagCarrierKills,currentGranular.concededKills,currentGranular.objectiveSummary,currentGranular.objectiveClassSummary)+'</div></section>'+
       '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Most killed</span></div><p class="granular-panel-help">Players this player killed most.</p><div class="granular-panel-scroll">'+renderGranularVictims(currentGranular.favoriteVictims)+'</div></section>'+
       '<section class="granular-panel granular-alias-panel"><div class="granular-panel-head"><h3>Alias History</h3><span>Event names</span></div><p class="granular-panel-help">Names used by this player in Hampalyzer events.</p><div class="granular-panel-scroll">'+renderGranularAliases(currentGranular.aliasHistory)+'</div></section>'+
       '<section class="granular-panel granular-events-panel"><div class="granular-panel-head"><h3>Match Drilldown</h3><span>'+escapeHtml(eventCountLabel)+'</span></div><p class="granular-panel-help">Individual kill events.</p><div id="granular-events-panel" class="granular-panel-scroll">'+renderGranularEvents(events)+'</div>'+eventAction+'</section>'+

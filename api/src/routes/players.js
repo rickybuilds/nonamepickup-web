@@ -324,13 +324,19 @@ function emptyGranularPayload(identity,granularAvailable=false){
       flagCarrierKills:0,
       matches:0,
       rounds:0,
+      wins:0,
+      losses:0,
+      ties:0,
       officialClassKills:0,
       uncertainClassKills:0
     },
     classWeapons:[],
+    classSummary:[],
     roleWeapons:[],
     flagCarrierKills:[],
     concededKills:[],
+    objectiveSummary:[],
+    objectiveClassSummary:[],
     favoriteVictims:[],
     aliasHistory:[],
     matchDrilldown:[]
@@ -340,12 +346,22 @@ function emptyGranularPayload(identity,granularAvailable=false){
 function buildGranularPlayerPayload(identity,options={}){
   const limit=positiveInt(options.limit,50,1,250);
   const matchId=options.matchId?cleanString(options.matchId,100):"";
+  const mapName=options.map?cleanString(options.map,200):"";
   const includeSample=String(options.includeSample||"")==="1";
   const identityWhere=fastKillEventIdentityWhere(identity,"e");
   const officialWhere=officialKillConfidenceWhere("e");
-  const matchFilter=matchId?"AND e.match_id=?":"";
-  const matchParams=matchId?[matchId]:[];
-  const timingPrefix=`granular:${identity.id}${matchId?":"+matchId:""}`;
+  const matchFilters=[];
+  const matchParams=[];
+  if(matchId){
+    matchFilters.push("AND e.match_id=?");
+    matchParams.push(matchId);
+  }
+  if(mapName){
+    matchFilters.push("AND e.match_id IN (SELECT match_id FROM matches WHERE map_name=?)");
+    matchParams.push(mapName);
+  }
+  const matchFilter=matchFilters.join("\n        ");
+  const timingPrefix=`granular:${identity.id}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}`;
 
   return safeTableRead(()=>{
     ensureGranularIndexes();
@@ -377,6 +393,34 @@ function buildGranularPlayerPayload(identity,options={}){
         ${matchFilter}
     `).get(...identityWhere.params,...matchParams)):null;
 
+    const sampleRecord=includeSample?timedGranularQuery(`${timingPrefix}:sampleRecord`,()=>db.prepare(`
+      SELECT
+        SUM(CASE
+          WHEN m.winner='BLUE' AND EXISTS(SELECT 1 FROM json_each(m.blue_ids) WHERE CAST(value AS TEXT)=CAST(? AS TEXT)) THEN 1
+          WHEN m.winner='RED' AND EXISTS(SELECT 1 FROM json_each(m.red_ids) WHERE CAST(value AS TEXT)=CAST(? AS TEXT)) THEN 1
+          ELSE 0 END) AS wins,
+        SUM(CASE
+          WHEN m.winner='BLUE' AND EXISTS(SELECT 1 FROM json_each(m.red_ids) WHERE CAST(value AS TEXT)=CAST(? AS TEXT)) THEN 1
+          WHEN m.winner='RED' AND EXISTS(SELECT 1 FROM json_each(m.blue_ids) WHERE CAST(value AS TEXT)=CAST(? AS TEXT)) THEN 1
+          ELSE 0 END) AS losses,
+        SUM(CASE WHEN m.winner='TIE' THEN 1 ELSE 0 END) AS ties
+      FROM matches m
+      WHERE m.status='completed'
+        AND m.match_id IN (
+          SELECT DISTINCT e.match_id
+          FROM match_kill_events e
+          WHERE ${identityWhere.sql}
+            ${matchFilter}
+        )
+    `).get(
+      identity.id,
+      identity.id,
+      identity.id,
+      identity.id,
+      ...identityWhere.params,
+      ...matchParams
+    )):null;
+
     const classWeapons=timedGranularQuery(`${timingPrefix}:classWeapons`,()=>db.prepare(`
       SELECT
         COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
@@ -392,6 +436,42 @@ function buildGranularPlayerPayload(identity,options={}){
       ORDER BY kills DESC,class,e.weapon
       LIMIT ?
     `).all(...identityWhere.params,...OFFICIAL_KILL_CLASS_CONFIDENCES,...matchParams,limit));
+
+    const classSummary=timedGranularQuery(`${timingPrefix}:classSummary`,()=>db.prepare(`
+      SELECT
+        cm.class,
+        COUNT(*) AS matches,
+        SUM(CASE
+          WHEN m.winner='BLUE' AND EXISTS(SELECT 1 FROM json_each(m.blue_ids) WHERE CAST(value AS TEXT)=CAST(? AS TEXT)) THEN 1
+          WHEN m.winner='RED' AND EXISTS(SELECT 1 FROM json_each(m.red_ids) WHERE CAST(value AS TEXT)=CAST(? AS TEXT)) THEN 1
+          ELSE 0 END) AS wins,
+        SUM(CASE
+          WHEN m.winner='BLUE' AND EXISTS(SELECT 1 FROM json_each(m.red_ids) WHERE CAST(value AS TEXT)=CAST(? AS TEXT)) THEN 1
+          WHEN m.winner='RED' AND EXISTS(SELECT 1 FROM json_each(m.blue_ids) WHERE CAST(value AS TEXT)=CAST(? AS TEXT)) THEN 1
+          ELSE 0 END) AS losses,
+        SUM(CASE WHEN m.winner='TIE' THEN 1 ELSE 0 END) AS ties
+      FROM (
+        SELECT DISTINCT
+          COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
+          e.match_id
+        FROM match_kill_events e
+        WHERE ${identityWhere.sql}
+          AND ${officialWhere}
+          AND COALESCE(e.is_enemy_kill,1)=1
+          ${matchFilter}
+      ) cm
+      JOIN matches m ON m.match_id=cm.match_id AND m.status='completed'
+      GROUP BY cm.class
+      ORDER BY matches DESC,cm.class
+    `).all(
+      identity.id,
+      identity.id,
+      identity.id,
+      identity.id,
+      ...identityWhere.params,
+      ...OFFICIAL_KILL_CLASS_CONFIDENCES,
+      ...matchParams
+    ));
 
     const roleWeapons=timedGranularQuery(`${timingPrefix}:roleWeapons`,()=>db.prepare(`
       SELECT
@@ -440,6 +520,72 @@ function buildGranularPlayerPayload(identity,options={}){
       ORDER BY kills DESC,class,e.weapon
       LIMIT ?
     `).all(...identityWhere.params,...OFFICIAL_KILL_CLASS_CONFIDENCES,...matchParams,limit));
+
+    const objectiveSummary=timedGranularQuery(`${timingPrefix}:objectiveSummary`,()=>db.prepare(`
+      SELECT
+        objective,
+        COUNT(DISTINCT match_id) AS matches
+      FROM (
+        SELECT 'flag' AS objective,e.match_id
+        FROM match_kill_events e
+        WHERE ${identityWhere.sql}
+          AND ${officialWhere}
+          AND COALESCE(e.is_flag_carrier_kill,0)=1
+          ${matchFilter}
+        UNION ALL
+        SELECT 'conced' AS objective,e.match_id
+        FROM match_kill_events e
+        WHERE ${identityWhere.sql}
+          AND ${officialWhere}
+          AND COALESCE(e.is_conced,0)=1
+          ${matchFilter}
+      )
+      GROUP BY objective
+    `).all(
+      ...identityWhere.params,
+      ...OFFICIAL_KILL_CLASS_CONFIDENCES,
+      ...matchParams,
+      ...identityWhere.params,
+      ...OFFICIAL_KILL_CLASS_CONFIDENCES,
+      ...matchParams
+    ));
+
+    const objectiveClassSummary=timedGranularQuery(`${timingPrefix}:objectiveClassSummary`,()=>db.prepare(`
+      SELECT
+        objective,
+        class,
+        COUNT(DISTINCT match_id) AS matches
+      FROM (
+        SELECT
+          'flag' AS objective,
+          COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
+          e.match_id
+        FROM match_kill_events e
+        WHERE ${identityWhere.sql}
+          AND ${officialWhere}
+          AND COALESCE(e.is_flag_carrier_kill,0)=1
+          ${matchFilter}
+        UNION ALL
+        SELECT
+          'conced' AS objective,
+          COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
+          e.match_id
+        FROM match_kill_events e
+        WHERE ${identityWhere.sql}
+          AND ${officialWhere}
+          AND COALESCE(e.is_conced,0)=1
+          ${matchFilter}
+      )
+      GROUP BY objective,class
+      ORDER BY objective,matches DESC,class
+    `).all(
+      ...identityWhere.params,
+      ...OFFICIAL_KILL_CLASS_CONFIDENCES,
+      ...matchParams,
+      ...identityWhere.params,
+      ...OFFICIAL_KILL_CLASS_CONFIDENCES,
+      ...matchParams
+    ));
 
     const favoriteVictims=timedGranularQuery(`${timingPrefix}:favoriteVictims`,()=>db.prepare(`
     SELECT
@@ -521,6 +667,9 @@ function buildGranularPlayerPayload(identity,options={}){
         flagCarrierKills:includeSample?Number(sample?.flagCarrierKills||0):null,
         matches:includeSample?Number(sampleDistinct?.matches||0):null,
         rounds:includeSample?Number(sampleDistinct?.rounds||0):null,
+        wins:includeSample?Number(sampleRecord?.wins||0):null,
+        losses:includeSample?Number(sampleRecord?.losses||0):null,
+        ties:includeSample?Number(sampleRecord?.ties||0):null,
         officialClassKills:includeSample?Number(sample?.officialClassKills||0):null,
         uncertainClassKills:includeSample?Number(sample?.uncertainClassKills||0):null
       },
@@ -532,6 +681,13 @@ function buildGranularPlayerPayload(identity,options={}){
         killsPerMatch:Number(row.matchesWithKill||0)>0
           ? Number(row.kills||0)/Number(row.matchesWithKill||0)
           : 0
+      })),
+      classSummary:classSummary.map(row=>({
+        class:row.class,
+        matches:Number(row.matches||0),
+        wins:Number(row.wins||0),
+        losses:Number(row.losses||0),
+        ties:Number(row.ties||0)
       })),
       roleWeapons:roleWeapons.map(row=>({
         role:row.role,
@@ -557,6 +713,15 @@ function buildGranularPlayerPayload(identity,options={}){
           ? Number(row.kills||0)/Number(row.matchesWithKill||0)
           : 0
       })),
+      objectiveSummary:objectiveSummary.map(row=>({
+        objective:row.objective,
+        matches:Number(row.matches||0)
+      })),
+      objectiveClassSummary:objectiveClassSummary.map(row=>({
+        objective:row.objective,
+        class:row.class,
+        matches:Number(row.matches||0)
+      })),
       favoriteVictims:favoriteVictims.map(row=>({
         victimId:row.victim_discord_id||row.victim_steam_id||row.victim_key||null,
         victimSteamId:row.victim_steam_id||null,
@@ -581,6 +746,7 @@ router.get("/player/:id/granular",(req,res)=>{
     const identity=resolvePlayerIdentity(playerId);
     const data=buildGranularPlayerPayload(identity,{
       limit:positiveInt(req.query.limit,50,1,250),
+      map:req.query.map,
       matchId:req.query.matchId,
       includeSample:req.query.includeSample
     });
@@ -601,11 +767,21 @@ router.get("/player/:id/granular/events",(req,res)=>{
     const identity=resolvePlayerIdentity(playerId);
     const limit=positiveInt(req.query.limit,100,1,500);
     const offset=positiveInt(req.query.offset,0,0,100000);
+    const mapName=req.query.map?cleanString(req.query.map,200):"";
     const matchId=req.query.matchId?cleanString(req.query.matchId,100):"";
     const identityWhere=fastKillEventIdentityWhere(identity,"e");
-    const matchFilter=matchId?"AND e.match_id=?":"";
-    const matchParams=matchId?[matchId]:[];
-    const timingPrefix=`granular:${identity.id}:events${matchId?":"+matchId:""}`;
+    const matchFilters=[];
+    const matchParams=[];
+    if(matchId){
+      matchFilters.push("AND e.match_id=?");
+      matchParams.push(matchId);
+    }
+    if(mapName){
+      matchFilters.push("AND e.match_id IN (SELECT match_id FROM matches WHERE map_name=?)");
+      matchParams.push(mapName);
+    }
+    const matchFilter=matchFilters.join("\n          ");
+    const timingPrefix=`granular:${identity.id}:events${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}`;
 
     const data=safeTableRead(()=>{
       ensureGranularIndexes();

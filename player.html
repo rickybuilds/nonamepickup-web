@@ -13,9 +13,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260618p">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/player.css?v=20260618p">
+  <link rel="stylesheet" href="assets/css/player.css?v=20260619c">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/player.js?v=20260618jk" defer></script>
+  <script src="assets/js/player.js?v=20260619c" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -73,7 +73,7 @@
     </section>
 
     <section class="v3-kpi-strip">
-      <div><span>Matches</span><strong id="kpi-matches">—</strong></div>
+      <div><span>Analyzed Matches</span><strong id="kpi-matches">—</strong></div>
       <div><span>Win %</span><strong id="kpi-winpct" class="good">—</strong></div>
       <div><span>Game MVPs</span><strong id="kpi-mvps" class="gold">-</strong></div>
       <div><span>Peak Elo</span><strong id="kpi-peak-elo" class="blue">—</strong></div>
@@ -91,10 +91,15 @@
           <span>Built from individual Hampalyzer kill events with class attribution.</span>
         </div>
         <div class="granular-controls" aria-label="Granular event controls">
-          <label for="granular-match-filter">Match ID</label>
+          <label for="granular-map-select">Map:</label>
+          <select id="granular-map-select" aria-label="Map filter" disabled>
+            <option value="">Maps unavailable</option>
+          </select>
+          <label for="granular-match-select">Match ID</label>
           <select id="granular-match-select" aria-label="Recent match filter" disabled>
             <option value="">Recent matches unavailable</option>
           </select>
+          <label for="granular-match-filter">Optional Match Filter</label>
           <input id="granular-match-filter" type="text" placeholder="Optional match filter">
           <button id="granular-match-apply" type="button">Apply</button>
           <button id="granular-match-clear" type="button">Clear</button>
