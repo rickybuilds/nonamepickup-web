@@ -45,6 +45,7 @@ function renderMatch(m){
   const roundPlayerStats=Array.isArray(m.round_player_stats)?m.round_player_stats:[];
   const roundMvps=Array.isArray(m.round_mvps)?m.round_mvps:[];
   const matchMvps=Array.isArray(m.match_mvps)?m.match_mvps:[];
+  const capTimeline=Array.isArray(m.capTimeline)?m.capTimeline:[];
   const roundSections=rounds.length||roundPlayerStats.length
     ?renderRoundSections(rounds,roundPlayerStats,roundMvps,blue,red,players)
     :"";
@@ -89,6 +90,10 @@ function renderMatch(m){
       ${m.tfcstats_url?`<a href="${escapeAttr(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`:""}
       <a href="matches.html">Back to Matches</a>
     </div>
+
+    ${renderCapTimelineCard(capTimeline)}
+
+    ${renderMatchMvpsCard(matchMvps,m.nn_mvp)}
 
     ${roundSections}
 
@@ -216,6 +221,204 @@ function renderMatchMvp(matchMvps){
   const names=matchMvps.map(mvp=>escapeHtml(mvpName(mvp)));
   const label=matchMvps.length===1?"Game MVP":"Split MVP";
   return `<div class="match-mvp-pill"><span>🏆 ${label}:</span> <strong>${names.join(" / ")}</strong></div>`;
+}
+
+function mvpIdentityValues(row){
+  return [
+    row?.player_key,
+    row?.mvp_player_key,
+    row?.steam_id,
+    row?.mvp_steam_id,
+    row?.display_name,
+    row?.mvp_display_name
+  ].filter(Boolean).map(value=>matchNormName(value));
+}
+
+function mvpAgrees(matchMvps,nnWinner){
+  if(!nnWinner||!Array.isArray(matchMvps)||!matchMvps.length)return false;
+  const nnValues=new Set(mvpIdentityValues(nnWinner));
+  return matchMvps.some(mvp=>mvpIdentityValues(mvp).some(value=>nnValues.has(value)));
+}
+
+function renderMvpBadge(){
+  return `<img class="match-mvps-icon" src="assets/images/icons/webp/mvp.webp" alt="" loading="lazy">`;
+}
+
+function renderUnavailableMvp(title,message){
+  return `
+    <article class="match-mvp-box unavailable">
+      <div class="match-mvp-box-head">
+        ${renderMvpBadge()}
+        <span>${escapeHtml(title)}</span>
+      </div>
+      <p class="match-mvp-empty">${escapeHtml(message)}</p>
+    </article>
+  `;
+}
+
+function renderHampalyzerMvpBox(matchMvps){
+  if(!Array.isArray(matchMvps)||!matchMvps.length){
+    return renderUnavailableMvp("Hampalyzer MVP","Hampalyzer MVP unavailable");
+  }
+
+  const label=matchMvps.length===1?"Hampalyzer MVP":"Hampalyzer Split MVP";
+  return `
+    <article class="match-mvp-box hampalyzer">
+      <div class="match-mvp-box-head">
+        ${renderMvpBadge()}
+        <span>${escapeHtml(label)}</span>
+      </div>
+      <div class="match-mvp-name">${matchMvps.map(mvp=>escapeHtml(mvpName(mvp))).join(" / ")}</div>
+      <div class="match-mvp-desc">Official Hampalyzer selection</div>
+    </article>
+  `;
+}
+
+function mvpScore(value){
+  const number=Number(value);
+  return Number.isFinite(number)?number.toFixed(1):"-";
+}
+
+const NN_MVP_TOOLTIPS={
+  score:"Final score is Combat + Objective + Impact + Discipline. Each category is worth up to 25 points, for a max score of 100.",
+  combat:"Combat compares your kills, enemy damage, and KDR against the rest of this match.",
+  objective:"Objective compares your flag touches, initial touches, captures, and flag time against the rest of this match.",
+  impact:"Impact gives credit for high-value plays like conced kills, sentry kills, and flag carrier kills.",
+  discipline:"Discipline rewards cleaner play: fewer team kills, suicides, deaths, and team damage."
+};
+
+function renderMvpComponent(label,value,tooltip,extraClass=""){
+  const scoreText=`${mvpScore(value)}/25`;
+  const aria=`${label} score ${scoreText}. ${tooltip}`;
+  return `
+    <span class="match-mvp-chip ${extraClass}" tabindex="0" title="${escapeAttr(tooltip)}" aria-label="${escapeAttr(aria)}">
+      <b>${escapeHtml(label)}</b>
+      <strong>${escapeHtml(scoreText)}</strong>
+    </span>
+  `;
+}
+
+function renderNnMvpBox(nnMvp){
+  if(!nnMvp||nnMvp.available===false||!nnMvp.winner){
+    return renderUnavailableMvp("NoName MVP","NN MVP unavailable");
+  }
+
+  const winner=nnMvp.winner;
+  const components=winner.display_components||{};
+  const displayScore=Number.isFinite(Number(winner.display_score))?winner.display_score:winner.final_score;
+  const scoreText=`${mvpScore(displayScore)}/100`;
+  const reasons=Array.isArray(winner.reasons)?winner.reasons.slice(0,4):[];
+
+  return `
+    <article class="match-mvp-box noname">
+      <div class="match-mvp-box-head">
+        ${renderMvpBadge()}
+        <span>NoName MVP</span>
+      </div>
+      <div class="match-mvp-name">${escapeHtml(winner.display_name||winner.player_key||winner.steam_id||"Unknown")}</div>
+      <div class="match-mvp-score" tabindex="0" title="${escapeAttr(NN_MVP_TOOLTIPS.score)}" aria-label="${escapeAttr(`Score ${scoreText}. ${NN_MVP_TOOLTIPS.score}`)}">Score <strong>${escapeHtml(scoreText)}</strong></div>
+      <div class="match-mvp-chips" aria-label="NoName MVP score components">
+        ${renderMvpComponent("Combat",components.combat,NN_MVP_TOOLTIPS.combat)}
+        ${renderMvpComponent("Objective",components.objective,NN_MVP_TOOLTIPS.objective)}
+        ${renderMvpComponent("Impact",components.impact,NN_MVP_TOOLTIPS.impact)}
+        ${renderMvpComponent("Discipline",components.discipline,NN_MVP_TOOLTIPS.discipline,"discipline")}
+      </div>
+      ${reasons.length?`
+        <ul class="match-mvp-reasons">
+          ${reasons.map(reason=>`<li>${escapeHtml(reason)}</li>`).join("")}
+        </ul>
+      `:""}
+    </article>
+  `;
+}
+
+function renderMatchMvpsCard(matchMvps,nnMvp){
+  const agrees=mvpAgrees(matchMvps,nnMvp?.winner);
+  return `
+    <section class="match-card match-mvps-card ${agrees?"agrees":""}">
+      <div class="match-mvps-head">
+        <h2>Match MVPs</h2>
+        <span class="match-mvps-status ${agrees?"agree":"disagree"}">${agrees?"Systems Agree":"Systems Disagree"}</span>
+      </div>
+      <div class="match-mvps-grid">
+        ${renderHampalyzerMvpBox(matchMvps)}
+        ${renderNnMvpBox(nnMvp)}
+      </div>
+    </section>
+  `;
+}
+
+function capTeamClass(team){
+  const normalized=String(team||"").trim().toLowerCase().replace(/[\s_-]+/g,"");
+  if(normalized==="1"||normalized==="blu"||normalized.includes("team1")||normalized.includes("blue"))return"blue";
+  if(normalized==="2"||normalized.includes("team2")||normalized.includes("red"))return"red";
+  return"neutral";
+}
+
+function capTeamLabel(team){
+  const teamClass=capTeamClass(team);
+  if(teamClass==="blue")return"Blue";
+  if(teamClass==="red")return"Red";
+  return String(team||"Team");
+}
+
+function capEventTitle(event){
+  const parts=[
+    `${capTeamLabel(event.team)} cap ${fmt(event.cap_num)}`,
+    event.time_text||matchFormatSeconds(event.time_seconds),
+    event.score_after?`Score ${event.score_after}`:""
+  ].filter(Boolean);
+  return parts.join(" - ");
+}
+
+function renderCapTimelineCard(capTimeline){
+  if(!Array.isArray(capTimeline)||!capTimeline.length)return"";
+
+  const maxSeconds=15*60;
+  const events=[...capTimeline].sort((a,b)=>Number(a.time_seconds||0)-Number(b.time_seconds||0));
+
+  return `
+    <section class="match-card cap-timeline-card">
+      <div class="cap-timeline-head">
+        <h2>Flag Pace</h2>
+        <span>Capture Timeline</span>
+      </div>
+      <div class="cap-timeline-bar" aria-label="Capture timeline from 0 to 15 minutes">
+        <div class="cap-timeline-track">
+          ${events.map(event=>{
+            const seconds=Number(event.time_seconds||0);
+            const left=Math.max(0,Math.min(100,(seconds/maxSeconds)*100));
+            const teamClass=capTeamClass(event.team);
+            const title=capEventTitle(event);
+            return `
+              <span
+                class="cap-marker ${teamClass}"
+                style="left:${left}%"
+                title="${escapeAttr(title)}"
+                aria-label="${escapeAttr(title)}"
+              >${escapeHtml(event.cap_num||"")}</span>
+            `;
+          }).join("")}
+        </div>
+        <div class="cap-timeline-axis">
+          <span>0:00</span>
+          <span>5:00</span>
+          <span>10:00</span>
+          <span>15:00</span>
+        </div>
+      </div>
+      <div class="cap-event-list">
+        ${events.map(event=>`
+          <div class="cap-event ${capTeamClass(event.team)}">
+            <span class="cap-event-dot"></span>
+            <strong>${escapeHtml(capTeamLabel(event.team))} Cap ${fmt(event.cap_num)}</strong>
+            <span>${escapeHtml(event.time_text||matchFormatSeconds(event.time_seconds))}</span>
+            <b>${escapeHtml(event.score_after||"-")}</b>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function roundMvpForPlayer(row,roundNum,roundMvps){
