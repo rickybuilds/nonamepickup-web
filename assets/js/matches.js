@@ -10,7 +10,9 @@
     currentPage: 1,
     pageSize: PAGE_SIZE_DEFAULT,
     loadedAt: null,
-    expandedMatchId: null
+    expandedMatchId: null,
+    detailsById: new Map(),
+    detailLoadingIds: new Set()
   };
 
   const $ = (id) => document.getElementById(id);
@@ -120,6 +122,33 @@
     if (w === "RED") return `<span class="winner-badge badge-red">RED</span>`;
     if (w === "TIE") return `<span class="winner-badge badge-tie">TIE</span>`;
     return `<span class="winner-badge badge-pending">${escapeHtml(w)}</span>`;
+  }
+
+  function reportCount(m) {
+    return (m.hampalyzer_url ? 1 : 0) + (m.tfcstats_url ? 1 : 0);
+  }
+
+  function selectedMatch() {
+    if (!state.expandedMatchId) return null;
+    return state.filtered.find(m => m.id === state.expandedMatchId) ||
+      state.all.find(m => m.id === state.expandedMatchId) ||
+      null;
+  }
+
+  function currentPageRows() {
+    const start = (state.currentPage - 1) * state.pageSize;
+    return state.filtered.slice(start, start + state.pageSize);
+  }
+
+  function ensureSelectedMatch() {
+    const rows = currentPageRows();
+    if (!rows.length) {
+      state.expandedMatchId = null;
+      return;
+    }
+    if (!rows.some(m => m.id === state.expandedMatchId)) {
+      state.expandedMatchId = rows[0].id;
+    }
   }
 
   function combinedScore(m) {
@@ -259,11 +288,9 @@
 	  }, 0);
 	}
   
-  function expandedRowHtml(m) {
+  function expandedCardHtml(m) {
     return `
-      <tr class="matches2-expanded-row">
-        <td colspan="7">
-          <div class="m2-expanded-card">
+          <div class="m2-expanded-card" id="match-card-detail-${escapeAttr(m.id)}">
             <div class="m2-expanded-top">
               <div>
                 <p class="m2-expanded-kicker">MATCH REPORT</p>
@@ -295,54 +322,272 @@
               </div>
             </div>
           </div>
-        </td>
-      </tr>
     `;
+  }
+
+  function matchCardHtml(m, cardClasses, matchId, reportIcon) {
+    return `
+      <article
+        class="${cardClasses}"
+        data-match-id="${escapeAttr(m.id)}"
+        title="Click card to expand match details"
+        aria-expanded="${state.expandedMatchId === m.id ? "true" : "false"}"
+      >
+        <div class="m2-card-accent" aria-hidden="true"></div>
+
+        <div class="m2-card-main">
+          <div class="m2-card-meta">
+            <span class="m2-expand-caret">${state.expandedMatchId === m.id ? "v" : ">"}</span>
+            <div>
+              <div class="m2-card-id-row">${matchId}${reportIcon}</div>
+              <time>${fmtDate(m.created_at)}</time>
+            </div>
+          </div>
+
+          <a class="map-link m2-card-map" href="map.html?map=${encodeURIComponent(m.map_name || "")}">${escapeHtml(m.map_name)}</a>
+
+          <div class="m2-card-score">
+            ${scoreHtml(m)}
+            ${winnerBadge(m)}
+          </div>
+        </div>
+
+        <div class="m2-card-teams" aria-label="Match teams">
+          <section class="m2-card-team m2-card-team-blue">
+            <div class="m2-card-team-title"><span>Blue Team</span><strong>${m.blueTeam.length}</strong></div>
+            ${rosterHtml(m.blueTeam, "blue-team")}
+          </section>
+          <section class="m2-card-team m2-card-team-red">
+            <div class="m2-card-team-title"><span>Red Team</span><strong>${m.redTeam.length}</strong></div>
+            ${rosterHtml(m.redTeam, "red-team")}
+          </section>
+        </div>
+      </article>
+    `;
+  }
+
+  function selectedDetailMatch(m) {
+    const detail = state.detailsById.get(m.id);
+    if (!detail || detail.error) return m;
+    return {
+      ...m,
+      ...detail,
+      id: String(detail.id || detail.match_id || m.id),
+      map_name: String(detail.map_name || detail.map || m.map_name),
+      blueTeam: Array.isArray(detail.blueTeam) ? detail.blueTeam : m.blueTeam,
+      redTeam: Array.isArray(detail.redTeam) ? detail.redTeam : m.redTeam,
+      score_blue: detail.score_blue == null ? m.score_blue : Number(detail.score_blue),
+      score_red: detail.score_red == null ? m.score_red : Number(detail.score_red),
+      winner: String(detail.winner || m.winner || "").toUpperCase(),
+      status: String(detail.status || m.status || "").toLowerCase(),
+      hampalyzer_url: detail.hampalyzer_url || m.hampalyzer_url,
+      tfcstats_url: detail.tfcstats_url || m.tfcstats_url
+    };
+  }
+
+  function viewerScoreHtml(m) {
+    const hasBlue = m.score_blue != null && Number.isFinite(Number(m.score_blue));
+    const hasRed = m.score_red != null && Number.isFinite(Number(m.score_red));
+    const hasScore = hasBlue && hasRed;
+    const blue = hasBlue ? m.score_blue : "-";
+    const red = hasRed ? m.score_red : "-";
+    return `
+      <div class="m2-viewer-score ${hasScore ? "" : "is-pending"}">
+        <div class="blue"><span>Blue</span><strong>${escapeHtml(blue)}</strong></div>
+        <i>${hasScore ? "-" : "vs"}</i>
+        <div class="red"><span>Red</span><strong>${escapeHtml(red)}</strong></div>
+      </div>
+    `;
+  }
+
+  function capTeamClass(team) {
+    const normalized = String(team || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+    if (normalized === "1" || normalized === "blu" || normalized.includes("team1") || normalized.includes("blue")) return "blue";
+    if (normalized === "2" || normalized.includes("team2") || normalized.includes("red")) return "red";
+    return "neutral";
+  }
+
+  function capTeamLabel(team) {
+    const teamClass = capTeamClass(team);
+    if (teamClass === "blue") return "Blue";
+    if (teamClass === "red") return "Red";
+    return String(team || "Team");
+  }
+
+  function renderViewerCapTimeline(capTimeline) {
+    if (!Array.isArray(capTimeline) || !capTimeline.length) return "";
+    const maxSeconds = 15 * 60;
+    const events = [...capTimeline]
+      .map(event => ({
+        team: event.team,
+        cap_num: event.cap_num ?? event.capNumber ?? event.cap,
+        time_seconds: Number(event.time_seconds ?? event.timeSeconds ?? 0),
+        time_text: event.time_text || event.timeText || "",
+        score_after: event.score_after || event.scoreAfter || ""
+      }))
+      .sort((a, b) => Number(a.time_seconds || 0) - Number(b.time_seconds || 0));
+
+    return `
+      <section class="m2-viewer-section m2-viewer-cap-section">
+        <div class="m2-viewer-section-head">
+          <span>Flag Pace</span>
+          <strong>Capture Timeline</strong>
+        </div>
+        <div class="m2-viewer-cap-track">
+          ${events.map(event => {
+            const seconds = Number(event.time_seconds || 0);
+            const left = Math.max(0, Math.min(100, (seconds / maxSeconds) * 100));
+            const title = [
+              `${capTeamLabel(event.team)} cap ${event.cap_num || ""}`,
+              event.time_text,
+              event.score_after ? `Score ${event.score_after}` : ""
+            ].filter(Boolean).join(" - ");
+            return `<span class="m2-viewer-cap-marker ${capTeamClass(event.team)}" style="left:${left}%" title="${escapeAttr(title)}">${escapeHtml(event.cap_num || "")}</span>`;
+          }).join("")}
+        </div>
+        <div class="m2-viewer-cap-axis"><span>0:00</span><span>5:00</span><span>10:00</span><span>15:00</span></div>
+        <div class="m2-viewer-cap-list">
+          ${events.map(event => `
+            <div class="m2-viewer-cap-event ${capTeamClass(event.team)}">
+              <span></span>
+              <b>${escapeHtml(capTeamLabel(event.team))} Cap ${escapeHtml(event.cap_num || "")}</b>
+              <em>${escapeHtml(event.time_text || "")}</em>
+              <strong>${escapeHtml(event.score_after || "-")}</strong>
+            </div>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderViewerTeams(m) {
+    return `
+      <section class="m2-viewer-section">
+        <div class="m2-viewer-rosters">
+          <div class="m2-viewer-roster blue">
+            <div class="m2-viewer-section-head"><span>Blue</span><strong>${m.blueTeam.length} Players</strong></div>
+            ${rosterHtml(m.blueTeam, "blue-team")}
+          </div>
+          <div class="m2-viewer-roster red">
+            <div class="m2-viewer-section-head"><span>Red</span><strong>${m.redTeam.length} Players</strong></div>
+            ${rosterHtml(m.redTeam, "red-team")}
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function hydrateViewerMap(mapName) {
+    const img = $("m2-viewer-map-image");
+    if (!img) return;
+    if (typeof window.setMapImageFromName === "function") {
+      window.setMapImageFromName(img, mapName, {
+        containerSelector: ".m2-viewer-map-wrap",
+        fallbackSrc: "assets/images/maps/NoMap.webp"
+      });
+      return;
+    }
+    img.src = "assets/images/maps/NoMap.webp";
+  }
+
+  function renderSelectedViewer() {
+    const viewer = $("matches2-viewer");
+    if (!viewer) return;
+
+    const baseMatch = selectedMatch();
+    if (!baseMatch) {
+      viewer.innerHTML = `<div class="m2-viewer-empty"><span>No matches found</span><p>Adjust filters to select a match.</p></div>`;
+      return;
+    }
+
+    const detail = state.detailsById.get(baseMatch.id);
+    const m = selectedDetailMatch(baseMatch);
+    const loading = state.detailLoadingIds.has(baseMatch.id);
+    const reports = reportCount(m);
+    const capTimeline = Array.isArray(detail?.capTimeline) ? detail.capTimeline :
+      Array.isArray(detail?.cap_timeline) ? detail.cap_timeline :
+      Array.isArray(detail?.cap_events) ? detail.cap_events :
+      [];
+
+    viewer.innerHTML = `
+      <div class="m2-viewer-card">
+        <div class="m2-viewer-map-wrap">
+          <img id="m2-viewer-map-image" class="m2-viewer-map-image" src="assets/images/maps/NoMap.webp" alt="${escapeAttr(m.map_name)} map preview">
+          <div class="m2-viewer-map-overlay"></div>
+          <div class="m2-viewer-map-label">${escapeHtml(m.map_name)}</div>
+        </div>
+
+        <div class="m2-viewer-body">
+          <div class="m2-viewer-top">
+            <div>
+              <p class="m2-viewer-kicker">${loading ? "Loading detail" : "Selected Match"}</p>
+              <h3>${escapeHtml(m.id)}</h3>
+              <small>${fmtDate(m.created_at)} · ${escapeHtml(m.map_name)}</small>
+            </div>
+            ${winnerBadge(m)}
+          </div>
+
+          ${viewerScoreHtml(m)}
+          ${renderViewerTeams(m)}
+          ${renderViewerCapTimeline(capTimeline)}
+
+          <div class="m2-viewer-actions">
+            ${reports ? matchButtons(m) : ""}
+            <a class="m2-report-btn m2-report-full" href="match.html?id=${encodeURIComponent(m.id)}">Full Match Page</a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    hydrateViewerMap(m.map_name);
+  }
+
+  async function loadSelectedMatchDetail() {
+    const m = selectedMatch();
+    if (!m || state.detailsById.has(m.id) || state.detailLoadingIds.has(m.id)) return;
+
+    state.detailLoadingIds.add(m.id);
+    renderSelectedViewer();
+
+    try {
+      const data = await getJSON(`/api/match/${encodeURIComponent(m.id)}`);
+      const detail = data?.match || null;
+      state.detailsById.set(m.id, detail || { error: true });
+    } catch (err) {
+      console.error("[matches2] selected match detail failed", err);
+      state.detailsById.set(m.id, { error: true });
+    } finally {
+      state.detailLoadingIds.delete(m.id);
+      if (state.expandedMatchId === m.id) renderSelectedViewer();
+    }
   }
 
   function renderRows() {
     const body = $("matches2-body");
     if (!body) return;
 
-    const start = (state.currentPage - 1) * state.pageSize;
-    const pageRows = state.filtered.slice(start, start + state.pageSize);
+    const pageRows = currentPageRows();
 
     if (!pageRows.length) {
-      body.innerHTML = `<tr><td colspan="7" class="matches2-empty">No matches found for those filters.</td></tr>`;
+      body.innerHTML = `<div class="matches2-empty">No matches found for those filters.</div>`;
       return;
     }
 
     body.innerHTML = pageRows.map(m => {
-      const rowClasses = [
-        "matches2-main-row",
+      const cardClasses = [
+        "matches2-match-card",
         winnerClass(m.winner),
         m.status === "pending" ? "row-pending" : "",
-        state.expandedMatchId === m.id ? "m2-row-expanded" : ""
+        state.expandedMatchId === m.id ? "m2-card-selected" : ""
       ].filter(Boolean).join(" ");
 
-      const reportIcon = m.tfcstats_url ? `<span class="m2-mini-report">2 reports</span>` :
-        m.hampalyzer_url ? `<span class="m2-mini-report">report</span>` : "";
+      const reports = reportCount(m);
+      const reportIcon = reports ? `<span class="m2-mini-report">${reports} ${reports === 1 ? "report" : "reports"}</span>` : "";
 
       const matchId =
       `<a href="match.html?id=${encodeURIComponent(m.id)}" class="match-id-link">${escapeHtml(m.id)}</a>`;
 
-      const mainRow = `
-        <tr class="${rowClasses}" data-match-id="${escapeAttr(m.id)}" title="Click row to expand match details">
-          <td>
-            <span class="m2-expand-caret">${state.expandedMatchId === m.id ? "▾" : "▸"}</span>
-            ${matchId}
-            ${reportIcon}
-          </td>
-          <td class="whitespace-nowrap">${fmtDate(m.created_at)}</td>
-          <td><a class="map-link" href="map.html?map=${encodeURIComponent(m.map_name || "")}">${escapeHtml(m.map_name)}</a></td>
-          <td>${rosterHtml(m.blueTeam, "blue-team")}</td>
-          <td>${rosterHtml(m.redTeam, "red-team")}</td>
-          <td class="text-center">${scoreHtml(m)}</td>
-          <td class="text-center">${winnerBadge(m)}</td>
-        </tr>
-      `;
-
-      return mainRow + (state.expandedMatchId === m.id ? expandedRowHtml(m) : "");
+      return matchCardHtml(m, cardClasses, matchId, reportIcon);
     }).join("");
   }
 
@@ -393,12 +638,15 @@
   }
 
   function render() {
+    ensureSelectedMatch();
     renderRows();
     renderPagination();
+    renderSelectedViewer();
+    loadSelectedMatchDetail();
   }
 
   function scrollToTable() {
-    const panel = $("matches2-table");
+    const panel = $("matches2-list");
     panel?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -511,9 +759,9 @@
 
     $("matches2-body")?.addEventListener("click", (e) => {
       if (e.target.closest("a, button, select, input")) return;
-      const row = e.target.closest("tr.matches2-main-row[data-match-id]");
-      if (!row) return;
-      const id = row.dataset.matchId;
+      const card = e.target.closest(".matches2-match-card[data-match-id]");
+      if (!card) return;
+      const id = card.dataset.matchId;
       state.expandedMatchId = state.expandedMatchId === id ? null : id;
       render();
     });

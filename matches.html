@@ -17,10 +17,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260618p">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/matches.css?v=20260618p">
+  <link rel="stylesheet" href="assets/css/matches.css?v=20260620b">
 
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/matches.js?v=20260618i" defer></script>
+  <script src="assets/js/matches.js?v=20260620b" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -136,47 +136,45 @@
         <button id="m2-clear-filters" type="button">✕ Clear Filters</button>
       </section>
 
-      <section class="matches2-panel">
-        <div class="matches2-panel-topline">
-          <div>
-            <h2>Recent Matches</h2>
-            <span id="m2-range-label">Loading...</span>
-          </div>
-          <div class="matches2-page-size">
-            <span>Rows</span>
-            <select id="m2-page-size">
-              <option value="25">25</option>
-              <option value="50" selected>50</option>
-              <option value="100">100</option>
-            </select>
-          </div>
+      <section class="matches2-browser-layout">
+        <div class="matches2-browser-list">
+          <section class="matches2-panel">
+            <div class="matches2-panel-topline">
+              <div>
+                <h2>Recent Matches</h2>
+                <span id="m2-range-label">Loading...</span>
+              </div>
+              <div class="matches2-page-size">
+                <span>Cards</span>
+                <select id="m2-page-size">
+                  <option value="25">25</option>
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="matches2-list" class="matches2-card-scroll">
+              <div id="matches2-body" class="matches2-card-list">
+                <div class="matches2-empty">Loading matches...</div>
+              </div>
+            </div>
+          </section>
+
+          <nav class="matches2-pagination" aria-label="Matches pagination">
+            <button id="m2-prev-page" type="button">← Previous</button>
+            <div id="m2-page-numbers" class="matches2-page-numbers"></div>
+            <button id="m2-next-page" type="button">Next →</button>
+          </nav>
         </div>
 
-        <div class="matches2-table-scroll">
-          <table id="matches2-table" class="matches2-table">
-            <thead>
-              <tr>
-                <th>Match ID</th>
-                <th>Date</th>
-                <th>Map</th>
-                <th>Blue Team</th>
-                <th>Red Team</th>
-                <th>Score</th>
-                <th>Winner</th>
-              </tr>
-            </thead>
-            <tbody id="matches2-body">
-              <tr><td colspan="7" class="matches2-empty">Loading matches...</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <aside id="matches2-viewer" class="matches2-viewer" aria-live="polite">
+          <div class="m2-viewer-empty">
+            <span>Select a match</span>
+            <p>Match details will appear here.</p>
+          </div>
+        </aside>
       </section>
-
-      <nav class="matches2-pagination" aria-label="Matches pagination">
-        <button id="m2-prev-page" type="button">← Previous</button>
-        <div id="m2-page-numbers" class="matches2-page-numbers"></div>
-        <button id="m2-next-page" type="button">Next →</button>
-      </nav>
 
     </section>
   </main>

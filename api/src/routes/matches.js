@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { buildNnMvp } = require("../lib/nnMvp");
 
 function createMatchesRouter({
   db,
@@ -73,6 +74,7 @@ function createMatchesRouter({
         s.team,
         s.kills,
         s.deaths,
+        s.team_kills,
         s.enemy_damage AS damage,
         s.team_damage,
         s.damage_taken,
@@ -125,6 +127,8 @@ function createMatchesRouter({
       let rounds=[];
       let roundPlayerStats=[];
       let roundMvps=[];
+      let flagCarrierKills=[];
+      let capTimeline=[];
 
       try{
         rounds=db.prepare(`
@@ -206,6 +210,48 @@ function createMatchesRouter({
         }
       }
 
+      try{
+        flagCarrierKills=db.prepare(`
+          SELECT
+            e.attacker_key AS player_key,
+            e.attacker_steam_id AS steam_id,
+            SUM(CASE WHEN e.is_enemy_kill=1 AND e.is_flag_carrier_kill=1 THEN 1 ELSE 0 END) AS flag_carrier_kills
+          FROM match_kill_events e
+          WHERE e.match_id=?
+          GROUP BY e.attacker_key,e.attacker_steam_id
+        `).all(matchId);
+      }catch(killEventError){
+        const message=String(killEventError?.message||"");
+        if(!message.includes("no such table")){
+          logRouteError("[/api/match/:matchId kill events]",killEventError);
+        }
+      }
+
+      try{
+        capTimeline=db.prepare(`
+          SELECT
+            team,
+            cap_num,
+            time_seconds,
+            time_text,
+            score_after
+          FROM match_cap_events
+          WHERE match_id=?
+          ORDER BY time_seconds
+        `).all(matchId);
+      }catch(capEventError){
+        const message=String(capEventError?.message||"");
+        if(!message.includes("no such table")){
+          logRouteError("[/api/match/:matchId cap timeline]",capEventError);
+        }
+      }
+
+      const nnMvp=buildNnMvp({
+        playerStats,
+        roundPlayerStats,
+        flagCarrierKills
+      });
+
       const matchMvps=[];
       for(const mvp of roundMvps){
         const identity=mvp.mvp_player_key||mvp.steam_id||mvp.mvp_display_name||"";
@@ -235,6 +281,7 @@ function createMatchesRouter({
             main_class:p.main_class,
             kills:Number(p.kills||0),
             deaths:Number(p.deaths||0),
+            team_kills:Number(p.team_kills||0),
             damage:Number(p.damage||0),
             team_damage:Number(p.team_damage||0),
             damage_taken:Number(p.damage_taken||0),
@@ -302,7 +349,15 @@ function createMatchesRouter({
           mvp_player_key:mvp.mvp_player_key,
           steam_id:mvp.steam_id
         })),
-        match_mvps:matchMvps.map(({identity,...mvp})=>mvp)
+        capTimeline:capTimeline.map(event=>({
+          team:event.team,
+          cap_num:Number(event.cap_num||0),
+          time_seconds:Number(event.time_seconds||0),
+          time_text:event.time_text,
+          score_after:event.score_after
+        })),
+        match_mvps:matchMvps.map(({identity,...mvp})=>mvp),
+        nn_mvp:nnMvp
         }
       });
     }catch(e){
