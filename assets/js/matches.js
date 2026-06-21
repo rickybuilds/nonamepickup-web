@@ -449,6 +449,17 @@
 		  capper_steam_id: event.capper_steam_id || event.capperSteamId || ""
 		}))
       .sort((a, b) => Number(a.time_seconds || 0) - Number(b.time_seconds || 0));
+    const laneGapPercent = 5.2;
+    const laneCount = 4;
+    const laneLastLeft = Array(laneCount).fill(-Infinity);
+    const eventsWithLanes = events.map(event => {
+      const seconds = Number(event.time_seconds || 0);
+      const left = Math.max(3, Math.min(97, (seconds / maxSeconds) * 100));
+      let lane = laneLastLeft.findIndex(lastLeft => left - lastLeft >= laneGapPercent);
+      if (lane < 0) lane = laneLastLeft.indexOf(Math.min(...laneLastLeft));
+      laneLastLeft[lane] = left;
+      return { ...event, left, lane };
+    });
 
     return `
       <section class="m2-viewer-section m2-viewer-cap-section">
@@ -457,9 +468,8 @@
           <strong>Capture Timeline</strong>
         </div>
         <div class="m2-viewer-cap-track">
-          ${events.map(event => {
-            const seconds = Number(event.time_seconds || 0);
-            const left = Math.max(0, Math.min(100, (seconds / maxSeconds) * 100));
+          ${eventsWithLanes.map(event => {
+            const left = event.left;
             const teamClass = capTeamClass(event.team);
             const label = capTeamLabel(event.team);
             const capNum = event.cap_num || "";
@@ -470,7 +480,7 @@
             return `
               <span
                 class="m2-viewer-cap-marker ${teamClass}"
-                style="left:${left}%"
+                style="left:${left}%;--cap-lane:${event.lane};--cap-shift:${(event.lane - 1.5) * 3}px"
                 title="${escapeAttr(title)}"
                 aria-label="${escapeAttr([title,event.time_text].filter(Boolean).join(" - "))}"
               >
@@ -566,6 +576,7 @@
           <img id="m2-viewer-map-image" class="m2-viewer-map-image" src="assets/images/maps/NoMap.webp" alt="${escapeAttr(m.map_name)} map preview">
           <div class="m2-viewer-map-overlay"></div>
           <div class="m2-viewer-map-label">${escapeHtml(m.map_name)}</div>
+          ${viewerScoreHtml(m)}
         </div>
 
         <div class="m2-viewer-body">
@@ -578,7 +589,6 @@
             ${winnerBadge(m)}
           </div>
 
-          ${viewerScoreHtml(m)}
           ${renderViewerTeams(m)}
           ${renderViewerCapTimeline(capTimeline)}
 
