@@ -224,7 +224,7 @@ function fastKillEventIdentityWhere(identity,alias=""){
     };
   }
   return{
-    sql:`CAST(${prefix}attacker_discord_id AS TEXT)=?`,
+    sql:`${prefix}attacker_discord_id=?`,
     params:[identity.id]
   };
 }
@@ -588,28 +588,37 @@ function buildGranularPlayerPayload(identity,options={}){
     ));
 
     const favoriteVictims=timedGranularQuery(`${timingPrefix}:favoriteVictims`,()=>db.prepare(`
-    SELECT
-      e.victim_discord_id,
-      e.victim_steam_id,
-      e.victim_key,
-      COALESCE(
-        NULLIF(r.display_name,''),
-        NULLIF(MAX(e.victim_name),''),
-        NULLIF(MIN(e.victim_name),''),
-        NULLIF(e.victim_key,''),
-        'Unknown'
-      ) AS victim_name,
-      COUNT(*) AS kills
-    FROM match_kill_events e
-    LEFT JOIN ratings r
-      ON CAST(r.player_id AS TEXT)=CAST(e.victim_discord_id AS TEXT)
-    WHERE ${identityWhere.sql}
-      AND COALESCE(e.is_enemy_kill,1)=1
-      ${matchFilter}
-    GROUP BY e.victim_discord_id,e.victim_steam_id,e.victim_key
-    ORDER BY kills DESC,victim_name
-    LIMIT 25
-  `).all(...identityWhere.params,...matchParams));
+	  WITH victims AS (
+		SELECT
+		  e.victim_discord_id,
+		  e.victim_steam_id,
+		  e.victim_key,
+		  MAX(e.victim_name) AS victim_name,
+		  COUNT(*) AS kills
+		FROM match_kill_events e
+		WHERE ${identityWhere.sql}
+		  AND COALESCE(e.is_enemy_kill,1)=1
+		  ${matchFilter}
+		GROUP BY e.victim_discord_id,e.victim_steam_id,e.victim_key
+		ORDER BY kills DESC
+		LIMIT 25
+	  )
+	  SELECT
+		v.victim_discord_id,
+		v.victim_steam_id,
+		v.victim_key,
+		COALESCE(
+		  NULLIF(r.display_name,''),
+		  NULLIF(v.victim_name,''),
+		  NULLIF(v.victim_key,''),
+		  'Unknown'
+		) AS victim_name,
+		v.kills
+	  FROM victims v
+	  LEFT JOIN ratings r
+		ON r.player_id = v.victim_discord_id
+	  ORDER BY v.kills DESC,victim_name
+	`).all(...identityWhere.params,...matchParams));
 
     const aliasHistory=timedGranularQuery(`${timingPrefix}:aliasHistory`,()=>db.prepare(`
       SELECT
@@ -739,6 +748,7 @@ function buildGranularPlayerPayload(identity,options={}){
 }
 
 router.get("/player/:id/granular",(req,res)=>{
+  console.time("GRANULAR TOTAL");
   try{
     const playerId=cleanString(req.params.id,100);
     if(!playerId)return sendError(res,400,"invalid_player");
@@ -756,6 +766,8 @@ router.get("/player/:id/granular",(req,res)=>{
   }catch(error){
     logRouteError("[/api/player/:id/granular]",error);
     sendError(res,500,"player_granular_failed");
+  }finally{
+    console.timeEnd("GRANULAR TOTAL");
   }
 });
 
