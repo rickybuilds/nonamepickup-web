@@ -85,8 +85,9 @@ function createMatchesRouter({
         s.flag_time_seconds,
         s.main_class
       FROM match_player_stats s
-      LEFT JOIN player_steam_ids psi ON psi.steam_id=s.steam_id OR psi.steam_id=s.player_key
-      LEFT JOIN ratings r ON r.player_id=psi.discord_id
+      LEFT JOIN player_steam_ids psi_key ON psi_key.steam_id=s.player_key
+      LEFT JOIN player_steam_ids psi_sid ON psi_sid.steam_id=s.steam_id
+      LEFT JOIN ratings r ON r.player_id=COALESCE(psi_key.discord_id,psi_sid.discord_id)
       WHERE s.match_id=?
       ORDER BY s.kills DESC
     `).all(matchId);
@@ -100,8 +101,9 @@ function createMatchesRouter({
         SUM(c.seconds) AS seconds
       FROM match_player_classes c
       LEFT JOIN match_player_stats s ON s.match_id=c.match_id AND s.player_key=c.player_key
-      LEFT JOIN player_steam_ids psi ON psi.steam_id=c.player_key OR psi.steam_id=s.steam_id
-      LEFT JOIN ratings r ON r.player_id=psi.discord_id
+      LEFT JOIN player_steam_ids psi_key ON psi_key.steam_id=c.player_key
+      LEFT JOIN player_steam_ids psi_sid ON psi_sid.steam_id=s.steam_id
+      LEFT JOIN ratings r ON r.player_id=COALESCE(psi_key.discord_id,psi_sid.discord_id)
       WHERE c.match_id=?
       GROUP BY c.player_key,c.class_name
       ORDER BY seconds DESC
@@ -116,8 +118,9 @@ function createMatchesRouter({
         SUM(w.kills) AS kills
       FROM match_player_weapons w
       LEFT JOIN match_player_stats s ON s.match_id=w.match_id AND s.player_key=w.player_key
-      LEFT JOIN player_steam_ids psi ON psi.steam_id=w.player_key OR psi.steam_id=s.steam_id
-      LEFT JOIN ratings r ON r.player_id=psi.discord_id
+      LEFT JOIN player_steam_ids psi_key ON psi_key.steam_id=w.player_key
+      LEFT JOIN player_steam_ids psi_sid ON psi_sid.steam_id=s.steam_id
+      LEFT JOIN ratings r ON r.player_id=COALESCE(psi_key.discord_id,psi_sid.discord_id)
       WHERE w.match_id=?
       GROUP BY w.player_key,w.weapon
       ORDER BY kills DESC
@@ -254,10 +257,10 @@ function createMatchesRouter({
         flagCarrierKills
       });
 
-      const matchMvps=[];
+      const matchMvpsByIdentity=new Map();
       for(const mvp of roundMvps){
         const identity=mvp.mvp_player_key||mvp.steam_id||mvp.mvp_display_name||"";
-        let matchMvp=matchMvps.find(row=>row.identity===identity);
+        let matchMvp=matchMvpsByIdentity.get(identity);
         if(!matchMvp){
           matchMvp={
             identity,
@@ -266,10 +269,11 @@ function createMatchesRouter({
             steam_id:mvp.steam_id,
             rounds:[]
           };
-          matchMvps.push(matchMvp);
+          matchMvpsByIdentity.set(identity,matchMvp);
         }
         matchMvp.rounds.push(Number(mvp.round_num||0));
       }
+      const matchMvps=Array.from(matchMvpsByIdentity.values());
 
       res.json({
         ok:true,

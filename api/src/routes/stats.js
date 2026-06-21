@@ -15,17 +15,17 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
               SELECT
                 m.match_id,
                 COALESCE(
-                  psi.discord_id,
+                  COALESCE(psi_key.discord_id, psi_sid.discord_id),
                   m.mvp_player_key,
                   m.steam_id,
                   LOWER(TRIM(m.mvp_display_name))
                 ) AS identity,
-                psi.discord_id AS player_id,
+                COALESCE(psi_key.discord_id, psi_sid.discord_id) AS player_id,
                 COALESCE(r.display_name, m.mvp_display_name, m.mvp_player_key, m.steam_id) AS player
               FROM match_round_mvps m
-              LEFT JOIN player_steam_ids psi
-                ON psi.steam_id=m.mvp_player_key OR psi.steam_id=m.steam_id
-              LEFT JOIN ratings r ON r.player_id=psi.discord_id
+              LEFT JOIN player_steam_ids psi_key ON psi_key.steam_id=m.mvp_player_key
+              LEFT JOIN player_steam_ids psi_sid ON psi_sid.steam_id=m.steam_id
+              LEFT JOIN ratings r ON r.player_id=COALESCE(psi_key.discord_id,psi_sid.discord_id)
             )
             SELECT
               MAX(player_id) AS id,
@@ -47,13 +47,13 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
           const rateRow = db.prepare(`
             WITH linked_mvps AS (
               SELECT
-                psi.discord_id AS player_id,
+                COALESCE(psi_key.discord_id,psi_sid.discord_id) AS player_id,
                 COUNT(DISTINCT m.match_id) AS mvp_games
               FROM match_round_mvps m
-              JOIN player_steam_ids psi
-                ON psi.steam_id=m.mvp_player_key OR psi.steam_id=m.steam_id
-              WHERE psi.discord_id IS NOT NULL
-              GROUP BY psi.discord_id
+              LEFT JOIN player_steam_ids psi_key ON psi_key.steam_id=m.mvp_player_key
+              LEFT JOIN player_steam_ids psi_sid ON psi_sid.steam_id=m.steam_id
+              WHERE COALESCE(psi_key.discord_id,psi_sid.discord_id) IS NOT NULL
+              GROUP BY COALESCE(psi_key.discord_id,psi_sid.discord_id)
             ),
             player_games AS (
               SELECT
@@ -72,9 +72,9 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
               ROUND(100.0 * COALESCE(lm.mvp_games, 0) / pg.games, 1) AS mvp_pct
             FROM player_games pg
             LEFT JOIN linked_mvps lm
-              ON CAST(lm.player_id AS TEXT)=CAST(pg.player_id AS TEXT)
+              ON lm.player_id=pg.player_id
             LEFT JOIN ratings r
-              ON CAST(r.player_id AS TEXT)=CAST(pg.player_id AS TEXT)
+              ON r.player_id=pg.player_id
             WHERE pg.games >= 25
             ORDER BY mvp_pct DESC, mvp_games DESC, games DESC, player COLLATE NOCASE
             LIMIT 1
@@ -227,7 +227,7 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
 
   router.get("/stats/streaks", (req, res) => {
     try {
-      const data = (() => {
+      const data = cached("stats_streaks", () => {
         const activeRows = db.prepare(`
         WITH player_games AS (
           SELECT 
@@ -296,7 +296,7 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
           currentStreakRunnerUp: currentStreakLeaders[1] || null,
           currentStreakLeaders
         };
-      })();
+      });
 
       res.json({ ok: true, data });
     } catch (e) {

@@ -121,7 +121,7 @@ router.get("/steam/profile/:discordId",(req,res)=>{
         sp.avatarfull
       FROM player_steam_ids psi
       LEFT JOIN steam_profiles sp ON sp.steam_id=psi.steam_id
-      WHERE CAST(psi.discord_id AS TEXT)=?
+      WHERE psi.discord_id=?
         AND psi.is_primary=1
       ORDER BY psi.steam_id
       LIMIT 1
@@ -172,13 +172,13 @@ function resolvePlayerIdentity(playerId){
   const player=db.prepare(`
     SELECT player_id,display_name
     FROM ratings
-    WHERE CAST(player_id AS TEXT)=?
+    WHERE player_id=?
   `).get(playerId);
 
   const steamRows=safeTableRead(()=>db.prepare(`
     SELECT steam_id
     FROM player_steam_ids
-    WHERE CAST(discord_id AS TEXT)=?
+    WHERE discord_id=?
       AND steam_id IS NOT NULL
       AND steam_id!=''
     ORDER BY is_primary DESC, steam_id
@@ -239,20 +239,7 @@ function timedGranularQuery(label,fn){
 }
 
 function ensureGranularIndexes(){
-  safeTableRead(()=>{
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_mke_player_victim_full
-      ON match_kill_events(attacker_discord_id, victim_discord_id, victim_steam_id, victim_key)
-    `).run();
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_mke_player_event_order
-      ON match_kill_events(attacker_discord_id, match_id, round_num, event_time_seconds, id)
-    `).run();
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_mke_steam_event_fast
-      ON match_kill_events(attacker_steam_id, match_id, round_num, event_time_seconds, id)
-    `).run();
-  },null);
+  return null;
 }
 
 function officialKillConfidenceWhere(alias=""){
@@ -991,6 +978,38 @@ router.get("/player/:discordId/v3",(req,res)=>{
     `).get(player.rating||0);
 
     const hStats=steamId?db.prepare(`
+      WITH player_rows AS (
+        SELECT
+          match_id,
+          kills,
+          deaths,
+          enemy_damage,
+          team_damage,
+          damage_taken,
+          flag_captures,
+          flag_touches,
+          initial_touches,
+          flag_time_seconds,
+          conc_jumps
+        FROM match_player_stats
+        WHERE steam_id=?
+        UNION ALL
+        SELECT
+          match_id,
+          kills,
+          deaths,
+          enemy_damage,
+          team_damage,
+          damage_taken,
+          flag_captures,
+          flag_touches,
+          initial_touches,
+          flag_time_seconds,
+          conc_jumps
+        FROM match_player_stats
+        WHERE player_key=?
+          AND COALESCE(steam_id,'')<>?
+      )
       SELECT
         COUNT(DISTINCT match_id) AS matches,
         SUM(kills) AS kills,
@@ -1003,9 +1022,8 @@ router.get("/player/:discordId/v3",(req,res)=>{
         SUM(initial_touches) AS initial_touches,
         SUM(flag_time_seconds) AS flag_time,
         SUM(conc_jumps) AS conc_jumps
-      FROM match_player_stats
-      WHERE steam_id=? OR player_key=?
-    `).get(steamId,steamId):null;
+      FROM player_rows
+    `).get(steamId,steamId,steamId):null;
 
     const classRows=steamId?db.prepare(`
       SELECT class_name,
@@ -1031,10 +1049,19 @@ router.get("/player/:discordId/v3",(req,res)=>{
     if(steamId){
       try{
         const mvpRow=db.prepare(`
+          WITH mvp_rows AS (
+            SELECT match_id
+            FROM match_round_mvps
+            WHERE mvp_player_key=?
+            UNION ALL
+            SELECT match_id
+            FROM match_round_mvps
+            WHERE steam_id=?
+              AND COALESCE(mvp_player_key,'')<>?
+          )
           SELECT COUNT(DISTINCT match_id) AS mvp_games
-          FROM match_round_mvps
-          WHERE mvp_player_key=? OR steam_id=?
-        `).get(steamId,steamId);
+          FROM mvp_rows
+        `).get(steamId,steamId,steamId);
         mvpGames=Number(mvpRow?.mvp_games||0);
       }catch(mvpError){
         if(!String(mvpError?.message||"").includes("no such table")){
@@ -1148,18 +1175,13 @@ router.get("/player/:id/recent", (req, res) => {
 
   try {
     const matches = db.prepare(`
-      SELECT ${matchColumns("m")}
-      FROM matches m
-      WHERE EXISTS (
-        SELECT 1 FROM json_each(m.blue_ids)
-        WHERE CAST(value AS TEXT) = ?
-      ) OR EXISTS (
-        SELECT 1 FROM json_each(m.red_ids)
-        WHERE CAST(value AS TEXT) = ?
-      )
+      SELECT DISTINCT ${matchColumns("m")}
+      FROM rating_changes rc
+      JOIN matches m ON m.match_id = rc.match_id
+      WHERE rc.player_id = ?
       ORDER BY m.created_at DESC
       LIMIT ?
-    `).all(pid, pid, limit);
+    `).all(pid, limit);
 
     const adminRows = db.prepare(`
       SELECT match_id, ts, before, after, delta
@@ -1276,14 +1298,26 @@ router.get("/topplayers", (req, res) => {
 
     const out = cached(cacheKey, () => {
       const rows = db.prepare(`
-        SELECT r.player_id,
+        WITH top_delta AS (
+          SELECT r.player_id,
+                 COUNT(*) AS games,
+                 SUM(r.delta) AS delta
+          FROM rating_changes r
+          JOIN matches m ON m.match_id = r.match_id
+          WHERE m.status='completed' AND m.created_at >= ?
+          GROUP BY r.player_id
+          HAVING games > 0
+          ORDER BY delta DESC
+          LIMIT 20
+        )
+        SELECT td.player_id,
                MAX(rt.display_name) as display_name,
                MAX(rt.rating)       as current_rating,
                up.hide_elo,
-               COUNT(*) as games,
+               td.games as games,
                SUM(CASE
-                     WHEN m.winner='BLUE' AND EXISTS (
-                       SELECT 1 FROM json_each(m.blue_ids)
+                      WHEN m.winner='BLUE' AND EXISTS (
+                        SELECT 1 FROM json_each(m.blue_ids)
                        WHERE CAST(value AS TEXT) = CAST(r.player_id AS TEXT)
                      ) THEN 1
                      WHEN m.winner='RED' AND EXISTS (
@@ -1302,19 +1336,19 @@ router.get("/topplayers", (req, res) => {
                        WHERE CAST(value AS TEXT) = CAST(r.player_id AS TEXT)
                      ) THEN 1
                      ELSE 0
-                   END) as losses,
+                    END) as losses,
                SUM(CASE WHEN m.winner='TIE' THEN 1 ELSE 0 END) as ties,
-               SUM(r.delta) as delta
-        FROM rating_changes r
+               td.delta as delta
+        FROM top_delta td
+        JOIN rating_changes r ON r.player_id = td.player_id
         JOIN matches m ON m.match_id = r.match_id
-        LEFT JOIN ratings rt ON rt.player_id = r.player_id
-        LEFT JOIN user_prefs up ON up.player_id = r.player_id
+        LEFT JOIN ratings rt ON rt.player_id = td.player_id
+        LEFT JOIN user_prefs up ON up.player_id = td.player_id
         WHERE m.status='completed' AND m.created_at >= ?
-        GROUP BY r.player_id
-        HAVING games > 0
-        ORDER BY delta DESC
+        GROUP BY td.player_id
+        ORDER BY td.delta DESC
         LIMIT 20
-      `).all(cutoff);
+      `).all(cutoff, cutoff);
 
       // ✅ current_rating comes from the JOIN above — no extra query per row
       return rows.map((r, i) => ({

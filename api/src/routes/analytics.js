@@ -132,20 +132,20 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
   router.get("/analytics", (req, res) => {
     try {
       const limit = positiveInt(req.query.limit, 5, 1, 10);
-      const payload = cachedFor(`analytics:${limit}`, 30_000, () => {
+      const payload = cachedFor(`analytics:${limit}`, 300_000, () => {
         const summary = db.prepare(`
           SELECT
             (SELECT COUNT(*) FROM matches WHERE status = 'completed') AS matches,
             (SELECT COUNT(DISTINCT identity) FROM (
               SELECT COALESCE(
-                psi.discord_id,
+                COALESCE(psi_key.discord_id, psi_sid.discord_id),
                 NULLIF(s.player_key, ''),
                 NULLIF(s.steam_id, ''),
                 LOWER(TRIM(s.display_name))
               ) AS identity
               FROM match_player_stats s
-              LEFT JOIN player_steam_ids psi
-                ON psi.steam_id = s.player_key OR psi.steam_id = s.steam_id
+              LEFT JOIN player_steam_ids psi_key ON psi_key.steam_id = s.player_key
+              LEFT JOIN player_steam_ids psi_sid ON psi_sid.steam_id = s.steam_id
             ) WHERE identity IS NOT NULL AND identity != '') AS players,
             (SELECT COUNT(*) FROM match_player_round_stats) AS player_rounds
         `).get();

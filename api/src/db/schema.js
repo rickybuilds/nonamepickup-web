@@ -62,6 +62,8 @@ function initializeSchema(db) {
     ON match_kill_events(attacker_discord_id, victim_discord_id, victim_steam_id, victim_key);
   CREATE INDEX IF NOT EXISTS idx_mke_player_event_order
     ON match_kill_events(attacker_discord_id, match_id, round_num, event_time_seconds, id);
+  CREATE INDEX IF NOT EXISTS idx_mke_steam_event_fast
+    ON match_kill_events(attacker_steam_id, match_id, round_num, event_time_seconds, id);
 `);
 
   db.exec(`
