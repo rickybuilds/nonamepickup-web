@@ -234,7 +234,9 @@ function createMatchesRouter({
             cap_num,
             time_seconds,
             time_text,
-            score_after
+            score_after,
+			capper_name,
+			capper_steam_id
           FROM match_cap_events
           WHERE match_id=?
           ORDER BY time_seconds
@@ -354,7 +356,9 @@ function createMatchesRouter({
           cap_num:Number(event.cap_num||0),
           time_seconds:Number(event.time_seconds||0),
           time_text:event.time_text,
-          score_after:event.score_after
+          score_after:event.score_after,
+		  capper_name:event.capper_name || null,
+		  capper_steam_id:event.capper_steam_id || null
         })),
         match_mvps:matchMvps.map(({identity,...mvp})=>mvp),
         nn_mvp:nnMvp

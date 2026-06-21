@@ -12,6 +12,7 @@
   --page-gutter-desktop:2vw;
   --page-gutter-mobile:8px;
   --mobile-page-gutter:var(--page-gutter-mobile);
+  --timeline-flag-size:38px;
   --shell-padding:34px;
   --shell-radius:36px;
   --shell-bg:rgba(10,12,22,.94);
@@ -30,3 +31,7 @@
 html{scroll-behavior:smooth;overflow-x:hidden;}
 body{margin:0;font-family:'Orbitron',system-ui,sans-serif;font-weight:500;color:var(--text);background:var(--bg);overflow-x:hidden;}
 button{font-family:inherit;}
+
+@media (max-width:768px){
+  :root{--timeline-flag-size:30px;}
+}

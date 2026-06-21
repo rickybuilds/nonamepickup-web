@@ -12,10 +12,16 @@
     loadedAt: null,
     expandedMatchId: null,
     detailsById: new Map(),
-    detailLoadingIds: new Set()
+    detailLoadingIds: new Set(),
+    mobileDrawerOpen: false,
+    mobileDrawerCollapsed: false
   };
 
   const $ = (id) => document.getElementById(id);
+
+  function isMobileDock() {
+    return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 900px)").matches;
+  }
 
   async function getJSON(url) {
     if (typeof window.nnHelpers?.fetchJSON === "function") {
@@ -400,6 +406,21 @@
     `;
   }
 
+  function compactScoreText(m) {
+    const blue = m.score_blue == null ? "-" : m.score_blue;
+    const red = m.score_red == null ? "-" : m.score_red;
+    return `${blue} - ${red}`;
+  }
+
+  function syncMobileDrawerState(viewer) {
+    const open = isMobileDock() && state.mobileDrawerOpen && !!state.expandedMatchId;
+    const collapsed = open && state.mobileDrawerCollapsed;
+    viewer.classList.toggle("m2-dock-open", open);
+    viewer.classList.toggle("m2-dock-collapsed", collapsed);
+    document.body.classList.toggle("m2-mobile-dock-open", open);
+    document.body.classList.toggle("m2-mobile-dock-collapsed", collapsed);
+  }
+
   function capTeamClass(team) {
     const normalized = String(team || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
     if (normalized === "1" || normalized === "blu" || normalized.includes("team1") || normalized.includes("blue")) return "blue";
@@ -419,12 +440,14 @@
     const maxSeconds = 15 * 60;
     const events = [...capTimeline]
       .map(event => ({
-        team: event.team,
-        cap_num: event.cap_num ?? event.capNumber ?? event.cap,
-        time_seconds: Number(event.time_seconds ?? event.timeSeconds ?? 0),
-        time_text: event.time_text || event.timeText || "",
-        score_after: event.score_after || event.scoreAfter || ""
-      }))
+		  team: event.team,
+		  cap_num: event.cap_num ?? event.capNumber ?? event.cap,
+		  time_seconds: Number(event.time_seconds ?? event.timeSeconds ?? 0),
+		  time_text: event.time_text || event.timeText || "",
+		  score_after: event.score_after || event.scoreAfter || "",
+		  capper_name: event.capper_name || event.capperName || "",
+		  capper_steam_id: event.capper_steam_id || event.capperSteamId || ""
+		}))
       .sort((a, b) => Number(a.time_seconds || 0) - Number(b.time_seconds || 0));
 
     return `
@@ -437,25 +460,41 @@
           ${events.map(event => {
             const seconds = Number(event.time_seconds || 0);
             const left = Math.max(0, Math.min(100, (seconds / maxSeconds) * 100));
-            const title = [
-              `${capTeamLabel(event.team)} cap ${event.cap_num || ""}`,
-              event.time_text,
-              event.score_after ? `Score ${event.score_after}` : ""
-            ].filter(Boolean).join(" - ");
-            return `<span class="m2-viewer-cap-marker ${capTeamClass(event.team)}" style="left:${left}%" title="${escapeAttr(title)}">${escapeHtml(event.cap_num || "")}</span>`;
+            const teamClass = capTeamClass(event.team);
+            const label = capTeamLabel(event.team);
+            const capNum = event.cap_num || "";
+            const title = `${label} Capture #${capNum}`;
+            const icon = teamClass === "red"
+              ? "assets/images/icons/webp/red-flag.webp"
+              : "assets/images/icons/webp/blue-flag.webp";
+            return `
+              <span
+                class="m2-viewer-cap-marker ${teamClass}"
+                style="left:${left}%"
+                title="${escapeAttr(title)}"
+                aria-label="${escapeAttr([title,event.time_text].filter(Boolean).join(" - "))}"
+              >
+                <img src="${escapeAttr(icon)}" alt="" loading="lazy" aria-hidden="true">
+                <span class="m2-viewer-cap-badge">${escapeHtml(capNum)}</span>
+              </span>
+            `;
           }).join("")}
         </div>
         <div class="m2-viewer-cap-axis"><span>0:00</span><span>5:00</span><span>10:00</span><span>15:00</span></div>
         <div class="m2-viewer-cap-list">
-          ${events.map(event => `
-            <div class="m2-viewer-cap-event ${capTeamClass(event.team)}">
-              <span></span>
-              <b>${escapeHtml(capTeamLabel(event.team))} Cap ${escapeHtml(event.cap_num || "")}</b>
-              <em>${escapeHtml(event.time_text || "")}</em>
-              <strong>${escapeHtml(event.score_after || "-")}</strong>
-            </div>
-          `).join("")}
-        </div>
+		  ${events.map(event => `
+			<div class="m2-viewer-cap-event ${capTeamClass(event.team)}">
+			  <span></span>
+			  <div class="m2-viewer-cap-main">
+				<div class="m2-viewer-cap-row">
+				  <b>${escapeHtml(capTeamLabel(event.team))} Cap ${escapeHtml(event.cap_num || "")}</b>
+				  <em>${escapeHtml(event.time_text || "")}</em>
+				</div>
+				${event.capper_name ? `<strong>${escapeHtml(event.capper_name)}</strong>` : ""}
+			  </div>
+			</div>
+		  `).join("")}
+		</div>
       </section>
     `;
   }
@@ -497,6 +536,7 @@
     const baseMatch = selectedMatch();
     if (!baseMatch) {
       viewer.innerHTML = `<div class="m2-viewer-empty"><span>No matches found</span><p>Adjust filters to select a match.</p></div>`;
+      syncMobileDrawerState(viewer);
       return;
     }
 
@@ -511,6 +551,17 @@
 
     viewer.innerHTML = `
       <div class="m2-viewer-card">
+        <div class="m2-viewer-mobile-bar">
+          <button class="m2-viewer-mobile-toggle" type="button" data-m2-viewer-toggle aria-expanded="${state.mobileDrawerCollapsed ? "false" : "true"}">
+            <span>
+              <b>${escapeHtml(m.map_name)}</b>
+              <small>${escapeHtml(m.id)}</small>
+            </span>
+            <strong>${escapeHtml(compactScoreText(m))}</strong>
+          </button>
+          <button class="m2-viewer-mobile-close" type="button" data-m2-viewer-close aria-label="Close selected match viewer">x</button>
+        </div>
+
         <div class="m2-viewer-map-wrap">
           <img id="m2-viewer-map-image" class="m2-viewer-map-image" src="assets/images/maps/NoMap.webp" alt="${escapeAttr(m.map_name)} map preview">
           <div class="m2-viewer-map-overlay"></div>
@@ -539,6 +590,7 @@
       </div>
     `;
 
+    syncMobileDrawerState(viewer);
     hydrateViewerMap(m.map_name);
   }
 
@@ -739,6 +791,10 @@
     });
 
     window.addEventListener("resize", fitTopMapKpi);
+    window.addEventListener("resize", () => {
+      const viewer = $("matches2-viewer");
+      if (viewer) syncMobileDrawerState(viewer);
+    });
 
     $("m2-prev-page")?.addEventListener("click", () => {
       if (state.currentPage <= 1) return;
@@ -763,7 +819,28 @@
       if (!card) return;
       const id = card.dataset.matchId;
       state.expandedMatchId = state.expandedMatchId === id ? null : id;
+      if (isMobileDock()) {
+        state.mobileDrawerOpen = true;
+        state.mobileDrawerCollapsed = false;
+      }
+      if (!state.expandedMatchId) {
+        state.mobileDrawerOpen = false;
+      }
       render();
+    });
+
+    $("matches2-viewer")?.addEventListener("click", (e) => {
+      if (e.target.closest("[data-m2-viewer-close]")) {
+        state.mobileDrawerOpen = false;
+        state.mobileDrawerCollapsed = false;
+        renderSelectedViewer();
+        return;
+      }
+
+      if (e.target.closest("[data-m2-viewer-toggle]")) {
+        state.mobileDrawerCollapsed = !state.mobileDrawerCollapsed;
+        renderSelectedViewer();
+      }
     });
   }
 
