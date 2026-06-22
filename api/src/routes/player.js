@@ -4,6 +4,7 @@
 
 let eloChartV3=null;
 let mapDonutChartV3=null;
+const selectedClassIndexes={offense:0,defense:0};
 let currentClasses=[];
 let currentHampa=null;
 let currentPlayerId=null;
@@ -23,7 +24,6 @@ let granularRequestSeq=0;
 let granularOpenClassKeys=new Set();
 let granularOpenObjectiveKeys=new Set();
 let granularOpenObjectiveClassKeys=new Set();
-let granularOpenRoleKeys=new Set();
 const nn = window.nnHelpers || {};
 const playerFormatSeconds = nn.formatSeconds || (s => `${Number(s || 0)}s`);
 const playerNormName = nn.normName || (v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
@@ -72,17 +72,6 @@ function compact(n){
   if(Math.abs(v)>=1000000)return (v/1000000).toFixed(v>=10000000?1:2)+"M";
   if(Math.abs(v)>=1000)return v.toLocaleString();
   return String(v);
-}
-
-function formatEloWindow(ratings){
-  if(ratings?.hidden)return{text:"Hidden",cls:"muted"};
-  const delta=Number(ratings?.elo_window?.delta||0);
-  const symbol=delta>0?"▲":delta<0?"▼":"—";
-  const value=delta>0?"+"+delta:String(delta);
-  return{
-    text:delta===0?"— 0 Elo":symbol+" "+value+" Elo",
-    cls:delta>0?"good":delta<0?"bad":"muted"
-  };
 }
 
 function eloTierRank(elo){
@@ -164,6 +153,10 @@ function fitPlayerName(){
   }
 }
 
+function statTile(label,value,sub){
+  return '<div class="stat-tile"><span>'+escapeHtml(label)+'</span><strong>'+escapeHtml(value)+'</strong>'+(sub?'<span class="sub">'+escapeHtml(sub)+'</span>':"")+'</div>';
+}
+
 let lazyWeaponObserver=null;
 
 function revealLazyWeaponIcon(el){
@@ -222,6 +215,7 @@ async function loadPlayerV3(){
 
   if(!v3.ok||!v3.data){
     setText("player-name-v3","Player not found");
+    setHtml("combat-stats",'<div class="empty-v3">V3 API failed. Check console.</div>');
     return;
   }
 
@@ -231,6 +225,7 @@ async function loadPlayerV3(){
   const h=data.hampalyzer||{};
   currentHampa=h;
   currentClasses=Array.isArray(data.classes)?data.classes:[];
+  const weapons=Array.isArray(data.weapons)?data.weapons:[];
 
   const allRecentRows=Array.isArray(recent.data)?recent.data:[];
   const recentRows=allRecentRows.filter(m=>
@@ -262,15 +257,6 @@ async function loadPlayerV3(){
   setText("steam-line",player.steam_id?"SteamID: "+player.steam_id:"SteamID: Not linked");
 
   setText("kpi-matches",fmt(ratings.games));
-  setText("kpi-current-elo",ratings.hidden?"Hidden":fmt(ratings.elo));
-  setText("kpi-rank",ratings.hidden?"Hidden":(ratings.rank?("#"+fmt(ratings.rank)):"-"));
-  const eloWindow=formatEloWindow(ratings);
-  const eloWindowEl=document.getElementById("kpi-elo-window");
-  if(eloWindowEl){
-    eloWindowEl.textContent=eloWindow.text;
-    eloWindowEl.className=eloWindow.cls;
-  }
-  setText("kpi-elo-window-label","Last "+fmt(ratings.elo_window?.games||0)+" Games");
   setText("kpi-peak-elo",ratings.hidden?"Hidden":ratings.peak_elo);
   setText("kpi-best-streak",fmt(ratings.best_streak));
   setText("kpi-pugs-week",ratings.pugs_per_week ?? "0.0");
@@ -283,6 +269,10 @@ async function loadPlayerV3(){
   setText("kpi-damage",h.linked?compact(h.damage):"-");
 
   const permapRows=Array.isArray(permap.data)?permap.data:[];
+  renderCombat(h);
+  renderFlag(h);
+  renderWeapons(weapons);
+  renderClassBrowser(normalizeClassRows(currentClasses),h);
 
   const eloValues=recentRows
     .map(m=>({elo:Number(m.after??m.rating),delta:Number(m.delta??0),ts:Number(m.created_at||0)}))
@@ -325,6 +315,63 @@ function getRecentMatchMap(row){
   return String(row?.map_name||row?.map||"").trim();
 }
 
+function renderCombat(h){
+  if(!h.linked){
+    setHtml("combat-stats",'<div class="empty-v3">No linked Hampalyzer stats yet</div>');
+    return;
+  }
+  setHtml("combat-stats",[
+    statTile("Kills",fmt(h.kills)),
+    statTile("Deaths",fmt(h.deaths)),
+    statTile("KDR",String(h.kdr??"-")),
+    statTile("Enemy Damage",fmt(h.damage)),
+    statTile("Damage Taken",fmt(h.damage_taken)),
+    statTile("Team Damage",fmt(h.team_damage))
+  ].join(""));
+}
+
+function renderFlag(h){
+  if(!h.linked){
+    setHtml("flag-stats",'<div class="empty-v3">No flag stats yet</div>');
+    return;
+  }
+  setHtml("flag-stats",[
+    statTile("Caps",fmt(h.caps)),
+    statTile("Touches",fmt(h.touches)),
+    statTile("Initial Touches",fmt(h.initial_touches)),
+    statTile("Flag Time",playerFormatSeconds(h.flag_time)),
+    statTile("Conc Jumps",fmt(h.conc_jumps)),
+    statTile("Tracked Matches",fmt(h.matches))
+  ].join(""));
+}
+
+function renderWeapons(weapons){
+  if(!weapons.length){
+    setHtml("top-weapons",'<div class="empty-v3">No weapon data yet</div>');
+    return;
+  }
+
+  const totalKills=weapons.reduce(
+    (sum,w)=>sum+Number(w.kills||0),
+    0
+  );
+
+  setHtml("top-weapons",weapons.map(w=>{
+    const kills=Number(w.kills||0);
+    const pct=totalKills
+      ? ((kills/totalKills)*100).toFixed(1)
+      : "0.0";
+
+    return (
+      '<div class="weapon-row" title="'+escapeAttr(playerWeaponName(w.weapon_class))+'">'+
+        '<span>'+weaponIconMarkup(w.weapon_class)+'</span>'+
+        '<span class="weapon-name">'+escapeHtml(playerWeaponName(w.weapon_class))+'</span>'+
+        '<strong>'+fmt(kills)+' <small>'+pct+'%</small></strong>'+
+      '</div>'
+    );
+  }).join(""));
+}
+
 function normalizeClassRows(rows){
   const totalSeconds=rows.reduce((s,r)=>s+Number(r.seconds||0),0);
   return rows
@@ -345,11 +392,11 @@ function normalizeClassRows(rows){
 const CLASS_ROLE_GROUPS={
   offense:{
     title:"Offense",
-    classes:["medic","scout","spy"]
+    keys:["medic","scout","spy"]
   },
   defense:{
     title:"Defense",
-    classes:["soldier","engineer","demoman","hwguy"]
+    keys:["soldier","engineer","demoman","hwguy"]
   }
 };
 
@@ -357,156 +404,84 @@ function roleClassRows(classes,role){
   const group=CLASS_ROLE_GROUPS[role];
   if(!group)return[];
 
-  const byClass=new Map(classes.map(c=>[classKey(c.class),c]));
-  const rows=group.classes.map(cls=>{
-    const row=byClass.get(cls);
-    return{
-      class:cls,
-      seconds:Number(row?.seconds||0),
-      hours:Number(row?.hours||0),
-      matches:Number(row?.matches||0),
-      avg_seconds_per_match:Number(row?.avg_seconds_per_match||0)
-    };
-  });
-
+  const allowed=new Set(group.keys);
+  const rows=classes.filter(c=>allowed.has(classKey(c.class)));
   return normalizeClassRows(rows).sort(
-    (a,b)=>group.classes.indexOf(classKey(a.class))-group.classes.indexOf(classKey(b.class))
+    (a,b)=>group.keys.indexOf(classKey(a.class))-group.keys.indexOf(classKey(b.class))
   );
 }
 
-function roleForClass(className){
-  const key=classKey(className);
-  return Object.keys(CLASS_ROLE_GROUPS).find(role=>CLASS_ROLE_GROUPS[role].classes.includes(key))||null;
+function renderClassBrowser(classes,h){
+  renderClassRole("offense",roleClassRows(classes,"offense"),h);
+  renderClassRole("defense",roleClassRows(classes,"defense"),h);
 }
 
-function granularRoleForClass(className){
-  return roleForClass(className)||"other";
-}
+function renderClassRole(role,classes,h){
+  const tabs=qs(role+"-class-tabs");
+  const detail=qs(role+"-class-detail");
+  if(!tabs||!detail)return;
 
-function granularRoleLabel(role){
-  if(CLASS_ROLE_GROUPS[role])return CLASS_ROLE_GROUPS[role].title;
-  return "Other";
-}
-
-function granularRoleSort(a,b){
-  const order={offense:0,defense:1,other:2};
-  return (order[a]??9)-(order[b]??9)||String(a).localeCompare(String(b));
-}
-
-function topRoleWeapon(role,classWeaponRows){
-  const roleWeapons=Array.isArray(currentGranular?.roleWeapons)?currentGranular.roleWeapons:[];
-  const byWeapon=new Map();
-  roleWeapons
-    .filter(row=>String(row.role||"").toLowerCase()===role)
-    .forEach(row=>{
-      const weapon=playerWeaponName(row.weapon||"Unknown");
-      byWeapon.set(weapon,(byWeapon.get(weapon)||0)+Number(row.kills||0));
-    });
-
-  if(!byWeapon.size){
-    classWeaponRows.forEach(row=>{
-      const weapon=playerWeaponName(row.weapon||"Unknown");
-      byWeapon.set(weapon,(byWeapon.get(weapon)||0)+Number(row.kills||0));
-    });
+  if(!classes.length){
+    tabs.innerHTML="";
+    detail.innerHTML='<div class="empty-v3">No '+CLASS_ROLE_GROUPS[role].title.toLowerCase()+' class detail yet</div>';
+    return;
   }
 
-  return [...byWeapon.entries()]
-    .sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0]||null;
-}
+  selectedClassIndexes[role]=Math.min(selectedClassIndexes[role]||0,classes.length-1);
 
-function roleObjectiveKills(role){
-  const rows=[
-    ...(Array.isArray(currentGranular?.flagCarrierKills)?currentGranular.flagCarrierKills:[]),
-    ...(Array.isArray(currentGranular?.concededKills)?currentGranular.concededKills:[])
-  ];
-  return rows
-    .filter(row=>roleForClass(row.class)===role)
-    .reduce((sum,row)=>sum+Number(row.kills||0),0);
-}
+  tabs.innerHTML=classes.map((c,i)=>
+    '<button class="class-tab '+(i===selectedClassIndexes[role]?"active":"")+'" data-role="'+escapeAttr(role)+'" data-index="'+escapeAttr(i)+'">'+
+      escapeHtml(classDisplayName(c.class))+
+    '</button>'
+  ).join("");
 
-function roleKpiData(role){
-  const filteredClassTime=Array.isArray(currentGranular?.roleClassTime)?currentGranular.roleClassTime:[];
-  const classTimeRows=filteredClassTime.length
-    ? filteredClassTime.filter(row=>String(row.role||"").toLowerCase()===role)
-    : currentClasses;
-  const rows=roleClassRows(normalizeClassRows(classTimeRows),role);
-  const seconds=rows.reduce((sum,row)=>sum+Number(row.seconds||0),0);
-  const topClass=rows
-    .filter(row=>Number(row.seconds||0)>0)
-    .sort((a,b)=>Number(b.seconds||0)-Number(a.seconds||0))[0]||null;
-  const classWeaponRows=aggregateGranularWeaponRows(currentGranular?.classWeapons||[])
-    .filter(row=>roleForClass(row.class)===role);
-  const eventKills=classWeaponRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
-  const killsByClass=new Map();
-  classWeaponRows.forEach(row=>{
-    const key=classKey(row.class);
-    killsByClass.set(key,(killsByClass.get(key)||0)+Number(row.kills||0));
+  tabs.querySelectorAll(".class-tab").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const selectedRole=btn.dataset.role;
+      selectedClassIndexes[selectedRole]=Number(btn.dataset.index||0);
+      renderClassRole(selectedRole,roleClassRows(normalizeClassRows(currentClasses),selectedRole),currentHampa);
+    });
   });
-  const topEventClass=[...killsByClass.entries()]
-    .sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0]||null;
-  const weapon=topRoleWeapon(role,classWeaponRows);
 
-  return{
-    role,
-    title:CLASS_ROLE_GROUPS[role].title,
-    seconds,
-    hours:seconds/3600,
-    topClass,
-    topEventClass,
-    eventKills,
-    objectiveKills:roleObjectiveKills(role),
-    topWeapon:weapon,
-    flagCaps:Number(currentHampa?.caps||0),
-    flagTouches:Number(currentHampa?.touches||0)
-  };
+  renderClassDetail(role,classes[selectedClassIndexes[role]],classes,h);
 }
 
-function roleKpiPanel(data){
-  const granularReady=!!currentGranular?.source?.granularAvailable;
-  const topClass=data.topEventClass
-    ? classDisplayName(data.topEventClass[0])
-    : (data.topClass?classDisplayName(data.topClass.class):"-");
-  const topClassShare=data.topEventClass&&data.eventKills
-    ? Math.round((Number(data.topEventClass[1]||0)/data.eventKills)*100)+"%"
-    : (data.topClass&&data.seconds
-    ? Math.round((Number(data.topClass.seconds||0)/data.seconds)*100)+"%"
-    : "-");
-  const topWeapon=data.topWeapon
-    ? escapeHtml(data.topWeapon[0])+' <small>'+escapeHtml(fmt(data.topWeapon[1]))+' kills</small>'
-    : (granularReady?"-":"Loading...");
-  const flagMetric=data.role==="offense"
-    ? '<div><span>Career Flag</span><strong>'+escapeHtml(fmt(data.flagCaps))+' <small>'+escapeHtml(fmt(data.flagTouches))+' touches</small></strong></div>'
-    : "";
+function renderClassDetail(role,c,classes,h){
+  const el=qs(role+"-class-detail");
+  if(!el||!c)return;
 
-  return '<article class="role-kpi-panel role-'+escapeAttr(data.role)+'">'+
-    '<div class="role-kpi-title">'+
-      '<h3>'+escapeHtml(data.title)+'</h3>'+
-      '<span>'+escapeHtml(CLASS_ROLE_GROUPS[data.role].classes.map(classDisplayName).join(" / "))+'</span>'+
+  const rank=classes.findIndex(x=>x.class===c.class)+1;
+  const matches=Number(c.matches||0);
+  const seconds=Number(c.seconds||0);
+  const avgSeconds=Number(c.avg_seconds_per_match||0)||Math.round(seconds/Math.max(1,matches||1));
+  const totalHours=classes.reduce((s,x)=>s+Number(x.hours||0),0);
+  const share=Number(c.pct||0);
+  const className=classDisplayName(c.class);
+  const groupTitle=CLASS_ROLE_GROUPS[role].title;
+
+  el.innerHTML=
+    '<div class="class-detail-head">'+
+      '<div class="class-detail-title">'+
+        '<strong>'+escapeHtml(className)+'</strong>'+
+        '<small>'+escapeHtml(groupTitle)+' / All Maps</small>'+
+        '<span>'+escapeHtml(className)+' accounts for '+share.toFixed(1)+'% of tracked '+groupTitle.toLowerCase()+' class time.</span>'+
+      '</div>'+
+      '<div class="class-detail-rank">#'+rank+'</div>'+
     '</div>'+
-    '<div class="role-kpi-metrics">'+
-      '<div><span>Class Time</span><strong>'+escapeHtml(data.hours?data.hours.toFixed(1)+"H":"-")+'</strong></div>'+
-      '<div><span>Top Class</span><strong>'+escapeHtml(topClass)+' <small>'+escapeHtml(topClassShare)+'</small></strong></div>'+
-      '<div><span>Event Kills</span><strong>'+escapeHtml(granularReady?fmt(data.eventKills):"Loading...")+'</strong></div>'+
-      '<div><span>Objective Kills</span><strong>'+escapeHtml(granularReady?fmt(data.objectiveKills):"Loading...")+'</strong></div>'+
-      flagMetric+
-      '<div class="role-kpi-wide"><span>Top Kill Weapon</span><strong>'+topWeapon+'</strong></div>'+
+    '<div class="class-detail-grid">'+
+      '<div class="class-metric"><span>Hours</span><strong>'+Number(c.hours||0).toFixed(1)+'H</strong></div>'+
+      '<div class="class-metric"><span>Time Share</span><strong>'+share.toFixed(1)+'%</strong></div>'+
+      '<div class="class-metric"><span>Matches</span><strong>'+(matches?fmt(matches):"-")+'</strong></div>'+
+      '<div class="class-metric"><span>Avg / Match</span><strong>'+playerFormatSeconds(avgSeconds)+'</strong></div>'+
     '</div>'+
-  '</article>';
+    '<div class="class-bar-track"><i class="class-bar-fill" style="width:'+Math.min(100,share)+'%"></i></div>'+
+    '<div class="class-map-summary">'+
+      '<div class="class-map-pill"><span>Group</span><strong>'+escapeHtml(groupTitle)+'</strong></div>'+
+      '<div class="class-map-pill"><span>Class Time</span><strong>'+playerFormatSeconds(seconds)+'</strong></div>'+
+      '<div class="class-map-pill"><span>Group Time</span><strong>'+totalHours.toFixed(1)+'H</strong></div>'+
+    '</div>';
 }
 
-function roleKpiStripHtml(){
-  if(!currentGranular){
-    return '<div class="role-kpi-strip"><div class="empty-v3">Loading role profile...</div></div>';
-  }
-
-  const roles=["offense","defense"].map(roleKpiData);
-  const hasAnyTime=roles.some(role=>role.seconds>0);
-  if(!hasAnyTime){
-    return '<div class="role-kpi-strip"><div class="empty-v3">Loading role profile...</div></div>';
-  }
-
-  return '<div class="role-kpi-strip granular-role-kpis">'+roles.map(roleKpiPanel).join("")+'</div>';
-}
 function renderEloChartV3(eloValues,hidden){
   const canvas=qs("elo-chart-v3");
   if(!canvas||typeof Chart==="undefined")return;
@@ -746,36 +721,18 @@ function formatObjectiveMeta(total,weapons,summary){
 function renderGranularClassWeapons(rows,classSummaryRows){
   const displayRows=aggregateGranularWeaponRows(rows)
     .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
-  const roleGroups=groupRows(displayRows.map(row=>({
-    ...row,
-    role:granularRoleForClass(row.displayClass||row.class)
-  })),"role");
+  const groups=groupRows(displayRows,"displayClass");
   const classSummary=granularClassSummaryByClass(classSummaryRows);
-  const roles=Object.keys(roleGroups).sort(granularRoleSort);
-
-  if(!roles.length)return '<div class="granular-empty">No class weapon kills found.</div>';
-
-  return roles.map(role=>{
-    const roleRows=roleGroups[role]||[];
-    const groups=groupRows(roleRows,"displayClass");
-    const classNames=Object.keys(groups)
+  const classNames=Object.keys(groups)
     .sort((a,b)=>{
       const aKills=groups[a].reduce((sum,row)=>sum+Number(row.kills||0),0);
       const bKills=groups[b].reduce((sum,row)=>sum+Number(row.kills||0),0);
       return bKills-aKills||String(a).localeCompare(String(b));
     });
-    const roleKills=roleRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
-    const roleWeapons=new Set(roleRows.map(row=>normalizeGranularWeapon(row.weapon))).size;
-    const roleKey="class|"+role;
-    const isRoleOpen=granularOpenRoleKeys.has(roleKey);
 
-    return '<section class="granular-role-block granular-role-'+escapeAttr(role)+' '+(isRoleOpen?"open":"")+'" data-granular-role-key="'+escapeAttr(roleKey)+'">'+
-      '<button type="button" class="granular-role-head" data-granular-role-toggle="1" aria-expanded="'+(isRoleOpen?"true":"false")+'">'+
-        '<strong>'+escapeHtml(granularRoleLabel(role))+'</strong>'+
-        '<span>'+escapeHtml(fmt(roleKills)+" kills - "+fmt(roleWeapons)+" weapons")+'</span>'+
-      '</button>'+
-      '<div class="granular-role-body" '+(isRoleOpen?"":'hidden')+'>'+
-      classNames.map(className=>{
+  if(!classNames.length)return '<div class="granular-empty">No class weapon kills found.</div>';
+
+  return classNames.map(className=>{
     const classRows=groups[className]
       .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
     const total=classRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
@@ -791,9 +748,6 @@ function renderGranularClassWeapons(rows,classSummaryRows){
       '</button>'+
       '<div class="granular-class-weapons" '+(isOpen?"":'hidden')+'>'+classRows.slice(0,8).map(row=>granularWeaponRow(row)).join("")+'</div>'+
     '</article>';
-      }).join("")+
-      '</div>'+
-    '</section>';
   }).join("");
 }
 
@@ -821,50 +775,31 @@ function granularClassLabel(className){
 }
 
 function renderObjectiveClassWeaponGroups(rows,objectiveKey,classSummary){
-  const roleGroups=groupRows(rows.map(row=>({
-    ...row,
-    role:granularRoleForClass(row.displayClass||row.class)
-  })),"role");
-  return Object.keys(roleGroups).sort(granularRoleSort).map(role=>{
-    const roleRows=roleGroups[role]||[];
-    const groups=groupRows(roleRows,"displayClass");
-    const classNames=Object.keys(groups)
-      .sort((a,b)=>{
-        const aKills=groups[a].reduce((sum,row)=>sum+Number(row.kills||0),0);
-        const bKills=groups[b].reduce((sum,row)=>sum+Number(row.kills||0),0);
-        return bKills-aKills||String(a).localeCompare(String(b));
+  const groups=groupRows(rows,"displayClass");
+  const classNames=Object.keys(groups)
+    .sort((a,b)=>{
+      const aKills=groups[a].reduce((sum,row)=>sum+Number(row.kills||0),0);
+      const bKills=groups[b].reduce((sum,row)=>sum+Number(row.kills||0),0);
+      return bKills-aKills||String(a).localeCompare(String(b));
     });
-    const roleKills=roleRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
-    const roleWeapons=new Set(roleRows.map(row=>normalizeGranularWeapon(row.weapon))).size;
-    const roleKey=objectiveKey+"|"+role;
-    const isRoleOpen=granularOpenRoleKeys.has(roleKey);
 
-    return '<section class="granular-role-block granular-objective-role '+(isRoleOpen?"open":"")+'" data-granular-role-key="'+escapeAttr(roleKey)+'">'+
-      '<button type="button" class="granular-role-head" data-granular-role-toggle="1" aria-expanded="'+(isRoleOpen?"true":"false")+'">'+
-        '<strong>'+escapeHtml(granularRoleLabel(role))+'</strong>'+
-        '<span>'+escapeHtml(fmt(roleKills)+" kills - "+fmt(roleWeapons)+" weapons")+'</span>'+
+  return classNames.map(className=>{
+    const classRows=groups[className]
+      .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
+    const total=classRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
+    const classKey=objectiveKey+"|"+normalizeGranularClass(className);
+    const summary=classSummary.get(classKey);
+    const isOpen=granularOpenObjectiveClassKeys.has(classKey);
+
+    return '<div class="granular-objective-class-group '+(isOpen?"open":"")+'" data-granular-objective-class-key="'+escapeAttr(classKey)+'">'+
+      '<button type="button" class="granular-objective-class-head" data-granular-objective-class-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
+        '<strong>'+escapeHtml(classDisplayName(className))+'</strong>'+
+        '<span>'+escapeHtml(formatObjectiveMeta(total,classRows.length,summary))+'</span>'+
       '</button>'+
-      '<div class="granular-role-body" '+(isRoleOpen?"":'hidden')+'>'+
-      classNames.map(className=>{
-        const classRows=groups[className]
-          .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0)||String(a.weapon||"").localeCompare(String(b.weapon||"")));
-        const total=classRows.reduce((sum,row)=>sum+Number(row.kills||0),0);
-        const classKey=objectiveKey+"|"+role+"|"+normalizeGranularClass(className);
-        const summary=classSummary.get(objectiveKey+"|"+normalizeGranularClass(className));
-        const isOpen=granularOpenObjectiveClassKeys.has(classKey);
-
-        return '<div class="granular-objective-class-group '+(isOpen?"open":"")+'" data-granular-objective-class-key="'+escapeAttr(classKey)+'">'+
-          '<button type="button" class="granular-objective-class-head" data-granular-objective-class-toggle="1" aria-expanded="'+(isOpen?"true":"false")+'">'+
-            '<strong>'+escapeHtml(classDisplayName(className))+'</strong>'+
-            '<span>'+escapeHtml(formatObjectiveMeta(total,classRows.length,summary))+'</span>'+
-          '</button>'+
-          '<div class="granular-objective-class-weapons" '+(isOpen?"":'hidden')+'>'+
-            classRows.slice(0,6).map(row=>granularWeaponRow(row)).join("")+
-          '</div>'+
-        '</div>';
-      }).join("")+
+      '<div class="granular-objective-class-weapons" '+(isOpen?"":'hidden')+'>'+
+        classRows.slice(0,6).map(row=>granularWeaponRow(row)).join("")+
       '</div>'+
-    '</section>';
+    '</div>';
   }).join("");
 }
 
@@ -1023,8 +958,6 @@ function resetGranularState(){
   granularMatchFilter="";
   granularOpenClassKeys=new Set();
   granularOpenObjectiveKeys=new Set();
-  granularOpenObjectiveClassKeys=new Set();
-  granularOpenRoleKeys=new Set();
   granularSummaryLoading=false;
   granularSampleLoading=false;
   granularSampleLoaded=false;
@@ -1049,7 +982,6 @@ function renderPlayerGranularLoading(){
   const body=qs("player-granular-body");
   if(!body)return;
   body.innerHTML=
-    roleKpiStripHtml()+
     '<div class="granular-summary-strip">'+
       '<div><span>Event Kills</span><strong>Loading...</strong></div>'+
       '<div><span>Matches</span><strong>Loading...</strong></div>'+
@@ -1221,24 +1153,6 @@ function bindGranularControls(){
     reloadGranularForActiveFilter();
   });
   card.addEventListener("click",event=>{
-    const roleToggle=event.target.closest("[data-granular-role-toggle]");
-    if(roleToggle){
-      const group=roleToggle.closest(".granular-role-block");
-      if(!group)return;
-      const body=group?.querySelector(".granular-role-body");
-      const key=group?.dataset?.granularRoleKey||"";
-      const isOpen=!group.classList.contains("open");
-      group?.classList.toggle("open",isOpen);
-      if(body)body.hidden=!isOpen;
-      roleToggle.setAttribute("aria-expanded",isOpen?"true":"false");
-      if(key){
-        if(isOpen)granularOpenRoleKeys.add(key);
-        else granularOpenRoleKeys.delete(key);
-      }
-      if(isOpen&&group)hydrateLazyWeaponIcons(group);
-      return;
-    }
-
     const classToggle=event.target.closest("[data-granular-class-toggle]");
     if(classToggle){
       const group=classToggle.closest(".granular-class-group");
@@ -1344,7 +1258,6 @@ function renderPlayerGranular(data,eventsData){
         : (events.hasMore?'<button type="button" class="granular-load-more" data-granular-load-more="'+escapeAttr(String(nextOffset))+'">Load More Events</button>':""));
 
   body.innerHTML=
-    roleKpiStripHtml()+
     '<div class="granular-summary-strip">'+
       '<div><span>Event Kills</span><strong>'+escapeHtml(fmtGranularSample(sample.kills))+'</strong></div>'+
       '<div><span>Matches</span><strong>'+escapeHtml(fmtGranularSample(sample.matches))+'</strong></div>'+

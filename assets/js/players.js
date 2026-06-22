@@ -319,7 +319,6 @@ function emptyGranularPayload(identity,granularAvailable=false){
     },
     classWeapons:[],
     classSummary:[],
-    roleClassTime:[],
     roleWeapons:[],
     flagCarrierKills:[],
     concededKills:[],
@@ -460,37 +459,6 @@ function buildGranularPlayerPayload(identity,options={}){
       ...OFFICIAL_KILL_CLASS_CONFIDENCES,
       ...matchParams
     ));
-
-    const classTimeSteamIds=identity.steamIds.length
-      ? identity.steamIds
-      : (identity.steam_id?[identity.steam_id]:[]);
-    const classTimeMatchFilters=[];
-    const classTimeMatchParams=[];
-    if(matchId){
-      classTimeMatchFilters.push("AND c.match_id=?");
-      classTimeMatchParams.push(matchId);
-    }
-    if(mapName){
-      classTimeMatchFilters.push("AND c.match_id IN (SELECT match_id FROM matches WHERE map_name=?)");
-      classTimeMatchParams.push(mapName);
-    }
-    const roleClassTime=classTimeSteamIds.length?timedGranularQuery(`${timingPrefix}:roleClassTime`,()=>db.prepare(`
-      SELECT
-        CASE
-          WHEN LOWER(c.class_name) IN ('medic','scout','spy') THEN 'offense'
-          WHEN LOWER(c.class_name) IN ('soldier','engineer','demoman','hwguy') THEN 'defense'
-          ELSE 'other'
-        END AS role,
-        c.class_name AS class,
-        SUM(c.seconds) AS seconds,
-        COUNT(DISTINCT c.match_id) AS matches
-      FROM match_player_classes c
-      WHERE c.player_key IN (${placeholders(classTimeSteamIds)})
-        ${classTimeMatchFilters.join("\n        ")}
-        AND LOWER(c.class_name) IN ('medic','scout','spy','soldier','engineer','demoman','hwguy')
-      GROUP BY role,c.class_name
-      ORDER BY role,seconds DESC,c.class_name
-    `).all(...classTimeSteamIds,...classTimeMatchParams)):[];
 
     const roleWeapons=timedGranularQuery(`${timingPrefix}:roleWeapons`,()=>db.prepare(`
       SELECT
@@ -716,14 +684,6 @@ function buildGranularPlayerPayload(identity,options={}){
         wins:Number(row.wins||0),
         losses:Number(row.losses||0),
         ties:Number(row.ties||0)
-      })),
-      roleClassTime:roleClassTime.map(row=>({
-        role:row.role,
-        class:row.class,
-        seconds:Number(row.seconds||0),
-        hours:Number((Number(row.seconds||0)/3600).toFixed(1)),
-        matches:Number(row.matches||0),
-        avg_seconds_per_match:Number(row.matches||0)?Math.round(Number(row.seconds||0)/Number(row.matches||0)):0
       })),
       roleWeapons:roleWeapons.map(row=>({
         role:row.role,
@@ -993,17 +953,6 @@ router.get("/player/:discordId/v3",(req,res)=>{
     const activeWeeks=firstMatchTs&&lastMatchTs
       ? Math.max(1,(lastMatchTs-firstMatchTs)/604800)
       : 1;
-    const eloWindowGames=Math.min(20,historyRows.length);
-    const eloWindowStart=eloWindowGames
-      ? historyRows[historyRows.length-eloWindowGames]
-      : null;
-    const eloWindowCurrent=historyRows.length
-      ? Number(historyRows[historyRows.length-1]?.after??player.rating??0)
-      : Number(player.rating||0);
-    const eloWindowBaseline=eloWindowStart
-      ? Number(eloWindowStart.before??eloWindowStart.after??eloWindowCurrent)
-      : eloWindowCurrent;
-    const eloWindowDelta=eloWindowCurrent-eloWindowBaseline;
 
     const rankRow=db.prepare(`
       SELECT COUNT(*)+1 AS rank
@@ -1071,6 +1020,16 @@ router.get("/player/:discordId/v3",(req,res)=>{
       ORDER BY seconds DESC
     `).all(steamId):[];
 
+    const weaponRows=steamId?db.prepare(`
+      SELECT weapon AS weapon_class,
+            SUM(kills) AS kills
+      FROM match_player_weapons
+      WHERE player_key=?
+      GROUP BY weapon
+      ORDER BY kills DESC
+      LIMIT 10
+    `).all(steamId):[];
+
     let mvpGames=0;
     if(steamId){
       try{
@@ -1131,10 +1090,6 @@ router.get("/player/:discordId/v3",(req,res)=>{
           elo:player.hide_elo?null:player.rating,
           hidden:!!player.hide_elo,
           rank:player.hide_elo?null:Number(rankRow?.rank||0),
-          elo_window:{
-            games:eloWindowGames,
-            delta:player.hide_elo?null:eloWindowDelta
-          },
           peak_elo:peakElo,
           best_streak:bestStreak,
           pugs_per_week:pugsPerWeek,
@@ -1172,7 +1127,11 @@ router.get("/player/:discordId/v3",(req,res)=>{
             avg_seconds_per_match:r.matches?Math.round(seconds/Number(r.matches)):0
           };
         }),
-        favorite_class:classRows[0]?.class_name||null
+        favorite_class:classRows[0]?.class_name||null,
+        weapons:weaponRows.map(r=>({
+          weapon_class:r.weapon_class,
+          kills:Number(r.kills||0)
+        }))
       }
     });
   }catch(e){
