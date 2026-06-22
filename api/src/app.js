@@ -100,7 +100,7 @@ function createApp({
         sp.avatar,
         sp.avatarmedium,
         sp.avatarfull,
-        COUNT(DISTINCT r.match_id) AS games,
+        COUNT(DISTINCT m.match_id) AS games,
         SUM(CASE
               WHEN m.winner='BLUE' AND EXISTS (
                 SELECT 1 FROM json_each(m.blue_ids)
@@ -141,6 +141,7 @@ function createApp({
         player: r.display_name || String(r.player_id),
         elo: r.hide_elo ? null : r.rating,
         hidden: !!r.hide_elo,
+        games: Number(r.games || 0),
         wins: r.wins || 0,
         losses: r.losses || 0,
         ties: r.ties || 0,
@@ -154,7 +155,110 @@ function createApp({
         avatarfull: r.avatarfull || null
       }));
 
-      res.json({ ok: true, data: out });
+      const eligibleIds = out
+        .filter(row => !row.hidden && row.elo != null && (Number(row.wins || 0) + Number(row.losses || 0) + Number(row.ties || 0)) >= 10)
+        .map(row => row.id);
+
+      const historyByPlayer = new Map();
+      const distinctRankedMatches = new Set();
+      const chunks = [];
+      for (let i = 0; i < eligibleIds.length; i += 450) chunks.push(eligibleIds.slice(i, i + 450));
+
+      for (const chunk of chunks) {
+        if (!chunk.length) continue;
+        const placeholders = chunk.map(() => "?").join(",");
+        const historyRows = db.prepare(`
+          WITH recent AS (
+            SELECT
+              rc.player_id,
+              rc.match_id,
+              rc.before,
+              rc.after,
+              rc.delta,
+              rc.ts,
+              m.winner,
+              m.blue_ids,
+              m.red_ids,
+              ROW_NUMBER() OVER (
+                PARTITION BY rc.player_id
+                ORDER BY rc.ts DESC, rc.match_id DESC
+              ) AS rn
+            FROM rating_changes rc
+            JOIN matches m ON m.match_id = rc.match_id
+            WHERE rc.player_id IN (${placeholders})
+              AND m.status = 'completed'
+              ${days > 0 ? "AND m.created_at >= ?" : ""}
+          )
+          SELECT *
+          FROM recent
+          WHERE rn <= 20
+          ORDER BY player_id, ts ASC, match_id ASC
+        `).all(...(days > 0 ? [...chunk, cutoff] : chunk));
+
+        const matchRows = db.prepare(`
+          SELECT DISTINCT rc.match_id
+          FROM rating_changes rc
+          JOIN matches m ON m.match_id = rc.match_id
+          WHERE rc.player_id IN (${placeholders})
+            AND m.status = 'completed'
+            ${days > 0 ? "AND m.created_at >= ?" : ""}
+        `).all(...(days > 0 ? [...chunk, cutoff] : chunk));
+
+        for (const row of matchRows) distinctRankedMatches.add(String(row.match_id));
+
+        for (const row of historyRows) {
+          const playerId = String(row.player_id);
+          const list = historyByPlayer.get(playerId) || [];
+          let team = null;
+          try {
+            const blueIds = parseIdList(row.blue_ids).map(String);
+            const redIds = parseIdList(row.red_ids).map(String);
+            if (blueIds.includes(playerId)) team = "BLUE";
+            else if (redIds.includes(playerId)) team = "RED";
+          } catch {}
+
+          const winner = String(row.winner || "").toUpperCase();
+          const result = winner === "TIE" ? "T" : team && winner === team ? "W" : team && winner ? "L" : null;
+          list.push({
+            match_id: String(row.match_id),
+            after: row.after == null ? null : Number(row.after),
+            before: row.before == null ? null : Number(row.before),
+            delta: Number(row.delta || 0),
+            result
+          });
+          historyByPlayer.set(playerId, list);
+        }
+      }
+
+      for (const row of out) {
+        if (row.hidden || row.elo == null) {
+          row.elo_delta_recent = null;
+          row.elo_trend = [];
+          row.recent_results = [];
+          continue;
+        }
+
+        const history = historyByPlayer.get(row.id) || [];
+        const trend = history
+          .map(item => Number(item.after ?? item.before))
+          .filter(value => Number.isFinite(value));
+        const first = history[0];
+        const last = history[history.length - 1];
+        const baseline = first ? Number(first.before ?? first.after ?? last?.after ?? row.elo) : Number(row.elo || 0);
+        const current = last ? Number(last.after ?? row.elo) : Number(row.elo || 0);
+
+        row.elo_delta_recent = Math.round(current - baseline);
+        row.elo_trend = trend;
+        row.recent_results = history.slice(-10).map(item => item.result || "?");
+      }
+
+      res.json({
+        ok: true,
+        data: out,
+        summary: {
+          games_played: distinctRankedMatches.size
+        }
+      });
     } catch (e) {
       logRouteError("[leaderboard]", e);
       sendError(res, 500, "leaderboard_failed");

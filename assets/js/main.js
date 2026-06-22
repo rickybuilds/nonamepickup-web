@@ -445,6 +445,8 @@ async function loadLeaderboard() {
 
   const filter = document.getElementById("leaderboard-filter");
   const visibleCount = document.getElementById("leaderboard-visible-count");
+  const podium = document.getElementById("leaderboard-podium");
+  const highlights = document.getElementById("leaderboard-highlights");
 	const MIN_GAMES = 10;
 
 	const j = await fetchJSON(`/api/leaderboard?limit=2000&days=0`);
@@ -452,14 +454,107 @@ async function loadLeaderboard() {
 	  .filter(row => !row.hidden && row.elo != null)
 	  .map(row => ({
 		...row,
-		games: Number(row.wins || 0) + Number(row.losses || 0) + Number(row.ties || 0)
+		games: Number(row.games || 0)
 	  }))
 	  .filter(row => row.games >= MIN_GAMES)
 	  .sort((a, b) => Number(b.elo) - Number(a.elo))
 	  .map((row, index) => ({
 		...row,
-		rank: index + 1
+		rank: index + 1,
+    winPct: calcWinPct(row.record)
 	  }));
+
+  const winPctNumber = row => Number(String(row.winPct || "0").replace("%", "")) || 0;
+  const playerCardLink = row => `player.html?id=${encodeURIComponent(row.id)}`;
+
+  function renderEloTrend(row) {
+    const delta = Number(row.elo_delta_recent || 0);
+    const values = Array.isArray(row.elo_trend) ? row.elo_trend.map(Number).filter(Number.isFinite) : [];
+    const cls = delta > 0 ? "trend-up" : delta < 0 ? "trend-down" : "trend-flat";
+    const deltaText = delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : "— 0";
+    let path = "";
+
+    if (values.length > 1) {
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = Math.max(1, max - min);
+      path = values.map((value, index) => {
+        const x = values.length === 1 ? 0 : (index / (values.length - 1)) * 72;
+        const y = 26 - ((value - min) / range) * 22;
+        return `${index ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      }).join(" ");
+    }
+
+    return `
+      <span class="leaderboard-trend ${cls}">
+        <span class="trend-delta">${escapeHtml(deltaText)}</span>
+        <svg viewBox="0 0 72 30" aria-hidden="true" focusable="false">
+          ${path ? `<path d="${path}"></path>` : `<path d="M0 15 L72 15"></path>`}
+        </svg>
+      </span>
+    `;
+  }
+
+  function renderLastTen(row) {
+    const raw = Array.isArray(row.recent_results) ? row.recent_results.slice(-10).reverse() : [];
+    const padded = [...raw, ...Array(Math.max(0, 10 - raw.length)).fill("?")].slice(0, 10);
+    return `
+      <span class="leaderboard-last10" aria-label="Last 10 results">
+        ${padded.map(result => {
+          const value = ["W", "L", "T"].includes(String(result || "").toUpperCase()) ? String(result).toUpperCase() : "?";
+          const cls = value === "?" ? "unknown" : value.toLowerCase();
+          return `<i class="last10-${cls}" title="${escapeAttr(value === "?" ? "Unknown" : value)}"></i>`;
+        }).join("")}
+      </span>
+    `;
+  }
+
+  function renderPodium() {
+    if (!podium) return;
+    const top = ranked.slice(0, 3);
+    podium.innerHTML = top.map((row, index) => {
+      const place = index + 1;
+      const orderClass = place === 1 ? "first" : place === 2 ? "second" : "third";
+      return `
+        <article class="leaderboard-podium-card ${orderClass}">
+          <div class="podium-rank">${place}</div>
+          <a href="${playerCardLink(row)}" class="podium-avatar-link">
+            ${avatarHtml(row.player, row.avatarfull || row.avatarmedium || row.avatar, "nn-avatar-lg")}
+          </a>
+          <a class="podium-name" href="${playerCardLink(row)}">${escapeHtml(row.player)}${supporterBadge(row.id)}</a>
+          <strong>${Number(row.elo).toLocaleString()} Elo</strong>
+          <div class="podium-stats">
+            <span><b>${row.winPct}</b><small>Win Rate</small></span>
+            <span><b>${row.games.toLocaleString()}</b><small>Games</small></span>
+          </div>
+        </article>
+      `;
+    }).join("") || `<div class="leaderboard-empty">No ranked players found.</div>`;
+  }
+
+  function renderHighlights() {
+    if (!highlights) return;
+    const bestWinRate = [...ranked].sort((a, b) => winPctNumber(b) - winPctNumber(a) || b.games - a.games)[0];
+    const mostGames = [...ranked].sort((a, b) => b.games - a.games)[0];
+    const highestElo = ranked[0];
+    const strongestRecord = [...ranked].sort((a, b) => Number(b.wins || 0) - Number(a.wins || 0))[0];
+    const rows = [
+      ["Highest Elo", highestElo, highestElo ? `${Number(highestElo.elo).toLocaleString()} Elo` : "—"],
+      ["Best Win Rate", bestWinRate, bestWinRate?.winPct || "—"],
+      ["Most Games", mostGames, mostGames ? `${mostGames.games.toLocaleString()} games` : "—"],
+      ["Most Wins", strongestRecord, strongestRecord ? `${Number(strongestRecord.wins || 0).toLocaleString()} wins` : "—"]
+    ];
+    highlights.innerHTML = rows.map(([label, row, value]) => `
+      <div class="leaderboard-highlight-row">
+        <span>${escapeHtml(label)}</span>
+        <div>
+          ${row ? avatarHtml(row.player, row.avatarmedium || row.avatar) : ""}
+          <a href="${row ? playerCardLink(row) : "#"}">${escapeHtml(row?.player || "—")}</a>
+        </div>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
+    `).join("");
+  }
 
   function render() {
     const query = filter?.value.trim().toLowerCase() || "";
@@ -476,30 +571,34 @@ async function loadLeaderboard() {
         <td>
           <a class="leaderboard-player-link" href="player.html?id=${encodeURIComponent(row.id)}">
             ${avatarHtml(row.player,row.avatarmedium||row.avatar)}
-            <span>${escapeHtml(row.player)}${supporterBadge(row.id)}</span>
+            <span><b>${escapeHtml(row.player)}${supporterBadge(row.id)}</b></span>
           </a>
         </td>
-        <td>${row.games.toLocaleString()}</td>
-        <td>${escapeHtml(row.record || "0-0-0")}</td>
-        <td>${calcWinPct(row.record)}</td>
         <td class="leaderboard-elo">${Number(row.elo)}</td>
+        <td>${renderEloTrend(row)}</td>
+        <td>${row.games.toLocaleString()}</td>
+        <td>${escapeHtml(row.winPct)}</td>
+        <td>${renderLastTen(row)}</td>
+        <td>${escapeHtml(row.record || "0-0-0")}</td>
       </tr>
-    `).join("") || `<tr><td colspan="6" class="leaderboard-empty">No ranked players found.</td></tr>`;
+    `).join("") || `<tr><td colspan="8" class="leaderboard-empty">No ranked players found.</td></tr>`;
 
     if (visibleCount) {
       visibleCount.textContent = query
         ? `${rows.length} of ${ranked.length} ranked players`
-        : `${ranked.length} active ranked players`;
+        : `${ranked.length} ranked players`;
     }
   }
 
-  const totalGames = ranked.reduce((sum, row) => sum + row.games, 0);
+  const totalGames = Number(j.summary?.games_played || 0);
   document.getElementById("leaderboard-player-count").textContent =
     ranked.length.toLocaleString();
   document.getElementById("leaderboard-top-elo").textContent =
     ranked[0] ? Number(ranked[0].elo) : "—";
   document.getElementById("leaderboard-total-games").textContent =
     totalGames.toLocaleString();
+  renderPodium();
+  renderHighlights();
   filter?.addEventListener("input", render);
   render();
 }

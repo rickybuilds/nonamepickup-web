@@ -17,8 +17,8 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260618p">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/leaderboard.css?v=20260618p">
-  <script src="assets/js/main.js?v=20260618i" defer></script>
+  <link rel="stylesheet" href="assets/css/leaderboard.css?v=20260622trend">
+  <script src="assets/js/main.js?v=20260622last10" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -61,7 +61,7 @@
         <div>
           <p class="leaderboard-kicker">PLAYER RANKINGS</p>
           <h1>Elo Leaderboard</h1>
-          <p>Rankings based on recent activity and visible Elo.</p>
+          <p>All-time rankings based on visible Elo.</p>
 
 			<div class="leaderboard-rules">
 			  <span>All-Time Records</span>
@@ -72,19 +72,37 @@
 
         <div class="leaderboard-summary">
           <article>
-            <span>Active Ranked Players</span>
+            <span>Ranked Players</span>
             <strong id="leaderboard-player-count">—</strong>
           </article>
           <article>
-            <span>Highest Active Elo</span>
+            <span>Highest Elo</span>
             <strong id="leaderboard-top-elo">—</strong>
           </article>
           <article>
-            <span>Games (90D)</span>
+            <span>Games Played</span>
             <strong id="leaderboard-total-games">—</strong>
           </article>
         </div>
       </div>
+
+      <section class="leaderboard-stage" aria-label="Top three Elo players">
+        <div id="leaderboard-podium" class="leaderboard-podium">
+          <div class="leaderboard-empty">Loading top players...</div>
+        </div>
+
+        <aside class="leaderboard-side">
+          <section class="leaderboard-side-card">
+            <div class="leaderboard-side-head">
+              <h2>All-Time Highlights</h2>
+              <span>Visible Elo</span>
+            </div>
+            <div id="leaderboard-highlights" class="leaderboard-highlights">
+              <div class="leaderboard-empty">Loading highlights...</div>
+            </div>
+          </section>
+        </aside>
+      </section>
 
       <div class="leaderboard-toolbar">
         <label for="leaderboard-filter">Filter standings</label>
@@ -98,14 +116,16 @@
             <tr>
               <th>Rank</th>
               <th>Player</th>
-              <th>Games</th>
-              <th>Record</th>
-              <th>Win Rate</th>
               <th>Elo</th>
+              <th>Elo Trend</th>
+              <th>Games</th>
+              <th>Win Rate</th>
+              <th>Last 10</th>
+              <th>Record</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body">
-            <tr><td colspan="6" class="leaderboard-empty">Loading leaderboard...</td></tr>
+            <tr><td colspan="8" class="leaderboard-empty">Loading leaderboard...</td></tr>
           </tbody>
         </table>
       </div>
