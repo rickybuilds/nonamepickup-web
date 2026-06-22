@@ -336,6 +336,11 @@ function buildGranularPlayerPayload(identity,options={}){
   const matchId=options.matchId?cleanString(options.matchId,100):"";
   const mapName=options.map?cleanString(options.map,200):"";
   const includeSample=String(options.includeSample||"")==="1";
+  const classFilter=options.class?cleanString(options.class,50).toLowerCase():"";
+  const weaponFilter=options.weapon?cleanString(options.weapon,100):"";
+  const objectiveFilter=options.objective?cleanString(options.objective,40).toLowerCase():"";
+  const victimFilter=options.victim?cleanString(options.victim,120):"";
+  const officialOnly=String(options.official||"")==="1";
   const identityWhere=fastKillEventIdentityWhere(identity,"e");
   const officialWhere=officialKillConfidenceWhere("e");
   const matchFilters=[];
@@ -348,8 +353,34 @@ function buildGranularPlayerPayload(identity,options={}){
     matchFilters.push("AND e.match_id IN (SELECT match_id FROM matches WHERE map_name=?)");
     matchParams.push(mapName);
   }
+  if(classFilter){
+    matchFilters.push("AND LOWER(COALESCE(NULLIF(e.attacker_class,''),'unknown'))=?");
+    matchParams.push(classFilter);
+  }
+  if(weaponFilter){
+    matchFilters.push("AND e.weapon=?");
+    matchParams.push(weaponFilter);
+  }
+  if(objectiveFilter==="flag"){
+    matchFilters.push("AND COALESCE(e.is_flag_carrier_kill,0)=1");
+  }else if(objectiveFilter==="conced"){
+    matchFilters.push("AND COALESCE(e.is_conced,0)=1");
+  }
+  if(victimFilter){
+    matchFilters.push(`AND (
+      e.victim_discord_id=?
+      OR e.victim_steam_id=?
+      OR e.victim_key=?
+      OR e.victim_name=?
+    )`);
+    matchParams.push(victimFilter,victimFilter,victimFilter,victimFilter);
+  }
+  if(officialOnly){
+    matchFilters.push(`AND ${officialWhere}`);
+    matchParams.push(...OFFICIAL_KILL_CLASS_CONFIDENCES);
+  }
   const matchFilter=matchFilters.join("\n        ");
-  const timingPrefix=`granular:${identity.id}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}`;
+  const timingPrefix=`granular:${identity.id}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}`;
 
   return safeTableRead(()=>{
     ensureGranularIndexes();
@@ -473,6 +504,19 @@ function buildGranularPlayerPayload(identity,options={}){
     if(mapName){
       classTimeMatchFilters.push("AND c.match_id IN (SELECT match_id FROM matches WHERE map_name=?)");
       classTimeMatchParams.push(mapName);
+    }
+    if(classFilter){
+      classTimeMatchFilters.push("AND LOWER(c.class_name)=?");
+      classTimeMatchParams.push(classFilter);
+    }
+    if(classFilter||weaponFilter||objectiveFilter||victimFilter||officialOnly){
+      classTimeMatchFilters.push(`AND c.match_id IN (
+          SELECT DISTINCT e.match_id
+          FROM match_kill_events e
+          WHERE ${identityWhere.sql}
+            ${matchFilter}
+        )`);
+      classTimeMatchParams.push(...identityWhere.params,...matchParams);
     }
     const roleClassTime=classTimeSteamIds.length?timedGranularQuery(`${timingPrefix}:roleClassTime`,()=>db.prepare(`
       SELECT
@@ -785,7 +829,12 @@ router.get("/player/:id/granular",(req,res)=>{
       limit:positiveInt(req.query.limit,50,1,250),
       map:req.query.map,
       matchId:req.query.matchId,
-      includeSample:req.query.includeSample
+      includeSample:req.query.includeSample,
+      class:req.query.class,
+      weapon:req.query.weapon,
+      objective:req.query.objective,
+      victim:req.query.victim,
+      official:req.query.official
     });
 
     res.setHeader("Cache-Control","public, max-age=5, stale-while-revalidate=20");
@@ -808,6 +857,11 @@ router.get("/player/:id/granular/events",(req,res)=>{
     const offset=positiveInt(req.query.offset,0,0,100000);
     const mapName=req.query.map?cleanString(req.query.map,200):"";
     const matchId=req.query.matchId?cleanString(req.query.matchId,100):"";
+    const classFilter=req.query.class?cleanString(req.query.class,50).toLowerCase():"";
+    const weaponFilter=req.query.weapon?cleanString(req.query.weapon,100):"";
+    const objectiveFilter=req.query.objective?cleanString(req.query.objective,40).toLowerCase():"";
+    const victimFilter=req.query.victim?cleanString(req.query.victim,120):"";
+    const officialOnly=req.query.official==="1";
     const identityWhere=fastKillEventIdentityWhere(identity,"e");
     const matchFilters=[];
     const matchParams=[];
@@ -819,8 +873,34 @@ router.get("/player/:id/granular/events",(req,res)=>{
       matchFilters.push("AND e.match_id IN (SELECT match_id FROM matches WHERE map_name=?)");
       matchParams.push(mapName);
     }
+    if(classFilter){
+      matchFilters.push("AND LOWER(COALESCE(NULLIF(e.attacker_class,''),'unknown'))=?");
+      matchParams.push(classFilter);
+    }
+    if(weaponFilter){
+      matchFilters.push("AND e.weapon=?");
+      matchParams.push(weaponFilter);
+    }
+    if(objectiveFilter==="flag"){
+      matchFilters.push("AND COALESCE(e.is_flag_carrier_kill,0)=1");
+    }else if(objectiveFilter==="conced"){
+      matchFilters.push("AND COALESCE(e.is_conced,0)=1");
+    }
+    if(victimFilter){
+      matchFilters.push(`AND (
+        e.victim_discord_id=?
+        OR e.victim_steam_id=?
+        OR e.victim_key=?
+        OR e.victim_name=?
+      )`);
+      matchParams.push(victimFilter,victimFilter,victimFilter,victimFilter);
+    }
+    if(officialOnly){
+      matchFilters.push(`AND ${officialKillConfidenceWhere("e")}`);
+      matchParams.push(...OFFICIAL_KILL_CLASS_CONFIDENCES);
+    }
     const matchFilter=matchFilters.join("\n          ");
-    const timingPrefix=`granular:${identity.id}:events${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}`;
+    const timingPrefix=`granular:${identity.id}:events${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}`;
 
     const data=safeTableRead(()=>{
       ensureGranularIndexes();

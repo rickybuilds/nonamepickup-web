@@ -119,6 +119,12 @@
 .granular-player-link:hover,.granular-player-link:focus-visible{color:#7dd3fc;text-shadow:0 0 12px rgba(56,189,248,.28)}
 .granular-row small{display:block;margin-top:3px;color:#7f8faa;font-size:9px;font-weight:850;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .granular-row strong{color:#dbeafe;font-size:12px;font-weight:950;text-align:right;white-space:nowrap}
+.granular-drill-row{cursor:pointer}
+.granular-drill-row:hover,.granular-drill-row:focus-visible{border-color:rgba(56,189,248,.42);background:rgba(14,165,233,.08);outline:none}
+.granular-drill-active{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-4px 0 10px;padding:8px 10px;border:1px solid rgba(56,189,248,.24);border-radius:12px;background:rgba(14,165,233,.08)}
+.granular-drill-active span{min-width:0;color:#dbeafe;font-size:10px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.granular-drill-active button{border:1px solid rgba(77,166,255,.22);background:rgba(3,8,20,.48);color:#cbd5e1;border-radius:999px;padding:5px 9px;font-family:inherit;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
+.granular-drill-active button:hover{color:#06111f;background:linear-gradient(90deg,#38bdf8,#22d3ee);border-color:transparent}
 .granular-weapon-cell{display:flex;align-items:center;gap:9px}
 .granular-weapon-stats{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;text-align:right}
 .granular-weapon-stats b{display:inline;color:#dbeafe;font-size:11px;font-weight:950;white-space:nowrap}

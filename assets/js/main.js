@@ -522,7 +522,7 @@ async function loadLeaderboard() {
             ${avatarHtml(row.player, row.avatarfull || row.avatarmedium || row.avatar, "nn-avatar-lg")}
           </a>
           <a class="podium-name" href="${playerCardLink(row)}">${escapeHtml(row.player)}${supporterBadge(row.id)}</a>
-          <strong>${Number(row.elo).toLocaleString()} Elo</strong>
+          <strong>${Number(row.elo)} Elo</strong>
           <div class="podium-stats">
             <span><b>${row.winPct}</b><small>Win Rate</small></span>
             <span><b>${row.games.toLocaleString()}</b><small>Games</small></span>
@@ -539,7 +539,7 @@ async function loadLeaderboard() {
     const highestElo = ranked[0];
     const strongestRecord = [...ranked].sort((a, b) => Number(b.wins || 0) - Number(a.wins || 0))[0];
     const rows = [
-      ["Highest Elo", highestElo, highestElo ? `${Number(highestElo.elo).toLocaleString()} Elo` : "—"],
+      ["Highest Elo", highestElo, highestElo ? `${Number(highestElo.elo)} Elo` : "—"],
       ["Best Win Rate", bestWinRate, bestWinRate?.winPct || "—"],
       ["Most Games", mostGames, mostGames ? `${mostGames.games.toLocaleString()} games` : "—"],
       ["Most Wins", strongestRecord, strongestRecord ? `${Number(strongestRecord.wins || 0).toLocaleString()} wins` : "—"]
@@ -594,7 +594,9 @@ async function loadLeaderboard() {
   document.getElementById("leaderboard-player-count").textContent =
     ranked.length.toLocaleString();
   document.getElementById("leaderboard-top-elo").textContent =
-    ranked[0] ? Number(ranked[0].elo) : "—";
+  ranked[0]
+    ? Number(ranked[0].elo)
+    : "—";
   document.getElementById("leaderboard-total-games").textContent =
     totalGames.toLocaleString();
   renderPodium();

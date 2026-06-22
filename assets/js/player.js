@@ -20,6 +20,7 @@ let granularEventsLoading=false;
 let granularEventsLoaded=false;
 let granularEventsObserver=null;
 let granularRequestSeq=0;
+let granularDrillFilter=null;
 let granularOpenClassKeys=new Set();
 let granularOpenObjectiveKeys=new Set();
 let granularOpenObjectiveClassKeys=new Set();
@@ -500,8 +501,8 @@ function roleKpiStripHtml(){
   }
 
   const roles=["offense","defense"].map(roleKpiData);
-  const hasAnyTime=roles.some(role=>role.seconds>0);
-  if(!hasAnyTime){
+  const hasAnyRoleData=roles.some(role=>role.seconds>0||role.eventKills>0||role.objectiveKills>0||role.topWeapon);
+  if(!hasAnyRoleData){
     return '<div class="role-kpi-strip"><div class="empty-v3">Loading role profile...</div></div>';
   }
 
@@ -596,7 +597,11 @@ function granularWeaponRow(row,extra){
   const value=showClassWeaponRates
     ? '<span class="granular-weapon-stats"><b>'+fmt(row.kills)+' kills</b><b>'+fmt(row.matchesWithKill)+' matches</b><b>'+escapeHtml(formatGranularRate(rate))+' K/M</b></span>'
     : '<strong>'+fmt(row.kills)+' kills</strong>';
-  return '<div class="granular-row granular-weapon-row">'+
+  const filter=row.drillFilter||{};
+  const attrs=Object.keys(filter).length
+    ? ' role="button" tabindex="0" title="Show matching kill events" data-granular-drill-filter="'+escapeAttr(JSON.stringify(filter))+'"'
+    : "";
+  return '<div class="granular-row granular-weapon-row'+(attrs?" granular-drill-row":"")+'"'+attrs+'>'+
     '<span class="granular-weapon-cell">'+
       weaponIconMarkup(row.weapon)+
       '<b>'+escapeHtml(playerWeaponName(row.weapon||"-"))+'</b>'+
@@ -604,6 +609,32 @@ function granularWeaponRow(row,extra){
     '</span>'+
     value+
   '</div>';
+}
+
+function clearGranularDrillFilter(){
+  granularDrillFilter=null;
+  granularEventsLoaded=false;
+  currentGranularEvents=null;
+}
+
+function setGranularDrillFilter(filter){
+  granularDrillFilter=filter&&typeof filter==="object"?filter:null;
+  granularOpenClassKeys=new Set();
+  granularOpenObjectiveKeys=new Set();
+  granularOpenObjectiveClassKeys=new Set();
+  granularOpenRoleKeys=new Set();
+  scheduleGranularSummaryLoad(currentPlayerId);
+}
+
+function granularDrillFilterLabel(){
+  if(!granularDrillFilter)return"";
+  const parts=[];
+  if(granularDrillFilter.objective==="flag")parts.push("Flag carrier");
+  if(granularDrillFilter.objective==="conced")parts.push("Conced");
+  if(granularDrillFilter.class)parts.push(classDisplayName(granularDrillFilter.class));
+  if(granularDrillFilter.weapon)parts.push(playerWeaponName(granularDrillFilter.weapon));
+  if(granularDrillFilter.victimName)parts.push("vs "+granularDrillFilter.victimName);
+  return parts.join(" / ")||"Filtered events";
 }
 
 function formatGranularRate(value){
@@ -789,7 +820,14 @@ function renderGranularClassWeapons(rows,classSummaryRows){
           '<span class="granular-class-meta">'+granularClassMetaHtml(total,classRows.length,summary)+'</span>'+
         '</div>'+
       '</button>'+
-      '<div class="granular-class-weapons" '+(isOpen?"":'hidden')+'>'+classRows.slice(0,8).map(row=>granularWeaponRow(row)).join("")+'</div>'+
+      '<div class="granular-class-weapons" '+(isOpen?"":'hidden')+'>'+classRows.slice(0,8).map(row=>granularWeaponRow({
+        ...row,
+        drillFilter:{
+          class:normalizeGranularClass(row.class||className),
+          weapon:row.weapon,
+          official:"1"
+        }
+      })).join("")+'</div>'+
     '</article>';
       }).join("")+
       '</div>'+
@@ -859,7 +897,15 @@ function renderObjectiveClassWeaponGroups(rows,objectiveKey,classSummary){
             '<span>'+escapeHtml(formatObjectiveMeta(total,classRows.length,summary))+'</span>'+
           '</button>'+
           '<div class="granular-objective-class-weapons" '+(isOpen?"":'hidden')+'>'+
-            classRows.slice(0,6).map(row=>granularWeaponRow(row)).join("")+
+            classRows.slice(0,6).map(row=>granularWeaponRow({
+              ...row,
+              drillFilter:{
+                objective:objectiveKey,
+                class:normalizeGranularClass(row.class||className),
+                weapon:row.weapon,
+                official:"1"
+              }
+            })).join("")+
           '</div>'+
         '</div>';
       }).join("")+
@@ -902,7 +948,10 @@ function renderGranularVictims(rows){
   const victims=Array.isArray(rows)?rows:[];
   if(!victims.length)return '<div class="granular-empty">No victim data found.</div>';
   return '<div class="granular-list">'+victims.slice(0,16).map((row,index)=>
-    '<div class="granular-row">'+
+    '<div class="granular-row granular-drill-row" role="button" tabindex="0" title="Show matching kill events" data-granular-drill-filter="'+escapeAttr(JSON.stringify({
+      victim:row.victimId||row.victimSteamId||row.victimKey||row.victimName||"",
+      victimName:row.victimName||"Unknown"
+    }))+'">'+
       '<span><b>#'+(index+1)+' '+granularVictimLink(row)+'</b></span>'+
       '<strong>'+fmt(row.kills)+' kills</strong>'+
     '</div>'
@@ -960,7 +1009,16 @@ function granularEventsUrl(offset=0){
   const params=new URLSearchParams({limit:"100",offset:String(offset)});
   if(granularMapFilter)params.set("map",granularMapFilter);
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
+  if(granularDrillFilter?.class)params.set("class",granularDrillFilter.class);
+  if(granularDrillFilter?.weapon)params.set("weapon",granularDrillFilter.weapon);
+  if(granularDrillFilter?.objective)params.set("objective",granularDrillFilter.objective);
+  if(granularDrillFilter?.victim)params.set("victim",granularDrillFilter.victim);
+  if(granularDrillFilter?.official)params.set("official","1");
   return "/api/player/"+encodeURIComponent(currentPlayerId)+"/granular/events?"+params.toString();
+}
+
+function granularDrillFilterSignature(){
+  return granularDrillFilter?JSON.stringify(granularDrillFilter):"";
 }
 
 function granularSummaryUrl(playerId,includeSample=false){
@@ -968,6 +1026,11 @@ function granularSummaryUrl(playerId,includeSample=false){
   if(includeSample)params.set("includeSample","1");
   if(granularMapFilter)params.set("map",granularMapFilter);
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
+  if(granularDrillFilter?.class)params.set("class",granularDrillFilter.class);
+  if(granularDrillFilter?.weapon)params.set("weapon",granularDrillFilter.weapon);
+  if(granularDrillFilter?.objective)params.set("objective",granularDrillFilter.objective);
+  if(granularDrillFilter?.victim)params.set("victim",granularDrillFilter.victim);
+  if(granularDrillFilter?.official)params.set("official","1");
   return "/api/player/"+encodeURIComponent(playerId)+"/granular?"+params.toString();
 }
 
@@ -1021,6 +1084,7 @@ function resetGranularState(){
   currentGranularEvents=null;
   granularMapFilter="";
   granularMatchFilter="";
+  granularDrillFilter=null;
   granularOpenClassKeys=new Set();
   granularOpenObjectiveKeys=new Set();
   granularOpenObjectiveClassKeys=new Set();
@@ -1048,6 +1112,10 @@ function renderPlayerGranularLoading(){
   bindGranularControls();
   const body=qs("player-granular-body");
   if(!body)return;
+  const drillLabel=granularDrillFilterLabel();
+  const drillChip=drillLabel
+    ? '<div class="granular-drill-active"><span>Showing '+escapeHtml(drillLabel)+'</span><button type="button" data-granular-drill-clear="1">Clear</button></div>'
+    : "";
   body.innerHTML=
     roleKpiStripHtml()+
     '<div class="granular-summary-strip">'+
@@ -1060,9 +1128,9 @@ function renderPlayerGranularLoading(){
     '<div class="granular-grid">'+
       '<section class="granular-panel granular-class-panel"><div class="granular-panel-head"><h3>Class Weapon Breakdown</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading granular class weapons...</div></div></section>'+
       '<section class="granular-panel granular-special-panel"><div class="granular-panel-head"><h3>Objective Kills</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading objective kills...</div></div></section>'+
-      '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading nemesis table...</div></div></section>'+
+      '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Loading</span></div>'+drillChip+'<div class="granular-panel-scroll"><div class="granular-empty">Loading nemesis table...</div></div></section>'+
       '<section class="granular-panel granular-alias-panel"><div class="granular-panel-head"><h3>Alias History</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading aliases...</div></div></section>'+
-      '<section class="granular-panel granular-events-panel"><div class="granular-panel-head"><h3>Match Drilldown</h3><span>Waiting</span></div><div id="granular-events-panel" class="granular-panel-scroll"><div class="granular-empty">Full events load when this section enters view.</div></div><button type="button" class="granular-load-more" data-granular-load-events="1">Load Events</button></section>'+
+      '<section class="granular-panel granular-events-panel"><div class="granular-panel-head"><h3>Match Drilldown</h3><span>Waiting</span></div>'+drillChip+'<div id="granular-events-panel" class="granular-panel-scroll"><div class="granular-empty">Full events load when this section enters view.</div></div><button type="button" class="granular-load-more" data-granular-load-events="1">Load Events</button></section>'+
     '</div>';
 }
 
@@ -1155,6 +1223,7 @@ async function loadGranularEvents(offset=0,append=false){
   const requestedPlayerId=String(currentPlayerId||"");
   const requestedMapFilter=granularMapFilter;
   const requestedFilter=granularMatchFilter;
+  const requestedDrillFilter=granularDrillFilterSignature();
   const requestSeq=granularRequestSeq;
   const body=qs("granular-events-panel");
   if(body&&!append)body.innerHTML='<div class="empty-v3">Loading granular events...</div>';
@@ -1163,7 +1232,7 @@ async function loadGranularEvents(offset=0,append=false){
   granularEventsLoading=true;
   const result=await fetchJSON(url);
   granularEventsLoading=false;
-  if(String(currentPlayerId)!==requestedPlayerId||requestedMapFilter!==granularMapFilter||requestedFilter!==granularMatchFilter||requestSeq!==granularRequestSeq)return;
+  if(String(currentPlayerId)!==requestedPlayerId||requestedMapFilter!==granularMapFilter||requestedFilter!==granularMatchFilter||requestedDrillFilter!==granularDrillFilterSignature()||requestSeq!==granularRequestSeq)return;
   const next=result?.ok?result.data:null;
   if(append&&currentGranularEvents&&next){
     next.events=[...(currentGranularEvents.events||[]),...(next.events||[])];
@@ -1186,6 +1255,7 @@ function bindGranularControls(){
   qs("granular-match-clear")?.addEventListener("click",()=>{
     granularMapFilter="";
     granularMatchFilter="";
+    clearGranularDrillFilter();
     const input=qs("granular-match-filter");
     if(input)input.value="";
     const mapSelect=qs("granular-map-select");
@@ -1221,6 +1291,23 @@ function bindGranularControls(){
     reloadGranularForActiveFilter();
   });
   card.addEventListener("click",event=>{
+    const drillClear=event.target.closest("[data-granular-drill-clear]");
+    if(drillClear){
+      clearGranularDrillFilter();
+      scheduleGranularSummaryLoad(currentPlayerId);
+      return;
+    }
+
+    const drillRow=event.target.closest("[data-granular-drill-filter]");
+    if(drillRow&&!event.target.closest("a,button")){
+      try{
+        setGranularDrillFilter(JSON.parse(drillRow.dataset.granularDrillFilter||"{}"));
+      }catch{
+        setGranularDrillFilter(null);
+      }
+      return;
+    }
+
     const roleToggle=event.target.closest("[data-granular-role-toggle]");
     if(roleToggle){
       const group=roleToggle.closest(".granular-role-block");
@@ -1307,6 +1394,18 @@ function bindGranularControls(){
       loadGranularEvents(offset,true);
     }
   });
+
+  card.addEventListener("keydown",event=>{
+    if(event.key!=="Enter"&&event.key!==" ")return;
+    const drillRow=event.target.closest("[data-granular-drill-filter]");
+    if(!drillRow)return;
+    event.preventDefault();
+    try{
+      setGranularDrillFilter(JSON.parse(drillRow.dataset.granularDrillFilter||"{}"));
+    }catch{
+      setGranularDrillFilter(null);
+    }
+  });
 }
 
 function renderPlayerGranular(data,eventsData){
@@ -1336,6 +1435,10 @@ function renderPlayerGranular(data,eventsData){
   const eventCountLabel=!hasLoadedEvents
     ? (loaded?fmt(loaded)+" preview":"Events not loaded")
     : (total===null?fmt(loaded)+" events":fmt(loaded)+" / "+fmt(total)+" events");
+  const drillLabel=granularDrillFilterLabel();
+  const drillChip=drillLabel
+    ? '<div class="granular-drill-active"><span>Showing '+escapeHtml(drillLabel)+'</span><button type="button" data-granular-drill-clear="1">Clear</button></div>'
+    : "";
   const nextOffset=loaded;
   const eventAction=granularEventsLoading
     ? '<button type="button" class="granular-load-more" disabled>Loading Events</button>'
@@ -1355,9 +1458,9 @@ function renderPlayerGranular(data,eventsData){
     '<div class="granular-grid">'+
       '<section class="granular-panel granular-class-panel"><div class="granular-panel-head"><h3>Class Weapon Breakdown</h3><span>'+fmt(currentGranular.classWeapons?.length)+' rows</span></div><p class="granular-panel-help">What weapons this player gets kills with while playing each class.</p><div class="granular-panel-scroll">'+renderGranularClassWeapons(currentGranular.classWeapons,currentGranular.classSummary)+'</div></section>'+
       '<section class="granular-panel granular-special-panel"><div class="granular-panel-head"><h3>Objective Kills</h3><span>Flag + conced</span></div><p class="granular-panel-help">Flag carrier kills and conceded kills.</p><div class="granular-panel-scroll">'+renderGranularSpecialKills(currentGranular.flagCarrierKills,currentGranular.concededKills,currentGranular.objectiveSummary,currentGranular.objectiveClassSummary)+'</div></section>'+
-      '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Most killed</span></div><p class="granular-panel-help">Players this player killed most.</p><div class="granular-panel-scroll">'+renderGranularVictims(currentGranular.favoriteVictims)+'</div></section>'+
+      '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Most killed</span></div><p class="granular-panel-help">Players this player killed most.</p>'+drillChip+'<div class="granular-panel-scroll">'+renderGranularVictims(currentGranular.favoriteVictims)+'</div></section>'+
       '<section class="granular-panel granular-alias-panel"><div class="granular-panel-head"><h3>Alias History</h3><span>Event names</span></div><p class="granular-panel-help">Names used by this player in Hampalyzer events.</p><div class="granular-panel-scroll">'+renderGranularAliases(currentGranular.aliasHistory)+'</div></section>'+
-      '<section class="granular-panel granular-events-panel"><div class="granular-panel-head"><h3>Match Drilldown</h3><span>'+escapeHtml(eventCountLabel)+'</span></div><p class="granular-panel-help">Individual kill events.</p><div id="granular-events-panel" class="granular-panel-scroll">'+renderGranularEvents(events)+'</div>'+eventAction+'</section>'+
+      '<section class="granular-panel granular-events-panel"><div class="granular-panel-head"><h3>Match Drilldown</h3><span>'+escapeHtml(eventCountLabel)+'</span></div><p class="granular-panel-help">Individual kill events. Click breakdown rows to inspect matching kills.</p>'+drillChip+'<div id="granular-events-panel" class="granular-panel-scroll">'+renderGranularEvents(events)+'</div>'+eventAction+'</section>'+
     '</div>';
   hydrateLazyWeaponIcons(body);
 }

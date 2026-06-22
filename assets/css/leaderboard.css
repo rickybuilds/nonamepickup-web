@@ -153,7 +153,7 @@
 
 .podium-rank {
   position: absolute;
-  top: -46px;
+  top: -62px;
   width: 118px;
   height: 118px;
   object-fit: contain;
@@ -164,7 +164,7 @@
 .first .podium-rank {
   width: 138px;
   height: 138px;
-  top: -58px;
+  top: -74px;
   filter: drop-shadow(0 0 22px rgba(251, 191, 36, .45));
 }
 
