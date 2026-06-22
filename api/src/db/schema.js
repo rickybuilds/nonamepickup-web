@@ -79,6 +79,19 @@ function initializeSchema(db) {
   CREATE INDEX IF NOT EXISTS idx_rc_player_match
     ON rating_changes(player_id, match_id);
 
+  CREATE INDEX IF NOT EXISTS idx_analytics_mps_match_player
+    ON match_player_stats(match_id, player_key);
+  CREATE INDEX IF NOT EXISTS idx_analytics_mprs_match_round_player
+    ON match_player_round_stats(match_id, round_num, player_key);
+  CREATE INDEX IF NOT EXISTS idx_analytics_mpw_weapon_match_player
+    ON match_player_weapons(weapon, match_id, player_key);
+  CREATE INDEX IF NOT EXISTS idx_analytics_mrm_player_match
+    ON match_round_mvps(mvp_player_key, match_id);
+  CREATE INDEX IF NOT EXISTS idx_analytics_mrm_steam_match
+    ON match_round_mvps(steam_id, match_id);
+  CREATE INDEX IF NOT EXISTS idx_analytics_rounds_match_round
+    ON match_rounds(match_id, round_num);
+
 `);
 }
 

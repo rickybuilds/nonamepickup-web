@@ -473,7 +473,8 @@
             const teamClass = capTeamClass(event.team);
             const label = capTeamLabel(event.team);
             const capNum = event.cap_num || "";
-            const title = `${label} Capture #${capNum}`;
+            const capper = event.capper_name || "";
+            const title = `${label} Capture #${capNum}${capper ? ` - ${capper}` : ""}`;
             const icon = teamClass === "red"
               ? "assets/images/icons/webp/red-flag.webp"
               : "assets/images/icons/webp/blue-flag.webp";
@@ -721,14 +722,6 @@
     ).join("");
   }
 
-  function calcAverageScore(rows) {
-    const scored = rows.filter(m => Number.isFinite(m.score_blue) && Number.isFinite(m.score_red));
-    if (!scored.length) return "—";
-    const blue = Math.round(scored.reduce((sum, m) => sum + Number(m.score_blue), 0) / scored.length);
-    const red = Math.round(scored.reduce((sum, m) => sum + Number(m.score_red), 0) / scored.length);
-    return `${blue} - ${red}`;
-  }
-
   function fitTopMapKpi() {
     const el = $("m2-top-map");
     if (!el) return;
@@ -766,7 +759,6 @@
       fitTopMapKpi();
     }
     if ($("m2-top-map-games")) $("m2-top-map-games").textContent = topMap ? `${topMap.games} games` : "—";
-    if ($("m2-avg-score")) $("m2-avg-score").textContent = calcAverageScore(state.all);
   }
 
   function wireEvents() {

@@ -218,6 +218,9 @@
     setText("hero-matches-7d", compact(summary?.matches7d || 0));
     setText("hero-matches-30d", compact(summary?.matches30d || 0));
     setText("hero-players", compact(unique));
+    setText("hero-players-1d", compact(summary?.uniquePlayers1d || 0));
+    setText("hero-players-7d", compact(summary?.uniquePlayers7d || 0));
+    setText("hero-players-30d", compact(summary?.uniquePlayers30d || players?.uniquePlayers30d || 0));
     setText("hero-years", history.value);
     setText("hero-history-unit", history.unit);
     setText("hero-history-since", history.since);

@@ -97,7 +97,7 @@
 
 .matches2-kpi-grid {
   display:grid;
-  grid-template-columns:repeat(5,minmax(170px,1fr));
+  grid-template-columns:repeat(4,minmax(170px,1fr));
   gap:18px;
   width:100%;
 }
@@ -793,8 +793,8 @@
 .matches2-match-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(330px, .9fr) minmax(0, 1.6fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   overflow: hidden;
   min-height: 104px;
   padding: 12px 14px 12px 18px;
@@ -853,13 +853,16 @@
 
 .m2-card-main {
   display: grid;
-  grid-template-columns: minmax(150px, .9fr) minmax(120px, .8fr) auto;
-  gap: 12px;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  grid-template-areas:
+    "meta map score";
+  gap: 10px 14px;
   align-items: center;
   min-width: 0;
 }
 
 .m2-card-meta {
+  grid-area: meta;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -885,6 +888,7 @@
 }
 
 .m2-card-map {
+  grid-area: map;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -897,11 +901,13 @@
 }
 
 .m2-card-score {
+  grid-area: score;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  min-width: 0;
+  min-width: 160px;
+  justify-self: end;
 }
 
 .m2-card-teams {
@@ -1052,6 +1058,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   gap: 6px;
   min-width: 100px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -1059,6 +1066,7 @@
 }
 
 .score-pill {
+  flex: 0 0 auto;
   min-width: 38px;
   text-align: center;
   border-radius: 9px;
@@ -1166,8 +1174,33 @@
   .matches2-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .matches2-filter-bar { grid-template-columns: 1fr 1fr; }
   #m2-clear-filters { width: 100%; }
-  .matches2-match-card { grid-template-columns: 1fr; }
-  .m2-card-main { grid-template-columns: minmax(160px, 1fr) minmax(120px, .7fr) auto; }
+  .matches2-match-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .m2-card-main {
+    grid-template-columns: auto minmax(120px, 1fr) auto;
+    grid-template-areas:
+      "meta map score";
+    gap: 10px 12px;
+    align-items: center;
+  }
+  .m2-card-meta { grid-area: meta; }
+  .m2-card-map {
+    grid-area: map;
+    max-width: 100%;
+  }
+  .m2-card-score {
+    grid-area: score;
+    min-width: 150px;
+    justify-content: flex-end;
+  }
+  .m2-card-teams {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .matches2-match-card .team-list a {
+    max-width: 150px;
+  }
 }
 
 @media (max-width: 1100px) {
@@ -1560,8 +1593,16 @@ padding:0 10px;
   .matches2-card-scroll{max-height:none;overflow:visible;padding:0}
   .matches2-card-list{gap:10px}
   .matches2-match-card{grid-template-columns:1fr;gap:12px;padding:13px 13px 13px 17px}
-  .m2-card-main{grid-template-columns:1fr;gap:10px;align-items:start}
-  .m2-card-score{justify-content:flex-start;flex-wrap:wrap}
+  .m2-card-main{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:
+      "meta"
+      "map"
+      "score";
+    gap:10px;
+    align-items:start;
+  }
+  .m2-card-score{justify-self:start;justify-content:flex-start;flex-wrap:wrap}
   .m2-card-teams{grid-template-columns:1fr;gap:8px}
   .matches2-match-card .team-list a{max-width:150px}
   .matches2-browser-layout{grid-template-columns:1fr}
@@ -1656,16 +1697,21 @@ padding:0 10px;
   }
 
   .m2-card-main{
-    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-columns:auto minmax(120px,1fr) auto;
     grid-template-areas:
-      "meta score"
-      "map score";
+      "meta map score";
+    gap:10px 14px;
     align-items:center;
   }
 
   .m2-card-meta{grid-area:meta}
-  .m2-card-map{grid-area:map;max-width:100%}
-  .m2-card-score{grid-area:score}
+  .m2-card-map{grid-area:map;max-width:100%;min-width:0}
+  .m2-card-score{
+    grid-area:score;
+    min-width:160px;
+    justify-self:end;
+    justify-content:flex-end;
+  }
 
   .m2-card-teams,
   .m2-viewer-rosters{

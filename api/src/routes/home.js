@@ -51,7 +51,7 @@ function createHomeRouter({ db, cached, logRouteError, sendError }) {
   router.get("/home", (req, res) => {
     console.time("home:total");
     try {
-      const data = cached("home_v2_pass6", () => {
+      const data = cached("home_v2_pass7", () => {
         const now = Math.floor(Date.now() / 1000);
         const cutoff1d = now - 86400;
         const cutoff7d = now - (7 * 86400);
@@ -76,8 +76,20 @@ function createHomeRouter({ db, cached, logRouteError, sendError }) {
               FROM rating_changes rc
               JOIN matches m ON m.match_id=rc.match_id
               WHERE m.status='completed' AND m.created_at >= ?
+            ) AS uniquePlayers1d,
+            (
+              SELECT COUNT(DISTINCT rc.player_id)
+              FROM rating_changes rc
+              JOIN matches m ON m.match_id=rc.match_id
+              WHERE m.status='completed' AND m.created_at >= ?
+            ) AS uniquePlayers7d,
+            (
+              SELECT COUNT(DISTINCT rc.player_id)
+              FROM rating_changes rc
+              JOIN matches m ON m.match_id=rc.match_id
+              WHERE m.status='completed' AND m.created_at >= ?
             ) AS uniquePlayers30d
-        `, [cutoff30d]) || {});
+        `, [cutoff1d, cutoff7d, cutoff30d]) || {});
 
         const playerGames = timed("home:playerGames", () => db.prepare(`
           SELECT
@@ -257,6 +269,8 @@ function createHomeRouter({ db, cached, logRouteError, sendError }) {
             totalMatches: Number(summaryRow.totalMatches || 0),
             firstMatchAt: summaryRow.firstMatchAt ? Number(summaryRow.firstMatchAt) : null,
             uniquePlayers: Number(playerRow.uniquePlayers || 0),
+            uniquePlayers1d: Number(playerRow.uniquePlayers1d || 0),
+            uniquePlayers7d: Number(playerRow.uniquePlayers7d || 0),
             uniquePlayers30d: Number(playerRow.uniquePlayers30d || 0),
             matches1d: Number(summaryRow.matches1d || 0),
             matches7d: Number(summaryRow.matches7d || 0),

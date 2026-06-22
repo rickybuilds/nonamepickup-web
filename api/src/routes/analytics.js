@@ -111,11 +111,14 @@ const MVP_CTES = `
   )
 `;
 
+const ANALYTICS_CACHE_TTL_MS = 45_000;
+const analyticsPayloadCache = new Map();
+
 function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRouteError }) {
   const router = express.Router();
 
-  function leaders(sql, ...params) {
-    return db.prepare(sql).all(...params).map(row => ({
+  function serializeLeader(row) {
+    return {
       id: row.player_id == null ? null : String(row.player_id),
       player: row.player || "Unknown",
       value: Number(row.value || 0),
@@ -126,14 +129,63 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
       map: row.map_name || null,
       hampalyzer_url: safePublicUrl(row.hampalyzer_url),
       tfcstats_url: safePublicUrl(row.tfcstats_url)
-    }));
+    };
+  }
+
+  function leaders(sql, ...params) {
+    return db.prepare(sql).all(...params).map(serializeLeader);
+  }
+
+  function timedAnalytics(label, fn) {
+    console.time(label);
+    try {
+      return fn();
+    } finally {
+      console.timeEnd(label);
+    }
+  }
+
+  function getAnalyticsCacheEntry(key) {
+    const hit = analyticsPayloadCache.get(key);
+    if (!hit) return null;
+    return {
+      ...hit,
+      stale: Date.now() >= hit.expiresAt
+    };
+  }
+
+  function setAnalyticsCache(key, payload) {
+    const entry = {
+      payload,
+      body: JSON.stringify(payload),
+      expiresAt: Date.now() + ANALYTICS_CACHE_TTL_MS
+    };
+    analyticsPayloadCache.set(key, entry);
+    return entry;
+  }
+
+  function logQueryPlan(label, sql, params = []) {
+    try {
+      console.log(label, db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params));
+    } catch (error) {
+      console.warn(`${label}: failed`, error.message);
+    }
   }
 
   router.get("/analytics", (req, res) => {
     try {
       const limit = positiveInt(req.query.limit, 5, 1, 10);
-      const payload = cachedFor(`analytics:${limit}`, 300_000, () => {
-        const summary = db.prepare(`
+      const cacheKey = `analytics:${limit}`;
+      const cachedEntry = getAnalyticsCacheEntry(cacheKey);
+      if (cachedEntry && req.query.refresh !== "1") {
+        res.setHeader("X-Analytics-Cache", cachedEntry.stale ? "STALE" : "HIT");
+        res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+        res.type("application/json");
+        return res.send(cachedEntry.body);
+      }
+
+      const payload = timedAnalytics(`analytics:total:${cacheKey}`, () => {
+        const summary = timedAnalytics("analytics:summary", () => db.prepare(`
           SELECT
             (SELECT COUNT(*) FROM matches WHERE status = 'completed') AS matches,
             (SELECT COUNT(DISTINCT identity) FROM (
@@ -148,9 +200,9 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               LEFT JOIN player_steam_ids psi_sid ON psi_sid.steam_id = s.steam_id
             ) WHERE identity IS NOT NULL AND identity != '') AS players,
             (SELECT COUNT(*) FROM match_player_round_stats) AS player_rounds
-        `).get();
+        `).get());
 
-        const mvps = leaders(`${MVP_CTES}
+        const mvps = timedAnalytics("analytics:mvps", () => leaders(`${MVP_CTES}
           SELECT
             MAX(player_id) AS player_id,
             MAX(player) AS player,
@@ -160,9 +212,9 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           GROUP BY identity
           ORDER BY value DESC, player COLLATE NOCASE
           LIMIT ?
-        `, limit);
+        `, limit));
 
-        const mvpRate = leaders(`${MVP_CTES},
+        const mvpRate = timedAnalytics("analytics:mvpRate", () => leaders(`${MVP_CTES},
           player_games AS (
             SELECT
               COALESCE(pk.discord_id, sid.discord_id) AS player_id,
@@ -200,116 +252,80 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           HAVING MAX(pg.games) >= 25
           ORDER BY value DESC, secondary DESC, matches DESC, player COLLATE NOCASE
           LIMIT ?
-        `, limit);
+        `, limit));
 
-        const totalsQuery = (expression, extra = "") => leaders(`${IDENTITY_CTES}
-          SELECT
-            MAX(player_id) AS player_id,
-            MAX(player) AS player,
-            ${expression} AS value,
-            COUNT(DISTINCT match_id) AS matches
-          FROM player_stats
-          WHERE identity IS NOT NULL AND identity != '' ${extra}
-          GROUP BY identity
-          ORDER BY value DESC, player COLLATE NOCASE
-          LIMIT ?
-        `, limit);
+        let roundRowsCache = null;
+        let playerTotalsCache = null;
+        const compareTopRows = (a, b, ascending = false) => {
+          const valueDiff = ascending
+            ? Number(a.value || 0) - Number(b.value || 0)
+            : Number(b.value || 0) - Number(a.value || 0);
+          if (valueDiff) return valueDiff;
+          const secondaryDiff = Number(b.secondary || 0) - Number(a.secondary || 0);
+          if (secondaryDiff) return secondaryDiff;
+          const ap = String(a.player || "").toLowerCase();
+          const bp = String(b.player || "").toLowerCase();
+          return ap < bp ? -1 : ap > bp ? 1 : 0;
+        };
+        const topRows = (rows, valueFn, options = {}) => {
+          const filterFn = options.filter || (() => true);
+          const secondaryFn = options.secondary || (() => null);
+          const ascending = !!options.ascending;
+          const top = [];
 
-        const roundRecordQuery = expression => leaders(`${IDENTITY_CTES}
-          SELECT
-            player_id,
-            player,
-            ${expression} AS value,
-            match_id,
-            round_num,
-            m.map_name,
-            m.hampalyzer_url,
-            m.tfcstats_url
-          FROM round_stats
-          LEFT JOIN matches m USING (match_id)
-          WHERE identity IS NOT NULL AND identity != ''
-          ORDER BY value DESC, player COLLATE NOCASE
-          LIMIT ?
-        `, limit);
+          for (const row of rows) {
+            if (!filterFn(row)) continue;
+            const value = Number(valueFn(row) || 0);
+            const candidate = row;
+            candidate.value = value;
+            candidate.secondary = secondaryFn(row);
+            let insertAt = top.findIndex(existing => compareTopRows(candidate, existing, ascending) < 0);
+            if (insertAt === -1) insertAt = top.length;
+            if (insertAt < limit) {
+              top.splice(insertAt, 0, candidate);
+              if (top.length > limit) top.pop();
+            }
+          }
 
-        const matchRecordQuery = (expression, having = "") => leaders(`${IDENTITY_CTES}
-          SELECT
-            ms.player_id,
-            ms.player,
-            ${expression} AS value,
-            ms.match_id,
-            m.map_name,
-            m.hampalyzer_url,
-            m.tfcstats_url
-          FROM match_stats ms
-          LEFT JOIN matches m USING (match_id)
-          ${having}
-          ORDER BY value DESC, player COLLATE NOCASE
-          LIMIT ?
-        `, limit);
+          return top.map(serializeLeader);
+        };
+        const getRoundRows = () => {
+          if (roundRowsCache) return roundRowsCache;
+          const roundRowsSql = `${IDENTITY_CTES}
+            SELECT
+              rs.player_id,
+              rs.player,
+              rs.match_id,
+              rs.round_num,
+              m.map_name,
+              m.hampalyzer_url,
+              m.tfcstats_url,
+              rs.kills,
+              rs.enemy_damage,
+              rs.flag_captures,
+              rs.flag_touches,
+              rs.initial_touches,
+              rs.flag_time_seconds,
+              rs.conc_jumps,
+              rs.suicides,
+              rs.team_kills,
+              rs.team_damage
+            FROM round_stats rs
+            LEFT JOIN matches m USING (match_id)
+            WHERE rs.identity IS NOT NULL AND rs.identity != ''
+          `;
 
-        const roleQuery = side => {
-          const teamColumn = side === "offense" ? "offense_team" : "defense_team";
-          return db.prepare(`${IDENTITY_CTES}
-          SELECT
-            MAX(player_id) AS player_id,
-            MAX(player) AS player,
-            SUM(enemy_damage) AS value,
-            SUM(kills) AS secondary,
-            COUNT(DISTINCT rs.match_id) AS matches
-          FROM round_stats rs
-          JOIN match_rounds mr
-            ON mr.match_id = rs.match_id
-           AND mr.round_num = rs.round_num
-          WHERE identity IS NOT NULL
-            AND identity != ''
-            AND LOWER(TRIM(rs.team_name)) = LOWER(TRIM(mr.${teamColumn}))
-          GROUP BY identity
-          ORDER BY value DESC, secondary DESC, player COLLATE NOCASE
-          LIMIT ?
-        `).all(limit).map(row => ({
-            id: row.player_id == null ? null : String(row.player_id),
-            player: row.player || "Unknown",
-            value: Number(row.value || 0),
-            secondary: Number(row.secondary || 0),
-            matches: Number(row.matches || 0)
-          }));
+          if (req.query.explain === "1") {
+            logQueryPlan("analytics:rounds:plan", roundRowsSql);
+          }
+
+          roundRowsCache = timedAnalytics("analytics:rounds:base", () => db.prepare(roundRowsSql).all());
+          return roundRowsCache;
         };
 
-        const roundClassQuery = (className, expression) => leaders(`${IDENTITY_CTES}
-          SELECT
-            MAX(player_id) AS player_id,
-            MAX(player) AS player,
-            ${expression} AS value,
-            COUNT(DISTINCT match_id) AS matches
-          FROM round_stats
-          WHERE identity IS NOT NULL
-            AND identity != ''
-            AND LOWER(COALESCE(role, '')) LIKE LOWER(?)
-          GROUP BY identity
-          ORDER BY value DESC, player COLLATE NOCASE
-          LIMIT ?
-        `, `%${className}%`, limit);
+        const roundRecordQuery = column => topRows(getRoundRows(), row => row[column]);
 
-        const offensiveQuery = expression => leaders(`${IDENTITY_CTES}
-          SELECT
-            MAX(player_id) AS player_id,
-            MAX(player) AS player,
-            ${expression} AS value,
-            COUNT(DISTINCT rs.match_id) AS matches
-          FROM round_stats rs
-          JOIN match_rounds mr
-            ON mr.match_id = rs.match_id
-           AND mr.round_num = rs.round_num
-          WHERE identity IS NOT NULL
-            AND identity != ''
-            AND LOWER(TRIM(rs.team_name)) = LOWER(TRIM(mr.offense_team))
-          GROUP BY identity
-          ORDER BY value DESC, player COLLATE NOCASE
-          LIMIT ?
-        `, limit);
-
-        const dispenserKills = leaders(`${IDENTITY_CTES}
+        const dispenserKills = timedAnalytics("analytics:roles:dispenserKills", () => leaders(`${IDENTITY_CTES}
           SELECT
             MAX(ps.player_id) AS player_id,
             MAX(ps.player) AS player,
@@ -325,22 +341,257 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           GROUP BY COALESCE(ps.identity, w.player_key)
           ORDER BY value DESC, player COLLATE NOCASE
           LIMIT ?
-        `, limit);
+        `, limit));
 
-        const classQuery = (className, expression) => leaders(`${IDENTITY_CTES}
-          SELECT
-            MAX(player_id) AS player_id,
-            MAX(player) AS player,
-            ${expression} AS value,
-            COUNT(DISTINCT match_id) AS matches
-          FROM player_stats
-          WHERE identity IS NOT NULL
-            AND identity != ''
-            AND LOWER(COALESCE(main_class, '')) = '${className}'
-          GROUP BY identity
-          ORDER BY value DESC, player COLLATE NOCASE
-          LIMIT ?
-        `, limit);
+        const topAggregateRows = (rows, valueKey, secondaryKey = null, filterFn = () => true) => topRows(rows, row => row[valueKey], {
+          filter: filterFn,
+          secondary: secondaryKey ? row => Number(row[secondaryKey] || 0) : undefined
+        });
+
+        const getPlayerTotals = () => {
+          if (playerTotalsCache) return playerTotalsCache;
+          const playerTotalsSql = `${IDENTITY_CTES}
+            SELECT
+              MAX(player_id) AS player_id,
+              MAX(player) AS player,
+              COUNT(DISTINCT match_id) AS matches,
+              SUM(kills) AS kills,
+              SUM(deaths) AS deaths,
+              SUM(enemy_damage) AS enemy_damage,
+              SUM(team_damage) AS team_damage,
+              SUM(flag_captures) AS flag_captures,
+              SUM(flag_touches) AS flag_touches,
+              SUM(initial_touches) AS initial_touches,
+              SUM(flag_time_seconds) AS flag_time_seconds
+            FROM player_stats
+            WHERE identity IS NOT NULL AND identity != ''
+            GROUP BY identity
+          `;
+
+          if (req.query.explain === "1") {
+            logQueryPlan("analytics:playerTotals:plan", playerTotalsSql);
+          }
+
+          playerTotalsCache = timedAnalytics("analytics:playerTotals:base", () => db.prepare(playerTotalsSql).all());
+          return playerTotalsCache;
+        };
+
+        const combat = timedAnalytics("analytics:combat", () => ({
+          games: topAggregateRows(getPlayerTotals(), "matches"),
+          kills: topAggregateRows(getPlayerTotals(), "kills"),
+          enemy_damage: topAggregateRows(getPlayerTotals(), "enemy_damage"),
+          kdr: topRows(getPlayerTotals(), row => Number((Number(row.kills || 0) / Number(row.deaths || 1)).toFixed(2)), {
+            filter: row => Number(row.deaths || 0) > 0 && Number(row.matches || 0) >= 25,
+            secondary: row => Number(row.kills || 0)
+          }),
+          round_kills: roundRecordQuery("kills"),
+          round_damage: roundRecordQuery("enemy_damage")
+        }));
+
+        const flags = timedAnalytics("analytics:flags", () => ({
+          caps: topAggregateRows(getPlayerTotals(), "flag_captures"),
+          touches: topAggregateRows(getPlayerTotals(), "flag_touches"),
+          initial_touches: topAggregateRows(getPlayerTotals(), "initial_touches"),
+          flag_time: topAggregateRows(getPlayerTotals(), "flag_time_seconds"),
+          conversion: topRows(getPlayerTotals(), row => Number((100 * Number(row.flag_captures || 0) / Number(row.initial_touches || 1)).toFixed(1)), {
+            filter: row => Number(row.initial_touches || 0) >= 10,
+            secondary: row => Number(row.flag_captures || 0)
+          })
+        }));
+
+        const roles = timedAnalytics("analytics:roles", () => {
+          const classRowsSql = `${IDENTITY_CTES}
+            SELECT
+              MAX(player_id) AS player_id,
+              MAX(player) AS player,
+              LOWER(COALESCE(main_class, '')) AS class_name,
+              SUM(kills) AS kills,
+              SUM(enemy_damage) AS enemy_damage,
+              SUM(flag_captures) AS flag_captures,
+              SUM(flag_touches) AS flag_touches,
+              COUNT(DISTINCT match_id) AS matches
+            FROM player_stats
+            WHERE identity IS NOT NULL AND identity != ''
+            GROUP BY identity, class_name
+          `;
+          const roundRoleRowsSql = `${IDENTITY_CTES}
+            SELECT
+              MAX(player_id) AS player_id,
+              MAX(player) AS player,
+              LOWER(COALESCE(role, '')) AS role_name,
+              SUM(kills) AS kills,
+              SUM(enemy_damage) AS enemy_damage,
+              SUM(sentry_kills) AS sentry_kills,
+              COUNT(DISTINCT match_id) AS matches
+            FROM round_stats
+            WHERE identity IS NOT NULL AND identity != ''
+            GROUP BY identity, role_name
+          `;
+          const sideRowsSql = `${IDENTITY_CTES}
+            SELECT
+              MAX(rs.player_id) AS player_id,
+              MAX(rs.player) AS player,
+              CASE
+                WHEN LOWER(TRIM(rs.team_name)) = LOWER(TRIM(mr.offense_team)) THEN 'offense'
+                WHEN LOWER(TRIM(rs.team_name)) = LOWER(TRIM(mr.defense_team)) THEN 'defense'
+              END AS side,
+              SUM(rs.enemy_damage) AS enemy_damage,
+              SUM(rs.kills) AS kills,
+              SUM(rs.flag_captures) AS flag_captures,
+              SUM(rs.flag_touches) AS flag_touches,
+              SUM(rs.initial_touches) AS initial_touches,
+              SUM(rs.flag_time_seconds) AS flag_time_seconds,
+              COUNT(DISTINCT rs.match_id) AS matches
+            FROM round_stats rs
+            JOIN match_rounds mr
+              ON mr.match_id = rs.match_id
+             AND mr.round_num = rs.round_num
+            WHERE rs.identity IS NOT NULL
+              AND rs.identity != ''
+              AND (
+                LOWER(TRIM(rs.team_name)) = LOWER(TRIM(mr.offense_team))
+                OR LOWER(TRIM(rs.team_name)) = LOWER(TRIM(mr.defense_team))
+              )
+            GROUP BY side, rs.identity
+          `;
+
+          if (req.query.explain === "1") {
+            logQueryPlan("analytics:roles:classPlan", classRowsSql);
+            logQueryPlan("analytics:roles:roundRolePlan", roundRoleRowsSql);
+            logQueryPlan("analytics:roles:sidePlan", sideRowsSql);
+          }
+
+          const classRows = timedAnalytics("analytics:roles:classBase", () => db.prepare(classRowsSql).all());
+          const roundRoleRows = timedAnalytics("analytics:roles:roundRoleBase", () => db.prepare(roundRoleRowsSql).all());
+          const sideRows = timedAnalytics("analytics:roles:sideBase", () => db.prepare(sideRowsSql).all());
+          const roleContains = className => row => String(row.role_name || "").includes(className.toLowerCase());
+          const sideIs = side => row => row.side === side;
+
+          return {
+            soldier_damage: topAggregateRows(classRows, "enemy_damage", null, row => row.class_name === "soldier"),
+            soldier_kills: topAggregateRows(classRows, "kills", null, row => row.class_name === "soldier"),
+            hwguy_damage: topAggregateRows(roundRoleRows, "enemy_damage", null, roleContains("hwguy")),
+            hwguy_kills: topAggregateRows(roundRoleRows, "kills", null, roleContains("hwguy")),
+            demoman_damage: topAggregateRows(roundRoleRows, "enemy_damage", null, roleContains("demoman")),
+            demoman_kills: topAggregateRows(roundRoleRows, "kills", null, roleContains("demoman")),
+            engineer_kills: topAggregateRows(roundRoleRows, "kills", null, roleContains("engineer")),
+            medic_caps: topAggregateRows(classRows, "flag_captures", null, row => row.class_name === "medic"),
+            medic_touches: topAggregateRows(classRows, "flag_touches", null, row => row.class_name === "medic"),
+            scout_caps: topAggregateRows(classRows, "flag_captures", null, row => row.class_name === "scout"),
+            scout_touches: topAggregateRows(classRows, "flag_touches", null, row => row.class_name === "scout"),
+            engineer_sentry_kills: topAggregateRows(roundRoleRows, "sentry_kills"),
+            dispenser_kills: dispenserKills,
+            defense: topAggregateRows(sideRows, "enemy_damage", "kills", sideIs("defense")),
+            offense: topAggregateRows(sideRows, "enemy_damage", "kills", sideIs("offense")),
+            offensive_flag_captures: topAggregateRows(sideRows, "flag_captures", null, sideIs("offense")),
+            offensive_flag_touches: topAggregateRows(sideRows, "flag_touches", null, sideIs("offense")),
+            offensive_initial_touches: topAggregateRows(sideRows, "initial_touches", null, sideIs("offense")),
+            offensive_flag_time: topAggregateRows(sideRows, "flag_time_seconds", null, sideIs("offense")),
+            offensive_damage: topAggregateRows(sideRows, "enemy_damage", null, sideIs("offense"))
+          };
+        });
+
+        const rounds = timedAnalytics("analytics:rounds", () => ({
+          kills: roundRecordQuery("kills"),
+          damage: roundRecordQuery("enemy_damage"),
+          caps: roundRecordQuery("flag_captures"),
+          touches: roundRecordQuery("flag_touches"),
+          initial_touches: roundRecordQuery("initial_touches"),
+          flag_time: roundRecordQuery("flag_time_seconds"),
+          conc_jumps: roundRecordQuery("conc_jumps"),
+          suicides: roundRecordQuery("suicides"),
+          team_kills: roundRecordQuery("team_kills"),
+          team_damage: roundRecordQuery("team_damage")
+        }));
+
+        const matches = timedAnalytics("analytics:matches", () => {
+          const matchRowsSql = `${IDENTITY_CTES}
+            SELECT
+              ms.player_id,
+              ms.player,
+              ms.match_id,
+              m.map_name,
+              m.hampalyzer_url,
+              m.tfcstats_url,
+              ms.kills,
+              ms.enemy_damage,
+              ms.flag_captures,
+              ms.flag_touches,
+              ms.initial_touches,
+              ms.flag_time_seconds,
+              ms.conc_jumps,
+              ms.suicides,
+              ms.team_kills,
+              ms.team_damage,
+              ms.deaths
+            FROM match_stats ms
+            LEFT JOIN matches m USING (match_id)
+          `;
+
+          if (req.query.explain === "1") {
+            logQueryPlan("analytics:matches:plan", matchRowsSql);
+          }
+
+          const matchRows = timedAnalytics("analytics:matches:base", () => db.prepare(matchRowsSql).all());
+          const topMatchRows = (valueFn, filterFn = () => true) => topRows(matchRows, valueFn, { filter: filterFn });
+
+          return {
+            kills: topMatchRows(row => row.kills),
+            enemy_damage: topMatchRows(row => row.enemy_damage),
+            caps: topMatchRows(row => row.flag_captures),
+            touches: topMatchRows(row => row.flag_touches),
+            initial_touches: topMatchRows(row => row.initial_touches),
+            flag_time: topMatchRows(row => row.flag_time_seconds),
+            conc_jumps: topMatchRows(row => row.conc_jumps),
+            suicides: topMatchRows(row => row.suicides),
+            team_kills: topMatchRows(row => row.team_kills),
+            team_damage: topMatchRows(row => row.team_damage),
+            deaths: topMatchRows(row => row.deaths),
+            kdr: topMatchRows(
+              row => Number((Number(row.kills || 0) / Number(row.deaths || 1)).toFixed(2)),
+              row => Number(row.kills || 0) >= 10 && Number(row.deaths || 0) > 0
+            )
+          };
+        });
+
+        const chaos = timedAnalytics("analytics:chaos", () => {
+          const roundChaosSql = `${IDENTITY_CTES}
+            SELECT
+              MAX(player_id) AS player_id,
+              MAX(player) AS player,
+              SUM(suicides) AS suicides,
+              SUM(team_kills) AS team_kills,
+              COUNT(DISTINCT match_id) AS matches
+            FROM round_stats
+            WHERE identity IS NOT NULL AND identity != ''
+            GROUP BY identity
+          `;
+
+          if (req.query.explain === "1") {
+            logQueryPlan("analytics:chaos:roundPlan", roundChaosSql);
+          }
+
+          const playerChaosRows = getPlayerTotals();
+          const roundChaosRows = timedAnalytics("analytics:chaos:roundBase", () => db.prepare(roundChaosSql).all());
+          const perMatchRows = (rows, valueKey) => topRows(rows, row => Number((Number(row[valueKey] || 0) / Number(row.matches || 1)).toFixed(2)), {
+            filter: row => Number(row.matches || 0) >= 10
+          });
+          const worstKdr = topRows(playerChaosRows, row => Number((Number(row.kills || 0) / Number(row.deaths || 1)).toFixed(2)), {
+            ascending: true,
+            filter: row => Number(row.deaths || 0) > 0 && Number(row.kills || 0) + Number(row.deaths || 0) >= 25,
+            secondary: row => Number(row.kills || 0) + Number(row.deaths || 0)
+          });
+
+          return {
+            suicides: topAggregateRows(roundChaosRows, "suicides"),
+            team_kills: topAggregateRows(roundChaosRows, "team_kills"),
+            team_damage: topAggregateRows(playerChaosRows, "team_damage"),
+            deaths: topAggregateRows(playerChaosRows, "deaths"),
+            worst_kdr: worstKdr,
+            team_kills_per_match: perMatchRows(roundChaosRows, "team_kills"),
+            suicides_per_match: perMatchRows(roundChaosRows, "suicides")
+          };
+        });
 
         return {
           ok: true,
@@ -354,171 +605,21 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             },
             mvps,
             mvp_rate: mvpRate,
-            combat: {
-              games: totalsQuery("COUNT(DISTINCT match_id)"),
-              kills: totalsQuery("SUM(kills)"),
-              enemy_damage: totalsQuery("SUM(enemy_damage)"),
-              kdr: leaders(`${IDENTITY_CTES}
-                SELECT
-                  MAX(player_id) AS player_id,
-                  MAX(player) AS player,
-                  ROUND(CAST(SUM(kills) AS REAL) / NULLIF(SUM(deaths), 0), 2) AS value,
-                  SUM(kills) AS secondary,
-                  COUNT(DISTINCT match_id) AS matches
-                FROM player_stats
-                WHERE identity IS NOT NULL AND identity != ''
-                GROUP BY identity
-                HAVING SUM(deaths) > 0 AND COUNT(DISTINCT match_id) >= 25
-                ORDER BY value DESC, secondary DESC, player COLLATE NOCASE
-                LIMIT ?
-              `, limit),
-              round_kills: roundRecordQuery("kills"),
-              round_damage: roundRecordQuery("enemy_damage")
-            },
-            flags: {
-              caps: totalsQuery("SUM(flag_captures)"),
-              touches: totalsQuery("SUM(flag_touches)"),
-              initial_touches: totalsQuery("SUM(initial_touches)"),
-              flag_time: totalsQuery("SUM(flag_time_seconds)"),
-              conversion: leaders(`${IDENTITY_CTES}
-                SELECT
-                  MAX(player_id) AS player_id,
-                  MAX(player) AS player,
-                  ROUND(100.0 * SUM(flag_captures) / NULLIF(SUM(initial_touches), 0), 1) AS value,
-                  SUM(flag_captures) AS secondary,
-                  COUNT(DISTINCT match_id) AS matches
-                FROM player_stats
-                WHERE identity IS NOT NULL AND identity != ''
-                GROUP BY identity
-                HAVING SUM(initial_touches) >= 10
-                ORDER BY value DESC, secondary DESC, player COLLATE NOCASE
-                LIMIT ?
-              `, limit)
-            },
-            roles: {
-              soldier_damage: classQuery("soldier", "SUM(enemy_damage)"),
-              soldier_kills: classQuery("soldier", "SUM(kills)"),
-              hwguy_damage: roundClassQuery("HWGuy", "SUM(enemy_damage)"),
-              hwguy_kills: roundClassQuery("HWGuy", "SUM(kills)"),
-              demoman_damage: roundClassQuery("Demoman", "SUM(enemy_damage)"),
-              demoman_kills: roundClassQuery("Demoman", "SUM(kills)"),
-              engineer_kills: roundClassQuery("Engineer", "SUM(kills)"),
-              medic_caps: classQuery("medic", "SUM(flag_captures)"),
-              medic_touches: classQuery("medic", "SUM(flag_touches)"),
-              scout_caps: classQuery("scout", "SUM(flag_captures)"),
-              scout_touches: classQuery("scout", "SUM(flag_touches)"),
-              engineer_sentry_kills: leaders(`${IDENTITY_CTES}
-                SELECT
-                  MAX(player_id) AS player_id,
-                  MAX(player) AS player,
-                  SUM(sentry_kills) AS value,
-                  COUNT(DISTINCT match_id) AS matches
-                FROM round_stats
-                WHERE identity IS NOT NULL AND identity != ''
-                GROUP BY identity
-                ORDER BY value DESC, player COLLATE NOCASE
-                LIMIT ?
-              `, limit),
-              dispenser_kills: dispenserKills,
-              defense: roleQuery("defense"),
-              offense: roleQuery("offense"),
-              offensive_flag_captures: offensiveQuery("SUM(flag_captures)"),
-              offensive_flag_touches: offensiveQuery("SUM(flag_touches)"),
-              offensive_initial_touches: offensiveQuery("SUM(initial_touches)"),
-              offensive_flag_time: offensiveQuery("SUM(flag_time_seconds)"),
-              offensive_damage: offensiveQuery("SUM(enemy_damage)")
-            },
-            rounds: {
-              kills: roundRecordQuery("kills"),
-              damage: roundRecordQuery("enemy_damage"),
-              caps: roundRecordQuery("flag_captures"),
-              touches: roundRecordQuery("flag_touches"),
-              initial_touches: roundRecordQuery("initial_touches"),
-              flag_time: roundRecordQuery("flag_time_seconds"),
-              conc_jumps: roundRecordQuery("conc_jumps"),
-              suicides: roundRecordQuery("suicides"),
-              team_kills: roundRecordQuery("team_kills"),
-              team_damage: roundRecordQuery("team_damage")
-            },
-            matches: {
-              kills: matchRecordQuery("ms.kills"),
-              enemy_damage: matchRecordQuery("ms.enemy_damage"),
-              caps: matchRecordQuery("ms.flag_captures"),
-              touches: matchRecordQuery("ms.flag_touches"),
-              initial_touches: matchRecordQuery("ms.initial_touches"),
-              flag_time: matchRecordQuery("ms.flag_time_seconds"),
-              conc_jumps: matchRecordQuery("ms.conc_jumps"),
-              suicides: matchRecordQuery("ms.suicides"),
-              team_kills: matchRecordQuery("ms.team_kills"),
-              team_damage: matchRecordQuery("ms.team_damage"),
-              deaths: matchRecordQuery("ms.deaths"),
-              kdr: matchRecordQuery(
-                "ROUND(CAST(ms.kills AS REAL) / NULLIF(ms.deaths, 0), 2)",
-                "WHERE ms.kills >= 10 AND ms.deaths > 0"
-              )
-            },
-            chaos: {
-              suicides: leaders(`${IDENTITY_CTES}
-                SELECT MAX(player_id) AS player_id, MAX(player) AS player,
-                       SUM(suicides) AS value, COUNT(DISTINCT match_id) AS matches
-                FROM round_stats
-                WHERE identity IS NOT NULL AND identity != ''
-                GROUP BY identity
-                ORDER BY value DESC, player COLLATE NOCASE
-                LIMIT ?
-              `, limit),
-              team_kills: leaders(`${IDENTITY_CTES}
-                SELECT MAX(player_id) AS player_id, MAX(player) AS player,
-                       SUM(team_kills) AS value, COUNT(DISTINCT match_id) AS matches
-                FROM round_stats
-                WHERE identity IS NOT NULL AND identity != ''
-                GROUP BY identity
-                ORDER BY value DESC, player COLLATE NOCASE
-                LIMIT ?
-              `, limit),
-              team_damage: totalsQuery("SUM(team_damage)"),
-              deaths: totalsQuery("SUM(deaths)"),
-              worst_kdr: leaders(`${IDENTITY_CTES}
-                SELECT MAX(player_id) AS player_id, MAX(player) AS player,
-                       ROUND(CAST(SUM(kills) AS REAL) / NULLIF(SUM(deaths), 0), 2) AS value,
-                       SUM(kills) + SUM(deaths) AS secondary,
-                       COUNT(DISTINCT match_id) AS matches
-                FROM player_stats
-                WHERE identity IS NOT NULL AND identity != ''
-                GROUP BY identity
-                HAVING SUM(deaths) > 0 AND SUM(kills) + SUM(deaths) >= 25
-                ORDER BY value ASC, secondary DESC, player COLLATE NOCASE
-                LIMIT ?
-              `, limit),
-              team_kills_per_match: leaders(`${IDENTITY_CTES}
-                SELECT MAX(player_id) AS player_id, MAX(player) AS player,
-                       ROUND(CAST(SUM(team_kills) AS REAL) / NULLIF(COUNT(DISTINCT match_id), 0), 2) AS value,
-                       COUNT(DISTINCT match_id) AS matches
-                FROM round_stats
-                WHERE identity IS NOT NULL AND identity != ''
-                GROUP BY identity
-                HAVING COUNT(DISTINCT match_id) >= 10
-                ORDER BY value DESC, player COLLATE NOCASE
-                LIMIT ?
-              `, limit),
-              suicides_per_match: leaders(`${IDENTITY_CTES}
-                SELECT MAX(player_id) AS player_id, MAX(player) AS player,
-                       ROUND(CAST(SUM(suicides) AS REAL) / NULLIF(COUNT(DISTINCT match_id), 0), 2) AS value,
-                       COUNT(DISTINCT match_id) AS matches
-                FROM round_stats
-                WHERE identity IS NOT NULL AND identity != ''
-                GROUP BY identity
-                HAVING COUNT(DISTINCT match_id) >= 10
-                ORDER BY value DESC, player COLLATE NOCASE
-                LIMIT ?
-              `, limit)
-            }
+            combat,
+            flags,
+            roles,
+            rounds,
+            matches,
+            chaos
           }
         };
       });
 
+      const cacheEntry = setAnalyticsCache(cacheKey, payload);
+      res.setHeader("X-Analytics-Cache", "MISS");
       res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
-      res.json(payload);
+      res.type("application/json");
+      res.send(cacheEntry.body);
     } catch (error) {
       logRouteError("[/api/analytics]", error);
       sendError(res, 500, "analytics_failed");

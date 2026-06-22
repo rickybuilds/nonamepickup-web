@@ -1,6 +1,7 @@
 "use strict";
 
 const fs = require("fs");
+const http = require("http");
 const config = require("./config");
 const { cached, cachedFor } = require("./helpers/cache");
 const {
@@ -49,6 +50,30 @@ const app = createApp({
 const server = app.listen(config.PORT, "0.0.0.0", () => {
   console.log(`API running on http://0.0.0.0:${config.PORT}/`);
 });
+
+function warmLocalApi(path) {
+  const req = http.get({
+    hostname: "127.0.0.1",
+    port: config.PORT,
+    path,
+    timeout: 10_000
+  }, res => {
+    res.resume();
+  });
+
+  req.on("error", error => {
+    console.warn(`[warmup] ${path} failed: ${error.message}`);
+  });
+  req.on("timeout", () => {
+    req.destroy(new Error("timeout"));
+  });
+}
+
+function warmAnalytics() {
+  warmLocalApi("/api/analytics?limit=5&refresh=1");
+}
+
+setTimeout(warmAnalytics, 250).unref();
 
 let shuttingDown = false;
 function shutdown(signal) {
