@@ -183,7 +183,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("analytics-player-count").textContent =
         number.format(data.summary?.players || 0);
       document.getElementById("analytics-round-count").textContent =
-        number.format(data.summary?.player_rounds || 0);
+        number.format(data.summary?.rounds || 0);
       document.getElementById("analytics-updated").textContent =
         `Updated ${new Date(Number(data.generated_at || 0) * 1000).toLocaleString()}`;
       document.getElementById("analytics-mvps").innerHTML =

@@ -199,6 +199,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               LEFT JOIN player_steam_ids psi_key ON psi_key.steam_id = s.player_key
               LEFT JOIN player_steam_ids psi_sid ON psi_sid.steam_id = s.steam_id
             ) WHERE identity IS NOT NULL AND identity != '') AS players,
+            (SELECT COUNT(DISTINCT match_id || ':' || round_num) FROM match_player_round_stats) AS rounds,
             (SELECT COUNT(*) FROM match_player_round_stats) AS player_rounds
         `).get());
 
@@ -601,6 +602,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             summary: {
               matches: Number(summary.matches || 0),
               players: Number(summary.players || 0),
+              rounds: Number(summary.rounds || 0),
               player_rounds: Number(summary.player_rounds || 0)
             },
             mvps,
