@@ -153,28 +153,23 @@
 
 .podium-rank {
   position: absolute;
-  top: -22px;
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, .18);
-  background: rgba(15, 23, 42, .92);
-  color: #f8fafc;
-  font-family: "Orbitron", sans-serif;
-  font-size: 32px;
-  font-weight: 950;
+  top: -46px;
+  width: 118px;
+  height: 118px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(96, 165, 250, .28));
+  pointer-events: none;
 }
 
 .first .podium-rank {
-  color: #facc15;
-  border-color: rgba(251, 191, 36, .72);
-  box-shadow: 0 0 28px rgba(251, 191, 36, .32);
+  width: 138px;
+  height: 138px;
+  top: -58px;
+  filter: drop-shadow(0 0 22px rgba(251, 191, 36, .45));
 }
 
-.second .podium-rank { color: #bfdbfe; }
-.third .podium-rank { color: #fdba74; }
+.second .podium-rank { filter: drop-shadow(0 0 18px rgba(191, 219, 254, .36)); }
+.third .podium-rank { filter: drop-shadow(0 0 18px rgba(251, 146, 60, .34)); }
 
 .podium-avatar-link .nn-avatar {
   width: 96px;

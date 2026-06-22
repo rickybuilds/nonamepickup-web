@@ -517,7 +517,7 @@ async function loadLeaderboard() {
       const orderClass = place === 1 ? "first" : place === 2 ? "second" : "third";
       return `
         <article class="leaderboard-podium-card ${orderClass}">
-          <div class="podium-rank">${place}</div>
+          <img class="podium-rank" src="assets/images/icons/webp/nn-rank-${place}.webp" alt="Rank ${place}" loading="lazy">
           <a href="${playerCardLink(row)}" class="podium-avatar-link">
             ${avatarHtml(row.player, row.avatarfull || row.avatarmedium || row.avatar, "nn-avatar-lg")}
           </a>
