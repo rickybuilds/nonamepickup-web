@@ -293,8 +293,6 @@
       setText("sr-player-runs", compact(data.summary?.totalRuns));
       setText("sr-player-maps", compact(data.summary?.mapsPlayed));
       setText("sr-player-records", compact(data.summary?.currentRecords));
-      setText("sr-player-rank", data.summary?.bestRecordRank ? `#${compact(data.summary.bestRecordRank)}` : "-");
-      setText("sr-player-last", shortDate(data.summary?.lastRunAt));
 
       setHtml("sr-player-pbs", (data.personalBests || []).map(row => `
         <tr>

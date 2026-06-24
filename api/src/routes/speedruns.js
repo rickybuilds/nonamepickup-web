@@ -420,6 +420,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         worldRecordProgression.push(mapRun(row));
       }
     }
+    worldRecordProgression.reverse();
 
     const mapRow = mapRows[0];
     const summary = summaryRows[0] || {};
