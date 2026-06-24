@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NoName TFC speedrun maps, records, runners, and recent completions.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/speedruns.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Speedruns | NoName TFC">
+  <meta property="og:description" content="Browse NoName TFC speedrun records and map leaderboards.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/speedruns.html">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC | Speedruns</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260624hero6">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260624d">
+  <script src="assets/js/main.js?v=20260618i" defer></script>
+  <script src="assets/js/speedruns.js?v=20260624d" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] speedruns-page" data-speedruns-view="home">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a>
+        <a href="live.html" class="nav-live">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+      </nav>
+
+      <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+    </div>
+  </header>
+
+  <main class="speedrun-main">
+    <section class="speedrun-shell">
+      <div class="speedrun-hero">
+        <div class="speedrun-hero-copy">
+          <p class="speedrun-kicker">CONC ARCHIVE</p>
+          <h1>Speedruns</h1>
+          <p class="speedrun-subtitle">Map records, runner activity, and current world records from the NoName timer.</p>
+          <p id="speedrun-status" class="speedrun-updated">Loading speedrun records...</p>
+        </div>
+
+        <section class="speedrun-summary" aria-label="Speedrun summary">
+          <article class="matches2-kpi"><span>Maps</span><strong id="sr-maps">-</strong></article>
+          <article class="matches2-kpi"><span>Enabled</span><strong id="sr-enabled">-</strong></article>
+          <article class="matches2-kpi"><span>Runs</span><strong id="sr-runs">-</strong></article>
+          <article class="matches2-kpi"><span>Runners</span><strong id="sr-runners">-</strong></article>
+          <article class="matches2-kpi"><span>Records</span><strong id="sr-records">-</strong></article>
+        </section>
+      </div>
+
+      <div id="speedrun-error" class="speedrun-error" hidden></div>
+
+      <section class="speedrun-section page-section">
+        <div class="speedrun-section-heading">
+          <div><span>01</span><h2>Maps</h2></div>
+          <div class="speedrun-filters">
+            <input id="sr-map-search" type="search" placeholder="Search maps" autocomplete="off">
+            <select id="sr-map-sort" aria-label="Sort maps">
+              <option value="name">Name</option>
+              <option value="wr">World Record</option>
+              <option value="runs">Runs</option>
+              <option value="runners">Runners</option>
+              <option value="difficulty">Difficulty</option>
+            </select>
+          </div>
+        </div>
+        <div id="sr-map-grid" class="speedrun-map-grid"></div>
+      </section>
+
+      <section class="speedrun-section speedrun-columns">
+        <div>
+          <div class="speedrun-section-heading compact"><div><span>02</span><h2>Recent Runs</h2></div></div>
+          <div id="sr-recent-runs" class="speedrun-list"></div>
+        </div>
+        <div>
+          <div class="speedrun-section-heading compact"><div><span>03</span><h2>Top Runners</h2></div></div>
+          <div id="sr-top-runners" class="speedrun-list"></div>
+        </div>
+        <div>
+          <div class="speedrun-section-heading compact"><div><span>04</span><h2>Popular Maps</h2></div></div>
+          <div id="sr-popular-maps" class="speedrun-list"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

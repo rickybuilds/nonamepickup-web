@@ -52,28 +52,51 @@ const server = app.listen(config.PORT, "0.0.0.0", () => {
 });
 
 function warmLocalApi(path) {
-  const req = http.get({
-    hostname: "127.0.0.1",
-    port: config.PORT,
-    path,
-    timeout: 10_000
-  }, res => {
-    res.resume();
-  });
+  return new Promise(resolve => {
+    const req = http.get({
+      hostname: "127.0.0.1",
+      port: config.PORT,
+      path,
+      timeout: 10_000
+    }, res => {
+      res.resume();
+      res.on("end", () => resolve(true));
+      res.on("error", error => {
+        console.warn(`[warmup] ${path} response failed: ${error.message}`);
+        resolve(false);
+      });
+    });
 
-  req.on("error", error => {
-    console.warn(`[warmup] ${path} failed: ${error.message}`);
-  });
-  req.on("timeout", () => {
-    req.destroy(new Error("timeout"));
+    req.on("error", error => {
+      console.warn(`[warmup] ${path} failed: ${error.message}`);
+      resolve(false);
+    });
+    req.on("timeout", () => {
+      req.destroy(new Error("timeout"));
+    });
   });
 }
 
-function warmAnalytics() {
-  warmLocalApi("/api/analytics?limit=5&refresh=1");
+let analyticsWarmInFlight = false;
+async function warmAnalytics() {
+  if (analyticsWarmInFlight) return;
+  analyticsWarmInFlight = true;
+  try {
+    await warmLocalApi("/api/analytics?limit=5&refresh=1");
+  } finally {
+    analyticsWarmInFlight = false;
+  }
 }
 
-setTimeout(warmAnalytics, 250).unref();
+setTimeout(() => {
+  void warmAnalytics();
+}, 250).unref();
+
+if (config.ANALYTICS_WARM_INTERVAL_MS > 0) {
+  setInterval(() => {
+    void warmAnalytics();
+  }, config.ANALYTICS_WARM_INTERVAL_MS).unref();
+}
 
 let shuttingDown = false;
 function shutdown(signal) {

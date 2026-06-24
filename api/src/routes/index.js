@@ -10,6 +10,7 @@ const { createPlayersRouter } = require("./players");
 const { createQueueRouter } = require("./queue");
 const { createAnalyticsRouter } = require("./analytics");
 const { createHomeRouter } = require("./home");
+const { createSpeedrunsRouter } = require("./speedruns");
 
 function registerRoutes(app, {
   leaderboardHandler,
@@ -114,6 +115,10 @@ app.use("/api", createHomeRouter({
   cached,
   logRouteError,
   sendError
+}));
+
+app.use("/api/speedruns", createSpeedrunsRouter({
+  logRouteError
 }));
 
 app.use("/api", createQueueRouter({

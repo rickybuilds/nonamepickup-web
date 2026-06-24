@@ -3,7 +3,7 @@
 require("dotenv").config();
 
 const path = require("path");
-const { positiveInt } = require("./helpers/values");
+const { positiveInt, nonNegativeInt } = require("./helpers/values");
 
 const PORT = Number(process.env.PORT || 4000);
 const ROOT_DIR = path.resolve(__dirname, "..");
@@ -20,6 +20,11 @@ const API_RATE_LIMIT = positiveInt(process.env.API_RATE_LIMIT, 240, 10, 5000);
 const MAX_MATCH_LIMIT = positiveInt(process.env.MAX_MATCH_LIMIT, 5000, 50, 5000);
 const MAX_PLAYER_MATCH_LIMIT = positiveInt(process.env.MAX_PLAYER_MATCH_LIMIT, 5000, 50, 5000);
 const ANALYTICS_RETENTION_DAYS = positiveInt(process.env.ANALYTICS_RETENTION_DAYS, 90, 1, 3650);
+const ANALYTICS_WARM_INTERVAL_MS = nonNegativeInt(
+  process.env.ANALYTICS_WARM_INTERVAL_MS,
+  5 * 60 * 1000,
+  24 * 60 * 60 * 1000
+);
 const STEAM_API_KEY = process.env.STEAM_API_KEY || "";
 // TODO(production): Set a dedicated random ANALYTICS_SALT; the fallback is predictable and ADMIN_KEY reuse couples secrets.
 const ANALYTICS_SALT = process.env.ANALYTICS_SALT || process.env.ADMIN_KEY || "tfcbot";
@@ -38,6 +43,7 @@ module.exports = {
   MAX_MATCH_LIMIT,
   MAX_PLAYER_MATCH_LIMIT,
   ANALYTICS_RETENTION_DAYS,
+  ANALYTICS_WARM_INTERVAL_MS,
   STEAM_API_KEY,
   ANALYTICS_SALT
 };
