@@ -19,7 +19,7 @@
 .live2-queue-dock .live2-queue-slots{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;}
 .live2-slot{min-height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:2px 6px;text-align:center;font-size:10px;font-weight:950;border:1px solid rgba(148,163,184,.16);overflow:hidden;text-overflow:ellipsis;}
 .live2-slot.filled{color:#fff;background:radial-gradient(circle at top,rgba(251,146,60,.20),transparent 62%),rgba(251,146,60,.12);border-color:rgba(251,146,60,.36);box-shadow:0 0 22px rgba(251,146,60,.12);}
-.live2-slot .supporter-badge,.live2-player-pill .supporter-badge{font-size:1em;margin-left:-1px;opacity:.95;filter:drop-shadow(0 0 6px rgba(96,165,250,.9));vertical-align:middle;position:relative;top:-2px;animation:none!important;}
+.live2-slot .supporter-badge,.live2-player-pill .supporter-badge{font-size:1em;margin-left:.25em;opacity:.95;filter:drop-shadow(0 0 6px rgba(96,165,250,.9));vertical-align:middle;position:relative;top:-2px;animation:none!important;}
 .live2-slot.empty{color:#64748b;background:rgba(8,13,26,.72);border-style:dashed;}
 .live2-queue-footer{margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.10);}
 .live2-queue-footer strong{display:block;color:#e5e7eb;font-size:12px;font-weight:950;}

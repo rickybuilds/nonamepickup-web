@@ -15,7 +15,6 @@
   grid-template-columns: minmax(0, 1fr) minmax(360px, .75fr);
   gap: 28px;
   align-items: end;
-  margin-bottom: 22px;
 }
 
 .leaderboard-kicker {

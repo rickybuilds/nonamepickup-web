@@ -22,48 +22,6 @@
   z-index: 1;
 }
 
-.matches2-hero {
-  display:grid;
-  grid-template-columns:.7fr 1.8fr;
-  gap:36px;
-  align-items:end;
-  margin-bottom:28px;
-}
-
-.matches2-kicker {
-  color: #38bdf8;
-  text-transform: uppercase;
-  letter-spacing: .18em;
-  font-size: 12px;
-  font-weight: 950;
-  margin: 0 0 12px;
-}
-
-.matches2-hero h1 {
-  margin: 0;
-  color: #fff;
-  font-family: "Space Grotesk", system-ui, sans-serif;
-  font-size: 58px;
-  line-height: 1;
-  font-weight: 950;
-  letter-spacing: -2px;
-  text-shadow: 0 0 34px rgba(77,166,255,.24);
-}
-
-.matches2-subtitle {
-  margin: 14px 0 0;
-  color: #94a3b8;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.matches2-updated {
-  margin: 18px 0 0;
-  color: #60a5fa;
-  font-size: 13px;
-  font-weight: 900;
-}
-
 .matches2-hero-pill {
   min-width: 190px;
   border-radius: 24px;
@@ -95,26 +53,6 @@
   font-size: 11px;
 }
 
-.matches2-kpi-grid {
-  display:grid;
-  grid-template-columns:repeat(4,minmax(170px,1fr));
-  gap:18px;
-  width:100%;
-}
-
-.matches2-kpi {
-  position: relative;
-  overflow: hidden;
-  min-height: 118px;
-  padding: 22px 24px;
-  transition: all .25s ease;
-}
-
-.matches2-kpi:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 20px 40px rgba(77,166,255,.13), 0 20px 40px rgba(0,0,0,.42);
-}
-
 .matches2-kpi::before {
   content: '';
   position: absolute;
@@ -127,43 +65,9 @@
   transition: all 0.6s;
 }
 
-.matches2-kpi:hover::before {
-  opacity: 1;
-  transform: rotate(15deg) translate(100%, 80%);
-}
-.matches2-kpi span {
-  display: block;
-  color: #93c5fd;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  font-size: 11px;
-  font-weight: 950;
-  margin-bottom: 10px;
-}
-
-.matches2-kpi strong {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  color: #fff;
-  font-size: 33px;
-  line-height: 1.05;
-  font-weight: 950;
-  letter-spacing: -1px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 #m2-top-map {
   font-size: clamp(22px, 1.8vw, 33px);
-}
-
-.matches2-kpi small {
-  display: block;
-  margin-top: 10px;
-  color: #94a3b8;
-  font-size: 13px;
-  font-weight: 750;
 }
 
 .kpi-purple { border-color: rgba(168,85,247,.32); }

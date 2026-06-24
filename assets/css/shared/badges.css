@@ -11,7 +11,7 @@
 @keyframes supporterGlow{0%,100%{filter:drop-shadow(0 0 5px rgba(96,165,250,.55));}50%{filter:drop-shadow(0 0 13px rgba(96,165,250,.95));}}
 .supporter-inline{
   font-size:1em;
-  margin-left:-1px;
+  margin-left:.25em;
   opacity:.95;
   filter:drop-shadow(0 0 6px rgba(96,165,250,.9));
   vertical-align:middle;
