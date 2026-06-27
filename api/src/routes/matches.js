@@ -232,16 +232,42 @@ function createMatchesRouter({
 
       try{
         capTimeline=db.prepare(`
+          WITH joined_caps AS (
+            SELECT
+              c.id AS cap_event_id,
+              c.team,
+              c.cap_num,
+              c.time_seconds,
+              c.time_text,
+              c.score_after,
+              c.capper_name AS fallback_capper_name,
+              c.capper_steam_id AS fallback_capper_steam_id,
+              h.display_name AS hamp_capper_name,
+              h.steam_id AS hamp_capper_steam_id,
+              h.touches AS hamp_touches,
+              ROW_NUMBER() OVER (
+                PARTITION BY c.id
+                ORDER BY ABS(h.game_time_seconds - c.time_seconds), h.id
+              ) AS rn
+            FROM match_cap_events c
+            LEFT JOIN match_flag_events h
+              ON h.match_id = c.match_id
+            AND h.source = 'hampalyzer'
+            AND h.flag_event_type = 'cap'
+            AND h.game_time_seconds BETWEEN c.time_seconds - 45 AND c.time_seconds + 45
+            WHERE c.match_id=?
+          )
           SELECT
             team,
             cap_num,
             time_seconds,
             time_text,
             score_after,
-			capper_name,
-			capper_steam_id
-          FROM match_cap_events
-          WHERE match_id=?
+            COALESCE(hamp_capper_name, fallback_capper_name) AS capper_name,
+            COALESCE(hamp_capper_steam_id, fallback_capper_steam_id) AS capper_steam_id,
+            hamp_touches AS touches
+          FROM joined_caps
+          WHERE rn=1
           ORDER BY time_seconds
         `).all(matchId);
       }catch(capEventError){
@@ -362,7 +388,8 @@ function createMatchesRouter({
           time_text:event.time_text,
           score_after:event.score_after,
 		  capper_name:event.capper_name || null,
-		  capper_steam_id:event.capper_steam_id || null
+      capper_steam_id:event.capper_steam_id || null,
+      touches:event.touches == null ? null : Number(event.touches)
         })),
         match_mvps:matchMvps.map(({identity,...mvp})=>mvp),
         nn_mvp:nnMvp

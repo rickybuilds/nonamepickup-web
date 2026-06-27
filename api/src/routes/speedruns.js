@@ -46,6 +46,7 @@ function createSpeedrunsRouter({ logRouteError }) {
   }
 
   function formatTimeMs(value) {
+    if (value == null) return null;
     const ms = Number(value);
     if (!Number.isFinite(ms) || ms < 0) return null;
     const minutes = Math.floor(ms / 60000);
@@ -56,6 +57,7 @@ function createSpeedrunsRouter({ logRouteError }) {
 
   function mapRun(row) {
     const timeMs = row.time_ms == null ? null : Number(row.time_ms);
+    const createdAt = iso(row.created_at);
     return {
       id: row.id == null ? null : Number(row.id),
       steamId: row.steamid || null,
@@ -66,12 +68,14 @@ function createSpeedrunsRouter({ logRouteError }) {
       className: row.class_name || null,
       timeMs,
       timeDisplay: formatTimeMs(timeMs),
-      createdAt: iso(row.created_at)
+      createdAt,
+      created_at: createdAt
     };
   }
 
   function mapRecord(row, includeMap = true) {
     const bestTimeMs = row.best_time_ms == null ? null : Number(row.best_time_ms);
+    const updatedAt = iso(row.updated_at);
     const out = {
       steamId: row.steamid || null,
       discordId: row.discord_id || null,
@@ -80,7 +84,8 @@ function createSpeedrunsRouter({ logRouteError }) {
       className: row.class_name || null,
       bestTimeMs,
       bestTimeDisplay: formatTimeMs(bestTimeMs),
-      updatedAt: iso(row.updated_at)
+      updatedAt,
+      updated_at: updatedAt
     };
     if (includeMap) out.map = row.map || null;
     return out;
@@ -88,6 +93,7 @@ function createSpeedrunsRouter({ logRouteError }) {
 
   function mapCard(row) {
     const worldRecordTimeMs = row.worldRecordTimeMs == null ? null : Number(row.worldRecordTimeMs);
+    const lastRunAt = iso(row.lastRunAt);
     return {
       map: row.map,
       displayName: row.display_name || row.map,
@@ -96,13 +102,15 @@ function createSpeedrunsRouter({ logRouteError }) {
       enabled: Number(row.enabled || 0) === 1,
       totalRuns: Number(row.totalRuns || 0),
       totalRunners: Number(row.totalRunners || 0),
+      totalRecords: Number(row.totalRecords || 0),
       worldRecordTimeMs,
       worldRecordDisplay: formatTimeMs(worldRecordTimeMs),
       worldRecordPlayer: row.worldRecordPlayer || null,
       worldRecordSteamId: row.worldRecordSteamId || null,
       worldRecordDiscordId: row.worldRecordDiscordId || null,      
       worldRecordClassName: row.worldRecordClassName || null,
-      lastRunAt: iso(row.lastRunAt)
+      lastRunAt,
+      last_run_at: lastRunAt
     };
   }
 
@@ -211,6 +219,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         FROM speedrun_maps m
         LEFT JOIN speedrun_runs r ON r.map = m.map
         GROUP BY m.map, m.display_name, m.category
+        HAVING totalRuns > 0
         ORDER BY totalRuns DESC, totalRunners DESC, display_name ASC
         LIMIT 10
       `)
@@ -242,11 +251,109 @@ function createSpeedrunsRouter({ logRouteError }) {
     });
   }));
 
+  router.get("/server-maps", (req, res) => runEndpoint(req, res, "[/api/speedruns/server-maps]", async () => {
+    const rows = await speedrunQuery(`
+      SELECT
+        sm.map,
+        GROUP_CONCAT(sm.server_key ORDER BY sm.server_key SEPARATOR ',') AS server_keys,
+        MAX(sm.last_seen) AS last_seen,
+        m.category,
+        m.difficulty,
+        m.enabled,
+        m.start_x,
+        m.start_y,
+        m.start_z,
+        m.finish_x,
+        m.finish_y,
+        m.finish_z,
+        COALESCE(run_stats.totalRuns, 0) AS totalRuns,
+        COALESCE(run_stats.totalRunners, 0) AS totalRunners,
+        COALESCE(record_stats.totalRecords, 0) AS totalRecords,
+        run_stats.lastRunAt,
+        CASE
+          WHEN m.map IS NULL THEN 'not_logged'
+          WHEN m.start_x IS NULL OR m.start_y IS NULL OR m.start_z IS NULL THEN 'missing_start'
+          WHEN m.finish_x IS NULL OR m.finish_y IS NULL OR m.finish_z IS NULL THEN 'missing_finish'
+          ELSE 'configured'
+        END AS setup_status
+      FROM speedrun_server_maps sm
+      LEFT JOIN speedrun_maps m ON m.map = sm.map
+      LEFT JOIN (
+        SELECT map, COUNT(*) AS totalRuns, COUNT(DISTINCT steamid) AS totalRunners, MAX(created_at) AS lastRunAt
+        FROM speedrun_runs
+        GROUP BY map
+      ) run_stats ON run_stats.map = sm.map
+      LEFT JOIN (
+        SELECT map, COUNT(*) AS totalRecords
+        FROM speedrun_records
+        GROUP BY map
+      ) record_stats ON record_stats.map = sm.map
+      WHERE sm.exists_on_server = 1
+      GROUP BY
+        sm.map,
+        m.map,
+        m.category,
+        m.difficulty,
+        m.enabled,
+        m.start_x,
+        m.start_y,
+        m.start_z,
+        m.finish_x,
+        m.finish_y,
+        m.finish_z,
+        run_stats.totalRuns,
+        run_stats.totalRunners,
+        run_stats.lastRunAt,
+        record_stats.totalRecords
+      ORDER BY sm.map ASC
+    `);
+
+    res.json(rows.map(row => {
+      const lastRunAt = iso(row.lastRunAt);
+      const lastSeen = iso(row.last_seen);
+      const servers = String(row.server_keys || "").split(",").map(server => server.trim()).filter(Boolean);
+      return {
+        servers,
+        server_keys: servers,
+        map: row.map,
+        last_seen: lastSeen,
+        lastSeen,
+        category: row.category || null,
+        difficulty: row.difficulty == null ? null : Number(row.difficulty),
+        enabled: row.enabled == null ? null : Number(row.enabled || 0) === 1,
+        start: {
+          x: row.start_x == null ? null : Number(row.start_x),
+          y: row.start_y == null ? null : Number(row.start_y),
+          z: row.start_z == null ? null : Number(row.start_z)
+        },
+        finish: {
+          x: row.finish_x == null ? null : Number(row.finish_x),
+          y: row.finish_y == null ? null : Number(row.finish_y),
+          z: row.finish_z == null ? null : Number(row.finish_z)
+        },
+        start_x: row.start_x == null ? null : Number(row.start_x),
+        start_y: row.start_y == null ? null : Number(row.start_y),
+        start_z: row.start_z == null ? null : Number(row.start_z),
+        finish_x: row.finish_x == null ? null : Number(row.finish_x),
+        finish_y: row.finish_y == null ? null : Number(row.finish_y),
+        finish_z: row.finish_z == null ? null : Number(row.finish_z),
+        setup_status: row.setup_status,
+        setupStatus: row.setup_status,
+        totalRuns: Number(row.totalRuns || 0),
+        totalRunners: Number(row.totalRunners || 0),
+        totalRecords: Number(row.totalRecords || 0),
+        lastRunAt,
+        last_run_at: lastRunAt
+      };
+    }));
+  }));
+
   router.get("/maps", (req, res) => runEndpoint(req, res, "[/api/speedruns/maps]", async () => {
     const limit = positiveInt(req.query.limit, 50, 1, 200);
     const offset = positiveInt(req.query.offset, 0, 0, 100000);
     const sort = cleanText(req.query.sort || "name", 20);
     const enabled = optionalEnabled(req.query.enabled);
+    const withRecords = String(req.query.with_records || "") === "1";
     if (enabled === undefined) return badRequest(res, "invalid_enabled");
 
     const where = [];
@@ -265,6 +372,9 @@ function createSpeedrunsRouter({ logRouteError }) {
     if (enabled !== null) {
       where.push("m.enabled = ?");
       params.push(enabled);
+    }
+    if (withRecords) {
+      where.push("COALESCE(record_stats.totalRecords, 0) > 0");
     }
 
     const orderBy = {
@@ -285,6 +395,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         m.enabled,
         COALESCE(run_stats.totalRuns, 0) AS totalRuns,
         COALESCE(run_stats.totalRunners, 0) AS totalRunners,
+        COALESCE(record_stats.totalRecords, 0) AS totalRecords,
         run_stats.lastRunAt,
         wr.worldRecordTimeMs,
         wr.worldRecordPlayer,
@@ -302,6 +413,13 @@ function createSpeedrunsRouter({ logRouteError }) {
         FROM speedrun_runs
         GROUP BY map
       ) run_stats ON run_stats.map = m.map
+      LEFT JOIN (
+        SELECT
+          map,
+          COUNT(*) AS totalRecords
+        FROM speedrun_records
+        GROUP BY map
+      ) record_stats ON record_stats.map = m.map
       LEFT JOIN (
         SELECT
           ranked.map,
@@ -425,6 +543,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     const mapRow = mapRows[0];
     const summary = summaryRows[0] || {};
     const worldRecordTimeMs = summary.worldRecordTimeMs == null ? null : Number(summary.worldRecordTimeMs);
+    const lastRunAt = iso(summary.lastRunAt);
 
     res.json({
       map: mapRow.map,
@@ -446,7 +565,8 @@ function createSpeedrunsRouter({ logRouteError }) {
         worldRecordSteamId: summary.worldRecordSteamId || null,
         worldRecordClassId: summary.worldRecordClassId == null ? null : Number(summary.worldRecordClassId),
         worldRecordClassName: summary.worldRecordClassName || null,
-        lastRunAt: iso(summary.lastRunAt)
+        lastRunAt,
+        last_run_at: lastRunAt
       },
       leaderboard: leaderboard.map((row, index) => ({
         rank: index + 1,
@@ -528,16 +648,20 @@ function createSpeedrunsRouter({ logRouteError }) {
   LIMIT ? OFFSET ?
 `, [...params, limit, offset]);
 
-    res.json(rows.map(row => ({
-      playerName: row.playerName || row.discordId,
-      discordId: row.discordId,
-      linkedSteamIds: Number(row.linkedSteamIds || 0),
-      totalRuns: Number(row.totalRuns || 0),
-      mapsPlayed: Number(row.mapsPlayed || 0),
-      currentRecords: Number(row.currentRecords || 0),
-      top10s: row.top10s == null ? null : Number(row.top10s || 0),
-      lastRunAt: iso(row.lastRunAt)
-    })));
+    res.json(rows.map(row => {
+      const lastRunAt = iso(row.lastRunAt);
+      return {
+        playerName: row.playerName || row.discordId,
+        discordId: row.discordId,
+        linkedSteamIds: Number(row.linkedSteamIds || 0),
+        totalRuns: Number(row.totalRuns || 0),
+        mapsPlayed: Number(row.mapsPlayed || 0),
+        currentRecords: Number(row.currentRecords || 0),
+        top10s: row.top10s == null ? null : Number(row.top10s || 0),
+        lastRunAt,
+        last_run_at: lastRunAt
+      };
+    }));
   }));
 
     router.get("/players/:discordId", (req, res) => runEndpoint(req, res, "[/api/speedruns/players/:discordId]", async () => {
@@ -555,7 +679,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       return res.status(404).json({ ok: false, error: "player_not_linked" });
     }
 
-    const steamIds = linkedRows.map(row => row.steamid).filter(Boolean);
+    const steamIds = [...new Set(linkedRows.map(row => row.steamid).filter(Boolean))];
     if (!steamIds.length) {
       return res.status(404).json({ ok: false, error: "player_not_found" });
     }
@@ -605,9 +729,24 @@ function createSpeedrunsRouter({ logRouteError }) {
 
       speedrunQuery(`
         SELECT steamid, player_name, map, class_id, class_name, best_time_ms, updated_at
-        FROM speedrun_records
-        WHERE steamid IN (${placeholders})
-        ORDER BY best_time_ms ASC, map ASC, class_id ASC
+        FROM (
+          SELECT
+            steamid,
+            player_name,
+            map,
+            class_id,
+            class_name,
+            best_time_ms,
+            updated_at,
+            ROW_NUMBER() OVER (
+              PARTITION BY map, class_id
+              ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC
+            ) AS record_rank
+          FROM speedrun_records
+        ) ranked_records
+        WHERE record_rank = 1
+          AND steamid IN (${placeholders})
+        ORDER BY map ASC, class_id ASC, best_time_ms ASC
       `, steamIds),
 
       speedrunQuery(`
@@ -642,11 +781,13 @@ function createSpeedrunsRouter({ logRouteError }) {
 
     const player = playerRows[0] || personalBests[0] || recentActivity[0] || linkedRows[0] || {};
     const summary = summaryRows[0] || {};
+    const lastRunAt = iso(summary.lastRunAt);
 
     res.json({
       player: {
         discordId,
         steamIds,
+        steam_ids: steamIds,
         playerName: player.player_name || linkedRows[0].player_name || discordId
       },
       summary: {
@@ -654,7 +795,8 @@ function createSpeedrunsRouter({ logRouteError }) {
         mapsPlayed: Number(summary.mapsPlayed || 0),
         currentRecords: Number(summary.currentRecords || 0),
         bestRecordRank: summary.bestRecordRank == null ? null : Number(summary.bestRecordRank),
-        lastRunAt: iso(summary.lastRunAt)
+        lastRunAt,
+        last_run_at: lastRunAt
       },
       worldRecords: worldRecords.map(row => mapRecord(row)),
       personalBests: personalBests.map(row => mapRecord(row)),

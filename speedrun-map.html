@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedruns.css?v=20260624d">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/speedruns.js?v=20260624d" defer></script>
+  <script src="assets/js/speedruns.js?v=20260626classfilter" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -66,7 +66,14 @@
       <div id="speedrun-error" class="speedrun-error" hidden></div>
 
       <section class="speedrun-section page-section">
-        <div class="speedrun-section-heading"><div><span>01</span><h2>Leaderboard</h2></div></div>
+        <div class="speedrun-section-heading">
+          <div><span>01</span><h2>Leaderboard</h2></div>
+          <div class="speedrun-filters">
+            <select id="sr-map-class-filter" aria-label="Filter leaderboard by class">
+              <option value="">All Classes</option>
+            </select>
+          </div>
+        </div>
         <div class="speedrun-table-wrap leaderboard-table-wrap">
           <table class="speedrun-table">
             <thead><tr><th>Rank</th><th>Runner</th><th>Class</th><th>Time</th><th>Updated</th></tr></thead>

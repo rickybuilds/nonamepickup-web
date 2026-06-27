@@ -92,6 +92,22 @@
   padding: 0 34px 0 12px;
 }
 
+.speedrun-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(77, 166, 255, .28);
+  border-radius: 14px;
+  background: rgba(14, 116, 144, .18);
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .speedrun-map-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -364,6 +380,101 @@
   font-family: Inter, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 800;
+}
+
+.speedrun-catalog-wrap {
+  max-height: min(70vh, 720px);
+}
+
+.speedrun-catalog-table th,
+.speedrun-catalog-table td {
+  white-space: nowrap;
+}
+
+.speedrun-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .58);
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.speedrun-status-badge.status-configured {
+  border-color: rgba(52, 211, 153, .32);
+  color: #86efac;
+}
+
+.speedrun-status-badge.status-missing_start,
+.speedrun-status-badge.status-missing_finish {
+  border-color: rgba(251, 191, 36, .36);
+  color: #facc15;
+}
+
+.speedrun-status-badge.status-not_logged {
+  border-color: rgba(248, 113, 113, .34);
+  color: #fca5a5;
+}
+
+.speedrun-server-chip-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.speedrun-server-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid rgba(77, 166, 255, .24);
+  border-radius: 999px;
+  background: rgba(14, 116, 144, .14);
+  color: #bfdbfe;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.speedrun-map-preview-link {
+  color: #e0f2fe;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.speedrun-map-preview-link:hover,
+.speedrun-map-preview-link:focus-visible {
+  color: #93c5fd;
+}
+
+.speedrun-map-preview {
+  position: fixed;
+  z-index: 1000;
+  width: min(320px, calc(100vw - 32px));
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid rgba(77, 166, 255, .34);
+  border-radius: 8px;
+  background: rgba(2, 6, 23, .96);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .48);
+  pointer-events: none;
+}
+
+.speedrun-map-preview[hidden] {
+  display: none;
+}
+
+.speedrun-map-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .speedrun-table tr:last-child td {
