@@ -158,6 +158,21 @@ function safeTableRead(fn,fallback){
   }
 }
 
+const tableColumnCache=new Map();
+function tableHasColumn(table,column){
+  const cacheKey=`${table}:${column}`;
+  if(tableColumnCache.has(cacheKey))return tableColumnCache.get(cacheKey);
+  let hasColumn=false;
+  try{
+    hasColumn=db.prepare(`PRAGMA table_info(${table})`).all()
+      .some(row=>String(row.name||"")===column);
+  }catch(_error){
+    hasColumn=false;
+  }
+  tableColumnCache.set(cacheKey,hasColumn);
+  return hasColumn;
+}
+
 function placeholders(values){
   return values.map(() => "?").join(",");
 }
@@ -320,6 +335,12 @@ function emptyGranularPayload(identity,granularAvailable=false){
     classWeapons:[],
     classSummary:[],
     roleClassTime:[],
+    filteredFlags:{
+      captures:0,
+      touches:0,
+      initialTouches:0,
+      sentryKills:0
+    },
     roleWeapons:[],
     flagCarrierKills:[],
     concededKills:[],
@@ -518,6 +539,12 @@ function buildGranularPlayerPayload(identity,options={}){
         )`);
       classTimeMatchParams.push(...identityWhere.params,...matchParams);
     }
+    const classFlagCapturesExpr=tableHasColumn("match_player_classes","flag_captures")
+      ? "SUM(COALESCE(c.flag_captures,0))"
+      : "0";
+    const classFlagTouchesExpr=tableHasColumn("match_player_classes","flag_touches")
+      ? "SUM(COALESCE(c.flag_touches,0))"
+      : "0";
     const roleClassTime=classTimeSteamIds.length?timedGranularQuery(`${timingPrefix}:roleClassTime`,()=>db.prepare(`
       SELECT
         CASE
@@ -527,6 +554,8 @@ function buildGranularPlayerPayload(identity,options={}){
         END AS role,
         c.class_name AS class,
         SUM(c.seconds) AS seconds,
+        ${classFlagCapturesExpr} AS flag_captures,
+        ${classFlagTouchesExpr} AS flag_touches,
         COUNT(DISTINCT c.match_id) AS matches
       FROM match_player_classes c
       WHERE c.player_key IN (${placeholders(classTimeSteamIds)})
@@ -535,6 +564,59 @@ function buildGranularPlayerPayload(identity,options={}){
       GROUP BY role,c.class_name
       ORDER BY role,seconds DESC,c.class_name
     `).all(...classTimeSteamIds,...classTimeMatchParams)):[];
+
+    const statsMatchFilters=[];
+    const statsMatchParams=[];
+    if(matchId){
+      statsMatchFilters.push("AND s.match_id=?");
+      statsMatchParams.push(matchId);
+    }
+    if(mapName){
+      statsMatchFilters.push("AND s.match_id IN (SELECT match_id FROM matches WHERE map_name=?)");
+      statsMatchParams.push(mapName);
+    }
+    if(classFilter||weaponFilter||objectiveFilter||victimFilter||officialOnly){
+      statsMatchFilters.push(`AND s.match_id IN (
+          SELECT DISTINCT e.match_id
+          FROM match_kill_events e
+          WHERE ${identityWhere.sql}
+            ${matchFilter}
+        )`);
+      statsMatchParams.push(...identityWhere.params,...matchParams);
+    }
+    const statsSteamIds=classTimeSteamIds;
+    const canReadFilteredFlags=statsSteamIds.length
+      && tableHasColumn("match_player_stats","flag_captures")
+      && tableHasColumn("match_player_stats","flag_touches");
+    const filteredInitialTouchesExpr=tableHasColumn("match_player_stats","initial_touches")
+      ? "SUM(COALESCE(s.initial_touches,0))"
+      : "0";
+    const filteredFlags=canReadFilteredFlags?timedGranularQuery(`${timingPrefix}:filteredFlags`,()=>db.prepare(`
+      SELECT
+        SUM(COALESCE(s.flag_captures,0)) AS captures,
+        SUM(COALESCE(s.flag_touches,0)) AS touches,
+        ${filteredInitialTouchesExpr} AS initial_touches
+      FROM match_player_stats s
+      WHERE (
+          s.player_key IN (${placeholders(statsSteamIds)})
+          OR s.steam_id IN (${placeholders(statsSteamIds)})
+        )
+        ${statsMatchFilters.join("\n        ")}
+    `).get(...statsSteamIds,...statsSteamIds,...statsMatchParams)):null;
+
+    const roundStatsMatchFilters=statsMatchFilters.map(filter=>filter.replaceAll("s.","r."));
+    const canReadFilteredSentryKills=statsSteamIds.length
+      && tableHasColumn("match_player_round_stats","sentry_kills");
+    const filteredSentryKills=canReadFilteredSentryKills?timedGranularQuery(`${timingPrefix}:filteredSentryKills`,()=>db.prepare(`
+      SELECT
+        SUM(COALESCE(r.sentry_kills,0)) AS sentry_kills
+      FROM match_player_round_stats r
+      WHERE (
+          r.player_key IN (${placeholders(statsSteamIds)})
+          OR r.steam_id IN (${placeholders(statsSteamIds)})
+        )
+        ${roundStatsMatchFilters.join("\n        ")}
+    `).get(...statsSteamIds,...statsSteamIds,...statsMatchParams)):null;
 
     const roleWeapons=timedGranularQuery(`${timingPrefix}:roleWeapons`,()=>db.prepare(`
       SELECT
@@ -766,9 +848,17 @@ function buildGranularPlayerPayload(identity,options={}){
         class:row.class,
         seconds:Number(row.seconds||0),
         hours:Number((Number(row.seconds||0)/3600).toFixed(1)),
+        flagCaptures:Number(row.flag_captures||0),
+        flagTouches:Number(row.flag_touches||0),
         matches:Number(row.matches||0),
         avg_seconds_per_match:Number(row.matches||0)?Math.round(Number(row.seconds||0)/Number(row.matches||0)):0
       })),
+      filteredFlags:{
+        captures:Number(filteredFlags?.captures||0),
+        touches:Number(filteredFlags?.touches||0),
+        initialTouches:Number(filteredFlags?.initial_touches||0),
+        sentryKills:Number(filteredSentryKills?.sentry_kills||0)
+      },
       roleWeapons:roleWeapons.map(row=>({
         role:row.role,
         class:row.class,

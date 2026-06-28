@@ -11,11 +11,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
-  <link rel="stylesheet" href="assets/css/app.css?v=20260624hero6">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/player.css?v=20260622drillfilter3">
+  <link rel="stylesheet" href="assets/css/player.css?v=20260627identity4">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/player.js?v=20260622drillfilter3" defer></script>
+  <script src="assets/js/player.js?v=20260627identity4" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -48,16 +48,26 @@
 
     <section class="player-v3-hero">
       <div class="identity-card">
-        <div class="player-mark-wrap">
-          <div id="player-mark" class="player-mark nn-avatar nn-avatar-lg"><span class="nn-avatar-fallback">?</span></div>
-          <span class="online-dot"></span>
-        </div>
         <div class="identity-copy">
           <p class="v3-kicker">PLAYER CARD</p>
-          <h1 id="player-name-v3">Loading...</h1>
-          <div id="player-elo-line" class="elo-line">Current Elo: — <span>Rank: —</span></div>
+          <div class="identity-name-row">
+            <div class="player-mark-wrap">
+              <div id="player-mark" class="player-mark nn-avatar nn-avatar-lg"><span class="nn-avatar-fallback">?</span></div>
+              <span class="online-dot"></span>
+            </div>
+            <h1 id="player-name-v3">Loading...</h1>
+          </div>
+          <div id="player-elo-line" class="elo-line">Current Elo: — <span>Elo Tier: —</span></div>
           <div id="player-record-line" class="record-line">Record: — | Win%: —</div>
           <div id="steam-line" class="steam-line">SteamID: —</div>
+          <div class="identity-mini-kpis" aria-label="Player key stats">
+            <div class="identity-mini-kpi"><span>Player Rank</span><strong id="kpi-rank">—</strong></div>
+            <div class="identity-mini-kpi"><span id="kpi-elo-window-label">Last 20 Games</span><strong id="kpi-elo-window" class="muted">—</strong></div>
+            <div class="identity-mini-kpi"><span>Peak Elo</span><strong id="kpi-peak-elo" class="blue">—</strong></div>
+            <div class="identity-mini-kpi"><span>Best Streak</span><strong id="kpi-best-streak" class="good">—</strong></div>
+            <div class="identity-mini-kpi"><span>PUGs / Week</span><strong id="kpi-pugs-week">—</strong></div>
+            <div class="identity-mini-kpi"><span>Game MVPs</span><strong id="kpi-mvps" class="gold">-</strong></div>
+          </div>
         </div>
       </div>
 
@@ -68,31 +78,6 @@
         </div>
         <div class="v3-chart-wrap hero-chart-wrap">
           <canvas id="elo-chart-v3"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <section class="v3-kpi-groups">
-      <div class="v3-kpi-group core">
-        <h2>Core Stats</h2>
-        <div class="v3-kpi-strip">
-          <div><span>Current Elo</span><strong id="kpi-current-elo" class="blue">—</strong></div>
-          <div><span>Rank</span><strong id="kpi-rank">—</strong></div>
-          <div><span id="kpi-elo-window-label">Last 20 Games</span><strong id="kpi-elo-window" class="muted">—</strong></div>
-          <div><span>Win %</span><strong id="kpi-winpct" class="good">—</strong></div>
-          <div><span>KDR</span><strong id="kpi-kdr" class="blue">—</strong></div>
-          <div><span>Matches</span><strong id="kpi-matches">—</strong></div>
-        </div>
-      </div>
-      <div class="v3-kpi-group career">
-        <h2>Career Stats</h2>
-        <div class="v3-kpi-strip">
-          <div><span>Kills</span><strong id="kpi-kills">—</strong></div>
-          <div><span>Damage</span><strong id="kpi-damage" class="purple">—</strong></div>
-          <div><span>Game MVPs</span><strong id="kpi-mvps" class="gold">-</strong></div>
-          <div><span>Peak Elo</span><strong id="kpi-peak-elo" class="blue">—</strong></div>
-          <div><span>Best Streak</span><strong id="kpi-best-streak" class="good">—</strong></div>
-          <div><span>PUGs/Wk</span><strong id="kpi-pugs-week">—</strong></div>
         </div>
       </div>
     </section>
@@ -130,17 +115,6 @@
         <div class="heatmap-footer">
           <span id="activity-peak">Peak: —</span>
           <span class="heat-scale"><i></i><i></i><i></i><i></i><i></i></span>
-        </div>
-      </div>
-
-      <div class="v3-card map-card">
-        <div class="v3-card-header"><h2>Map Frequency</h2><span>Most Played</span></div>
-        <div id="map-frequency" class="map-frequency donut-frequency">
-          <div class="map-donut-wrap">
-            <canvas id="map-donut-chart"></canvas>
-            <div class="map-donut-center"><strong id="map-donut-total">—</strong><span>matches</span></div>
-          </div>
-          <div id="map-donut-legend" class="map-donut-legend"></div>
         </div>
       </div>
 
