@@ -163,20 +163,18 @@ function getPlayerResult(match,playerId){
 
 function fitPlayerName(){
   const el=document.getElementById("player-name-v3");
-  if(!el)return;
+  const text=el?.querySelector(".player-name-text");
+  if(!el||!text)return;
 
-  let size = window.innerWidth <= 800 ? 32 : 64;
-  const minSize = window.innerWidth <= 800 ? 18 : 24;
+  const max=window.innerWidth<=800 ? 32 : 56;
+  const min=window.innerWidth<=800 ? 14 : 16;
 
-  el.style.lineHeight="1.08";
-  el.style.whiteSpace="nowrap";
-  el.style.overflow="hidden";
-  el.style.textOverflow="ellipsis";
-  el.style.fontSize=size+"px";
+  let size=max;
+  text.style.fontSize=size+"px";
 
-  while(el.scrollWidth > el.clientWidth && size > minSize){
+  while(el.scrollWidth>el.clientWidth && size>min){
     size--;
-    el.style.fontSize=size+"px";
+    text.style.fontSize=size+"px";
   }
 }
 
@@ -260,9 +258,11 @@ async function loadPlayerV3(){
   const playerName=player.name||playerId;
   const playerBadge=pageSupporterBadge(playerId);
 
-  setHtml("player-name-v3",escapeHtml(playerName)+playerBadge);
+  setHtml(
+      "player-name-v3",
+      `<span class="player-name-text">${escapeHtml(playerName)}</span>${playerBadge}`
+  );
   requestAnimationFrame(fitPlayerName);
-  window.addEventListener("resize",fitPlayerName);
 
   const avatarUrl=player.avatarfull||player.avatarmedium||player.avatar||"";
   const avatarFallback='<span class="nn-avatar-fallback">'+escapeHtml(playerInitial(playerName))+'</span>';
@@ -2471,4 +2471,5 @@ window.player2Profile={
   bindEvents
 };
 
-document.addEventListener("DOMContentLoaded",init);
+window.addEventListener("resize", fitPlayerName);
+document.addEventListener("DOMContentLoaded", init);
