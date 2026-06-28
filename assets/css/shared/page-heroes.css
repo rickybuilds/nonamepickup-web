@@ -111,7 +111,9 @@
 .matches-page .matches2-kpi,
 .leaderboard-page .leaderboard-summary article,
 .analytics-page .analytics-summary article,
-.speedruns-page .speedrun-summary article {
+.speedruns-page .speedrun-summary article,
+.player-v3-page .player2-scoreboard > div,
+.player-v3-page .identity-mini-kpi {
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
@@ -125,7 +127,9 @@
 .matches-page .matches2-kpi span,
 .leaderboard-page .leaderboard-summary span,
 .analytics-page .analytics-summary span,
-.speedruns-page .speedrun-summary span {
+.speedruns-page .speedrun-summary span,
+.player-v3-page .player2-scoreboard span,
+.player-v3-page .identity-mini-kpi span {
   overflow: hidden !important;
   color: #94a3b8 !important;
   font-family: Inter, system-ui, sans-serif !important;
@@ -140,7 +144,9 @@
 .matches-page .matches2-kpi strong,
 .leaderboard-page .leaderboard-summary strong,
 .analytics-page .analytics-summary strong,
-.speedruns-page .speedrun-summary strong {
+.speedruns-page .speedrun-summary strong,
+.player-v3-page .player2-scoreboard strong,
+.player-v3-page .identity-mini-kpi strong {
   display: block !important;
   overflow: hidden !important;
   margin-top: 7px !important;
@@ -172,7 +178,8 @@
 .leaderboard-page .leaderboard-kicker,
 .analytics-page .analytics-kicker,
 .compare-page .compare-kicker,
-.speedruns-page .speedrun-kicker {
+.speedruns-page .speedrun-kicker,
+.player-v3-page .v3-kicker {
   margin: 0 0 12px !important;
   color: #38bdf8 !important;
   font-family: Inter, system-ui, sans-serif !important;
@@ -199,7 +206,8 @@
 .compare-page .compare-header h1,
 .live2-page .live2-hero h1,
 .live-page .live2-hero h1,
-.speedruns-page .speedrun-hero h1 {
+.speedruns-page .speedrun-hero h1,
+.player-v3-page #player-name-v3 {
   margin: 0 !important;
   color: #f8fafc !important;
   font-family: Orbitron, Inter, system-ui, sans-serif !important;
@@ -232,7 +240,8 @@
 
 .matches-page .matches2-updated,
 .analytics-page .analytics-updated,
-.speedruns-page .speedrun-updated {
+.speedruns-page .speedrun-updated,
+.player-v3-page .steam-line {
   margin: 10px 0 0 !important;
   color: #cbd5e1 !important;
   font-family: Inter, system-ui, sans-serif !important;

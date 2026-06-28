@@ -337,6 +337,7 @@ function emptyGranularPayload(identity,granularAvailable=false){
     classSummary:[],
     roleClassTime:[],
     filteredFlags:{
+      matches:0,
       captures:0,
       touches:0,
       initialTouches:0,
@@ -594,6 +595,7 @@ function buildGranularPlayerPayload(identity,options={}){
       : "0";
     const filteredFlags=canReadFilteredFlags?timedGranularQuery(`${timingPrefix}:filteredFlags`,()=>db.prepare(`
       SELECT
+        COUNT(DISTINCT s.match_id) AS matches,
         SUM(COALESCE(s.flag_captures,0)) AS captures,
         SUM(COALESCE(s.flag_touches,0)) AS touches,
         ${filteredInitialTouchesExpr} AS initial_touches
@@ -855,6 +857,7 @@ function buildGranularPlayerPayload(identity,options={}){
         avg_seconds_per_match:Number(row.matches||0)?Math.round(Number(row.seconds||0)/Number(row.matches||0)):0
       })),
       filteredFlags:{
+        matches:Number(filteredFlags?.matches||0),
         captures:Number(filteredFlags?.captures||0),
         touches:Number(filteredFlags?.touches||0),
         initialTouches:Number(filteredFlags?.initial_touches||0),

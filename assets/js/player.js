@@ -1,10 +1,12 @@
 // =============================================
 // Path: /assets/js/player.js
+// Competitive player profile. Reuses the existing player APIs.
 // =============================================
 
 let eloChartV3=null;
 let currentClasses=[];
 let currentHampa=null;
+let currentRatings=null;
 let currentPlayerId=null;
 let currentGranular=null;
 let currentGranularBase=null;
@@ -33,6 +35,11 @@ let granularOpenClassKeys=new Set();
 let granularOpenObjectiveKeys=new Set();
 let granularOpenObjectiveClassKeys=new Set();
 let granularOpenRoleKeys=new Set();
+const PLAYER2_RECENT_PAGE_SIZE=5;
+let player2RecentRows=[];
+let player2RecentPlayerId=null;
+let player2RecentHidden=false;
+let player2RecentPage=0;
 const nn = window.nnHelpers || {};
 const playerFormatSeconds = nn.formatSeconds || (s => `${Number(s || 0)}s`);
 const playerNormName = nn.normName || (v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""));
@@ -237,6 +244,7 @@ async function loadPlayerV3(){
   const player=data.player||{};
   const ratings=data.ratings||{};
   const h=data.hampalyzer||{};
+  currentRatings=ratings;
   currentHampa=h;
   currentClasses=Array.isArray(data.classes)?data.classes:[];
 
@@ -268,6 +276,9 @@ async function loadPlayerV3(){
   );
   setHtml("player-record-line",'Record: <strong>'+escapeHtml(ratings.record||"-")+'</strong> <span>| Win%: <b class="good">'+(ratings.win_pct??0)+'%</b></span>');
   setText("steam-line",player.steam_id?"SteamID: "+player.steam_id:"SteamID: Not linked");
+  setText("player2-current-elo",ratings.hidden?"Hidden":String(Number(ratings.elo||0)));
+  setText("player2-record",ratings.record||"-");
+  setText("player2-win-pct",(ratings.win_pct??0)+"%");
 
   setText("kpi-rank",ratings.hidden?"Hidden":(ratings.rank?("#"+fmt(ratings.rank)):"-"));
   const eloWindow=formatEloWindow(ratings);
@@ -283,8 +294,7 @@ async function loadPlayerV3(){
   const mvpGames=Number(h.mvp_games||0);
   const mvpPct=ratings.games>0? Math.round((mvpGames/ratings.games)*100): 0;
   const mvpEl=document.getElementById("kpi-mvps");
-  if(mvpEl)mvpEl.innerHTML = `${fmt(mvpGames)} <span class="kpi-subpct gold">· ${mvpPct}% of games</span>`;
-
+  if(mvpEl)mvpEl.innerHTML = `${fmt(mvpGames)} <span class="kpi-subpct">· ${mvpPct}% of games</span>`;
   const eloValues=recentRows
     .map(m=>({elo:Number(m.after??m.rating),delta:Number(m.delta??0),ts:Number(m.created_at||0)}))
     .filter(v=>Number.isFinite(v.elo))
@@ -454,10 +464,12 @@ function roleKpiData(role){
   const filteredFlags=currentGranular?.filteredFlags||null;
   const useFilteredFlags=dataRoleHasFilteredFlags(role,filteredFlags);
   const objectiveKills=roleObjectiveKills(role);
+  const matches=granularMatchCount(filteredFlags,currentGranular?.sample||{});
 
   return{
     role,
     title:CLASS_ROLE_GROUPS[role].title,
+    matches,
     seconds,
     hours:seconds/3600,
     topClass,
@@ -471,7 +483,8 @@ function roleKpiData(role){
     flagCaps:useFilteredFlags?Number(filteredFlags.captures||0):(filteredClassTime.length?flagCaps:Number(currentHampa?.caps||0)),
     flagTouches:useFilteredFlags?Number(filteredFlags.touches||0):(filteredClassTime.length?flagTouches:Number(currentHampa?.touches||0)),
     initialTouches:useFilteredFlags?Number(filteredFlags.initialTouches||0):0,
-    sentryKills:useFilteredFlags?Number(filteredFlags.sentryKills||0):0
+    sentryKills:useFilteredFlags?Number(filteredFlags.sentryKills||0):0,
+    offenseAverages:role==="offense"?offenseAveragesForGranular(currentGranular):null
   };
 }
 
@@ -525,16 +538,30 @@ function roleClassPillsHtml(data){
 
 function roleKpiPanel(data){
   const granularReady=!!currentGranular?.source?.granularAvailable;
+  const averageValue=(value,matches)=>{
+    const gameCount=Number(matches||0);
+    if(!granularReady)return "Loading...";
+    if(!gameCount)return "-";
+    return (Number(value||0)/gameCount).toFixed(1);
+  };
+  const avgTile=(label,value,className="",title="")=>'<div class="'+escapeAttr(className)+'"'+(title?' title="'+escapeAttr(title)+'"':"")+'><span>'+escapeHtml(label)+'</span><strong>'+escapeHtml(value)+'</strong></div>';
   const topWeapon=data.topWeapon
-    ? '<span class="weapon-short" title="'+escapeAttr(data.topWeapon[0])+'">'+escapeHtml(compactWeaponLabel(data.topWeapon[0]))+'</span> <small>'+escapeHtml(fmt(data.topWeapon[1]))+' kills</small>'
+    ? '<span class="weapon-short" title="'+escapeAttr(data.topWeapon[0])+'">'+escapeHtml(compactWeaponLabel(data.topWeapon[0]))+'</span> <small>'+escapeHtml(averageValue(data.topWeapon[1],data.matches))+' / match</small>'
     : (granularReady?"-":"Loading...");
-  const flagMetric=data.role==="offense"
-    ? '<div><span>Caps</span><strong>'+escapeHtml(fmt(data.flagCaps))+'</strong></div>'+
-      '<div><span>Touches</span><strong>'+escapeHtml(fmt(data.flagTouches))+'</strong></div>'+
-      '<div><span>Initial Touches</span><strong>'+escapeHtml(fmt(data.initialTouches))+'</strong></div>'+
-      '<div><span>SG Kills</span><strong>'+escapeHtml(fmt(data.sentryKills))+'</strong></div>'
-    : '<div><span>Flag Carrier Kills</span><strong>'+escapeHtml(granularReady?fmt(data.flagCarrierKills):"Loading...")+'</strong></div>';
+  const offenseAvg=data.offenseAverages||{};
   const extraClass=data.role==="offense"?" role-kpi-offense":" role-kpi-defense";
+  const classTimeTile='<div><span>Class Time</span><strong>'+escapeHtml(data.hours?data.hours.toFixed(1)+"H":"-")+'</strong></div>';
+  const metricsHtml=data.role==="offense"
+    ? avgTile("Frags / Match",averageValue(data.eventKills,data.matches),"role-skill-tile role-skill-frags")+
+      avgTile("Touches / Match",averageValue(offenseAvg.touches,offenseAvg.matches),"role-skill-tile role-skill-touches")+
+      avgTile("SG Kills / Match",averageValue(offenseAvg.guns,offenseAvg.matches),"role-skill-tile role-skill-sg")+
+      classTimeTile+
+      '<div class="role-kpi-wide"><span>Top Kill Weapon</span><strong>'+topWeapon+'</strong></div>'
+    : avgTile("Frags / Match",averageValue(data.eventKills,data.matches),"role-skill-tile role-skill-frags")+
+      avgTile("Conced Kills / Match",averageValue(data.concededKills,data.matches),"role-skill-tile role-skill-conced")+
+      avgTile("FC Kills / Match",averageValue(data.flagCarrierKills,data.matches),"role-skill-tile role-skill-fc","Flag Carriers Killed / Match")+
+      classTimeTile+
+      '<div class="role-kpi-wide"><span>Top Kill Weapon</span><strong>'+topWeapon+'</strong></div>';
 
   return '<article class="role-kpi-panel role-'+escapeAttr(data.role)+extraClass+'">'+
     '<div class="role-kpi-title">'+
@@ -542,11 +569,7 @@ function roleKpiPanel(data){
       roleClassPillsHtml(data)+
     '</div>'+
     '<div class="role-kpi-metrics">'+
-      '<div><span>Class Time</span><strong>'+escapeHtml(data.hours?data.hours.toFixed(1)+"H":"-")+'</strong></div>'+
-      '<div><span>Match Kills</span><strong>'+escapeHtml(granularReady?fmt(data.eventKills):"Loading...")+'</strong></div>'+
-      '<div><span>Conced Kills</span><strong>'+escapeHtml(granularReady?fmt(data.concededKills):"Loading...")+'</strong></div>'+
-      flagMetric+
-      '<div class="role-kpi-wide"><span>Top Kill Weapon</span><strong>'+topWeapon+'</strong></div>'+
+      metricsHtml+
     '</div>'+
   '</article>';
 }
@@ -595,9 +618,10 @@ function applyGranularMapBackground(mapName){
 function granularOverviewHtml(sample,loading=false){
   const contextMap=granularContextMapName();
   const mapLabel=contextMap||"All Maps";
+  const recordSample=granularRecordSample(sample||{});
   const recordHtml=loading
     ? '<strong>Loading...</strong>'
-    : granularRecordKpiHtml(sample||{});
+    : granularRecordKpiHtml(recordSample);
 
   return '<div class="granular-overview-grid">'+
     '<div class="granular-context-column">'+
@@ -621,6 +645,45 @@ function granularOverviewHtml(sample,loading=false){
     '</div>'+
   '</div>';
 }
+
+function granularRecordSample(sample){
+  const isUnfilteredAllMaps=
+    !granularMapFilter &&
+    !granularMatchFilter &&
+    !granularClassFilter &&
+    !granularVictimFilter &&
+    !granularDrillFilter &&
+    !granularObjectiveDrillFilter;
+
+  if(!isUnfilteredAllMaps||!currentRatings)return sample;
+  return{
+    ...sample,
+    wins:Number(currentRatings.wins||0),
+    losses:Number(currentRatings.losses||0),
+    ties:Number(currentRatings.ties||0),
+    fromProfileRecord:true
+  };
+}
+
+function granularMatchCount(flags,sample){
+  const explicit=Number(flags?.matches||0);
+  if(explicit>0)return explicit;
+  const sampleGames=Number(sample?.wins||0)+Number(sample?.losses||0)+Number(sample?.ties||0);
+  if(sampleGames>0)return sampleGames;
+  return Number(currentHampa?.matches||currentRatings?.games||0);
+}
+
+function offenseAveragesForGranular(data){
+  if(!data?.source?.granularAvailable)return null;
+  const flags=data.filteredFlags||{};
+  const matches=granularMatchCount(flags,data.sample||{});
+  return{
+    matches,
+    touches:Number(flags.touches||0),
+    guns:Number(flags.sentryKills||0)
+  };
+}
+
 function renderEloChartV3(eloValues,hidden){
   const canvas=qs("elo-chart-v3");
   if(!canvas||typeof Chart==="undefined")return;
@@ -668,7 +731,23 @@ function renderEloChartV3(eloValues,hidden){
 }
 
 function renderRecentMatches(rows,playerId,hidden){
-  setHtml("recent-match-list",rows.slice(0,100).map(m=>{
+  player2RecentRows=Array.isArray(rows)?rows:[];
+  player2RecentPlayerId=playerId;
+  player2RecentHidden=!!hidden;
+  player2RecentPage=0;
+  renderRecentMatchesPage();
+}
+
+function renderRecentMatchesPage(){
+  const total=player2RecentRows.length;
+  const totalPages=Math.max(1,Math.ceil(total/PLAYER2_RECENT_PAGE_SIZE));
+  player2RecentPage=Math.min(Math.max(0,player2RecentPage),totalPages-1);
+  const start=player2RecentPage*PLAYER2_RECENT_PAGE_SIZE;
+  const pageRows=player2RecentRows.slice(start,start+PLAYER2_RECENT_PAGE_SIZE);
+  const playerId=player2RecentPlayerId;
+  const hidden=player2RecentHidden;
+
+  setHtml("recent-match-list",pageRows.map(m=>{
     const result=getPlayerResult(m,playerId);
     const cls=result.toLowerCase();
     const delta=Number(m.delta||0);
@@ -714,9 +793,9 @@ function renderRecentMatches(rows,playerId,hidden){
     '<div class="recent-story-visual">'+
       '<div class="recent-story-actions">'+
         '<button type="button" class="recent-action recent-action-details" data-match-id="'+escapeAttr(matchId)+'">Details</button>'+
-        (m.hampalyzer_url?'<a class="recent-action recent-action-hamp" href="'+escapeAttr(m.hampalyzer_url)+'" target="_blank" rel="noopener noreferrer">Hamp</a>':"")+
-        (m.tfcstats_url?'<a class="recent-action recent-action-tfc" href="'+escapeAttr(m.tfcstats_url)+'" target="_blank" rel="noopener noreferrer">Stats</a>':"")+
-        '<a class="recent-action recent-action-page" href="'+escapeAttr(detailUrl)+'">Full</a>'+
+        (m.hampalyzer_url?'<a class="recent-action recent-action-hamp" href="'+escapeAttr(m.hampalyzer_url)+'" target="_blank" rel="noopener noreferrer">Hampalyzer</a>':"")+
+        (m.tfcstats_url?'<a class="recent-action recent-action-tfc" href="'+escapeAttr(m.tfcstats_url)+'" target="_blank" rel="noopener noreferrer">TFC Stats</a>':"")+
+        '<a class="recent-action recent-action-page" href="'+escapeAttr(detailUrl)+'">NN//Stats</a>'+
       '</div>'+
       '<a class="recent-map-thumb" href="'+escapeAttr("map.html?map="+encodeURIComponent(mapName))+'" aria-label="View '+escapeAttr(mapName)+' map">'+
         '<img class="recent-map-image" data-map-name="'+escapeAttr(mapName)+'" alt="" loading="lazy">'+
@@ -726,6 +805,23 @@ function renderRecentMatches(rows,playerId,hidden){
   '</article>';
   }).join("")||'<div class="empty-v3">No recent matches</div>');
   requestAnimationFrame(hydrateRecentMapImages);
+  renderRecentMatchPager(total,totalPages,start,pageRows.length);
+}
+
+function renderRecentMatchPager(total,totalPages,start,pageCount){
+  const el=qs("recent-match-pager");
+  if(!el)return;
+  if(total<=PLAYER2_RECENT_PAGE_SIZE){
+    el.innerHTML="";
+    return;
+  }
+
+  const from=start+1;
+  const to=start+pageCount;
+  el.innerHTML=
+    '<button type="button" class="player2-pager-btn" data-recent-page="prev" '+(player2RecentPage<=0?"disabled":"")+'>Previous</button>'+
+    '<span>Showing '+fmt(from)+'-'+fmt(to)+' of '+fmt(total)+'</span>'+
+    '<button type="button" class="player2-pager-btn" data-recent-page="next" '+(player2RecentPage>=totalPages-1?"disabled":"")+'>Next</button>';
 }
 
 function hydrateRecentMapImages(){
@@ -993,7 +1089,7 @@ function fmtGranularRecord(sample){
 }
 
 function granularRecordKpiHtml(sample){
-  if(!granularSampleLoaded||granularSampleFailed||!sample){
+  if(!sample?.fromProfileRecord&&(!granularSampleLoaded||granularSampleFailed||!sample)){
     return '<strong>'+escapeHtml(fmtGranularRecord(sample))+'</strong>';
   }
   return '<strong class="granular-record-kpi">'+
@@ -1576,7 +1672,7 @@ async function loadGranularVictimBreakdown(){
       classWeapons:Array.isArray(filtered.classWeapons)?filtered.classWeapons:[],
       classSummary:Array.isArray(filtered.classSummary)?filtered.classSummary:[],
       roleClassTime:Array.isArray(filtered.roleClassTime)?filtered.roleClassTime:[],
-      filteredFlags:filtered.filteredFlags||{captures:0,touches:0,initialTouches:0,sentryKills:0},
+      filteredFlags:filtered.filteredFlags||{matches:0,captures:0,touches:0,initialTouches:0,sentryKills:0},
       roleWeapons:Array.isArray(filtered.roleWeapons)?filtered.roleWeapons:[],
     flagCarrierKills:Array.isArray(filtered.flagCarrierKills)?filtered.flagCarrierKills:[],
     concededKills:Array.isArray(filtered.concededKills)?filtered.concededKills:[],
@@ -1973,12 +2069,12 @@ function renderRelationshipLists(rows,playerId){
   const bestTeam=[...teammates.values()]
     .filter(x=>x.gp>=2)
     .sort((a,b)=>relationshipWinPct(b)-relationshipWinPct(a)||b.gp-a.gp)
-    .slice(0,3);
+    .slice(0,4);
 
   const toughOpps=[...opponents.values()]
     .filter(x=>x.gp>=2)
     .sort((a,b)=>relationshipWinPct(a)-relationshipWinPct(b)||b.gp-a.gp)
-    .slice(0,3);
+    .slice(0,4);
 
   renderPeopleList("best-teammates",bestTeam,"teammate");
   renderPeopleList("toughest-opponents",toughOpps,"opponent");
@@ -2013,6 +2109,17 @@ function renderPeopleList(id,rows,type){
 }
 
 document.addEventListener("click",e=>{
+  const pager=e.target.closest("[data-recent-page]");
+  if(pager){
+    e.preventDefault();
+    e.stopPropagation();
+    if(pager.dataset.recentPage==="next")player2RecentPage++;
+    else player2RecentPage--;
+    renderRecentMatchesPage();
+    document.querySelector(".player2-recent-card")?.scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+
   const btn=e.target.closest(".match-id-pill,[data-match-id]");
   if(!btn)return;
   if(e.target.closest("a[href]")&&!e.target.closest(".match-id-pill"))return;
@@ -2319,6 +2426,49 @@ function renderPlayerWeaponList(rows){
   `;
 }
 
-document.addEventListener("DOMContentLoaded",()=>{
-  loadPlayerV3();
-});
+function init(){
+  bindEvents();
+  loadPlayer();
+}
+
+function loadPlayer(){
+  return loadPlayerV3();
+}
+
+function renderOverview(data,recentRows){
+  return {data,recentRows};
+}
+
+function renderEloChart(values,hidden){
+  return renderEloChartV3(values,hidden);
+}
+
+function renderActivity(rows){
+  return renderActivityHeatmaps(rows);
+}
+
+function renderRelationships(rows,playerId){
+  return renderRelationshipLists(rows,playerId);
+}
+
+function renderGranularAnalytics(data,eventsData){
+  return renderPlayerGranular(data,eventsData);
+}
+
+function bindEvents(){
+  bindGranularControls();
+}
+
+window.player2Profile={
+  init,
+  loadPlayer,
+  renderOverview,
+  renderEloChart,
+  renderRecentMatches,
+  renderActivity,
+  renderRelationships,
+  renderGranularAnalytics,
+  bindEvents
+};
+
+document.addEventListener("DOMContentLoaded",init);

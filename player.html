@@ -3,24 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="View a NoName TFC Pickup player's Elo, Hampalyzer stats, class details, weapon kills, maps, activity, teammates, and opponents.">
+  <meta name="description" content="View a NoName TFC Pickup player's competitive profile, Elo trend, recent matches, teammates, rivals, aliases, and kill-event analytics.">
   <link rel="canonical" href="https://nonamepickup.servehalflife.com/player.html">
-  <title>NoName TFC Pickups | Player</title>
+  <title>NoName TFC Pickups | Player Profile</title>
 
-  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/player.css?v=20260627recentlayout5">
+  <link rel="stylesheet" href="assets/css/player.css?v=20260628playerlive2">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/player.js?v=20260627recentlayout5" defer></script>
+  <script src="assets/js/player.js?v=20260628playerlive" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
-<body class="bg-[#0a0c10] text-gray-200 player-v3-page">
+<body class="bg-[#0a0c10] text-gray-200 player-v3-page player2-page">
 
 <div class="site-bg-grid"></div>
 <div class="site-bg-glow site-bg-glow-a"></div>
@@ -44,53 +43,62 @@
   </div>
 </header>
 
-<main class="player-v3-main">
-  <section class="player-v3-shell">
+<main class="player-v3-main player2-main">
+  <section class="player-v3-shell player2-shell">
 
-    <section class="player-v3-hero">
-      <div class="identity-card">
+    <section class="player-v3-hero player2-hero" aria-label="Player overview">
+      <div class="identity-card player2-overview-card">
         <div class="identity-copy">
-          <p class="v3-kicker">PLAYER CARD</p>
-          <div class="identity-name-row">
+          <div class="identity-name-row player2-name-row">
             <div class="player-mark-wrap">
               <div id="player-mark" class="player-mark nn-avatar nn-avatar-lg"><span class="nn-avatar-fallback">?</span></div>
               <span class="online-dot"></span>
             </div>
-            <h1 id="player-name-v3">Loading...</h1>
+            <div class="player2-name-block">
+              <p class="v3-kicker">PLAYER PROFILE</p>
+              <h1 id="player-name-v3">Loading...</h1>
+              <div id="steam-line" class="steam-line">SteamID: —</div>
+            </div>
           </div>
-          <div id="player-elo-line" class="elo-line">Current Elo: — <span>Elo Tier: —</span></div>
-          <div id="player-record-line" class="record-line">Record: — | Win%: —</div>
-          <div id="steam-line" class="steam-line">SteamID: —</div>
-          <div class="identity-mini-kpis" aria-label="Player key stats">
-            <div class="identity-mini-kpi"><span>Player Rank</span><strong id="kpi-rank">—</strong></div>
-            <div class="identity-mini-kpi"><span id="kpi-elo-window-label">Last 20 Games</span><strong id="kpi-elo-window" class="muted">—</strong></div>
-            <div class="identity-mini-kpi"><span>Peak Elo</span><strong id="kpi-peak-elo" class="blue">—</strong></div>
-            <div class="identity-mini-kpi"><span>Best Streak</span><strong id="kpi-best-streak" class="good">—</strong></div>
-            <div class="identity-mini-kpi"><span>PUGs / Week</span><strong id="kpi-pugs-week">—</strong></div>
-            <div class="identity-mini-kpi"><span>Game MVPs</span><strong id="kpi-mvps" class="gold">-</strong></div>
-          </div>
-        </div>
-      </div>
 
-      <div class="v3-card hero-elo-card">
-        <div class="v3-card-header">
-          <h2>Elo Trend</h2>
-          <span id="elo-chart-label">All Matches</span>
-        </div>
-        <div class="v3-chart-wrap hero-chart-wrap">
-          <canvas id="elo-chart-v3"></canvas>
+          <div class="player2-scoreboard">
+            <div class="player2-elo-primary">
+              <span>Current Elo</span>
+              <strong id="player2-current-elo">—</strong>
+            </div>
+            <div>
+              <span>Leaderboard Rank</span>
+              <strong id="kpi-rank">—</strong>
+            </div>
+            <div>
+              <span id="kpi-elo-window-label">Last 20 Games</span>
+              <strong id="kpi-elo-window" class="muted">—</strong>
+            </div>
+          </div>
+
+          <div class="identity-mini-kpis player2-mini-kpis" aria-label="Player key stats">
+            <div class="identity-mini-kpi"><span>Peak Elo</span><strong id="kpi-peak-elo" class="blue">—</strong></div>
+            <div class="identity-mini-kpi"><span>Record</span><strong id="player2-record">—</strong></div>
+            <div class="identity-mini-kpi"><span>Win Rate</span><strong id="player2-win-pct" class="good">—</strong></div>
+            <div class="identity-mini-kpi"><span>Best Streak</span><strong id="kpi-best-streak" class="purple">—</strong></div>
+            <div class="identity-mini-kpi"><span>Game MVPs</span><strong id="kpi-mvps" class="gold">—</strong></div>
+            <div class="identity-mini-kpi"><span>PUGs / Week</span><strong id="kpi-pugs-week">—</strong></div>
+          </div>
+
+          <div id="player-elo-line" class="elo-line player2-hidden-line">Current Elo: — <span>Elo Tier: —</span></div>
+          <div id="player-record-line" class="record-line player2-hidden-line">Record: — | Win%: —</div>
         </div>
       </div>
     </section>
 
-    <section id="player-granular-card" class="v3-card player-granular-card">
+    <section id="player-granular-card" class="v3-card player-granular-card player2-analytics-card" aria-label="Advanced kill event analytics">
       <div class="v3-card-header player-granular-header">
         <div>
-          <h2>Kill Event Analysis</h2>
+          <h2>Advanced Kill Event Analytics</h2>
           <span>Built from individual Hampalyzer kill events with class attribution.</span>
         </div>
         <div class="granular-controls" aria-label="Granular event controls">
-          <label for="granular-map-select">Map:</label>
+          <label for="granular-map-select">Map</label>
           <select id="granular-map-select" aria-label="Map filter" disabled>
             <option value="">Maps unavailable</option>
           </select>
@@ -98,8 +106,8 @@
           <select id="granular-match-select" aria-label="Recent match filter" disabled>
             <option value="">Recent matches unavailable</option>
           </select>
-          <label for="granular-match-filter">Optional Match Filter</label>
-          <input id="granular-match-filter" type="text" placeholder="Optional match filter">
+          <label for="granular-match-filter">Filter</label>
+          <input id="granular-match-filter" type="text" placeholder="Filter match ID...">
           <button id="granular-match-apply" type="button">Apply</button>
           <button id="granular-match-clear" type="button">Clear</button>
         </div>
@@ -109,8 +117,27 @@
       </div>
     </section>
 
-    <section class="v3-main-grid">
-      <div class="v3-card activity-card">
+    <section class="v3-card recent-card player2-recent-card" aria-label="Recent matches">
+      <div class="v3-card-header player2-card-header">
+        <h2>Recent Matches</h2>
+        <a class="player2-view-link" href="matches.html">View All Matches</a>
+      </div>
+      <div id="recent-match-list" class="recent-match-list player2-recent-grid"></div>
+      <div id="recent-match-pager" class="player2-recent-pager" aria-label="Recent match pages"></div>
+    </section>
+
+    <section class="v3-main-grid player2-middle-grid" aria-label="Player activity and relationships">
+      <div class="v3-card player2-elo-card player2-middle-card">
+        <div class="v3-card-header player2-card-header">
+          <h2>Elo Trend</h2>
+          <span id="elo-chart-label">All Matches</span>
+        </div>
+        <div class="v3-chart-wrap player2-middle-chart-wrap">
+          <canvas id="elo-chart-v3"></canvas>
+        </div>
+      </div>
+
+      <div class="v3-card activity-card player2-middle-card">
         <div class="v3-card-header"><h2>Activity Heatmap</h2><span>Day × Time</span></div>
         <div id="activity-heatmap" class="activity-heatmap"></div>
         <div class="heatmap-footer">
@@ -119,20 +146,15 @@
         </div>
       </div>
 
-      <div class="v3-card list-card">
+      <div class="v3-card list-card player2-middle-card">
         <div class="v3-card-header"><h2>Best Teammates</h2><span>Same Team</span></div>
         <div id="best-teammates" class="mini-list compact"></div>
       </div>
 
-      <div class="v3-card list-card">
-        <div class="v3-card-header"><h2>Toughest Opponents</h2><span>Against</span></div>
+      <div class="v3-card list-card player2-middle-card">
+        <div class="v3-card-header"><h2>Nemesis List</h2><span>Against You</span></div>
         <div id="toughest-opponents" class="mini-list compact"></div>
       </div>
-    </section>
-
-    <section class="v3-card recent-card">
-      <div class="v3-card-header"><h2>Recent Matches</h2><span>Last 100</span></div>
-      <div id="recent-match-list" class="recent-match-list"></div>
     </section>
 
   </section>
@@ -146,7 +168,7 @@
       <div class="drawer-kicker">MATCH DETAIL</div>
       <div id="match-drawer-title" class="match-drawer-title">Loading...</div>
     </div>
-    <button id="match-drawer-close" class="match-drawer-close">×</button>
+    <button id="match-drawer-close" class="match-drawer-close" type="button" aria-label="Close match drawer">×</button>
   </div>
 
   <div id="match-drawer-body" class="match-drawer-body">
