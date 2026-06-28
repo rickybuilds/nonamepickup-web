@@ -16,6 +16,7 @@ api/node_modules/
 api/logs/
 api/.env
 api/.env.*
+*.code-workspace
 
 # HLTV development
 hltv/
