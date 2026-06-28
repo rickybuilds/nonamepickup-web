@@ -1,3 +1,4 @@
+//src/server.js
 "use strict";
 
 const fs = require("fs");
@@ -53,36 +54,41 @@ const server = app.listen(config.PORT, "0.0.0.0", () => {
 
 function warmLocalApi(path) {
   return new Promise(resolve => {
+    const start = Date.now();
+
     const req = http.get({
       hostname: "127.0.0.1",
       port: config.PORT,
       path,
-      timeout: 10_000
+      timeout: 10000
     }, res => {
       res.resume();
-      res.on("end", () => resolve(true));
-      res.on("error", error => {
-        console.warn(`[warmup] ${path} response failed: ${error.message}`);
-        resolve(false);
+
+      resolve({
+        ok: res.statusCode >= 200 && res.statusCode < 500,
+        ms: Date.now() - start
       });
     });
 
-    req.on("error", error => {
-      console.warn(`[warmup] ${path} failed: ${error.message}`);
-      resolve(false);
+    req.on("error", () => {
+      resolve({ ok: false, ms: null });
     });
+
     req.on("timeout", () => {
-      req.destroy(new Error("timeout"));
+      req.destroy();
+      resolve({ ok: false, ms: null });
     });
   });
 }
 
 let analyticsWarmInFlight = false;
+
 async function warmAnalytics() {
   if (analyticsWarmInFlight) return;
   analyticsWarmInFlight = true;
+
   try {
-    await warmLocalApi("/api/analytics?limit=5&refresh=1");
+    await warmLocalApi("/api/speedruns/health");
   } finally {
     analyticsWarmInFlight = false;
   }

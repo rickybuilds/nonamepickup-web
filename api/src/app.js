@@ -8,6 +8,7 @@ const { registerStaticFiles } = require("./middleware/staticFiles");
 const { registerRateLimit } = require("./middleware/rateLimit");
 const { createAnalyticsMiddleware } = require("./middleware/analytics");
 const { registerErrorHandlers } = require("./middleware/errors");
+const { checkSpeedrunDatabase } = require("./db/mariadb");
 
 function createApp({
   db,
@@ -288,7 +289,8 @@ function createApp({
     DATA_DIR,
     compareProfileStmt,
     compareMatchesStmt,
-    safePublicUrl
+    safePublicUrl,
+    checkSpeedrunDatabase
   });
 
   registerErrorHandlers(app, {

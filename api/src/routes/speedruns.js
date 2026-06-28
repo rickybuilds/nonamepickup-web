@@ -2,6 +2,7 @@
 
 const express = require("express");
 const { checkSpeedrunDatabase, speedrunQuery } = require("../db/mariadb");
+const { createHealthHandler } = require("../helpers/health");
 
 const MAX_MAP_NAME_LENGTH = 64;
 const MAX_STEAM_ID_LENGTH = 35;
@@ -123,9 +124,16 @@ function createSpeedrunsRouter({ logRouteError }) {
     }
   }
 
-  router.get("/health", (req, res) => runEndpoint(req, res, "[/api/speedruns/health]", async () => {
-    await checkSpeedrunDatabase();
-    res.json({ ok: true, database: process.env.SPEEDRUN_DB_NAME || "speedrun" });
+  router.get("/health", createHealthHandler({
+    label: "[/api/speedruns/health]",
+    check: async () => {
+      await checkSpeedrunDatabase();
+    },
+    payload: () => ({ database: process.env.SPEEDRUN_DB_NAME || "speedrun" }),
+    onError: (error, req, res) => {
+      logRouteError("[/api/speedruns/health]", error);
+      unavailable(res);
+    }
   }));
 
   router.get("/summary", (req, res) => runEndpoint(req, res, "[/api/speedruns/summary]", async () => {

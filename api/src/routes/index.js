@@ -11,6 +11,7 @@ const { createQueueRouter } = require("./queue");
 const { createAnalyticsRouter } = require("./analytics");
 const { createHomeRouter } = require("./home");
 const { createSpeedrunsRouter } = require("./speedruns");
+const { createStatusRouter } = require("./status");
 
 function registerRoutes(app, {
   leaderboardHandler,
@@ -35,7 +36,8 @@ function registerRoutes(app, {
   DATA_DIR,
   compareProfileStmt,
   compareMatchesStmt,
-  safePublicUrl
+  safePublicUrl,
+  checkSpeedrunDatabase   // ← ADD THIS
 }) {
 app.use("/api", createSystemRouter({
   db,
@@ -143,6 +145,11 @@ app.use("/api", createVegasOddsRouter({
   cleanString,
   sendError,
   logRouteError
+}));
+
+app.use("/api", createStatusRouter({
+  db,
+  checkSpeedrunDatabase
 }));
 }
 

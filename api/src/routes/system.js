@@ -1,20 +1,22 @@
 "use strict";
 
 const express = require("express");
+const { createHealthHandler } = require("../helpers/health");
 
 function createSystemRouter({ db, fs, supportersFile, sendError, logRouteError }) {
   const router = express.Router();
 
-  router.get("/health", (req, res) => {
-    try {
+  router.get("/health", createHealthHandler({
+    label: "[/api/health]",
+    check: async () => {
       db.prepare("SELECT 1").get();
-      res.setHeader("Cache-Control", "no-store");
-      res.json({ ok: true });
-    } catch (error) {
+    },
+    payload: {},
+    onError: (error, req, res) => {
       logRouteError("[/api/health]", error);
       sendError(res, 503, "database_unavailable");
     }
-  });
+  }));
 
   router.get("/supporters", (req, res) => {
     try {
