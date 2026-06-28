@@ -673,17 +673,90 @@ function renderRecentMatches(rows,playerId,hidden){
     const cls=result.toLowerCase();
     const delta=Number(m.delta||0);
     const deltaCls=delta>0?"delta-pos":delta<0?"delta-neg":"";
-    const deltaText=hidden?"Hidden":(delta?(delta>0?"+":"")+delta:"-");
+    const deltaText=hidden?"Hidden":(delta?(delta>0?"+":"")+delta+" Elo":"0 Elo");
+    const team=getPlayerTeam(m,playerId);
+    const opponentTeam=team==="BLUE"?"RED":team==="RED"?"BLUE":"";
+    const mine=team==="BLUE"?(m.blueTeam||[]):team==="RED"?(m.redTeam||[]):[];
+    const theirs=team==="BLUE"?(m.redTeam||[]):team==="RED"?(m.blueTeam||[]):[];
+    const teamScore=team==="BLUE"?Number(m.score_blue||0):team==="RED"?Number(m.score_red||0):0;
+    const oppScore=team==="BLUE"?Number(m.score_red||0):team==="RED"?Number(m.score_blue||0):0;
+    const scoreDiff=(Number.isFinite(teamScore)&&Number.isFinite(oppScore))?teamScore-oppScore:0;
+    const scoreDiffText=(scoreDiff>0?"+":"")+scoreDiff+" diff";
+    const matchId=m.match_id||m.id||"-";
+    const detailUrl="match.html?id="+encodeURIComponent(matchId);
+    const mapName=m.map_name||"Unknown";
 
-  return '<div class="recent-match-row">'+
-    '<span class="recent-time">'+relativeTime(m.created_at)+'</span>'+
-    '<a class="map recent-map" href="'+escapeAttr("map.html?map="+encodeURIComponent(m.map_name||""))+'">'+escapeHtml(m.map_name||"Unknown")+'</a>'+
-    '<button class="match-id-pill" data-match-id="'+escapeAttr(m.match_id||m.id)+'">'+escapeHtml(m.match_id||m.id||"-")+'</button>'+
-    '<span class="recent-score">'+(m.score_blue??"?")+" - "+(m.score_red??"?")+'</span>'+
-    '<span class="'+cls+' recent-result">'+result+'</span>'+
-    '<span class="'+deltaCls+' recent-delta">'+deltaText+'</span>'+
-  '</div>';
+  return '<article class="recent-match-card '+escapeAttr(cls)+'" role="button" tabindex="0" data-match-id="'+escapeAttr(matchId)+'">'+
+    '<div class="recent-story-result">'+
+      '<strong>'+escapeHtml(result==="-"?"Match":result)+'</strong>'+
+      '<span class="'+escapeAttr(deltaCls)+'">'+escapeHtml(deltaText)+'</span>'+
+    '</div>'+
+    '<div class="recent-story-main">'+
+      '<div class="recent-story-meta">'+
+        '<button type="button" class="match-id-pill" data-match-id="'+escapeAttr(matchId)+'">'+escapeHtml(matchId)+'</button>'+
+        '<span>'+escapeHtml(relativeTime(m.created_at))+'</span>'+
+      '</div>'+
+      '<a class="recent-story-map" href="'+escapeAttr("map.html?map="+encodeURIComponent(mapName))+'">'+escapeHtml(mapName)+'</a>'+
+      '<div class="recent-story-teams">'+
+        recentTeamLine("Played as",team)+
+        recentTeamLine("Vs",opponentTeam)+
+      '</div>'+
+    '</div>'+
+    '<div class="recent-story-rosters">'+
+      recentChipLine("With",mine,playerId)+
+      recentChipLine("Vs",theirs,playerId)+
+    '</div>'+
+    '<div class="recent-story-score">'+
+      '<span>Score</span>'+
+      '<strong>'+escapeHtml((m.score_blue??"?")+" - "+(m.score_red??"?"))+'</strong>'+
+      '<small class="'+escapeAttr(scoreDiff>0?"delta-pos":scoreDiff<0?"delta-neg":"")+'">'+escapeHtml(scoreDiffText)+'</small>'+
+    '</div>'+
+    '<div class="recent-story-visual">'+
+      '<div class="recent-story-actions">'+
+        '<button type="button" class="recent-action recent-action-details" data-match-id="'+escapeAttr(matchId)+'">Details</button>'+
+        (m.hampalyzer_url?'<a class="recent-action recent-action-hamp" href="'+escapeAttr(m.hampalyzer_url)+'" target="_blank" rel="noopener noreferrer">Hamp</a>':"")+
+        (m.tfcstats_url?'<a class="recent-action recent-action-tfc" href="'+escapeAttr(m.tfcstats_url)+'" target="_blank" rel="noopener noreferrer">Stats</a>':"")+
+        '<a class="recent-action recent-action-page" href="'+escapeAttr(detailUrl)+'">Full</a>'+
+      '</div>'+
+      '<a class="recent-map-thumb" href="'+escapeAttr("map.html?map="+encodeURIComponent(mapName))+'" aria-label="View '+escapeAttr(mapName)+' map">'+
+        '<img class="recent-map-image" data-map-name="'+escapeAttr(mapName)+'" alt="" loading="lazy">'+
+        '<span>'+escapeHtml(mapName)+'</span>'+
+      '</a>'+
+    '</div>'+
+  '</article>';
   }).join("")||'<div class="empty-v3">No recent matches</div>');
+  requestAnimationFrame(hydrateRecentMapImages);
+}
+
+function hydrateRecentMapImages(){
+  document.querySelectorAll(".recent-map-image[data-map-name]").forEach(img=>{
+    const mapName=img.dataset.mapName||"";
+    if(!mapName||img.dataset.loadedMap===mapName)return;
+    img.dataset.loadedMap=mapName;
+    window.setMapImageFromName?.(img,mapName,{containerSelector:".recent-map-thumb"});
+  });
+}
+
+function recentTeamLine(label,team){
+  if(!team)return "";
+  const key=String(team).toLowerCase();
+  return '<span><small>'+escapeHtml(label)+'</small><b class="team-dot-label team-'+escapeAttr(key)+'"><i></i>'+escapeHtml(team)+'</b></span>';
+}
+
+function recentChipLine(label,players,playerId){
+  const safePlayers=(Array.isArray(players)?players:[]).filter(p=>String(p.id)!==String(playerId));
+  if(!safePlayers.length)return '<div class="recent-chip-line"><span>'+escapeHtml(label)+'</span><em>-</em></div>';
+  return '<div class="recent-chip-line"><span>'+escapeHtml(label)+'</span><div>'+
+    safePlayers.map(recentPlayerChip).join("")+
+  '</div></div>';
+}
+
+function recentPlayerChip(player){
+  const name=player?.name||player?.display_name||player?.id||"?";
+  const badge=pageSupporterBadge(player?.id);
+  return '<b class="recent-player-chip">'+
+    '<span>'+escapeHtml(name)+badge+'</span>'+
+  '</b>';
 }
 
 function formatEventTime(row){
@@ -1942,6 +2015,7 @@ function renderPeopleList(id,rows,type){
 document.addEventListener("click",e=>{
   const btn=e.target.closest(".match-id-pill,[data-match-id]");
   if(!btn)return;
+  if(e.target.closest("a[href]")&&!e.target.closest(".match-id-pill"))return;
 
   const matchId=btn.dataset.matchId||btn.textContent.trim();
   if(!matchId)return;
@@ -1978,6 +2052,13 @@ document.getElementById("match-drawer-backdrop")?.addEventListener("click",close
 
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape")closeMatchDrawer();
+  if((e.key==="Enter"||e.key===" ")&&e.target.closest?.(".recent-match-card[data-match-id]")){
+    const card=e.target.closest(".recent-match-card[data-match-id]");
+    if(card&&document.activeElement===card){
+      e.preventDefault();
+      openMatchDrawer(card.dataset.matchId);
+    }
+  }
 });
 
 async function loadMatchDrawer(matchId){

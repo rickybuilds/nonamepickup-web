@@ -1378,7 +1378,7 @@ router.get("/player/:id/recent", (req, res) => {
 
     const playersByMatch = loadMatchPlayers(matches, { includeRatings: false });
     const out = matches.map(row => {
-      const serialized = serializeMatch(row, playersByMatch, { includeTfcstats: false });
+      const serialized = serializeMatch(row, playersByMatch, { includeTfcstats: true });
       const player =
         serialized.blueTeam.find(entry => String(entry.id) === pid) ||
         serialized.redTeam.find(entry => String(entry.id) === pid);
