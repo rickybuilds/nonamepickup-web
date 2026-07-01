@@ -331,6 +331,179 @@
     })).join("") || empty(emptyText));
   }
 
+  function msValue(value) {
+    const ms = Number(value);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  function formatMs(value) {
+    const ms = msValue(value);
+    return ms == null ? "-" : time({ timeMs: ms });
+  }
+
+  function formatGap(value) {
+    const ms = msValue(value);
+    if (ms == null) return "-";
+    if (ms <= 0) return "WR";
+    return `+${formatMs(ms)}`;
+  }
+
+  function formatImprovementValue(value) {
+    const ms = msValue(value);
+    if (ms == null || ms <= 0) return "-";
+    return `-${formatMs(ms)}`;
+  }
+
+  function dateOnly(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function rankBadge(row) {
+    const rank = Number(row?.recordRank ?? row?.record_rank ?? row?.rank);
+    if (!Number.isFinite(rank) || rank <= 0) return `<span class="speedrun-rank-pill">-</span>`;
+    const tier = rank === 1 ? " wr" : rank <= 3 ? " podium" : "";
+    const label = rank === 1 ? `#1 <b>WR</b>` : `#${rank}`;
+    return `<span class="speedrun-rank-pill${tier}">${label}</span>`;
+  }
+
+  function miniStat(label, value, detail = "") {
+    return `
+      <article>
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+        <small>${escapeHtml(detail)}</small>
+      </article>
+    `;
+  }
+
+  function classKey(row) {
+    return String(row?.classId ?? row?.class_id ?? "");
+  }
+
+  function mapCategory(row, mapLookup) {
+    return mapLookup.get(row?.map || "")?.category || "other";
+  }
+
+  function countByDay(rows) {
+    const counts = new Map();
+    for (const row of rows) {
+      const key = dateOnly(achievedTimestamp(row));
+      if (key === "-") continue;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0] || null;
+  }
+
+  function renderPlayerDashboard(data) {
+    const pbs = Array.isArray(data.personalBests) ? data.personalBests : [];
+    const maps = Array.isArray(data.maps) ? data.maps : [];
+    const mapLookup = new Map(maps.map(row => [row.map, row]));
+    const classFilter = $("sr-player-class-filter");
+    const categoryFilter = $("sr-player-category-filter");
+    const rankFilter = $("sr-player-rank-filter");
+
+    const classes = [...new Map(pbs.map(row => [classKey(row), classText(row)]).filter(([key]) => key !== "")).entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]));
+    if (classFilter) {
+      classFilter.innerHTML = `<option value="">All Classes</option>${classes.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join("")}`;
+    }
+
+    const categories = [...new Set(pbs.map(row => mapCategory(row, mapLookup)).filter(Boolean))].sort();
+    if (categoryFilter) {
+      categoryFilter.innerHTML = `<option value="">All Categories</option>${categories.map(value => `<option value="${escapeAttr(value)}">${escapeHtml(value)}</option>`).join("")}`;
+    }
+
+    const filteredRows = () => pbs.filter(row => {
+      const rank = Number(row.recordRank ?? row.rank);
+      if (classFilter?.value && classKey(row) !== classFilter.value) return false;
+      if (categoryFilter?.value && mapCategory(row, mapLookup) !== categoryFilter.value) return false;
+      if (rankFilter?.value === "wr" && rank !== 1) return false;
+      if (rankFilter?.value === "top3" && (!Number.isFinite(rank) || rank > 3)) return false;
+      if (rankFilter?.value === "top10" && (!Number.isFinite(rank) || rank > 10)) return false;
+      return true;
+    });
+
+    const renderPbTable = () => {
+      const rows = filteredRows();
+      setHtml("sr-player-pbs", rows.map(row => `
+        <tr>
+          <td data-label="Map"><a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.map || "-")}</a><small>${escapeHtml(mapCategory(row, mapLookup))}</small></td>
+          <td data-label="Class">${escapeHtml(classText(row))}</td>
+          <td data-label="PB Time" class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
+          <td data-label="Rank">${rankBadge(row)}</td>
+          <td data-label="Total"><span class="speedrun-total-runners">/ ${escapeHtml(row.totalRunners ?? row.total_runners ?? "-")}</span></td>
+          <td data-label="WR Gap" class="${Number(row.wrGapMs ?? row.wr_gap_ms) <= 0 ? "speedrun-wr-gap is-wr" : "speedrun-wr-gap"}">${escapeHtml(formatGap(row.wrGapMs ?? row.wr_gap_ms))}</td>
+          <td data-label="Improvement" class="speedrun-improvement">${escapeHtml(formatImprovementValue(row.improvementMs ?? row.improvement_ms))}</td>
+          <td data-label="Set">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="8">${empty("No personal bests match these filters.")}</td></tr>`);
+    };
+
+    [classFilter, categoryFilter, rankFilter].forEach(control => {
+      if (control) control.addEventListener("change", renderPbTable);
+    });
+    renderPbTable();
+
+    const totalPbMs = pbs.reduce((sum, row) => sum + (msValue(row.bestTimeMs) || 0), 0);
+    const averagePbMs = pbs.length ? Math.round(totalPbMs / pbs.length) : null;
+    const improvements = pbs.map(row => msValue(row.improvementMs ?? row.improvement_ms)).filter(value => value != null && value > 0);
+    const bestImprovement = improvements.length ? Math.max(...improvements) : null;
+    const dates = pbs.map(row => achievedTimestamp(row)).filter(Boolean).map(value => new Date(value)).filter(date => !Number.isNaN(date.getTime()));
+    const firstPb = dates.length ? new Date(Math.min(...dates.map(date => date.getTime()))) : null;
+    const latestPb = dates.length ? new Date(Math.max(...dates.map(date => date.getTime()))) : null;
+    setHtml("sr-player-statistics", [
+      miniStat("Total PB Time", formatMs(totalPbMs), "Across all PBs"),
+      miniStat("Average PB", formatMs(averagePbMs), "Per map/class"),
+      miniStat("Best Improvement", formatImprovementValue(bestImprovement), "From prior run"),
+      miniStat("First PB", dateOnly(firstPb), "Earliest set"),
+      miniStat("Latest PB", dateOnly(latestPb), "Most recent")
+    ].join(""));
+
+    const classCounts = classes.map(([value, label]) => ({
+      value,
+      label,
+      count: pbs.filter(row => classKey(row) === value).length
+    })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    const maxClassCount = Math.max(1, ...classCounts.map(row => row.count));
+    setHtml("sr-player-class-breakdown", classCounts.map(row => `
+      <article>
+        <div><strong>${escapeHtml(row.label)}</strong><span>${escapeHtml(row.count)} PBs</span></div>
+        <i style="--bar:${Math.max(8, Math.round((row.count / maxClassCount) * 100))}%"></i>
+      </article>
+    `).join("") || empty("No class data yet."));
+
+    const completedMaps = new Set(pbs.map(row => row.map).filter(Boolean));
+    const totalMaps = Number(data.summary?.enabledMaps || data.summary?.totalMaps || maps.length || completedMaps.size);
+    const playedMaps = Number(data.summary?.mapsPlayed || completedMaps.size);
+    const inProgress = Math.max(0, playedMaps - completedMaps.size);
+    const notStarted = Math.max(0, totalMaps - completedMaps.size - inProgress);
+    const blockCount = Math.min(80, Math.max(totalMaps, completedMaps.size, 1));
+    const blockFor = index => {
+      if (index < completedMaps.size) return "complete";
+      if (index < completedMaps.size + inProgress) return "progress";
+      return "empty";
+    };
+    setHtml("sr-player-map-progress", `
+      <div class="speedrun-progress-summary"><strong>${escapeHtml(completedMaps.size)} / ${escapeHtml(totalMaps || completedMaps.size)}</strong><span>maps completed</span></div>
+      <div class="speedrun-progress-legend"><span class="complete">Completed (${escapeHtml(completedMaps.size)})</span><span class="progress">In progress (${escapeHtml(inProgress)})</span><span class="empty">Not started (${escapeHtml(notStarted)})</span></div>
+      <div class="speedrun-progress-blocks">${Array.from({ length: blockCount }, (_, index) => `<i class="${blockFor(index)}"></i>`).join("")}</div>
+    `);
+
+    const fastest = [...pbs].sort((a, b) => Number(a.bestTimeMs || Infinity) - Number(b.bestTimeMs || Infinity))[0];
+    const longest = [...pbs].sort((a, b) => Number(b.bestTimeMs || -1) - Number(a.bestTimeMs || -1))[0];
+    const biggestImprovementRow = [...pbs].sort((a, b) => Number(b.improvementMs || b.improvement_ms || -1) - Number(a.improvementMs || a.improvement_ms || -1))[0];
+    const bestDay = countByDay(pbs);
+    setHtml("sr-player-career-bests", [
+      miniStat("Fastest Time", fastest ? time(fastest, "bestTime") : "-", fastest ? `${fastest.map} (${classText(fastest)})` : ""),
+      miniStat("Longest Time", longest ? time(longest, "bestTime") : "-", longest ? `${longest.map} (${classText(longest)})` : ""),
+      miniStat("Biggest Improvement", biggestImprovementRow ? formatImprovementValue(biggestImprovementRow.improvementMs ?? biggestImprovementRow.improvement_ms) : "-", biggestImprovementRow ? `${biggestImprovementRow.map} (${classText(biggestImprovementRow)})` : ""),
+      miniStat("Most PBs In One Day", bestDay ? String(bestDay[1]) : "-", bestDay ? bestDay[0] : "")
+    ].join(""));
+  }
+
   function progressionPointTime(point) {
     return time({ timeMs: point?.time_ms });
   }
@@ -767,22 +940,17 @@
         `<a class="speedrun-profile-link" href="${escapeAttr(`player.html?id=${encodeURIComponent(data.player?.discordId || discordId)}`)}">Player Profile</a>`
       );
       setText("sr-player-runs", compact(data.summary?.totalRuns));
-      setText("sr-player-maps", compact(data.summary?.mapsPlayed));
+      setText("sr-player-maps", compact(data.summary?.mapsCompleted ?? data.summary?.mapsPlayed));
+      setText("sr-player-map-total", data.summary?.enabledMaps || data.summary?.totalMaps ? `of ${compact(data.summary.enabledMaps || data.summary.totalMaps)} maps` : "PB maps");
       setText("sr-player-records", compact(data.summary?.currentRecords));
+      setText("sr-player-world-records", compact(data.summary?.worldRecords ?? (data.worldRecords || []).length));
       setText("sr-player-best-rank", data.summary?.bestRecordRank ? `#${data.summary.bestRecordRank}` : "-");
-
-      setHtml("sr-player-pbs", (data.personalBests || []).map(row => `
-        <tr>
-          <td><span class="speedrun-rank-pill">${escapeHtml(rankText(row))}</span></td>
-          <td><a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.map || "-")}</a></td>
-          <td>${escapeHtml(classText(row))}</td>
-          <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
-          <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
-        </tr>
-      `).join("") || `<tr><td colspan="5">${empty("No personal bests yet.")}</td></tr>`);
+      setText("sr-player-global-rank", data.summary?.globalRank ? `#${data.summary.globalRank}` : "-");
+      setText("sr-player-global-total", data.summary?.globalRunnerCount ? `of ${compact(data.summary.globalRunnerCount)} runners` : "Speedrun runners");
 
       renderRecords("sr-player-record-list", data.worldRecords, "No current records.");
       renderRuns("sr-player-recent", data.recentActivity, "No recent activity.");
+      renderPlayerDashboard(data);
     } catch (error) {
       console.error("[speedrun-player]", error);
       setText("sr-player-title", "Runner unavailable");

@@ -46,8 +46,8 @@
   </header>
 
   <main class="speedrun-main">
-    <section class="speedrun-shell">
-      <div class="speedrun-hero detail">
+    <section class="speedrun-shell speedrun-player-dashboard">
+      <section class="speedrun-player-hero">
         <div class="speedrun-player-identity">
           <div class="speedrun-player-mark-wrap">
             <div id="sr-player-mark" class="speedrun-player-mark nn-avatar nn-avatar-lg"><span class="nn-avatar-fallback">?</span></div>
@@ -62,35 +62,86 @@
           </div>
         </div>
 
-        <section class="speedrun-summary detail" aria-label="Runner summary">
-          <article class="matches2-kpi"><span>Total Runs</span><strong id="sr-player-runs">-</strong></article>
-          <article class="matches2-kpi"><span>Maps Played</span><strong id="sr-player-maps">-</strong></article>
-          <article class="matches2-kpi"><span>Records</span><strong id="sr-player-records">-</strong></article>
-          <article class="matches2-kpi"><span>Best Rank</span><strong id="sr-player-best-rank">-</strong></article>
+        <section class="speedrun-player-stat-grid" aria-label="Runner summary">
+          <article><span>Total Runs</span><strong id="sr-player-runs">-</strong><small>All attempts</small></article>
+          <article><span>Maps Completed</span><strong id="sr-player-maps">-</strong><small id="sr-player-map-total">PB maps</small></article>
+          <article><span>Personal Bests</span><strong id="sr-player-records">-</strong><small>Current PBs</small></article>
+          <article><span>World Records</span><strong id="sr-player-world-records">-</strong><small>Rank #1 PBs</small></article>
+          <article class="accent"><span>Best Rank</span><strong id="sr-player-best-rank">-</strong><small>Best map/class</small></article>
+          <article><span>Global Rank</span><strong id="sr-player-global-rank">-</strong><small id="sr-player-global-total">Speedrun runners</small></article>
         </section>
-      </div>
+      </section>
 
       <div id="speedrun-error" class="speedrun-error" hidden></div>
 
-      <section class="speedrun-section">
-        <div class="speedrun-section-heading"><div><span>01</span><h2>Personal Bests</h2></div></div>
-        <div class="speedrun-table-wrap leaderboard-table-wrap">
-          <table class="speedrun-table speedrun-player-pb-table">
-            <thead><tr><th>Rank</th><th>Map</th><th>Class</th><th>Time</th><th>Set</th></tr></thead>
-            <tbody id="sr-player-pbs"></tbody>
-          </table>
-        </div>
+      <section class="speedrun-player-main-grid">
+        <section class="speedrun-dashboard-card speedrun-player-pb-card">
+          <div class="speedrun-section-heading">
+            <div><span>01</span><h2>Personal Bests</h2></div>
+            <div class="speedrun-filters">
+              <select id="sr-player-class-filter" aria-label="Filter personal bests by class">
+                <option value="">All Classes</option>
+              </select>
+              <select id="sr-player-category-filter" aria-label="Filter personal bests by category">
+                <option value="">All Categories</option>
+              </select>
+              <select id="sr-player-rank-filter" aria-label="Filter personal bests by rank">
+                <option value="">All Ranks</option>
+                <option value="wr">World Records</option>
+                <option value="top3">Top 3</option>
+                <option value="top10">Top 10</option>
+              </select>
+            </div>
+          </div>
+          <div class="speedrun-table-wrap leaderboard-table-wrap">
+            <table class="speedrun-table speedrun-player-pb-table">
+              <thead>
+                <tr>
+                  <th>Map</th>
+                  <th>Class</th>
+                  <th>PB Time</th>
+                  <th>Rank</th>
+                  <th>Total</th>
+                  <th>WR Gap</th>
+                  <th>Improvement</th>
+                  <th>Set</th>
+                </tr>
+              </thead>
+              <tbody id="sr-player-pbs"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="speedrun-player-side">
+          <section class="speedrun-dashboard-card">
+            <div class="speedrun-section-heading compact"><div><span>02</span><h2>Statistics</h2></div></div>
+            <div id="sr-player-statistics" class="speedrun-mini-stat-grid"></div>
+          </section>
+          <section class="speedrun-dashboard-card">
+            <div class="speedrun-section-heading compact"><div><span>03</span><h2>Class Breakdown</h2></div></div>
+            <div id="sr-player-class-breakdown" class="speedrun-class-bars"></div>
+          </section>
+        </aside>
       </section>
 
-      <section class="speedrun-section speedrun-columns two">
-        <div>
-          <div class="speedrun-section-heading compact"><div><span>02</span><h2>World Records</h2></div></div>
+      <section class="speedrun-player-lower-grid">
+        <section class="speedrun-dashboard-card">
+          <div class="speedrun-section-heading compact"><div><span>04</span><h2>World Records</h2></div></div>
           <div id="sr-player-record-list" class="speedrun-list"></div>
-        </div>
-        <div>
-          <div class="speedrun-section-heading compact"><div><span>03</span><h2>Recent Activity</h2></div></div>
+        </section>
+        <section class="speedrun-dashboard-card">
+          <div class="speedrun-section-heading compact"><div><span>05</span><h2>Map Progress</h2></div></div>
+          <div id="sr-player-map-progress" class="speedrun-map-progress"></div>
+        </section>
+        <section class="speedrun-dashboard-card">
+          <div class="speedrun-section-heading compact"><div><span>06</span><h2>Recent Runs</h2></div></div>
           <div id="sr-player-recent" class="speedrun-list"></div>
-        </div>
+        </section>
+      </section>
+
+      <section class="speedrun-dashboard-card speedrun-career-strip">
+        <h2>Career Bests</h2>
+        <div id="sr-player-career-bests" class="speedrun-career-grid"></div>
       </section>
     </section>
   </main>

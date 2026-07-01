@@ -113,6 +113,10 @@ function createSpeedrunsRouter({ logRouteError }) {
     const pbCreatedAt = iso(row.pb_created_at);
     const updatedAt = iso(row.updated_at);
     const achievedAt = pbCreatedAt || updatedAt;
+    const worldRecordTimeMs = row.world_record_time_ms == null ? null : Number(row.world_record_time_ms);
+    const wrGapMs = row.wr_gap_ms == null ? (
+      bestTimeMs == null || worldRecordTimeMs == null ? null : bestTimeMs - worldRecordTimeMs
+    ) : Number(row.wr_gap_ms);
     const out = {
       steamId: row.steamid || null,
       discordId: row.discord_id || null,
@@ -127,6 +131,15 @@ function createSpeedrunsRouter({ logRouteError }) {
       updated_at: updatedAt,
       rank: row.record_rank == null ? null : Number(row.record_rank),
       recordRank: row.record_rank == null ? null : Number(row.record_rank),
+      totalRunners: row.total_runners == null ? null : Number(row.total_runners),
+      total_runners: row.total_runners == null ? null : Number(row.total_runners),
+      worldRecordTimeMs,
+      world_record_time_ms: worldRecordTimeMs,
+      worldRecordDisplay: formatTimeMs(worldRecordTimeMs),
+      wrGapMs,
+      wr_gap_ms: wrGapMs,
+      improvementMs: row.improvement_ms == null ? null : Number(row.improvement_ms),
+      improvement_ms: row.improvement_ms == null ? null : Number(row.improvement_ms),
       achievedAt,
       achieved_at: achievedAt
     };
@@ -805,7 +818,9 @@ function createSpeedrunsRouter({ logRouteError }) {
       summaryRows,
       worldRecords,
       personalBests,
-      recentActivity
+      recentActivity,
+      mapRows,
+      globalRankRows
     ] = await Promise.all([
       speedrunQuery(`
         SELECT steamid, player_name
@@ -826,8 +841,11 @@ function createSpeedrunsRouter({ logRouteError }) {
         SELECT
           (SELECT COUNT(*) FROM speedrun_runs WHERE steamid IN (${placeholders})) AS totalRuns,
           (SELECT COUNT(DISTINCT map) FROM speedrun_runs WHERE steamid IN (${placeholders})) AS mapsPlayed,
+          (SELECT COUNT(DISTINCT map) FROM speedrun_records WHERE steamid IN (${placeholders})) AS mapsCompleted,
           (SELECT COUNT(*) FROM speedrun_records WHERE steamid IN (${placeholders})) AS currentRecords,
           (SELECT MAX(created_at) FROM speedrun_runs WHERE steamid IN (${placeholders})) AS lastRunAt,
+          (SELECT COUNT(*) FROM speedrun_maps) AS totalMaps,
+          (SELECT COUNT(*) FROM speedrun_maps WHERE enabled = 1) AS enabledMaps,
           (
             SELECT MIN(record_rank)
             FROM (
@@ -839,7 +857,7 @@ function createSpeedrunsRouter({ logRouteError }) {
             ) ranked_records
             WHERE steamid IN (${placeholders})
           ) AS bestRecordRank
-      `, [...steamIds, ...steamIds, ...steamIds, ...steamIds, ...steamIds]),
+      `, [...steamIds, ...steamIds, ...steamIds, ...steamIds, ...steamIds, ...steamIds]),
 
       speedrunQuery(`
         SELECT steamid, player_name, map, class_id, class_name, best_time_ms, pb_created_at, updated_at
@@ -865,7 +883,27 @@ function createSpeedrunsRouter({ logRouteError }) {
       `, steamIds),
 
       speedrunQuery(`
-        SELECT steamid, player_name, map, class_id, class_name, best_time_ms, pb_created_at, updated_at, record_rank
+        SELECT
+          ranked_records.steamid,
+          ranked_records.player_name,
+          ranked_records.map,
+          ranked_records.class_id,
+          ranked_records.class_name,
+          ranked_records.best_time_ms,
+          ranked_records.pb_created_at,
+          ranked_records.updated_at,
+          ranked_records.record_rank,
+          record_stats.total_runners,
+          record_stats.world_record_time_ms,
+          ranked_records.best_time_ms - record_stats.world_record_time_ms AS wr_gap_ms,
+          (
+            SELECT MIN(rr.time_ms) - ranked_records.best_time_ms
+            FROM speedrun_runs rr
+            WHERE rr.steamid = ranked_records.steamid
+              AND rr.map = ranked_records.map
+              AND rr.class_id = ranked_records.class_id
+              AND rr.time_ms > ranked_records.best_time_ms
+          ) AS improvement_ms
         FROM (
           SELECT
             steamid,
@@ -882,6 +920,17 @@ function createSpeedrunsRouter({ logRouteError }) {
             ) AS record_rank
           FROM speedrun_records
         ) ranked_records
+        LEFT JOIN (
+          SELECT
+            map,
+            class_id,
+            COUNT(DISTINCT steamid) AS total_runners,
+            MIN(best_time_ms) AS world_record_time_ms
+          FROM speedrun_records
+          GROUP BY map, class_id
+        ) record_stats
+          ON record_stats.map = ranked_records.map
+         AND record_stats.class_id = ranked_records.class_id
         WHERE steamid IN (${placeholders})
         ORDER BY map ASC, class_id ASC, best_time_ms ASC
       `, steamIds),
@@ -902,7 +951,57 @@ function createSpeedrunsRouter({ logRouteError }) {
         WHERE r.steamid IN (${placeholders})
         ORDER BY r.created_at DESC, r.id DESC
         LIMIT 25
-      `, steamIds)
+      `, steamIds),
+
+      speedrunQuery(`
+        SELECT map, display_name, category, enabled
+        FROM speedrun_maps
+        ORDER BY COALESCE(display_name, map) ASC, map ASC
+      `),
+
+      speedrunQuery(`
+        SELECT ranked.global_rank, ranked.total_runners
+        FROM (
+          SELECT
+            player_totals.discord_id,
+            ROW_NUMBER() OVER (
+              ORDER BY player_totals.currentRecords DESC, player_totals.totalRuns DESC, player_totals.playerName ASC
+            ) AS global_rank,
+            COUNT(*) OVER () AS total_runners
+          FROM (
+            SELECT
+              l.discord_id,
+              COALESCE(MAX(latest.player_name), MAX(l.player_name), l.discord_id) AS playerName,
+              COALESCE(SUM(record_stats.currentRecords), 0) AS currentRecords,
+              COALESCE(SUM(run_stats.totalRuns), 0) AS totalRuns
+            FROM speedrun_player_links l
+            LEFT JOIN (
+              SELECT steamid, COUNT(*) AS currentRecords
+              FROM speedrun_records
+              WHERE steamid IS NOT NULL AND steamid != ''
+              GROUP BY steamid
+            ) record_stats ON record_stats.steamid = l.steamid
+            LEFT JOIN (
+              SELECT steamid, COUNT(*) AS totalRuns
+              FROM speedrun_runs
+              WHERE steamid IS NOT NULL AND steamid != ''
+              GROUP BY steamid
+            ) run_stats ON run_stats.steamid = l.steamid
+            LEFT JOIN (
+              SELECT steamid, player_name
+              FROM (
+                SELECT steamid, player_name, ROW_NUMBER() OVER (PARTITION BY steamid ORDER BY created_at DESC, id DESC) AS rn
+                FROM speedrun_runs
+              ) ranked_names
+              WHERE rn = 1
+            ) latest ON latest.steamid = l.steamid
+            GROUP BY l.discord_id
+            HAVING currentRecords > 0 OR totalRuns > 0
+          ) player_totals
+        ) ranked
+        WHERE ranked.discord_id = ?
+        LIMIT 1
+      `, [discordId])
     ]);
 
     if (!playerRows.length && !personalBests.length && !recentActivity.length) {
@@ -911,6 +1010,7 @@ function createSpeedrunsRouter({ logRouteError }) {
 
     const player = playerRows[0] || personalBests[0] || recentActivity[0] || linkedRows[0] || {};
     const summary = summaryRows[0] || {};
+    const globalRank = globalRankRows[0] || {};
     const lastRunAt = iso(summary.lastRunAt);
 
     res.json({
@@ -923,13 +1023,25 @@ function createSpeedrunsRouter({ logRouteError }) {
       summary: {
         totalRuns: Number(summary.totalRuns || 0),
         mapsPlayed: Number(summary.mapsPlayed || 0),
+        mapsCompleted: Number(summary.mapsCompleted || 0),
+        totalMaps: Number(summary.totalMaps || 0),
+        enabledMaps: Number(summary.enabledMaps || 0),
         currentRecords: Number(summary.currentRecords || 0),
+        worldRecords: worldRecords.length,
         bestRecordRank: summary.bestRecordRank == null ? null : Number(summary.bestRecordRank),
+        globalRank: globalRank.global_rank == null ? null : Number(globalRank.global_rank),
+        globalRunnerCount: globalRank.total_runners == null ? null : Number(globalRank.total_runners),
         lastRunAt,
         last_run_at: lastRunAt
       },
       worldRecords: worldRecords.map(row => mapRecord(row)),
       personalBests: personalBests.map(row => mapRecord(row)),
+      maps: mapRows.map(row => ({
+        map: row.map,
+        displayName: row.display_name || row.map,
+        category: row.category || "other",
+        enabled: Number(row.enabled || 0) === 1
+      })),
       recentActivity: recentActivity.map(mapRun)
     });
   }));
