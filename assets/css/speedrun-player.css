@@ -1,0 +1,665 @@
+/* Speedrun player dashboard
+   Page-specific layout only. Shared speedrun tables, forms, cards, and global
+   scrollbar basics remain in app.css/style.css/speedruns.css. */
+
+.speedruns-page[data-speedruns-view="player"] {
+  --page-main-width: 1500px;
+  --speedrun-player-gap: 18px;
+  --speedrun-player-card-radius: 28px;
+  --speedrun-player-inner-radius: 16px;
+  --speedrun-player-side-card-height: 390px;
+  --speedrun-player-top-height: calc((var(--speedrun-player-side-card-height) * 2) + var(--speedrun-player-gap));
+  --speedrun-player-lower-height: clamp(300px, 34vh, 360px);
+}
+
+.speedrun-player-dashboard {
+  display: grid;
+  gap: var(--speedrun-player-gap);
+}
+
+/* Shared player dashboard surfaces */
+.speedrun-player-hero,
+.speedrun-dashboard-card {
+  border: 1px solid rgba(77, 166, 255, .22);
+  border-radius: var(--speedrun-player-card-radius);
+  background:
+    linear-gradient(145deg, rgba(9, 16, 31, .92), rgba(4, 9, 18, .96)),
+    radial-gradient(circle at top right, rgba(14, 165, 233, .12), transparent 44%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .04),
+    0 20px 48px rgba(0, 0, 0, .28);
+}
+
+.speedrun-dashboard-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 20px;
+  overflow: hidden;
+}
+
+/* Hero */
+.speedrun-player-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(0, 58%);
+  gap: clamp(20px, 2.4vw, 34px);
+  align-items: center;
+  min-height: 230px;
+  padding: clamp(24px, 2.4vw, 38px);
+  overflow: hidden;
+  border-color: rgba(77,166,255,.26);
+  background:
+    linear-gradient(90deg, rgba(3,7,17,.97), rgba(3,7,17,.82) 42%, rgba(3,7,17,.46) 68%, rgba(3,7,17,.82)),
+    radial-gradient(circle at 18% 25%, var(--page-hero-accent), transparent 42%),
+    radial-gradient(circle at 86% 18%, var(--page-hero-accent-2), transparent 36%),
+    var(--page-hero-image) center / cover no-repeat,
+    var(--surface-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 26px 70px rgba(0,0,0,.36),
+    0 0 48px rgba(77,166,255,.10);
+}
+
+.speedrun-player-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+
+.speedrun-player-copy {
+  min-width: 0;
+}
+
+.speedrun-player-mark-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.speedrun-player-mark {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  overflow: hidden;
+  border: 2px solid rgba(77, 166, 255, .55);
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(15, 23, 42, .9), rgba(37, 99, 235, .58));
+  box-shadow: 0 0 35px rgba(77, 166, 255, .35), inset 0 0 30px rgba(255, 255, 255, .12);
+  color: #06111f;
+  font-family: Orbitron, system-ui, sans-serif;
+  font-size: 38px;
+  font-weight: 950;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, .28);
+}
+
+.speedrun-player-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.speedrun-online-dot {
+  position: absolute;
+  right: 7px;
+  bottom: 8px;
+  z-index: 5;
+  width: 20px;
+  height: 20px;
+  border: 4px solid #08111f;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 18px rgba(34, 197, 94, .8);
+}
+
+#sr-player-title {
+  display: flex !important;
+  align-items: center;
+  gap: 14px;
+  max-width: 100%;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+#sr-player-title .speedrun-player-name-text {
+  flex: 0 0 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+#sr-player-title .supporter-badge,
+#sr-player-title .supporter-inline {
+  flex: 0 0 auto;
+  margin-left: 0 !important;
+}
+
+.speedrun-profile-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.speedrun-profile-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border: 1px solid rgba(77, 166, 255, .28);
+  border-radius: 8px;
+  background: rgba(14, 116, 144, .16);
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .02em;
+  text-decoration: none;
+}
+
+.speedrun-profile-link:hover,
+.speedrun-profile-link:focus-visible {
+  border-color: rgba(125, 211, 252, .5);
+  color: #e0f2fe;
+}
+
+/* Hero/stat micro-cards */
+.speedrun-player-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-self: center;
+}
+
+.speedrun-player-stat-grid article,
+.speedrun-mini-stat-grid article,
+.speedrun-career-grid article {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(77, 166, 255, .2);
+  border-radius: var(--speedrun-player-inner-radius);
+  background: rgba(3, 10, 22, .62);
+}
+
+.speedrun-player-stat-grid article.accent {
+  border-color: rgba(251, 191, 36, .35);
+  background: linear-gradient(145deg, rgba(113, 63, 18, .22), rgba(3, 10, 22, .68));
+}
+
+.speedrun-player-stat-grid span,
+.speedrun-mini-stat-grid span,
+.speedrun-career-grid span {
+  display: block;
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.speedrun-player-stat-grid strong,
+.speedrun-mini-stat-grid strong,
+.speedrun-career-grid strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 7px;
+  color: #f8fafc;
+  font-family: Orbitron, Inter, sans-serif;
+  font-size: clamp(20px, 1.6vw, 32px);
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#sr-player-statistics article:nth-child(n + 4) strong {
+  font-size: clamp(14px, 1vw, 22px);
+  line-height: 1.08;
+}
+
+.speedrun-player-stat-grid small,
+.speedrun-mini-stat-grid small,
+.speedrun-career-grid small {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Desktop dashboard grid: one contained top row, one contained lower row. */
+.speedrun-player-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(340px, .85fr);
+  gap: var(--speedrun-player-gap);
+  align-items: stretch;
+  height: var(--speedrun-player-top-height);
+  min-height: 0;
+}
+
+.speedrun-player-pb-card,
+.speedrun-player-side {
+  height: 100%;
+  min-height: 0;
+}
+
+.speedrun-player-pb-card .speedrun-section-heading {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+}
+
+.speedrun-player-side {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--speedrun-player-gap);
+}
+
+.speedrun-player-lower-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: var(--speedrun-player-lower-height);
+  gap: var(--speedrun-player-gap);
+  align-items: stretch;
+}
+
+.speedrun-mini-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.speedrun-mini-stat-grid article:first-child {
+  grid-column: 1 / -1;
+}
+
+/* Player scroll areas use the existing neon scrollbar palette. */
+.speedrun-player-pb-card .speedrun-table-wrap,
+#sr-player-class-breakdown,
+#sr-player-record-list,
+#sr-player-map-progress,
+#sr-player-recent {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-top: 4px;
+  padding-right: 6px;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(77, 166, 255, .36) rgba(3, 8, 20, .6);
+  scrollbar-width: thin;
+}
+
+.speedrun-player-pb-card .speedrun-table-wrap {
+  max-height: none;
+}
+
+.speedrun-player-pb-table th,
+.speedrun-player-pb-table td {
+  padding: 11px 12px;
+  white-space: nowrap;
+}
+
+.speedrun-player-pb-table td {
+  vertical-align: middle;
+}
+
+.speedrun-player-pb-table td:first-child {
+  min-width: 120px;
+}
+
+.speedrun-player-pb-table td:first-child small {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.speedrun-player-pb-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(5, 12, 24, .98);
+  box-shadow: 0 1px 0 rgba(148, 163, 184, .08);
+}
+
+.speedrun-player-pb-card .speedrun-table-wrap::-webkit-scrollbar,
+#sr-player-class-breakdown::-webkit-scrollbar,
+#sr-player-record-list::-webkit-scrollbar,
+#sr-player-map-progress::-webkit-scrollbar,
+#sr-player-recent::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.speedrun-player-pb-card .speedrun-table-wrap::-webkit-scrollbar-thumb,
+#sr-player-class-breakdown::-webkit-scrollbar-thumb,
+#sr-player-record-list::-webkit-scrollbar-thumb,
+#sr-player-map-progress::-webkit-scrollbar-thumb,
+#sr-player-recent::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(3, 8, 20, .8);
+  border-radius: 999px;
+  background: rgba(77, 166, 255, .34);
+}
+
+.speedrun-player-pb-card .speedrun-table-wrap::-webkit-scrollbar-track,
+#sr-player-class-breakdown::-webkit-scrollbar-track,
+#sr-player-record-list::-webkit-scrollbar-track,
+#sr-player-map-progress::-webkit-scrollbar-track,
+#sr-player-recent::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(3, 8, 20, .45);
+}
+
+/* Class breakdown and map progress content */
+.speedrun-class-bars {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.speedrun-class-bars article {
+  display: grid;
+  gap: 6px;
+}
+
+.speedrun-class-bars div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.speedrun-class-bars span {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.speedrun-class-bars i {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .9);
+}
+
+.speedrun-class-bars i::before {
+  content: "";
+  display: block;
+  width: var(--bar);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #38bdf8, #22c55e);
+  box-shadow: 0 0 18px rgba(56, 189, 248, .34);
+}
+
+.speedrun-map-progress {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.speedrun-progress-summary {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.speedrun-progress-summary strong {
+  display: block;
+  color: #f8fafc;
+  font-family: Orbitron, Inter, sans-serif;
+  font-size: 24px;
+}
+
+.speedrun-progress-summary span,
+.speedrun-progress-legend span {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.speedrun-progress-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.speedrun-progress-legend span::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 2px;
+  background: #1e293b;
+}
+
+.speedrun-progress-legend .complete::before { background: #22c55e; }
+.speedrun-progress-legend .progress::before { background: #0ea5e9; }
+
+.speedrun-progress-download {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 7px 12px;
+  border: 1px solid rgba(77, 166, 255, .3);
+  border-radius: 10px;
+  background: rgba(14, 116, 144, .16);
+  color: #93c5fd;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.speedrun-progress-download:hover,
+.speedrun-progress-download:focus-visible {
+  border-color: rgba(125, 211, 252, .55);
+  color: #e0f2fe;
+}
+
+.speedrun-progress-download:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.speedrun-progress-bar {
+  position: relative;
+  display: grid;
+  align-items: center;
+  min-height: 42px;
+  overflow: hidden;
+  border: 1px solid rgba(77, 166, 255, .18);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, .78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+.speedrun-progress-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--progress);
+  min-width: 3px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22c55e, #84cc16);
+  box-shadow: 0 0 22px rgba(34, 197, 94, .34);
+}
+
+.speedrun-progress-bar strong {
+  position: relative;
+  z-index: 1;
+  padding: 0 14px;
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 950;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .7);
+}
+
+/* Compact full-width career strip */
+.speedrun-career-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.speedrun-career-strip h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.speedrun-career-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 1100px) {
+  .speedrun-player-stat-grid,
+  .speedrun-player-lower-grid,
+  .speedrun-career-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .speedrun-player-hero,
+  .speedrun-player-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .speedrun-player-main-grid {
+    height: auto;
+  }
+
+  .speedrun-player-side {
+    grid-template-rows: auto auto;
+    height: auto;
+  }
+
+  .speedrun-player-pb-card .speedrun-table-wrap {
+    max-height: min(62vh, 520px);
+  }
+
+  #sr-player-class-breakdown {
+    max-height: min(42vh, 320px);
+  }
+}
+
+@media (max-width: 760px) {
+  .speedrun-player-identity {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .speedrun-profile-links {
+    justify-content: center;
+  }
+
+  .speedrun-player-mark {
+    width: 92px;
+    height: 92px;
+    font-size: 34px;
+  }
+}
+
+@media (max-width: 700px) {
+  .speedrun-dashboard-card,
+  .speedrun-player-hero {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .speedrun-player-stat-grid,
+  .speedrun-mini-stat-grid,
+  .speedrun-player-lower-grid,
+  .speedrun-career-strip,
+  .speedrun-career-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .speedrun-player-lower-grid {
+    grid-auto-rows: auto;
+  }
+
+  .speedrun-career-strip {
+    align-items: stretch;
+  }
+
+  .speedrun-player-pb-card .speedrun-table-wrap {
+    max-height: min(58vh, 380px);
+  }
+
+  #sr-player-class-breakdown,
+  #sr-player-record-list,
+  #sr-player-map-progress,
+  #sr-player-recent {
+    max-height: min(46vh, 220px);
+  }
+
+  .speedrun-player-pb-table,
+  .speedrun-player-pb-table thead,
+  .speedrun-player-pb-table tbody,
+  .speedrun-player-pb-table tr,
+  .speedrun-player-pb-table th,
+  .speedrun-player-pb-table td {
+    display: block;
+  }
+
+  .speedrun-player-pb-table thead {
+    display: none;
+  }
+
+  .speedrun-player-pb-table tr {
+    margin-bottom: 10px;
+    padding: 12px;
+    border: 1px solid rgba(77, 166, 255, .18);
+    border-radius: 8px;
+    background: rgba(3, 10, 22, .52);
+  }
+
+  .speedrun-player-pb-table td {
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(148, 163, 184, .08);
+    white-space: normal;
+  }
+
+  .speedrun-player-pb-table td::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 950;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .speedrun-player-pb-table td:first-child {
+    min-width: 0;
+  }
+
+  .speedrun-player-pb-table td:last-child {
+    border-bottom: 0;
+  }
+}

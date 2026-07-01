@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedruns.css?v=20260629pbcreated">
+  <link rel="stylesheet" href="assets/css/speedrun-player.css?v=20260701layout1">
   <script src="assets/js/main.js?v=20260618i" defer></script>
   <script src="assets/js/speedruns.js?v=20260629pbcreated" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -87,7 +88,8 @@
               </select>
               <select id="sr-player-rank-filter" aria-label="Filter personal bests by rank">
                 <option value="">All Ranks</option>
-                <option value="wr">World Records</option>
+                <option value="wr">WR</option>
+                <option value="not-wr">Not WR</option>
                 <option value="top3">Top 3</option>
                 <option value="top10">Top 10</option>
               </select>
@@ -130,7 +132,10 @@
           <div id="sr-player-record-list" class="speedrun-list"></div>
         </section>
         <section class="speedrun-dashboard-card">
-          <div class="speedrun-section-heading compact"><div><span>05</span><h2>Map Progress</h2></div></div>
+          <div class="speedrun-section-heading compact">
+            <div><span>05</span><h2>Map Progress</h2></div>
+            <button id="sr-player-download-incomplete" class="speedrun-progress-download" type="button" disabled>Download Unplayed Map List</button>
+          </div>
           <div id="sr-player-map-progress" class="speedrun-map-progress"></div>
         </section>
         <section class="speedrun-dashboard-card">

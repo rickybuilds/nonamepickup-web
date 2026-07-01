@@ -421,6 +421,7 @@
       if (classFilter?.value && classKey(row) !== classFilter.value) return false;
       if (categoryFilter?.value && mapCategory(row, mapLookup) !== categoryFilter.value) return false;
       if (rankFilter?.value === "wr" && rank !== 1) return false;
+      if (rankFilter?.value === "not-wr" && rank === 1) return false;
       if (rankFilter?.value === "top3" && (!Number.isFinite(rank) || rank > 3)) return false;
       if (rankFilter?.value === "top10" && (!Number.isFinite(rank) || rank > 10)) return false;
       return true;
@@ -476,21 +477,48 @@
     `).join("") || empty("No class data yet."));
 
     const completedMaps = new Set(pbs.map(row => row.map).filter(Boolean));
+    const availableMaps = maps.filter(row => row?.map && row.enabled !== false).map(row => row.map);
+    const incompleteMaps = availableMaps.filter(map => !completedMaps.has(map)).sort((a, b) => a.localeCompare(b));
     const totalMaps = Number(data.summary?.enabledMaps || data.summary?.totalMaps || maps.length || completedMaps.size);
     const playedMaps = Number(data.summary?.mapsPlayed || completedMaps.size);
     const inProgress = Math.max(0, playedMaps - completedMaps.size);
     const notStarted = Math.max(0, totalMaps - completedMaps.size - inProgress);
-    const blockCount = Math.min(80, Math.max(totalMaps, completedMaps.size, 1));
-    const blockFor = index => {
-      if (index < completedMaps.size) return "complete";
-      if (index < completedMaps.size + inProgress) return "progress";
-      return "empty";
-    };
+    const completionPercent = totalMaps ? Math.min(100, Math.max(0, (completedMaps.size / totalMaps) * 100)) : 0;
+    const completionLabel = `${completionPercent.toFixed(1).replace(/\.0$/, "")}% complete`;
     setHtml("sr-player-map-progress", `
-      <div class="speedrun-progress-summary"><strong>${escapeHtml(completedMaps.size)} / ${escapeHtml(totalMaps || completedMaps.size)}</strong><span>maps completed</span></div>
-      <div class="speedrun-progress-legend"><span class="complete">Completed (${escapeHtml(completedMaps.size)})</span><span class="progress">In progress (${escapeHtml(inProgress)})</span><span class="empty">Not started (${escapeHtml(notStarted)})</span></div>
-      <div class="speedrun-progress-blocks">${Array.from({ length: blockCount }, (_, index) => `<i class="${blockFor(index)}"></i>`).join("")}</div>
+      <div class="speedrun-progress-summary">
+        <div><strong>${escapeHtml(completedMaps.size)} / ${escapeHtml(totalMaps || completedMaps.size)}</strong><span>maps completed</span></div>
+      </div>
+      
+      <div class="speedrun-progress-bar" aria-label="${escapeAttr(completionLabel)}">
+        <i style="--progress:${completionPercent}%"></i>
+        <strong>${escapeHtml(completionLabel)}</strong>
+      </div>
     `);
+    const downloadIncomplete = $("sr-player-download-incomplete");
+    if (downloadIncomplete) {
+      downloadIncomplete.disabled = !incompleteMaps.length;
+      downloadIncomplete.textContent = `Download Unplayed Map List (${incompleteMaps.length || notStarted})`;
+      downloadIncomplete.addEventListener("click", () => {
+        const playerName = data.player?.playerName || data.player?.player_name || "runner";
+        const lines = incompleteMaps.length ? incompleteMaps : ["No incomplete map names were available from the API response."];
+        const body = [
+          `Incomplete speedrun maps for ${playerName}`,
+          `Completed: ${completedMaps.size} / ${totalMaps || completedMaps.size}`,
+          "",
+          ...lines
+        ].join("\n");
+        const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${String(playerName).replace(/[^a-z0-9_-]+/gi, "_").replace(/^_+|_+$/g, "") || "runner"}-incomplete-speedrun-maps.txt`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      });
+    }
 
     const fastest = [...pbs].sort((a, b) => Number(a.bestTimeMs || Infinity) - Number(b.bestTimeMs || Infinity))[0];
     const longest = [...pbs].sort((a, b) => Number(b.bestTimeMs || -1) - Number(a.bestTimeMs || -1))[0];

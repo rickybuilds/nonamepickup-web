@@ -36,423 +36,6 @@
   margin-top: 24px;
 }
 
-.speedruns-page[data-speedruns-view="player"] {
-  --page-main-width: 1500px;
-}
-
-.speedrun-player-dashboard {
-  display: grid;
-  gap: 18px;
-}
-
-.speedrun-player-hero,
-.speedrun-dashboard-card {
-  border: 1px solid rgba(77, 166, 255, .22);
-  border-radius: 28px;
-  background:
-    linear-gradient(145deg, rgba(9, 16, 31, .92), rgba(4, 9, 18, .96)),
-    radial-gradient(circle at top right, rgba(14, 165, 233, .12), transparent 44%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .04),
-    0 20px 48px rgba(0, 0, 0, .28);
-}
-
-.speedrun-player-hero {
-  position: relative;
-  isolation: isolate;
-  display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(0, 58%);
-  gap: clamp(20px, 2.4vw, 34px);
-  align-items: center;
-  min-height: 230px;
-  padding: clamp(24px, 2.4vw, 38px);
-  overflow: hidden;
-  border-color: rgba(77,166,255,.26);
-  background:
-    linear-gradient(90deg, rgba(3,7,17,.97), rgba(3,7,17,.82) 42%, rgba(3,7,17,.46) 68%, rgba(3,7,17,.82)),
-    radial-gradient(circle at 18% 25%, var(--page-hero-accent), transparent 42%),
-    radial-gradient(circle at 86% 18%, var(--page-hero-accent-2), transparent 36%),
-    var(--page-hero-image) center / cover no-repeat,
-    var(--surface-bg);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.045),
-    0 26px 70px rgba(0,0,0,.36),
-    0 0 48px rgba(77,166,255,.10);
-}
-
-.speedrun-player-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  align-self: center;
-}
-
-.speedrun-player-stat-grid article,
-.speedrun-mini-stat-grid article,
-.speedrun-career-grid article {
-  min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid rgba(77, 166, 255, .2);
-  border-radius: 16px;
-  background: rgba(3, 10, 22, .62);
-}
-
-.speedrun-player-stat-grid article.accent {
-  border-color: rgba(251, 191, 36, .35);
-  background: linear-gradient(145deg, rgba(113, 63, 18, .22), rgba(3, 10, 22, .68));
-}
-
-.speedrun-player-stat-grid span,
-.speedrun-mini-stat-grid span,
-.speedrun-career-grid span {
-  display: block;
-  color: #94a3b8;
-  font-size: 10px;
-  font-weight: 950;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.speedrun-player-stat-grid strong,
-.speedrun-mini-stat-grid strong,
-.speedrun-career-grid strong {
-  display: block;
-  overflow: hidden;
-  margin-top: 7px;
-  color: #f8fafc;
-  font-family: Orbitron, Inter, sans-serif;
-  font-size: clamp(20px, 1.6vw, 32px);
-  font-weight: 950;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.speedrun-player-stat-grid small,
-.speedrun-mini-stat-grid small,
-.speedrun-career-grid small {
-  display: block;
-  overflow: hidden;
-  margin-top: 4px;
-  color: #7dd3fc;
-  font-size: 11px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.speedrun-player-main-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(340px, .85fr);
-  gap: 18px;
-  align-items: stretch;
-}
-
-.speedrun-dashboard-card {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: 20px;
-}
-
-.speedrun-player-pb-card {
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.speedrun-player-pb-card .speedrun-section-heading {
-  position: relative;
-  z-index: 3;
-}
-
-.speedrun-player-side,
-.speedrun-player-lower-grid {
-  display: grid;
-  gap: 18px;
-}
-
-.speedrun-player-side {
-  grid-template-rows: auto auto;
-  align-content: start;
-  min-height: 0;
-}
-
-.speedrun-player-side > .speedrun-dashboard-card {
-  min-height: 0;
-}
-
-.speedrun-player-lower-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: stretch;
-}
-
-.speedrun-player-lower-grid > .speedrun-dashboard-card {
-  height: 100%;
-  min-height: 330px;
-  overflow: hidden;
-}
-
-.speedrun-mini-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-}
-
-.speedrun-mini-stat-grid article:first-child {
-  grid-column: 1 / -1;
-}
-
-.speedrun-class-bars {
-  display: grid;
-  gap: 8px;
-}
-
-.speedrun-class-bars article {
-  display: grid;
-  gap: 6px;
-}
-
-.speedrun-class-bars div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: #dbeafe;
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.speedrun-class-bars span {
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-.speedrun-class-bars i {
-  display: block;
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, .9);
-}
-
-.speedrun-class-bars i::before {
-  content: "";
-  display: block;
-  width: var(--bar);
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #38bdf8, #22c55e);
-  box-shadow: 0 0 18px rgba(56, 189, 248, .34);
-}
-
-.speedrun-map-progress {
-  display: grid;
-  gap: 14px;
-  min-height: 0;
-}
-
-.speedrun-progress-summary strong {
-  display: block;
-  color: #f8fafc;
-  font-family: Orbitron, Inter, sans-serif;
-  font-size: 24px;
-}
-
-.speedrun-progress-summary span,
-.speedrun-progress-legend span {
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 850;
-}
-
-.speedrun-progress-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-}
-
-.speedrun-progress-legend span::before {
-  content: "";
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  margin-right: 6px;
-  border-radius: 2px;
-  background: #1e293b;
-}
-
-.speedrun-progress-legend .complete::before { background: #22c55e; }
-.speedrun-progress-legend .progress::before { background: #0ea5e9; }
-
-.speedrun-progress-blocks {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.speedrun-progress-blocks i {
-  aspect-ratio: 1;
-  border-radius: 4px;
-  background: rgba(30, 41, 59, .75);
-}
-
-.speedrun-progress-blocks .complete {
-  background: linear-gradient(135deg, #22c55e, #84cc16);
-  box-shadow: 0 0 14px rgba(34, 197, 94, .32);
-}
-
-.speedrun-progress-blocks .progress {
-  background: linear-gradient(135deg, #0284c7, #38bdf8);
-  box-shadow: 0 0 14px rgba(56, 189, 248, .28);
-}
-
-.speedrun-career-strip {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px;
-  align-items: center;
-  padding-top: 14px;
-  padding-bottom: 14px;
-}
-
-.speedrun-career-strip h2 {
-  margin: 0;
-  color: #f8fafc;
-  font-size: 18px;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
-.speedrun-career-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.speedruns-page .speedrun-hero > div {
-  min-width: 0;
-}
-
-.speedrun-player-identity {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 18px;
-}
-
-.speedrun-player-copy {
-  min-width: 0;
-}
-
-.speedrun-player-mark-wrap {
-  position: relative;
-  flex: 0 0 auto;
-}
-
-.speedrun-player-mark {
-  width: 112px;
-  height: 112px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border: 2px solid rgba(77, 166, 255, .55);
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(15, 23, 42, .9), rgba(37, 99, 235, .58));
-  box-shadow: 0 0 35px rgba(77, 166, 255, .35), inset 0 0 30px rgba(255, 255, 255, .12);
-  color: #06111f;
-  font-family: Orbitron, system-ui, sans-serif;
-  font-size: 38px;
-  font-weight: 950;
-  text-shadow: 0 2px 0 rgba(255, 255, 255, .28);
-}
-
-.speedrun-player-mark img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-.speedrun-online-dot {
-  position: absolute;
-  right: 7px;
-  bottom: 8px;
-  z-index: 5;
-  width: 20px;
-  height: 20px;
-  border: 4px solid #08111f;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 18px rgba(34, 197, 94, .8);
-}
-
-#sr-player-title {
-  display: flex !important;
-  align-items: center;
-  gap: 14px;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: visible;
-}
-
-#sr-player-title .speedrun-player-name-text {
-  flex: 0 0 auto;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-#sr-player-title .supporter-badge,
-#sr-player-title .supporter-inline {
-  flex: 0 0 auto;
-  margin-left: 0 !important;
-}
-
-.speedrun-profile-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.speedrun-profile-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 6px 10px;
-  border: 1px solid rgba(77, 166, 255, .28);
-  border-radius: 8px;
-  background: rgba(14, 116, 144, .16);
-  color: #93c5fd;
-  font-size: 12px;
-  font-weight: 950;
-  letter-spacing: .02em;
-  text-decoration: none;
-}
-
-.speedrun-profile-link:hover,
-.speedrun-profile-link:focus-visible {
-  border-color: rgba(125, 211, 252, .5);
-  color: #e0f2fe;
-}
-
-@media (max-width: 760px) {
-  .speedrun-player-identity {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
-  }
-
-  .speedrun-profile-links {
-    justify-content: center;
-  }
-
-  .speedrun-player-mark {
-    width: 92px;
-    height: 92px;
-    font-size: 34px;
-  }
-}
-
 .speedrun-section-heading {
   display: flex;
   align-items: end;
@@ -693,10 +276,7 @@
 .speedrun-section > .speedrun-map-grid,
 .speedrun-section > .speedrun-table-wrap,
 .speedrun-columns .speedrun-table-wrap,
-.speedrun-columns .speedrun-list,
-.speedrun-player-pb-card .speedrun-table-wrap,
-#sr-player-record-list,
-#sr-player-recent {
+.speedrun-columns .speedrun-list {
   overflow: auto;
   padding-top: 4px;
   padding-right: 6px;
@@ -720,28 +300,10 @@
   max-height: min(36vh, 330px);
 }
 
-.speedrun-player-pb-card .speedrun-table-wrap {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  overscroll-behavior: contain;
-}
-
-#sr-player-record-list,
-#sr-player-recent {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: clamp(190px, 28vh, 245px);
-  overscroll-behavior: contain;
-}
-
 .speedrun-section > .speedrun-map-grid::-webkit-scrollbar,
 .speedrun-section > .speedrun-table-wrap::-webkit-scrollbar,
 .speedrun-columns .speedrun-table-wrap::-webkit-scrollbar,
-.speedrun-columns .speedrun-list::-webkit-scrollbar,
-.speedrun-player-pb-card .speedrun-table-wrap::-webkit-scrollbar,
-#sr-player-record-list::-webkit-scrollbar,
-#sr-player-recent::-webkit-scrollbar {
+.speedrun-columns .speedrun-list::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
@@ -749,10 +311,7 @@
 .speedrun-section > .speedrun-map-grid::-webkit-scrollbar-thumb,
 .speedrun-section > .speedrun-table-wrap::-webkit-scrollbar-thumb,
 .speedrun-columns .speedrun-table-wrap::-webkit-scrollbar-thumb,
-.speedrun-columns .speedrun-list::-webkit-scrollbar-thumb,
-.speedrun-player-pb-card .speedrun-table-wrap::-webkit-scrollbar-thumb,
-#sr-player-record-list::-webkit-scrollbar-thumb,
-#sr-player-recent::-webkit-scrollbar-thumb {
+.speedrun-columns .speedrun-list::-webkit-scrollbar-thumb {
   border: 2px solid rgba(3, 8, 20, .8);
   border-radius: 999px;
   background: rgba(77, 166, 255, .34);
@@ -761,10 +320,7 @@
 .speedrun-section > .speedrun-map-grid::-webkit-scrollbar-track,
 .speedrun-section > .speedrun-table-wrap::-webkit-scrollbar-track,
 .speedrun-columns .speedrun-table-wrap::-webkit-scrollbar-track,
-.speedrun-columns .speedrun-list::-webkit-scrollbar-track,
-.speedrun-player-pb-card .speedrun-table-wrap::-webkit-scrollbar-track,
-#sr-player-record-list::-webkit-scrollbar-track,
-#sr-player-recent::-webkit-scrollbar-track {
+.speedrun-columns .speedrun-list::-webkit-scrollbar-track {
   border-radius: 999px;
   background: rgba(3, 8, 20, .45);
 }
@@ -944,29 +500,6 @@
   white-space: nowrap;
 }
 
-.speedrun-player-pb-table th,
-.speedrun-player-pb-table td {
-  padding: 11px 12px;
-  white-space: nowrap;
-}
-
-.speedrun-player-pb-table td {
-  font-size: 12px;
-}
-
-.speedrun-player-pb-table td:first-child {
-  min-width: 132px;
-}
-
-.speedrun-player-pb-table td:first-child small {
-  display: block;
-  margin-top: 2px;
-  color: #64748b;
-  font-size: 10px;
-  font-weight: 850;
-  text-transform: uppercase;
-}
-
 .speedrun-rank-pill {
   display: inline-flex;
   align-items: center;
@@ -1030,14 +563,6 @@
   font-weight: 950;
   letter-spacing: .1em;
   text-transform: uppercase;
-}
-
-.speedrun-player-pb-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: rgba(5, 12, 24, .98);
-  box-shadow: 0 1px 0 rgba(148, 163, 184, .08);
 }
 
 .speedrun-table td {
@@ -1164,25 +689,14 @@
 
 @media (max-width: 1100px) {
   .speedrun-summary,
-  .speedrun-map-grid,
-  .speedrun-player-stat-grid,
-  .speedrun-player-lower-grid,
-  .speedrun-career-grid {
+  .speedrun-map-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .speedrun-player-hero,
-  .speedrun-player-main-grid,
   .speedrun-columns,
   .speedrun-columns.two,
   .speedrun-progression-layout {
     grid-template-columns: 1fr;
-  }
-
-  .speedrun-player-lower-grid > .speedrun-dashboard-card {
-    height: auto;
-    min-height: 0;
-    max-height: none;
   }
 
   .speedrun-class-toggles {
@@ -1194,8 +708,6 @@
 
 @media (max-width: 700px) {
   .speedrun-section,
-  .speedrun-dashboard-card,
-  .speedrun-player-hero,
   .speedrun-columns > div {
     padding: 16px;
     border-radius: 22px;
@@ -1222,17 +734,8 @@
 
   .speedrun-summary,
   .speedrun-map-grid,
-  .speedrun-player-stat-grid,
-  .speedrun-mini-stat-grid,
-  .speedrun-player-lower-grid,
-  .speedrun-career-strip,
-  .speedrun-career-grid,
   .speedrun-card-stats {
     grid-template-columns: 1fr;
-  }
-
-  .speedrun-career-strip {
-    align-items: stretch;
   }
 
   .speedrun-list-row {
@@ -1258,62 +761,5 @@
 
   .speedrun-class-toggles {
     grid-template-columns: 1fr;
-  }
-
-  .speedrun-player-pb-card .speedrun-table-wrap {
-    max-height: min(58vh, 380px);
-  }
-
-  #sr-player-record-list,
-  #sr-player-recent {
-    max-height: min(46vh, 220px);
-  }
-
-  .speedrun-player-pb-table,
-  .speedrun-player-pb-table thead,
-  .speedrun-player-pb-table tbody,
-  .speedrun-player-pb-table tr,
-  .speedrun-player-pb-table th,
-  .speedrun-player-pb-table td {
-    display: block;
-  }
-
-  .speedrun-player-pb-table thead {
-    display: none;
-  }
-
-  .speedrun-player-pb-table tr {
-    margin-bottom: 10px;
-    padding: 12px;
-    border: 1px solid rgba(77, 166, 255, .18);
-    border-radius: 8px;
-    background: rgba(3, 10, 22, .52);
-  }
-
-  .speedrun-player-pb-table td {
-    display: grid;
-    grid-template-columns: 108px minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(148, 163, 184, .08);
-    white-space: normal;
-  }
-
-  .speedrun-player-pb-table td::before {
-    content: attr(data-label);
-    color: #64748b;
-    font-size: 10px;
-    font-weight: 950;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
-
-  .speedrun-player-pb-table td:first-child {
-    min-width: 0;
-  }
-
-  .speedrun-player-pb-table td:last-child {
-    border-bottom: 0;
   }
 }
