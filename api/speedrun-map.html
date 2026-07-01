@@ -16,9 +16,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260629pbcreated">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260629wrprogression">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/speedruns.js?v=20260629pbcreated" defer></script>
+  <script src="assets/js/speedruns.js?v=20260629wrprogression" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -66,10 +66,27 @@
 
       <div id="speedrun-error" class="speedrun-error" hidden></div>
 
+      <section class="speedrun-section page-section">
+        <div class="speedrun-section-heading">
+          <div><span>01</span><h2>Leaderboard</h2></div>
+          <div class="speedrun-filters">
+            <select id="sr-map-class-filter" aria-label="Filter leaderboard by class">
+              <option value="">All Classes</option>
+            </select>
+          </div>
+        </div>
+        <div class="speedrun-table-wrap leaderboard-table-wrap">
+          <table class="speedrun-table">
+            <thead><tr><th>Rank</th><th>Runner</th><th>Class</th><th>Time</th><th>Updated</th></tr></thead>
+            <tbody id="sr-map-leaderboard"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="speedrun-section page-section speedrun-wr-card" aria-labelledby="sr-progression-title">
         <div class="speedrun-section-heading">
           <div>
-            <span>01</span>
+            <span>02</span>
             <h2 id="sr-progression-title">World Record Progression</h2>
           </div>
         </div>
@@ -84,23 +101,7 @@
         </div>
       </section>
 
-      <section class="speedrun-section speedrun-columns speedrun-map-detail-cards">
-        <div>
-          <div class="speedrun-section-heading compact">
-            <div><span>02</span><h2>Leaderboard</h2></div>
-            <div class="speedrun-filters">
-              <select id="sr-map-class-filter" aria-label="Filter leaderboard by class">
-                <option value="">All Classes</option>
-              </select>
-            </div>
-          </div>
-          <div class="speedrun-table-wrap leaderboard-table-wrap">
-            <table class="speedrun-table">
-              <thead><tr><th>Rank</th><th>Runner</th><th>Class</th><th>Time</th><th>Set</th></tr></thead>
-              <tbody id="sr-map-leaderboard"></tbody>
-            </table>
-          </div>
-        </div>
+      <section class="speedrun-section speedrun-columns two">
         <div>
           <div class="speedrun-section-heading compact"><div><span>03</span><h2>Recent Runs</h2></div></div>
           <div id="sr-map-recent" class="speedrun-list"></div>

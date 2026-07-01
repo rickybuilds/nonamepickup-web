@@ -14,6 +14,9 @@
 #player-name-v3{display:block;width:100%;white-space:nowrap;line-height:1.02;padding-bottom:3px;overflow:visible;margin:0;font-size:54px;font-weight:950;letter-spacing:-1.2px;background:linear-gradient(90deg,#fff,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .elo-line,.record-line,.steam-line{margin-top:7px;color:#cbd5e1;font-size:18px;font-weight:900;white-space:nowrap}
 .steam-line{font-size:12px;color:#7dd3fc;letter-spacing:.04em;opacity:.9}
+.player-profile-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.player-profile-link{display:inline-flex;align-items:center;min-height:28px;padding:6px 10px;border:1px solid rgba(96,165,250,.28);border-radius:8px;background:rgba(37,99,235,.12);color:#93c5fd;font-size:12px;font-weight:950;text-decoration:none;letter-spacing:.02em}
+.player-profile-link:hover,.player-profile-link:focus-visible{border-color:rgba(125,211,252,.5);color:#e0f2fe}
 .elo-line strong,.record-line strong{color:#93c5fd}
 .record-line .good{color:#34d399}
 .identity-mini-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
@@ -597,7 +600,7 @@
 }
 
 .player2-main{padding:28px 0 34px}
-.player2-shell{max-width:1680px;margin:0 auto}
+.player2-shell{max-width:100%;margin:0 auto}
 .player2-page .v3-card,
 .player2-middle-card,
 .player2-analytics-card{
@@ -1051,4 +1054,3 @@
   }
   .player2-middle-card .mini-list{max-height:none}
 }
-

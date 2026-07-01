@@ -19,7 +19,7 @@
   --shell-blur:8px;
   --shell-sheen-color:rgba(251,146,60,.06);
 }
-.player-v3-page{--page-main-width:1760px;}
+.player-v3-page{--page-main-width:2200px;}
 .speedruns-page{--page-bg-accent-right:rgba(77,166,255,0);}
 @keyframes bgShift{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
 @media (prefers-reduced-motion:reduce){

@@ -7,6 +7,20 @@ const { createHealthHandler } = require("../helpers/health");
 const MAX_MAP_NAME_LENGTH = 64;
 const MAX_STEAM_ID_LENGTH = 35;
 const MAX_DISCORD_ID_LENGTH = 32;
+const CLASS_NAMES = {
+  0: "Civilian",
+  1: "Scout",
+  2: "Sniper",
+  3: "Soldier",
+  4: "Demoman",
+  5: "Medic",
+  6: "Heavy",
+  7: "Pyro",
+  8: "Spy",
+  9: "Engineer",
+  10: "Civilian",
+  11: "Civilian"
+};
 
 function createSpeedrunsRouter({ logRouteError }) {
   const router = express.Router();
@@ -56,6 +70,14 @@ function createSpeedrunsRouter({ logRouteError }) {
     return `${minutes}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
   }
 
+  function className(row) {
+    const existing = String(row.class_name || "").trim();
+    if (existing && existing !== "-") return existing;
+    const classId = row.class_id == null ? null : Number(row.class_id);
+    if (classId == null || !Number.isFinite(classId)) return null;
+    return CLASS_NAMES[classId] || `Class ${classId}`;
+  }
+
   function mapRun(row) {
     const timeMs = row.time_ms == null ? null : Number(row.time_ms);
     const createdAt = iso(row.created_at);
@@ -66,7 +88,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       playerName: row.player_name || null,
       map: row.map || null,
       classId: row.class_id == null ? null : Number(row.class_id),
-      className: row.class_name || null,
+      className: className(row),
       timeMs,
       timeDisplay: formatTimeMs(timeMs),
       createdAt,
@@ -74,19 +96,39 @@ function createSpeedrunsRouter({ logRouteError }) {
     };
   }
 
+  function mapProgressionPoint(row, improvementMs) {
+    const timeMs = row.time_ms == null ? null : Number(row.time_ms);
+    const createdAt = iso(row.created_at);
+    return {
+      time_ms: timeMs,
+      player_name: row.player_name || null,
+      steamid: row.steamid || null,
+      created_at: createdAt,
+      improvement_ms: improvementMs == null ? null : Number(improvementMs)
+    };
+  }
+
   function mapRecord(row, includeMap = true) {
     const bestTimeMs = row.best_time_ms == null ? null : Number(row.best_time_ms);
+    const pbCreatedAt = iso(row.pb_created_at);
     const updatedAt = iso(row.updated_at);
+    const achievedAt = pbCreatedAt || updatedAt;
     const out = {
       steamId: row.steamid || null,
       discordId: row.discord_id || null,
       playerName: row.player_name || null,
       classId: row.class_id == null ? null : Number(row.class_id),
-      className: row.class_name || null,
+      className: className(row),
       bestTimeMs,
       bestTimeDisplay: formatTimeMs(bestTimeMs),
+      pbCreatedAt,
+      pb_created_at: pbCreatedAt,
       updatedAt,
-      updated_at: updatedAt
+      updated_at: updatedAt,
+      rank: row.record_rank == null ? null : Number(row.record_rank),
+      recordRank: row.record_rank == null ? null : Number(row.record_rank),
+      achievedAt,
+      achieved_at: achievedAt
     };
     if (includeMap) out.map = row.map || null;
     return out;
@@ -177,10 +219,11 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_id,
           r.class_name,
           r.best_time_ms,
+          r.pb_created_at,
           r.updated_at
         FROM speedrun_records r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
-        ORDER BY r.updated_at DESC, r.best_time_ms ASC
+        ORDER BY COALESCE(r.pb_created_at, r.updated_at) DESC, r.best_time_ms ASC
         LIMIT 10
       `),
       speedrunQuery(`
@@ -440,7 +483,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         FROM (
           SELECT r.*, ROW_NUMBER() OVER (
             PARTITION BY r.map
-            ORDER BY r.best_time_ms ASC, r.updated_at ASC, r.steamid ASC, r.class_id ASC
+            ORDER BY r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC, r.steamid ASC, r.class_id ASC
           ) AS rn
           FROM speedrun_records r
         ) ranked
@@ -454,6 +497,68 @@ function createSpeedrunsRouter({ logRouteError }) {
     `, [...params, limit, offset]);
 
     res.json(rows.map(mapCard));
+  }));
+
+  router.get("/maps/:map/progression", (req, res) => runEndpoint(req, res, "[/api/speedruns/maps/:map/progression]", async () => {
+    const mapName = cleanText(req.params.map, MAX_MAP_NAME_LENGTH);
+    if (!mapName) return badRequest(res, "invalid_map");
+
+    const mapRows = await speedrunQuery(`
+      SELECT map
+      FROM speedrun_maps
+      WHERE map = ?
+      LIMIT 1
+    `, [mapName]);
+    if (!mapRows.length) return res.status(404).json({ ok: false, error: "map_not_found" });
+
+    const rows = await speedrunQuery(`
+      SELECT
+        r.id,
+        r.steamid,
+        r.player_name,
+        r.map,
+        r.class_id,
+        r.class_name,
+        r.time_ms,
+        r.created_at
+      FROM speedrun_runs r
+      WHERE r.map = ?
+        AND r.class_id IS NOT NULL
+        AND r.time_ms IS NOT NULL
+      ORDER BY r.class_id ASC, r.created_at ASC, r.id ASC
+    `, [mapName]);
+
+    const classes = new Map();
+    const bestByClass = new Map();
+    for (const row of rows) {
+      const classId = Number(row.class_id);
+      const timeMs = Number(row.time_ms);
+      if (!Number.isFinite(classId) || !Number.isFinite(timeMs)) continue;
+
+      const previousBest = bestByClass.get(classId);
+      if (previousBest == null || timeMs < previousBest) {
+        bestByClass.set(classId, timeMs);
+        if (!classes.has(classId)) {
+          classes.set(classId, {
+            class_id: classId,
+            class_name: className(row) || `Class ${classId}`,
+            points: []
+          });
+        }
+        classes.get(classId).points.push(mapProgressionPoint(
+          row,
+          previousBest == null ? null : previousBest - timeMs
+        ));
+      }
+    }
+
+    res.json({
+      map: mapRows[0].map,
+      classes: [...classes.values()].sort((a, b) => (
+        String(a.class_name || "").localeCompare(String(b.class_name || "")) ||
+        Number(a.class_id || 0) - Number(b.class_id || 0)
+      ))
+    });
   }));
 
   router.get("/maps/:map", (req, res) => runEndpoint(req, res, "[/api/speedruns/maps/:map]", async () => {
@@ -481,11 +586,11 @@ function createSpeedrunsRouter({ logRouteError }) {
           (SELECT COUNT(DISTINCT steamid) FROM speedrun_runs WHERE map = ? AND steamid IS NOT NULL AND steamid != '') AS totalRunners,
           (SELECT COUNT(*) FROM speedrun_records WHERE map = ?) AS totalRecords,
           (SELECT MAX(created_at) FROM speedrun_runs WHERE map = ?) AS lastRunAt,
-          (SELECT best_time_ms FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordTimeMs,
-          (SELECT player_name FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordPlayer,
-          (SELECT steamid FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordSteamId,
-          (SELECT class_id FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassId,
-          (SELECT class_name FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassName
+          (SELECT best_time_ms FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordTimeMs,
+          (SELECT player_name FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordPlayer,
+          (SELECT steamid FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordSteamId,
+          (SELECT class_id FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassId,
+          (SELECT class_name FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassName
       `, [mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName]),
       speedrunQuery(`
         SELECT
@@ -496,11 +601,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_id,
           r.class_name,
           r.best_time_ms,
+          r.pb_created_at,
           r.updated_at
         FROM speedrun_records r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         WHERE r.map = ?
-        ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC, class_id ASC
+        ORDER BY r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC, r.steamid ASC, r.class_id ASC
       `, [mapName]),
       speedrunQuery(`
         SELECT
@@ -643,7 +749,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     FROM (
       SELECT steamid, ROW_NUMBER() OVER (
         PARTITION BY map, class_id
-        ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC
+        ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC
       ) AS record_rank
       FROM speedrun_records
     ) ranked_records
@@ -708,7 +814,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           FROM speedrun_runs
           WHERE steamid IN (${placeholders})
           UNION ALL
-          SELECT steamid, player_name, updated_at AS seen_at
+          SELECT steamid, player_name, COALESCE(pb_created_at, updated_at) AS seen_at
           FROM speedrun_records
           WHERE steamid IN (${placeholders})
         ) names
@@ -727,7 +833,7 @@ function createSpeedrunsRouter({ logRouteError }) {
             FROM (
               SELECT steamid, ROW_NUMBER() OVER (
                 PARTITION BY map, class_id
-                ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC
+                ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC
               ) AS record_rank
               FROM speedrun_records
             ) ranked_records
@@ -736,7 +842,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       `, [...steamIds, ...steamIds, ...steamIds, ...steamIds, ...steamIds]),
 
       speedrunQuery(`
-        SELECT steamid, player_name, map, class_id, class_name, best_time_ms, updated_at
+        SELECT steamid, player_name, map, class_id, class_name, best_time_ms, pb_created_at, updated_at
         FROM (
           SELECT
             steamid,
@@ -745,10 +851,11 @@ function createSpeedrunsRouter({ logRouteError }) {
             class_id,
             class_name,
             best_time_ms,
+            pb_created_at,
             updated_at,
             ROW_NUMBER() OVER (
               PARTITION BY map, class_id
-              ORDER BY best_time_ms ASC, updated_at ASC, steamid ASC
+              ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC
             ) AS record_rank
           FROM speedrun_records
         ) ranked_records
@@ -758,8 +865,23 @@ function createSpeedrunsRouter({ logRouteError }) {
       `, steamIds),
 
       speedrunQuery(`
-        SELECT steamid, player_name, map, class_id, class_name, best_time_ms, updated_at
-        FROM speedrun_records
+        SELECT steamid, player_name, map, class_id, class_name, best_time_ms, pb_created_at, updated_at, record_rank
+        FROM (
+          SELECT
+            steamid,
+            player_name,
+            map,
+            class_id,
+            class_name,
+            best_time_ms,
+            pb_created_at,
+            updated_at,
+            ROW_NUMBER() OVER (
+              PARTITION BY map, class_id
+              ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC
+            ) AS record_rank
+          FROM speedrun_records
+        ) ranked_records
         WHERE steamid IN (${placeholders})
         ORDER BY map ASC, class_id ASC, best_time_ms ASC
       `, steamIds),
@@ -860,6 +982,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         r.class_id,
         r.class_name,
         r.best_time_ms,
+        r.pb_created_at,
         r.updated_at,
         m.display_name,
         m.category,
@@ -869,7 +992,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       LEFT JOIN speedrun_maps m ON m.map = r.map
       LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-      ORDER BY r.map ASC, r.best_time_ms ASC, r.updated_at ASC
+      ORDER BY r.map ASC, r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC
       LIMIT ?
     `, [...params, limit]);
 

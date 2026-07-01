@@ -1,0 +1,27 @@
+comparison_mode,comparison_label,metric,pre,post,pct_change
+equal_time,Equal Time,matches,149,157,5.369127516778524
+equal_time,Equal Time,rounds,298,314,5.369127516778524
+equal_time,Equal Time,soldier_player_rounds,518,564,8.88030888030888
+equal_time,Equal Time,unique_soldier_players,68,73,7.352941176470588
+equal_time,Equal Time,unique_maps,21,26,23.80952380952381
+equal_time,Equal Time,soldier_damage,4075954,4264765,4.632314299916044
+equal_time,Equal Time,soldier_team_damage,752174,698701,-7.10912634576574
+equal_time,Equal Time,damage_per_soldier_round,7868.6370656370655,7561.640070921986,-3.901526937311145
+equal_time,Equal Time,team_damage_per_soldier_round,1452.0733590733591,1238.8315602836878,-14.685332353025993
+equal_time,Equal Time,team_damage_per_soldier_match,5048.147651006711,4450.324840764331,-11.842419270822258
+equal_time,Equal Time,team_damage_pct_soldier_damage,18.453937409499716,16.38310668934865,-11.221619940495966
+equal_time,Equal Time,damage_per_team_damage,5.418897755040722,6.103848427295796,12.640036834389896
+equal_time,Equal Time,soldier_damage_per_match,27355.395973154362,27164.108280254775,-0.6992685943471981
+equal_match_count,Equal Match Count,matches,158,157,-0.6329113924050633
+equal_match_count,Equal Match Count,rounds,316,314,-0.6329113924050633
+equal_match_count,Equal Match Count,soldier_player_rounds,547,564,3.1078610603290677
+equal_match_count,Equal Match Count,unique_soldier_players,69,73,5.797101449275362
+equal_match_count,Equal Match Count,unique_maps,21,26,23.80952380952381
+equal_match_count,Equal Match Count,soldier_damage,4333724,4264765,-1.5912180840311936
+equal_match_count,Equal Match Count,soldier_team_damage,783358,698701,-10.806936292218884
+equal_match_count,Equal Match Count,damage_per_soldier_round,7922.712979890311,7561.640070921986,-4.557440233980603
+equal_match_count,Equal Match Count,team_damage_per_soldier_round,1432.0987202925046,1238.8315602836878,-13.495379701850592
+equal_match_count,Equal Match Count,team_damage_per_soldier_match,4957.962025316456,4450.324840764331,-10.238827606182058
+equal_match_count,Equal Match Count,team_damage_pct_soldier_damage,18.075862699147432,16.38310668934865,-9.364731509487635
+equal_match_count,Equal Match Count,damage_per_team_damage,5.532239410333462,6.103848427295796,10.332326108205788
+equal_match_count,Equal Match Count,soldier_damage_per_match,27428.632911392404,27164.108280254775,-0.9644105559040059

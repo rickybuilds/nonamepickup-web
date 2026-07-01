@@ -16,9 +16,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260624d">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260629pbcreated">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/speedruns.js?v=20260626classfilter" defer></script>
+  <script src="assets/js/speedruns.js?v=20260629pbcreated" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -48,17 +48,25 @@
   <main class="speedrun-main">
     <section class="speedrun-shell">
       <div class="speedrun-hero detail">
-        <div>
-          <p class="speedrun-kicker">RUNNER PROFILE</p>
-          <h1 id="sr-player-title">Speedrun Runner</h1>
-          <p id="sr-player-subtitle" class="speedrun-subtitle">Loading runner activity...</p>
-          <p id="speedrun-status" class="speedrun-updated"><a href="speedruns.html">Speedruns</a></p>
+        <div class="speedrun-player-identity">
+          <div class="speedrun-player-mark-wrap">
+            <div id="sr-player-mark" class="speedrun-player-mark nn-avatar nn-avatar-lg"><span class="nn-avatar-fallback">?</span></div>
+            <span class="speedrun-online-dot"></span>
+          </div>
+          <div class="speedrun-player-copy">
+            <p class="speedrun-kicker">RUNNER PROFILE</p>
+            <h1 id="sr-player-title">Speedrun Runner</h1>
+            <p id="sr-player-subtitle" class="speedrun-subtitle">Loading runner activity...</p>
+            <p id="speedrun-status" class="speedrun-updated"><a href="speedruns.html">Speedruns</a></p>
+            <div id="sr-player-profile-links" class="speedrun-profile-links"></div>
+          </div>
         </div>
 
         <section class="speedrun-summary detail" aria-label="Runner summary">
           <article class="matches2-kpi"><span>Total Runs</span><strong id="sr-player-runs">-</strong></article>
           <article class="matches2-kpi"><span>Maps Played</span><strong id="sr-player-maps">-</strong></article>
           <article class="matches2-kpi"><span>Records</span><strong id="sr-player-records">-</strong></article>
+          <article class="matches2-kpi"><span>Best Rank</span><strong id="sr-player-best-rank">-</strong></article>
         </section>
       </div>
 
@@ -67,8 +75,8 @@
       <section class="speedrun-section">
         <div class="speedrun-section-heading"><div><span>01</span><h2>Personal Bests</h2></div></div>
         <div class="speedrun-table-wrap leaderboard-table-wrap">
-          <table class="speedrun-table">
-            <thead><tr><th>Map</th><th>Class</th><th>Time</th><th>Updated</th></tr></thead>
+          <table class="speedrun-table speedrun-player-pb-table">
+            <thead><tr><th>Rank</th><th>Map</th><th>Class</th><th>Time</th><th>Set</th></tr></thead>
             <tbody id="sr-player-pbs"></tbody>
           </table>
         </div>

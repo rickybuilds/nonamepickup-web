@@ -25,7 +25,7 @@ function createStatements(db, matchColumns) {
 `);
 
   const compareMatchesStmt = db.prepare(`
-  SELECT ${matchColumns("m")}
+  SELECT DISTINCT ${matchColumns("m")}
   FROM matches m
   JOIN rating_changes rc1 ON rc1.match_id = m.match_id AND rc1.player_id = ?
   JOIN rating_changes rc2 ON rc2.match_id = m.match_id AND rc2.player_id = ?

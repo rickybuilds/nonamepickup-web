@@ -77,6 +77,29 @@ function setHtml(id,value){
 const playerEscapeHtml=window.nnHelpers?.escapeHtml||window.escapeHtml;
 const playerEscapeAttr=window.nnHelpers?.escapeAttr||window.escapeAttr;
 
+async function renderSpeedrunProfileLink(playerId){
+  setHtml("player-profile-links","");
+  if(!playerId)return;
+
+  const speedrun=await fetchJSON("/api/speedruns/players/"+encodeURIComponent(playerId));
+  if(speedrun?.ok===false || !speedrun?.player)return;
+
+  const summary=speedrun.summary||{};
+  const hasSpeedrunActivity=
+    Number(summary.totalRuns||0)>0 ||
+    Number(summary.currentRecords||0)>0 ||
+    (Array.isArray(speedrun.personalBests)&&speedrun.personalBests.length>0) ||
+    (Array.isArray(speedrun.worldRecords)&&speedrun.worldRecords.length>0) ||
+    (Array.isArray(speedrun.recentActivity)&&speedrun.recentActivity.length>0);
+
+  if(!hasSpeedrunActivity)return;
+
+  setHtml(
+    "player-profile-links",
+    '<a class="player-profile-link speedrun" href="'+playerEscapeAttr("speedrun-player.html?id="+encodeURIComponent(playerId))+'">Speedrun Profile</a>'
+  );
+}
+
 function fmt(n){
   const v=Number(n||0);
   return Number.isFinite(v)?v.toLocaleString():"-";
@@ -228,9 +251,10 @@ async function loadPlayerV3(){
   resetGranularState();
   renderPlayerGranularLoading();
 
-  const [v3,recent]=await Promise.all([
+  const [v3,recent,relationshipHistory]=await Promise.all([
     fetchJSON("/api/player/"+enc+"/v3"),
-    fetchJSON("/api/player/"+enc+"/recent?limit=300")
+    fetchJSON("/api/player/"+enc+"/recent?limit=300"),
+    fetchJSON("/api/player/"+enc+"/recent?limit=5000")
   ]);
 
   if(!v3.ok||!v3.data){
@@ -248,7 +272,15 @@ async function loadPlayerV3(){
 
   const allRecentRows=Array.isArray(recent.data)?recent.data:[];
   const recentRows=allRecentRows.filter(m=>
+    m.status==="completed" &&
     m.status!=="admin" &&
+    !String(m.id||"").startsWith("admin-") &&
+    !String(m.id||"").startsWith("admin-set-") &&
+    !String(m.id||"").startsWith("seed-") &&
+    !String(m.map_name||"").includes("Admin Adjustment")
+  );
+  const relationshipRows=(Array.isArray(relationshipHistory.data)?relationshipHistory.data:[]).filter(m=>
+    m.status==="completed" &&
     !String(m.id||"").startsWith("admin-") &&
     !String(m.id||"").startsWith("admin-set-") &&
     !String(m.id||"").startsWith("seed-") &&
@@ -276,6 +308,7 @@ async function loadPlayerV3(){
   );
   setHtml("player-record-line",'Record: <strong>'+escapeHtml(ratings.record||"-")+'</strong> <span>| Win%: <b class="good">'+(ratings.win_pct??0)+'%</b></span>');
   setText("steam-line",player.steam_id?"SteamID: "+player.steam_id:"SteamID: Not linked");
+  renderSpeedrunProfileLink(playerId);
   setText("player2-current-elo",ratings.hidden?"Hidden":String(Number(ratings.elo||0)));
   setText("player2-record",ratings.record||"-");
   setText("player2-win-pct",(ratings.win_pct??0)+"%");
@@ -305,7 +338,7 @@ async function loadPlayerV3(){
   populateGranularMatchSelect(recentRows);
   renderRecentMatches(recentRows,playerId,!!ratings.hidden);
   renderActivityHeatmaps(recentRows);
-  renderRelationshipLists(recentRows,playerId);
+  renderRelationshipLists(relationshipRows,playerId);
   scheduleGranularSummaryLoad(playerId);
 }
 
@@ -2021,16 +2054,21 @@ function renderRelationshipLists(rows,playerId){
   const opponents=new Map();
 
   rows.forEach(m=>{
+    const matchId=String(m.id||m.match_id||"");
     const team=getPlayerTeam(m,playerId);
     if(!team)return;
 
     const mine=team==="BLUE"?(m.blueTeam||[]):(m.redTeam||[]);
     const theirs=team==="BLUE"?(m.redTeam||[]):(m.blueTeam||[]);
     const result=getPlayerResult(m,playerId);
+    const counted=new Set();
 
     mine.forEach(p=>{
       if(String(p.id)===String(playerId))return;
       const key=String(p.id);
+      const countKey="teammate:"+matchId+":"+key;
+      if(counted.has(countKey))return;
+      counted.add(countKey);
       const rec=teammates.get(key)||{
         id:key,
         name:p.name||key,
@@ -2049,6 +2087,9 @@ function renderRelationshipLists(rows,playerId){
 
     theirs.forEach(p=>{
       const key=String(p.id);
+      const countKey="opponent:"+matchId+":"+key;
+      if(counted.has(countKey))return;
+      counted.add(countKey);
       const rec=opponents.get(key)||{
         id:key,
         name:p.name||key,

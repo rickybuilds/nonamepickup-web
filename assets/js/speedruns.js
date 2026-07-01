@@ -14,6 +14,32 @@
   }[m])));
   const escapeAttr = nn.escapeAttr || escapeHtml;
   const number = new Intl.NumberFormat("en-US");
+  const progressionColors = [
+    "#38bdf8",
+    "#fbbf24",
+    "#34d399",
+    "#f472b6",
+    "#a78bfa",
+    "#fb7185",
+    "#22d3ee",
+    "#c4b5fd",
+    "#f97316",
+    "#84cc16"
+  ];
+  const classNames = {
+    0: "Civilian",
+    1: "Scout",
+    2: "Sniper",
+    3: "Soldier",
+    4: "Demoman",
+    5: "Medic",
+    6: "Heavy",
+    7: "Pyro",
+    8: "Spy",
+    9: "Engineer",
+    10: "Civilian",
+    11: "Civilian"
+  };
 
   function setText(id, value) {
     const el = $(id);
@@ -23,6 +49,22 @@
   function setHtml(id, value) {
     const el = $(id);
     if (el) el.innerHTML = value || "";
+  }
+
+  function fitSpeedrunPlayerName() {
+    const el = $("sr-player-title");
+    const text = el?.querySelector(".speedrun-player-name-text");
+    if (!el || !text) return;
+
+    const max = window.innerWidth <= 800 ? 34 : 64;
+    const min = window.innerWidth <= 800 ? 16 : 18;
+    let size = max;
+    text.style.fontSize = `${size}px`;
+
+    while (el.scrollWidth > el.clientWidth && size > min) {
+      size -= 1;
+      text.style.fontSize = `${size}px`;
+    }
   }
 
   function params() {
@@ -49,6 +91,15 @@
     return row?.[camelKey] ?? row?.[snakeKey];
   }
 
+  function achievedTimestamp(row) {
+    return row?.achievedAt ?? row?.achieved_at ?? row?.pbCreatedAt ?? row?.pb_created_at ?? row?.updatedAt ?? row?.updated_at;
+  }
+
+  function rankText(row) {
+    const rank = Number(row?.recordRank ?? row?.record_rank ?? row?.rank);
+    return Number.isFinite(rank) && rank > 0 ? `#${rank}` : "-";
+  }
+
   function formatDateTime(value) {
     if (!value) return "-";
     const date = new Date(value);
@@ -63,6 +114,12 @@
       minute: "2-digit"
     });
     return `${datePart} ${timePart}`;
+  }
+
+  function formatImprovement(ms) {
+    const value = Number(ms);
+    if (!Number.isFinite(value) || value <= 0) return "First record";
+    return `${time({ timeMs: value })} faster`;
   }
 
   async function api(path) {
@@ -107,7 +164,11 @@
   }
 
   function classText(row) {
-    return row?.className || row?.class_name || (row?.classId || row?.class_id ? `Class ${row.classId || row.class_id}` : "-");
+    const existing = String(row?.className || row?.class_name || "").trim();
+    if (existing && existing !== "-") return existing;
+    const classId = row?.classId ?? row?.class_id;
+    if (classId == null || classId === "") return "-";
+    return classNames[Number(classId)] || `Class ${classId}`;
   }
 
   function classValue(row) {
@@ -119,6 +180,28 @@
       .map(id => String(id || "").trim())
       .filter(Boolean);
     return ids.length ? `Steam IDs: ${ids.join(", ")}` : "Steam ID unavailable";
+  }
+
+  function playerInitial(name) {
+    return String(name || "?").trim().charAt(0).toUpperCase() || "?";
+  }
+
+  function speedrunAvatarMarkup(name, avatarUrl) {
+    const fallback = `<span class="nn-avatar-fallback">${escapeHtml(playerInitial(name))}</span>`;
+    const image = avatarUrl
+      ? `<img src="${escapeAttr(avatarUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`
+      : "";
+    return fallback + image;
+  }
+
+  async function loadSteamProfile(discordId) {
+    if (!discordId) return null;
+    try {
+      const data = await api(`/api/steam/profile/${encodeURIComponent(discordId)}`);
+      return data?.ok === false ? null : (data?.data || data);
+    } catch {
+      return null;
+    }
   }
 
   function yesNo(value) {
@@ -242,10 +325,246 @@
   function renderRecords(targetId, rows, emptyText) {
     setHtml(targetId, (rows || []).map(row => listRow({
       title: row.map || "Unknown map",
-      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(timestampValue(row, "updatedAt", "updated_at")))}`,
+      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(achievedTimestamp(row)))}`,
       value: time(row, "bestTime"),
       href: mapUrl(row.map)
     })).join("") || empty(emptyText));
+  }
+
+  function progressionPointTime(point) {
+    return time({ timeMs: point?.time_ms });
+  }
+
+  function normalizeProgressionClasses(data) {
+    return (data?.classes || [])
+      .map((classRow, index) => ({
+        classId: classRow.class_id,
+        className: classText({ class_id: classRow.class_id, class_name: classRow.class_name }),
+        color: progressionColors[index % progressionColors.length],
+        points: (classRow.points || [])
+          .map(point => ({
+            ...point,
+            x: new Date(point.created_at).getTime(),
+            y: Number(point.time_ms)
+          }))
+          .filter(point => Number.isFinite(point.x) && Number.isFinite(point.y))
+      }))
+      .filter(classRow => classRow.points.length);
+  }
+
+  function drawProgressionChart(canvas, tooltip, classes, activeIds) {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.max(320, Math.floor(rect.width || canvas.clientWidth || 720));
+    const height = Math.max(260, Math.floor(rect.height || canvas.clientHeight || 360));
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    const activeClasses = classes.filter(classRow => activeIds.has(String(classRow.classId)));
+    const points = activeClasses.flatMap(classRow => classRow.points.map(point => ({ ...point, classRow })));
+    const pad = { top: 22, right: 18, bottom: 48, left: 72 };
+    const plotWidth = Math.max(1, width - pad.left - pad.right);
+    const plotHeight = Math.max(1, height - pad.top - pad.bottom);
+
+    ctx.fillStyle = "rgba(3, 8, 20, .36)";
+    ctx.fillRect(0, 0, width, height);
+
+    if (!points.length) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "800 13px Inter, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Toggle a class to view progression.", width / 2, height / 2);
+      canvas.__progressionPoints = [];
+      return;
+    }
+
+    let minX = Math.min(...points.map(point => point.x));
+    let maxX = Math.max(...points.map(point => point.x));
+    let minY = Math.min(...points.map(point => point.y));
+    let maxY = Math.max(...points.map(point => point.y));
+    if (minX === maxX) {
+      minX -= 86400000;
+      maxX += 86400000;
+    }
+    if (minY === maxY) {
+      minY = Math.max(0, minY - 1000);
+      maxY += 1000;
+    }
+    const yPadding = Math.max(250, (maxY - minY) * 0.08);
+    minY = Math.max(0, minY - yPadding);
+    maxY += yPadding;
+
+    const xFor = value => pad.left + ((value - minX) / (maxX - minX)) * plotWidth;
+    const yFor = value => pad.top + (1 - ((value - minY) / (maxY - minY))) * plotHeight;
+
+    ctx.strokeStyle = "rgba(148, 163, 184, .16)";
+    ctx.lineWidth = 1;
+    ctx.fillStyle = "#64748b";
+    ctx.font = "800 11px Inter, system-ui, sans-serif";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let i = 0; i <= 4; i += 1) {
+      const value = minY + ((maxY - minY) * i / 4);
+      const y = yFor(value);
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(width - pad.right, y);
+      ctx.stroke();
+      ctx.fillText(time({ timeMs: value }), pad.left - 10, y);
+    }
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    for (let i = 0; i <= 3; i += 1) {
+      const value = minX + ((maxX - minX) * i / 3);
+      const x = xFor(value);
+      ctx.strokeStyle = "rgba(148, 163, 184, .08)";
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x, height - pad.bottom);
+      ctx.stroke();
+      ctx.fillStyle = "#64748b";
+      ctx.fillText(new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" }), x, height - pad.bottom + 14);
+    }
+
+    const hitPoints = [];
+    for (const classRow of activeClasses) {
+      const linePoints = classRow.points.map(point => ({
+        ...point,
+        sx: xFor(point.x),
+        sy: yFor(point.y),
+        classRow
+      }));
+
+      ctx.strokeStyle = classRow.color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      linePoints.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.sx, point.sy);
+        else ctx.lineTo(point.sx, point.sy);
+      });
+      ctx.stroke();
+
+      for (const point of linePoints) {
+        ctx.fillStyle = "#020617";
+        ctx.strokeStyle = classRow.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(point.sx, point.sy, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        hitPoints.push(point);
+      }
+    }
+    canvas.__progressionPoints = hitPoints;
+
+    const handleMove = event => {
+      const bounds = canvas.getBoundingClientRect();
+      const x = event.clientX - bounds.left;
+      const y = event.clientY - bounds.top;
+      const nearest = (canvas.__progressionPoints || [])
+        .map(point => ({ point, distance: Math.hypot(point.sx - x, point.sy - y) }))
+        .sort((a, b) => a.distance - b.distance)[0];
+
+      if (!tooltip || !nearest || nearest.distance > 18) {
+        if (tooltip) tooltip.hidden = true;
+        return;
+      }
+
+      const point = nearest.point;
+      tooltip.innerHTML = `
+        <strong style="color:${escapeAttr(point.classRow.color)}">${escapeHtml(point.classRow.className)}</strong>
+        <span>${escapeHtml(point.player_name || point.steamid || "Unknown")}</span>
+        <span>${escapeHtml(progressionPointTime(point))}</span>
+        <span>${escapeHtml(formatDateTime(point.created_at))}</span>
+        <span>${escapeHtml(formatImprovement(point.improvement_ms))}</span>
+      `;
+      tooltip.hidden = false;
+      const left = Math.min(width - 190, Math.max(8, point.sx + 12));
+      const top = Math.min(height - 112, Math.max(8, point.sy - 12));
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    };
+
+    if (canvas.__progressionMove) canvas.removeEventListener("mousemove", canvas.__progressionMove);
+    if (canvas.__progressionLeave) canvas.removeEventListener("mouseleave", canvas.__progressionLeave);
+    canvas.__progressionMove = handleMove;
+    canvas.__progressionLeave = () => {
+      if (tooltip) tooltip.hidden = true;
+    };
+    canvas.addEventListener("mousemove", canvas.__progressionMove);
+    canvas.addEventListener("mouseleave", canvas.__progressionLeave);
+  }
+
+  function renderProgression(data) {
+    const status = $("sr-progression-status");
+    const content = $("sr-progression-content");
+    const toggles = $("sr-progression-toggles");
+    const canvas = $("sr-progression-chart");
+    const tooltip = $("sr-progression-tooltip");
+    if (!status || !content || !toggles || !canvas) return;
+
+    const classes = normalizeProgressionClasses(data);
+    if (!classes.length) {
+      status.hidden = false;
+      status.textContent = "No world record progression data yet.";
+      content.hidden = true;
+      setHtml("sr-map-progression", empty("No world record progression yet."));
+      return;
+    }
+
+    status.hidden = true;
+    content.hidden = false;
+    const fastestClass = classes
+      .map(classRow => ({
+        classRow,
+        bestTime: Math.min(...classRow.points.map(point => Number(point.time_ms)))
+      }))
+      .filter(row => Number.isFinite(row.bestTime))
+      .sort((a, b) => a.bestTime - b.bestTime)[0]?.classRow;
+    const defaultClassRows = classes.slice(0, Math.min(4, classes.length));
+    if (fastestClass && !defaultClassRows.some(classRow => String(classRow.classId) === String(fastestClass.classId))) {
+      if (defaultClassRows.length >= 4) defaultClassRows[defaultClassRows.length - 1] = fastestClass;
+      else defaultClassRows.push(fastestClass);
+    }
+    const defaultVisible = new Set(defaultClassRows.map(classRow => String(classRow.classId)));
+    const activeIds = new Set(defaultVisible);
+
+    const redraw = () => drawProgressionChart(canvas, tooltip, classes, activeIds);
+    toggles.innerHTML = classes.map(classRow => `
+      <label class="speedrun-class-toggle">
+        <input type="checkbox" value="${escapeAttr(classRow.classId)}" ${activeIds.has(String(classRow.classId)) ? "checked" : ""}>
+        <span style="--class-color:${escapeAttr(classRow.color)}"></span>
+        ${escapeHtml(classRow.className)}
+      </label>
+    `).join("");
+
+    toggles.querySelectorAll("input").forEach(input => {
+      input.addEventListener("change", () => {
+        if (input.checked) activeIds.add(String(input.value));
+        else activeIds.delete(String(input.value));
+        redraw();
+      });
+    });
+
+    const flattened = classes.flatMap(classRow => classRow.points.map(point => ({ ...point, classRow })))
+      .sort((a, b) => b.x - a.x);
+    setHtml("sr-map-progression", flattened.map(point => listRow({
+      title: point.player_name || "Unknown",
+      subtitle: `${point.classRow.className} · ${formatDateTime(point.created_at)} · ${formatImprovement(point.improvement_ms)}`,
+      value: progressionPointTime(point)
+    })).join("") || empty("No world record progression yet."));
+
+    redraw();
+    if (window.__speedrunProgressionResize) {
+      window.removeEventListener("resize", window.__speedrunProgressionResize);
+    }
+    window.__speedrunProgressionResize = () => redraw();
+    window.addEventListener("resize", window.__speedrunProgressionResize);
   }
 
   function renderMaps(rows) {
@@ -382,7 +701,7 @@
             <td>${runnerLink(row)}</td>
             <td>${escapeHtml(classText(row))}</td>
             <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
-            <td>${escapeHtml(formatDateTime(timestampValue(row, "updatedAt", "updated_at")))}</td>
+            <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
           </tr>
         `).join("") || `<tr><td colspan="5">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
       };
@@ -391,13 +710,19 @@
       renderLeaderboard();
 
       renderRuns("sr-map-recent", data.recentRuns, "No recent runs for this map.");
-      setHtml("sr-map-progression", (data.worldRecordProgression || []).map(row => listRow({
-        title: row.playerName || "Unknown",
-        titleHtml: runnerLink(row),
-        subtitle: `${classText(row)} · ${formatDateTime(timestampValue(row, "createdAt", "created_at"))}`,
-        value: time(row),
-        href: playerUrl(row.discordId)
-      })).join("") || empty("No world record progression yet."));
+      try {
+        renderProgression(await api(`/api/speedruns/maps/${encodeURIComponent(mapName)}/progression`));
+      } catch (progressionError) {
+        console.error("[speedrun-map-progression]", progressionError);
+        const status = $("sr-progression-status");
+        const content = $("sr-progression-content");
+        if (status) {
+          status.hidden = false;
+          status.textContent = "Could not load WR progression.";
+        }
+        if (content) content.hidden = true;
+        setHtml("sr-map-progression", empty("Could not load WR progression."));
+      }
     } catch (error) {
       console.error("[speedrun-map]", error);
       setText("sr-map-title", "Map unavailable");
@@ -414,30 +739,47 @@
     }
 
     try {
-      const data = await api(`/api/speedruns/players/${encodeURIComponent(discordId)}`);
-      const playerName = data.player?.playerName || discordId;
+      const [data, steamProfile] = await Promise.all([
+        api(`/api/speedruns/players/${encodeURIComponent(discordId)}`),
+        loadSteamProfile(discordId)
+      ]);
+      const playerName = steamProfile?.personaname || data.player?.playerName || discordId;
       document.title = `NoName TFC | ${playerName} Speedruns`;
       setHtml(
         "sr-player-title",
-        `${escapeHtml(playerName)}${supporterBadge(data.player?.discordId || discordId)}`
+        `<span class="speedrun-player-name-text">${escapeHtml(playerName)}</span>${supporterBadge(data.player?.discordId || discordId)}`
+      );
+      requestAnimationFrame(fitSpeedrunPlayerName);
+      setHtml(
+        "sr-player-mark",
+        speedrunAvatarMarkup(
+          playerName,
+          steamProfile?.avatarfull || steamProfile?.avatarmedium || steamProfile?.avatar || ""
+        )
       );
 
       setText(
         "sr-player-subtitle",
-        steamIdsText(data.player)
+        steamProfile?.steam_id ? `SteamID: ${steamProfile.steam_id}` : steamIdsText(data.player)
+      );
+      setHtml(
+        "sr-player-profile-links",
+        `<a class="speedrun-profile-link" href="${escapeAttr(`player.html?id=${encodeURIComponent(data.player?.discordId || discordId)}`)}">Player Profile</a>`
       );
       setText("sr-player-runs", compact(data.summary?.totalRuns));
       setText("sr-player-maps", compact(data.summary?.mapsPlayed));
       setText("sr-player-records", compact(data.summary?.currentRecords));
+      setText("sr-player-best-rank", data.summary?.bestRecordRank ? `#${data.summary.bestRecordRank}` : "-");
 
       setHtml("sr-player-pbs", (data.personalBests || []).map(row => `
         <tr>
+          <td><span class="speedrun-rank-pill">${escapeHtml(rankText(row))}</span></td>
           <td><a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.map || "-")}</a></td>
           <td>${escapeHtml(classText(row))}</td>
           <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
-          <td>${escapeHtml(formatDateTime(timestampValue(row, "updatedAt", "updated_at")))}</td>
+          <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
-      `).join("") || `<tr><td colspan="4">${empty("No personal bests yet.")}</td></tr>`);
+      `).join("") || `<tr><td colspan="5">${empty("No personal bests yet.")}</td></tr>`);
 
       renderRecords("sr-player-record-list", data.worldRecords, "No current records.");
       renderRuns("sr-player-recent", data.recentActivity, "No recent activity.");
@@ -523,4 +865,5 @@
     else if (view === "player") loadPlayer();
     else if (view === "maps") loadMapCatalog();
   });
+  window.addEventListener("resize", fitSpeedrunPlayerName);
 })();

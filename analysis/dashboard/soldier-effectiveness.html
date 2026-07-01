@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soldier Effectiveness</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">NNPugs Soldier Analysis</p>
+      <h1>Soldier Effectiveness</h1>
+    </div>
+    <div class="window">
+      <span>POST: Jun 11 21:00 - Jun 30 00:00</span>
+      <span id="modeWindow">Loading comparison mode</span>
+    </div>
+  </header>
+
+  <main>
+    <nav class="mode-tabs" aria-label="Comparison mode">
+      <button class="active" type="button" data-mode="equal_time">Equal Time</button>
+      <button type="button" data-mode="equal_match_count">Equal Match Count</button>
+      <a class="tab-link" href="index.html">Friendly Damage</a>
+    </nav>
+
+    <section class="mode-note" id="modeNote"></section>
+
+    <section class="notes-grid">
+      <div>Friendly damage is the direct metric most tied to the nail grenade change.</div>
+      <div>Damage, kills, deaths, and K/D are Soldier effectiveness metrics.</div>
+      <div>Objective outcomes are team-level context and should not be treated as direct Soldier-only causation.</div>
+      <div>Paired-player analysis is stronger because it compares the same players before and after.</div>
+    </section>
+
+    <section class="summary-grid" id="effectivenessCards" aria-label="Soldier effectiveness cards"></section>
+
+    <section class="chart-band">
+      <div class="chart-panel wide">
+        <div class="panel-head">
+          <h2>Effectiveness Metrics</h2>
+          <span id="effectivenessCallout"></span>
+        </div>
+        <canvas id="effectivenessChart" height="300"></canvas>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-head">
+          <h2>Paired Players</h2>
+          <span id="pairedCallout"></span>
+        </div>
+        <canvas id="pairedChart" height="300"></canvas>
+      </div>
+    </section>
+
+    <section class="table-section">
+      <div class="section-head">
+        <h2>Paired Player Analysis</h2>
+        <div class="controls-row">
+          <select id="minRounds" aria-label="Minimum paired Soldier rounds">
+            <option value="5">5+ rounds each</option>
+            <option value="10">10+ rounds each</option>
+          </select>
+          <input id="playerSearch" type="search" placeholder="Search players" aria-label="Search players">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>PRE R</th>
+              <th>POST R</th>
+              <th>PRE FD/R</th>
+              <th>POST FD/R</th>
+              <th>FD Chg</th>
+              <th>PRE D/R</th>
+              <th>POST D/R</th>
+              <th>D/R Chg</th>
+              <th>PRE K/D</th>
+              <th>POST K/D</th>
+              <th>K/D Chg</th>
+              <th>K/R</th>
+              <th>Dths/R</th>
+            </tr>
+          </thead>
+          <tbody id="pairedTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="table-section">
+      <div class="section-head">
+        <h2>Map Effectiveness</h2>
+        <input id="mapSearch" type="search" placeholder="Search maps" aria-label="Search maps">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Map</th>
+              <th>PRE R</th>
+              <th>POST R</th>
+              <th>D/R</th>
+              <th>FD/R</th>
+              <th>K/R</th>
+              <th>Dths/R</th>
+              <th>K/D</th>
+              <th>FD %</th>
+            </tr>
+          </thead>
+          <tbody id="mapTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mode-note" id="schemaNotes"></section>
+  </main>
+
+  <script src="soldier_effectiveness_data.js"></script>
+  <script src="soldier_effectiveness_app.js"></script>
+</body>
+</html>

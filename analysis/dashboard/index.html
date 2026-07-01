@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soldier Nail Grenade Impact</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">NNPugs Soldier Analysis</p>
+      <h1>Nail Grenade Impact</h1>
+    </div>
+    <div class="window" id="windowLabel">
+      <span>POST: Jun 11 21:00 - Jun 30 00:00</span>
+      <span id="modeWindow">Loading comparison mode</span>
+    </div>
+  </header>
+
+  <main>
+    <nav class="mode-tabs" aria-label="Comparison mode">
+      <button class="active" type="button" data-mode="equal_time">Equal Time</button>
+      <button type="button" data-mode="equal_match_count">Equal Match Count</button>
+      <a class="tab-link" href="soldier-effectiveness.html">Effectiveness</a>
+    </nav>
+
+    <section class="mode-note" id="modeNote"></section>
+
+    <section class="summary-grid" id="summaryCards" aria-label="Overall comparison"></section>
+
+    <section class="chart-band">
+      <div class="chart-panel wide">
+        <div class="panel-head">
+          <h2>Damage Profile</h2>
+          <span id="damageCallout"></span>
+        </div>
+        <canvas id="damageChart" height="260"></canvas>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-head">
+          <h2>Efficiency</h2>
+          <span id="efficiencyCallout"></span>
+        </div>
+        <canvas id="efficiencyChart" height="260"></canvas>
+      </div>
+    </section>
+
+    <section class="chart-band">
+      <div class="chart-panel">
+        <div class="panel-head">
+          <h2>Objectives Allowed</h2>
+          <span id="objectiveCallout"></span>
+        </div>
+        <canvas id="objectiveChart" height="260"></canvas>
+      </div>
+      <div class="chart-panel wide">
+        <div class="panel-head">
+          <h2>Maps With Biggest Team Damage Drops</h2>
+          <span>Sorted by total decrease</span>
+        </div>
+        <canvas id="mapDropChart" height="260"></canvas>
+      </div>
+    </section>
+
+    <section class="table-section">
+      <div class="section-head">
+        <h2>Map Breakdown</h2>
+        <input id="mapSearch" type="search" placeholder="Search maps" aria-label="Search maps">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Map</th>
+              <th>PRE TD</th>
+              <th>POST TD</th>
+              <th>Change</th>
+              <th>PRE Damage</th>
+              <th>POST Damage</th>
+              <th>Dmg / Round</th>
+              <th>TD / Match</th>
+            </tr>
+          </thead>
+          <tbody id="mapTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="table-section">
+      <div class="section-head">
+        <h2>Player Breakdown</h2>
+        <input id="playerSearch" type="search" placeholder="Search players" aria-label="Search players">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>PRE TD</th>
+              <th>POST TD</th>
+              <th>Change</th>
+              <th>PRE Rounds</th>
+              <th>POST Rounds</th>
+              <th>TD / Round</th>
+              <th>FD %</th>
+            </tr>
+          </thead>
+          <tbody id="playerTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

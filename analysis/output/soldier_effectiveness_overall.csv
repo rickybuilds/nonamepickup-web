@@ -1,0 +1,21 @@
+comparison_mode,comparison_label,metric,pre,post,pct_change
+equal_time,Equal Time,soldier_rounds,518,564,8.88030888030888
+equal_time,Equal Time,damage_per_round,7868.6370656370655,7561.640070921986,-3.901526937311145
+equal_time,Equal Time,kills_per_round,38.67181467181467,37.469858156028366,-3.1080944248068443
+equal_time,Equal Time,deaths_per_round,30.35135135135135,30.930851063829788,1.9093044845683154
+equal_time,Equal Time,kd,1.2741381503625493,1.2114072800229292,-4.923396283344186
+equal_time,Equal Time,damage_taken_per_round,6150.72972972973,6330.060283687943,2.915598015816139
+equal_time,Equal Time,captures_per_round,0.0,0.0673758865248227,
+equal_time,Equal Time,flag_touches_per_round,0.003861003861003861,0.2872340425531915,7339.36170212766
+equal_time,Equal Time,team_damage_per_round,1452.0733590733591,1238.8315602836878,-14.685332353025993
+equal_time,Equal Time,friendly_damage_pct,15.578998734084928,14.076876924310552,-9.641966312558452
+equal_match_count,Equal Match Count,soldier_rounds,547,564,3.1078610603290677
+equal_match_count,Equal Match Count,damage_per_round,7922.712979890311,7561.640070921986,-4.557440233980603
+equal_match_count,Equal Match Count,kills_per_round,38.81718464351005,37.469858156028366,-3.470953650696949
+equal_match_count,Equal Match Count,deaths_per_round,30.308957952468006,30.930851063829788,2.0518459009282513
+equal_match_count,Equal Match Count,kd,1.2807165691537488,1.2114072800229292,-5.4117586045300135
+equal_match_count,Equal Match Count,damage_taken_per_round,6155.224862888483,6330.060283687943,2.840439215366295
+equal_match_count,Equal Match Count,captures_per_round,0.0,0.0673758865248227,
+equal_match_count,Equal Match Count,flag_touches_per_round,0.003656307129798903,0.2872340425531915,7755.851063829788
+equal_match_count,Equal Match Count,team_damage_per_round,1432.0987202925046,1238.8315602836878,-13.495379701850592
+equal_match_count,Equal Match Count,friendly_damage_pct,15.308685692353572,14.076876924310552,-8.046469780604927

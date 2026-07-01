@@ -22,6 +22,7 @@ function createMatchPlayerLoader(db) {
     const revealHidden = options.revealHidden === true;
     const matchIds = rows.map(row => String(row.match_id));
     const byMatch = new Map(matchIds.map(id => [id, []]));
+    const seenByMatch = new Map(matchIds.map(id => [id, new Set()]));
     const teamIdsByMatch = new Map();
     for (const row of rows) {
       const matchId = String(row.match_id);
@@ -69,9 +70,13 @@ function createMatchPlayerLoader(db) {
         const id = String(player.match_id);
         const list = byMatch.get(id);
         if (!list) continue;
+        const playerId = String(player.player_id);
+        const seen = seenByMatch.get(id);
+        if (seen?.has(playerId)) continue;
+        seen?.add(playerId);
         list.push({
-          id: String(player.player_id),
-          name: player.name || String(player.player_id),
+          id: playerId,
+          name: player.name || playerId,
           before: player.hide_elo && !revealHidden ? null : player.before,
           after: player.hide_elo && !revealHidden ? null : player.after,
           delta: player.hide_elo && !revealHidden ? null : player.delta,
@@ -144,11 +149,12 @@ function createMatchPlayerLoader(db) {
       const matchId = String(row.match_id);
       const players = byMatch.get(matchId) || [];
       const known = new Set(players.map(player => player.id));
+      const seen = seenByMatch.get(matchId) || known;
       const teamIds = teamIdsByMatch.get(matchId);
       for (const id of [...teamIds.blue, ...teamIds.red]) {
-        if (!known.has(id)) {
+        if (!seen.has(id)) {
           players.push(fallbackPlayers.get(id) || { id, name: id });
-          known.add(id);
+          seen.add(id);
         }
       }
       byMatch.set(matchId, players);

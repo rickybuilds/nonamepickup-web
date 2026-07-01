@@ -1,0 +1,13 @@
+comparison_mode,comparison_label,metric,pre,post,pct_change
+equal_time,Equal Time,matches,149,157,5.369127516778524
+equal_time,Equal Time,soldier_player_rounds,518,564,8.88030888030888
+equal_time,Equal Time,flag_touches_allowed,6459,15332,137.37420653351913
+equal_time,Equal Time,captures_allowed,787,1782,126.42947903430749
+equal_time,Equal Time,flag_touches_allowed_per_match,43.348993288590606,97.65605095541402,125.27870556365828
+equal_time,Equal Time,captures_allowed_per_match,5.281879194630872,11.35031847133758,114.89167118542561
+equal_match_count,Equal Match Count,matches,158,157,-0.6329113924050633
+equal_match_count,Equal Match Count,soldier_player_rounds,547,564,3.1078610603290677
+equal_match_count,Equal Match Count,flag_touches_allowed,6957,15332,120.38234871352594
+equal_match_count,Equal Match Count,captures_allowed,849,1782,109.89399293286219
+equal_match_count,Equal Match Count,flag_touches_allowed_per_match,44.03164556962025,97.65605095541402,121.78605794100064
+equal_match_count,Equal Match Count,captures_allowed_per_match,5.3734177215189876,11.35031847133758,111.2308973464473

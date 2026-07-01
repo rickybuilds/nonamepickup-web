@@ -30,7 +30,7 @@ function serializeMatch(row, playersByMatch, options = {}) {
   for (const player of players) {
     const playerId = String(player.id);
     if (blueIds.has(playerId)) blueTeam.push(player);
-    if (redIds.has(playerId)) redTeam.push(player);
+    else if (redIds.has(playerId)) redTeam.push(player);
   }
 
   return {

@@ -1367,6 +1367,7 @@ router.get("/player/:id/recent", (req, res) => {
       FROM rating_changes rc
       JOIN matches m ON m.match_id = rc.match_id
       WHERE rc.player_id = ?
+        AND m.status = 'completed'
       ORDER BY m.created_at DESC
       LIMIT ?
     `).all(pid, limit);
