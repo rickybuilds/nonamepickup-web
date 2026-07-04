@@ -28,8 +28,8 @@
 }
 
 *{box-sizing:border-box;}
-html{scroll-behavior:smooth;overflow-x:hidden;}
-body{margin:0;font-family:'Orbitron',system-ui,sans-serif;font-weight:500;color:var(--text);background:var(--bg);overflow-x:hidden;}
+html{scroll-behavior:smooth;overflow-x:clip;}
+body{margin:0;font-family:'Orbitron',system-ui,sans-serif;font-weight:500;color:var(--text);background:var(--bg);overflow-x:clip;}
 button{font-family:inherit;}
 
 @media (max-width:768px){
