@@ -310,6 +310,7 @@ async function loadPlayerV3(){
   setText("steam-line",player.steam_id?"SteamID: "+player.steam_id:"SteamID: Not linked");
   renderSpeedrunProfileLink(playerId);
   setText("player2-current-elo",ratings.hidden?"Hidden":String(Number(ratings.elo||0)));
+  setText("player2-elo-rank",ratings.hidden?"Hidden":eloTierRank(ratings.elo));
   setText("player2-record",ratings.record||"-");
   setText("player2-win-pct",(ratings.win_pct??0)+"%");
 
