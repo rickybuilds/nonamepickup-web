@@ -340,6 +340,7 @@ async function loadPlayerV3(){
   renderRecentMatches(recentRows,playerId,!!ratings.hidden);
   renderActivityHeatmaps(recentRows);
   renderRelationshipLists(relationshipRows,playerId);
+  renderMapTendencies(relationshipRows,playerId);
   scheduleGranularSummaryLoad(playerId);
 }
 
@@ -2148,6 +2149,119 @@ function renderPeopleList(id,rows,type){
       '<div class="mini-stat '+(type==="teammate"?"good":"bad")+'">'+pct+'% Win%</div>'+
     '</div>';
   }).join("")||'<div class="empty-v3">Not enough data yet</div>';
+}
+
+const MAP_TENDENCY_MIN_GAMES=5;
+
+function mapWinPct(row){
+  const wins=Number(row.wins||0);
+  const losses=Number(row.losses||0);
+  const decided=wins+losses;
+  return decided?wins/decided:0;
+}
+
+function mapRecord(row){
+  return Number(row.wins||0)+"-"+Number(row.losses||0)+"-"+Number(row.ties||0);
+}
+
+function mapTendencyName(row){
+  return row?.map||row?.map_name||"Unknown map";
+}
+
+function renderMapTendencies(rows,playerId){
+  const el=qs("map-tendencies");
+  if(!el)return;
+
+  const maps=new Map();
+  (Array.isArray(rows)?rows:[]).forEach(m=>{
+    const team=getPlayerTeam(m,playerId);
+    if(!team)return;
+
+    const map=String(m.map_name||m.map||"").trim();
+    if(!map||map==="(unknown)"||map.includes("Admin Adjustment"))return;
+
+    const rec=maps.get(map)||{
+      map,
+      games:0,
+      wins:0,
+      losses:0,
+      ties:0
+    };
+    const result=getPlayerResult(m,playerId);
+
+    rec.games++;
+    if(result==="Win")rec.wins++;
+    else if(result==="Loss")rec.losses++;
+    else if(result==="Tie")rec.ties++;
+    maps.set(map,rec);
+  });
+
+  const mapRows=[...maps.values()];
+  const mostPlayed=[...mapRows]
+    .sort((a,b)=>b.games-a.games||mapTendencyName(a).localeCompare(mapTendencyName(b)))
+    .slice(0,3);
+  const eligible=mapRows.filter(row=>Number(row.games||0)>=MAP_TENDENCY_MIN_GAMES);
+  const best=[...eligible]
+    .sort((a,b)=>mapWinPct(b)-mapWinPct(a)||b.games-a.games||mapTendencyName(a).localeCompare(mapTendencyName(b)))
+    .slice(0,3);
+  const worst=[...eligible]
+    .sort((a,b)=>mapWinPct(a)-mapWinPct(b)||b.games-a.games||mapTendencyName(a).localeCompare(mapTendencyName(b)))
+    .slice(0,3);
+
+  el.innerHTML=[
+    renderMapTendencyCard("Most Played Maps",mostPlayed,"games"),
+    renderMapTendencyCard("Best Maps",best,"best"),
+    renderMapTendencyCard("Worst Maps",worst,"worst")
+  ].join("");
+  requestAnimationFrame(hydrateMapTendencyImages);
+}
+
+function renderMapTendencyCard(label,rows,type){
+  const safeRows=Array.isArray(rows)?rows:[];
+  if(!safeRows.length){
+    const hint=type==="games"
+      ? "No completed map data"
+      : "Need "+MAP_TENDENCY_MIN_GAMES+" games on a map";
+    return '<article class="map-tendency-item map-tendency-empty">'+
+      '<span>'+escapeHtml(label)+'</span>'+
+      '<strong>-</strong>'+
+      '<small>'+escapeHtml(hint)+'</small>'+
+    '</article>';
+  }
+
+  return '<article class="map-tendency-item">'+
+    '<span>'+escapeHtml(label)+'</span>'+
+    '<div class="map-tendency-list">'+
+      safeRows.map((row,index)=>renderMapTendencyRow(row,type,index)).join("")+
+    '</div>'+
+  '</article>';
+}
+
+function renderMapTendencyRow(row,type,index){
+  const pct=Math.round(mapWinPct(row)*100);
+  const stat=type==="games"
+    ? fmt(row.games)+" game"+(Number(row.games)===1?"":"s")
+    : mapRecord(row)+" / "+pct+"% Win";
+  const tone=type==="best"?"good":type==="worst"?"bad":"blue";
+
+  return '<a class="map-tendency-row" href="'+escapeAttr("map.html?map="+encodeURIComponent(row.map))+'">'+
+    '<img class="map-tendency-bg" data-map-name="'+escapeAttr(row.map)+'" alt="" loading="lazy">'+
+    '<i class="map-tendency-rank">'+(Number(index)+1)+'</i>'+
+    '<strong title="'+escapeAttr(row.map)+'">'+escapeHtml(row.map)+'</strong>'+
+    '<b class="'+tone+'">'+escapeHtml(stat)+'</b>'+
+  '</a>';
+}
+
+function hydrateMapTendencyImages(){
+  document.querySelectorAll(".map-tendency-bg[data-map-name]").forEach(img=>{
+    const mapName=img.dataset.mapName||"";
+    if(!mapName||img.dataset.loadedMap===mapName)return;
+    img.dataset.loadedMap=mapName;
+    window.setMapImageFromName?.(img,mapName,{
+      containerSelector:".map-tendency-row",
+      fallbackSrc:"assets/images/maps/NoMap.webp"
+    });
+  });
 }
 
 document.addEventListener("click",e=>{
