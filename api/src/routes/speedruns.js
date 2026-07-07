@@ -78,6 +78,64 @@ function createSpeedrunsRouter({ logRouteError }) {
     return CLASS_NAMES[classId] || `Class ${classId}`;
   }
 
+  function firstValue(row, keys) {
+    for (const key of keys) {
+      if (row && row[key] != null && row[key] !== "") return row[key];
+    }
+    return null;
+  }
+
+  function normalizeFrameChunk(value) {
+    if (value == null) return "";
+    if (Buffer.isBuffer(value)) return value.toString("utf8");
+    return String(value);
+  }
+
+  function chunkPayload(row) {
+    const known = firstValue(row, ["ghost_chunk", "chunk_data", "data", "frame_data", "frames", "payload", "chunk", "replay_data"]);
+    if (known != null) return known;
+    const keyPattern = /^(id|ghost_id|map|class_id|steamid|chunk_id|created_at|updated_at)$/i;
+    for (const [key, value] of Object.entries(row || {})) {
+      if (!keyPattern.test(key) && value != null) return value;
+    }
+    return "";
+  }
+
+  function parseReplayFrames(serialized) {
+    return String(serialized || "")
+      .split(";")
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => {
+        const cols = part.split(",").map(value => Number(value.trim()));
+        if (cols.length < 8 || cols.some(value => !Number.isFinite(value))) return null;
+        return {
+          t: cols[0],
+          x: cols[1],
+          y: cols[2],
+          z: cols[3],
+          pitch: cols[4],
+          yaw: cols[5],
+          roll: cols[6],
+          buttons: Math.trunc(cols[7])
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.t - b.t);
+  }
+
+  function inferFrameInterval(frames) {
+    if (!Array.isArray(frames) || frames.length < 2) return null;
+    const deltas = [];
+    for (let i = 1; i < frames.length; i += 1) {
+      const delta = frames[i].t - frames[i - 1].t;
+      if (Number.isFinite(delta) && delta > 0) deltas.push(delta);
+    }
+    if (!deltas.length) return null;
+    deltas.sort((a, b) => a - b);
+    return deltas[Math.floor(deltas.length / 2)];
+  }
+
   function mapRun(row) {
     const timeMs = row.time_ms == null ? null : Number(row.time_ms);
     const createdAt = iso(row.created_at);
@@ -92,7 +150,9 @@ function createSpeedrunsRouter({ logRouteError }) {
       timeMs,
       timeDisplay: formatTimeMs(timeMs),
       createdAt,
-      created_at: createdAt
+      created_at: createdAt,
+      hasReplay: Number(row.has_replay || 0) > 0,
+      has_replay: Number(row.has_replay || 0) > 0
     };
   }
 
@@ -141,7 +201,9 @@ function createSpeedrunsRouter({ logRouteError }) {
       improvementMs: row.improvement_ms == null ? null : Number(row.improvement_ms),
       improvement_ms: row.improvement_ms == null ? null : Number(row.improvement_ms),
       achievedAt,
-      achieved_at: achievedAt
+      achieved_at: achievedAt,
+      hasReplay: Number(row.has_replay || 0) > 0,
+      has_replay: Number(row.has_replay || 0) > 0
     };
     if (includeMap) out.map = row.map || null;
     return out;
@@ -233,7 +295,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_name,
           r.best_time_ms,
           r.pb_created_at,
-          r.updated_at
+          r.updated_at,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+            LIMIT 1
+          ) AS has_replay
         FROM speedrun_records r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         ORDER BY COALESCE(r.pb_created_at, r.updated_at) DESC, r.best_time_ms ASC
@@ -312,6 +379,65 @@ function createSpeedrunsRouter({ logRouteError }) {
         totalRuns: Number(row.totalRuns || 0),
         totalRunners: Number(row.totalRunners || 0)
       }))
+    });
+  }));
+
+  router.get("/replay/:map/:classId/:steamid", (req, res) => runEndpoint(req, res, "[/api/speedruns/replay/:map/:classId/:steamid]", async () => {
+    const mapName = cleanText(req.params.map, MAX_MAP_NAME_LENGTH);
+    const classId = Number.parseInt(req.params.classId, 10);
+    const steamid = cleanText(req.params.steamid, MAX_STEAM_ID_LENGTH);
+    if (!mapName) return badRequest(res, "invalid_map");
+    if (!Number.isFinite(classId) || classId < 0 || classId > 99) return badRequest(res, "invalid_class");
+    if (!steamid) return badRequest(res, "invalid_steamid");
+
+    const metadataRows = await speedrunQuery(`
+      SELECT *
+      FROM speedrun_ghosts
+      WHERE map = ? AND class_id = ? AND steamid = ?
+      LIMIT 1
+    `, [mapName, classId, steamid]);
+    if (!metadataRows.length) return res.status(404).json({ ok: false, error: "replay_not_found" });
+
+    const metadata = metadataRows[0];
+    const ghostId = firstValue(metadata, ["id", "ghost_id"]);
+    let chunkRows = [];
+    if (ghostId != null) {
+      chunkRows = await speedrunQuery(`
+        SELECT *
+        FROM speedrun_ghost_chunks
+        WHERE ghost_id = ?
+        ORDER BY chunk_id ASC
+      `, [ghostId]);
+    }
+    if (!chunkRows.length) {
+      chunkRows = await speedrunQuery(`
+        SELECT *
+        FROM speedrun_ghost_chunks
+        WHERE map = ? AND class_id = ? AND steamid = ?
+        ORDER BY chunk_id ASC
+      `, [mapName, classId, steamid]);
+    }
+    if (!chunkRows.length) return res.status(404).json({ ok: false, error: "replay_chunks_not_found" });
+
+    const serialized = chunkRows
+      .map(row => normalizeFrameChunk(chunkPayload(row)))
+      .join("");
+    const frames = parseReplayFrames(serialized);
+    if (!frames.length) return res.status(404).json({ ok: false, error: "replay_empty" });
+
+    const metadataTimeMs = firstValue(metadata, ["ghost_time_ms", "time_ms", "best_time_ms", "duration_ms", "run_time_ms"]);
+    const lastFrameTimeMs = Math.round(Math.max(0, frames[frames.length - 1].t) * 1000);
+    const frameInterval = firstValue(metadata, ["frame_interval", "frameInterval", "tick_interval", "interval"]);
+
+    res.json({
+      map: metadata.map || mapName,
+      classId: metadata.class_id == null ? classId : Number(metadata.class_id),
+      className: className(metadata) || CLASS_NAMES[classId] || `Class ${classId}`,
+      playerName: metadata.player_name || metadata.name || null,
+      steamid: metadata.steamid || steamid,
+      timeMs: metadataTimeMs == null ? lastFrameTimeMs : Number(metadataTimeMs),
+      frameInterval: frameInterval == null ? inferFrameInterval(frames) : Number(frameInterval),
+      frames
     });
   }));
 
@@ -615,7 +741,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_name,
           r.best_time_ms,
           r.pb_created_at,
-          r.updated_at
+          r.updated_at,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+            LIMIT 1
+          ) AS has_replay
         FROM speedrun_records r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         WHERE r.map = ?
@@ -631,7 +762,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_id,
           r.class_name,
           r.time_ms,
-          r.created_at
+          r.created_at,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+            LIMIT 1
+          ) AS has_replay
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         WHERE r.map = ?
@@ -648,7 +784,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_id,
           r.class_name,
           r.time_ms,
-          r.created_at
+          r.created_at,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+            LIMIT 1
+          ) AS has_replay
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         WHERE r.map = ?
@@ -860,7 +1001,20 @@ function createSpeedrunsRouter({ logRouteError }) {
       `, [...steamIds, ...steamIds, ...steamIds, ...steamIds, ...steamIds, ...steamIds]),
 
       speedrunQuery(`
-        SELECT steamid, player_name, map, class_id, class_name, best_time_ms, pb_created_at, updated_at
+        SELECT
+          steamid,
+          player_name,
+          map,
+          class_id,
+          class_name,
+          best_time_ms,
+          pb_created_at,
+          updated_at,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = ranked_records.map AND g.class_id = ranked_records.class_id AND g.steamid = ranked_records.steamid
+            LIMIT 1
+          ) AS has_replay
         FROM (
           SELECT
             steamid,
@@ -896,6 +1050,11 @@ function createSpeedrunsRouter({ logRouteError }) {
           record_stats.total_runners,
           record_stats.world_record_time_ms,
           ranked_records.best_time_ms - record_stats.world_record_time_ms AS wr_gap_ms,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = ranked_records.map AND g.class_id = ranked_records.class_id AND g.steamid = ranked_records.steamid
+            LIMIT 1
+          ) AS has_replay,
           (
             SELECT MIN(rr.time_ms) - ranked_records.best_time_ms
             FROM speedrun_runs rr
@@ -945,7 +1104,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_id,
           r.class_name,
           r.time_ms,
-          r.created_at
+          r.created_at,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+            LIMIT 1
+          ) AS has_replay
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         WHERE r.steamid IN (${placeholders})

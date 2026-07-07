@@ -144,6 +144,22 @@
     return `speedrun-map.html?map=${encodeURIComponent(map || "")}`;
   }
 
+  function hasReplay(row) {
+    return Boolean(row?.hasReplay || row?.has_replay);
+  }
+
+  function replayUrl(row) {
+    const map = row?.map || params().get("map") || "";
+    const classId = row?.classId ?? row?.class_id ?? "";
+    const steamId = row?.steamId || row?.steamid || "";
+    return `speedrun-replay.html?map=${encodeURIComponent(map)}&classId=${encodeURIComponent(classId)}&steamid=${encodeURIComponent(steamId)}`;
+  }
+
+  function replayLink(row, label = "View Replay") {
+    if (!hasReplay(row)) return "";
+    return `<a class="speedrun-replay-link" href="${escapeAttr(replayUrl(row))}">${escapeHtml(label)}</a>`;
+  }
+
   function mapPreviewUrl(map) {
     return `https://tfcmaps.net/images/maps/source/${encodeURIComponent(map || "")}.jpg`;
   }
@@ -316,7 +332,7 @@
   function renderRuns(targetId, rows, emptyText) {
     setHtml(targetId, (rows || []).map(row => listRow({
       title: row.map || "Unknown map",
-      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}`,
+      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}${hasReplay(row) ? ` &middot; ${replayLink(row)}` : ""}`,
       value: time(row),
       href: mapUrl(row.map)
     })).join("") || empty(emptyText));
@@ -325,7 +341,7 @@
   function renderRecords(targetId, rows, emptyText) {
     setHtml(targetId, (rows || []).map(row => listRow({
       title: row.map || "Unknown map",
-      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(achievedTimestamp(row)))}`,
+      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(achievedTimestamp(row)))}${hasReplay(row) ? ` &middot; ${replayLink(row)}` : ""}`,
       value: time(row, "bestTime"),
       href: mapUrl(row.map)
     })).join("") || empty(emptyText));
@@ -433,7 +449,7 @@
         <tr>
           <td data-label="Map"><a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.map || "-")}</a><small>${escapeHtml(mapCategory(row, mapLookup))}</small></td>
           <td data-label="Class">${escapeHtml(classText(row))}</td>
-          <td data-label="PB Time" class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
+          <td data-label="PB Time" class="speedrun-time">${escapeHtml(time(row, "bestTime"))}${replayLink(row)}</td>
           <td data-label="Rank">${rankBadge(row)}</td>
           <td data-label="Total"><span class="speedrun-total-runners">/ ${escapeHtml(row.totalRunners ?? row.total_runners ?? "-")}</span></td>
           <td data-label="WR Gap" class="${Number(row.wrGapMs ?? row.wr_gap_ms) <= 0 ? "speedrun-wr-gap is-wr" : "speedrun-wr-gap"}">${escapeHtml(formatGap(row.wrGapMs ?? row.wr_gap_ms))}</td>
@@ -898,12 +914,12 @@
 
         setHtml("sr-map-leaderboard", rows.map((row, index) => `
           <tr>
-            <td>#${compact(index + 1)}</td>
-            <td>${runnerLink(row)}</td>
-            <td>${escapeHtml(classText(row))}</td>
-            <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
-            <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
-          </tr>
+          <td>#${compact(index + 1)}</td>
+          <td>${runnerLink(row)}</td>
+          <td>${escapeHtml(classText(row))}</td>
+          <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}${replayLink(row)}</td>
+          <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
+        </tr>
         `).join("") || `<tr><td colspan="5">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
       };
 

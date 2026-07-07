@@ -20,3 +20,40 @@ api/.env.*
 
 # HLTV development
 hltv/
+
+# Private Speedrun Viewer
+/assets/maps/
+/scripts/
+
+speedrun-replay.html
+speedrun-replay.css
+speedrun-replay.js
+
+
+# Generated analysis outputs
+/analysis/soldier/data/
+/analysis/soldier/index.html
+/analysis/soldier/index2.html
+
+EOFcat >> .gitignore << 'EOF'
+
+# Generated analysis outputs
+/analysis/soldier/data/
+/analysis/soldier/index.html
+/analysis/soldier/index2.html
+
+
+# Generated analysis outputs
+/analysis/soldier/data/
+/analysis/soldier/index.html
+/analysis/soldier/index2.html
+
+
+# Generated analysis outputs
+/analysis/soldier/data/
+/analysis/soldier/index.html
+/analysis/soldier/index2.html
+
+# Soldier data
+/soldier/data/
+
