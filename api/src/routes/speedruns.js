@@ -194,6 +194,64 @@ function createSpeedrunsRouter({ logRouteError }) {
     return deltas[Math.floor(deltas.length / 2)];
   }
 
+  function numberOrNull(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function positiveNumberOrNull(value) {
+    const parsed = numberOrNull(value);
+    return parsed != null && parsed > 0 ? parsed : null;
+  }
+
+  function mapZonePoint(row, keys) {
+    const x = numberOrNull(firstValue(row, [keys.x]));
+    const y = numberOrNull(firstValue(row, [keys.y]));
+    const z = numberOrNull(firstValue(row, [keys.z]));
+    if (x == null || y == null || z == null) return null;
+    return { x, y, z };
+  }
+
+  function mapZonePayload(mapRow, checkpointRows) {
+    const zoneRadius = positiveNumberOrNull(firstValue(mapRow, ["zone_radius"])) ?? 128;
+    const zoneHeight = positiveNumberOrNull(firstValue(mapRow, ["zone_height"])) ?? 128;
+    const checkpointRadius = positiveNumberOrNull(firstValue(mapRow, ["checkpoint_radius"])) ?? zoneRadius;
+    const checkpointHeight = positiveNumberOrNull(firstValue(mapRow, ["checkpoint_height"])) ?? zoneHeight;
+    const start = mapZonePoint(mapRow, { x: "start_x", y: "start_y", z: "start_z" });
+    const finish = mapZonePoint(mapRow, { x: "finish_x", y: "finish_y", z: "finish_z" });
+    const checkpoints = (checkpointRows || [])
+      .map(row => {
+        const point = mapZonePoint(row, { x: "x", y: "y", z: "z" });
+        if (!point) return null;
+        const checkpointNumber = numberOrNull(firstValue(row, ["checkpoint_number", "number", "checkpoint"])) ?? 0;
+        const axis = numberOrNull(firstValue(row, ["axis"])) ?? 0;
+        const yaw = numberOrNull(firstValue(row, ["yaw"])) ?? 0;
+        return {
+          checkpointNumber,
+          axis,
+          yaw,
+          position: point,
+          radius: checkpointRadius,
+          height: checkpointHeight
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.checkpointNumber - b.checkpointNumber);
+
+    if (!start && !finish && !checkpoints.length) return null;
+    return {
+      defaults: {
+        radius: zoneRadius,
+        height: zoneHeight,
+        checkpointRadius,
+        checkpointHeight
+      },
+      start: start ? { position: start, radius: zoneRadius, height: zoneHeight } : null,
+      finish: finish ? { position: finish, radius: zoneRadius, height: zoneHeight } : null,
+      checkpoints
+    };
+  }
+
   function mapRun(row) {
     const timeMs = row.time_ms == null ? null : Number(row.time_ms);
     const createdAt = iso(row.created_at);
@@ -503,6 +561,28 @@ function createSpeedrunsRouter({ logRouteError }) {
       logRouteError("[/api/speedruns/replay/:map/:classId/:steamid] projectile load failed", error);
     }
 
+    let zones = null;
+    try {
+      const [mapRows, checkpointRows] = await Promise.all([
+        speedrunQuery(`
+          SELECT map, start_x, start_y, start_z, finish_x, finish_y, finish_z, zone_radius, zone_height, checkpoint_radius, checkpoint_height
+          FROM speedrun_maps
+          WHERE map = ?
+          LIMIT 1
+        `, [mapName]),
+        speedrunQuery(`
+          SELECT map, checkpoint_number, x, y, z, axis, yaw
+          FROM speedrun_map_checkpoints
+          WHERE map = ?
+          ORDER BY checkpoint_number ASC
+        `, [mapName])
+      ]);
+      zones = mapZonePayload(mapRows[0] || null, checkpointRows);
+    } catch (error) {
+      zones = null;
+      logRouteError("[/api/speedruns/replay/:map/:classId/:steamid] zone load failed", error);
+    }
+
     const metadataTimeMs = firstValue(metadata, ["ghost_time_ms", "time_ms", "best_time_ms", "duration_ms", "run_time_ms"]);
     const lastFrameTimeMs = Math.round(Math.max(0, frames[frames.length - 1].t) * 1000);
     const frameInterval = firstValue(metadata, ["frame_interval", "frameInterval", "tick_interval", "interval"]);
@@ -515,6 +595,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       steamid: metadata.steamid || steamid,
       timeMs: metadataTimeMs == null ? lastFrameTimeMs : Number(metadataTimeMs),
       frameInterval: frameInterval == null ? inferFrameInterval(frames) : Number(frameInterval),
+      zones,
       frames,
       projectileFrames
     });
