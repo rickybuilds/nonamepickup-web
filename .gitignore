@@ -58,3 +58,4 @@ EOFcat >> .gitignore << 'EOF'
 /soldier/data/
 
 /scripts
+/assets/sprites
