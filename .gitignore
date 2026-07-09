@@ -59,3 +59,5 @@ EOFcat >> .gitignore << 'EOF'
 
 /scripts
 /assets/sprites
+assets/models/640hud7.spr
+assets/models/640hud7o.spr
