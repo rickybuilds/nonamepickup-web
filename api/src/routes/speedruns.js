@@ -92,7 +92,7 @@ function createSpeedrunsRouter({ logRouteError }) {
   }
 
   function chunkPayload(row) {
-    const known = firstValue(row, ["ghost_chunk", "chunk_data", "data", "frame_data", "frames", "payload", "chunk", "replay_data"]);
+    const known = firstValue(row, ["ghost_chunk", "projectile_chunk", "chunk_data", "data", "frame_data", "frames", "payload", "chunk", "replay_data"]);
     if (known != null) return known;
     const keyPattern = /^(id|ghost_id|map|class_id|steamid|chunk_id|created_at|updated_at)$/i;
     for (const [key, value] of Object.entries(row || {})) {
@@ -122,6 +122,64 @@ function createSpeedrunsRouter({ logRouteError }) {
       })
       .filter(Boolean)
       .sort((a, b) => a.t - b.t);
+  }
+
+  function parseProjectileFrames(serialized) {
+    return String(serialized || "")
+      .split(";")
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => {
+        const cols = part.split(",");
+        if (cols.length < 15) return null;
+
+        const time = Number(cols[0]?.trim());
+        const projectileId = Number(cols[1]?.trim());
+        const state = Number(cols[2]?.trim());
+        const owner = Number(cols[3]?.trim());
+        const classname = String(cols[4] || "").trim();
+        const model = String(cols[5] || "").trim();
+        const x = Number(cols[6]?.trim());
+        const y = Number(cols[7]?.trim());
+        const z = Number(cols[8]?.trim());
+        const pitch = Number(cols[9]?.trim());
+        const yaw = Number(cols[10]?.trim());
+        const roll = Number(cols[11]?.trim());
+        const vx = Number(cols[12]?.trim());
+        const vy = Number(cols[13]?.trim());
+        const vz = Number(cols[14]?.trim());
+
+        if (
+          !Number.isFinite(time) ||
+          !Number.isFinite(projectileId) ||
+          !Number.isFinite(state) ||
+          !Number.isFinite(x) ||
+          !Number.isFinite(y) ||
+          !Number.isFinite(z)
+        ) {
+          return null;
+        }
+
+        return {
+          t: time,
+          projectileId: Math.trunc(projectileId),
+          state: Math.trunc(state),
+          owner: Number.isFinite(owner) ? Math.trunc(owner) : null,
+          classname,
+          model,
+          x,
+          y,
+          z,
+          pitch: Number.isFinite(pitch) ? pitch : 0,
+          yaw: Number.isFinite(yaw) ? yaw : 0,
+          roll: Number.isFinite(roll) ? roll : 0,
+          vx: Number.isFinite(vx) ? vx : 0,
+          vy: Number.isFinite(vy) ? vy : 0,
+          vz: Number.isFinite(vz) ? vz : 0
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (a.t - b.t) || (a.projectileId - b.projectileId) || (b.state - a.state));
   }
 
   function inferFrameInterval(frames) {
@@ -425,6 +483,26 @@ function createSpeedrunsRouter({ logRouteError }) {
     const frames = parseReplayFrames(serialized);
     if (!frames.length) return res.status(404).json({ ok: false, error: "replay_empty" });
 
+    let projectileFrames = [];
+    try {
+      const projectileRows = await speedrunQuery(`
+        SELECT *
+        FROM speedrun_projectile_chunks
+        WHERE map = ? AND class_id = ? AND steamid = ?
+        ORDER BY chunk_id ASC
+      `, [mapName, classId, steamid]);
+
+      if (projectileRows.length) {
+        const projectileSerialized = projectileRows
+          .map(row => normalizeFrameChunk(chunkPayload(row)))
+          .join("");
+        projectileFrames = parseProjectileFrames(projectileSerialized);
+      }
+    } catch (error) {
+      projectileFrames = [];
+      logRouteError("[/api/speedruns/replay/:map/:classId/:steamid] projectile load failed", error);
+    }
+
     const metadataTimeMs = firstValue(metadata, ["ghost_time_ms", "time_ms", "best_time_ms", "duration_ms", "run_time_ms"]);
     const lastFrameTimeMs = Math.round(Math.max(0, frames[frames.length - 1].t) * 1000);
     const frameInterval = firstValue(metadata, ["frame_interval", "frameInterval", "tick_interval", "interval"]);
@@ -437,7 +515,8 @@ function createSpeedrunsRouter({ logRouteError }) {
       steamid: metadata.steamid || steamid,
       timeMs: metadataTimeMs == null ? lastFrameTimeMs : Number(metadataTimeMs),
       frameInterval: frameInterval == null ? inferFrameInterval(frames) : Number(frameInterval),
-      frames
+      frames,
+      projectileFrames
     });
   }));
 
