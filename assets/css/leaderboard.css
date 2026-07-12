@@ -470,16 +470,13 @@
   box-shadow: 0 0 8px rgba(250, 204, 21, .24);
 }
 
-.leaderboard-player-link {
-  min-width: 0;
-}
-
-.leaderboard-player-link > span {
+.leaderboard-player-link,
+.leaderboard-player-link > span,
+.leaderboard-player-link b {
   min-width: 0;
 }
 
 .leaderboard-player-link b {
-  min-width: 0;
   color: #e0f2fe;
   overflow: hidden;
   text-overflow: ellipsis;
