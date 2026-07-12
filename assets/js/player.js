@@ -184,6 +184,18 @@ function getPlayerResult(match,playerId){
   return"-";
 }
 
+function renderPlayerLastTen(rows,playerId){
+  const results=(Array.isArray(rows)?rows:[]).slice(0,10).map(match=>{
+    const result=getPlayerResult(match,playerId);
+    return result==="Win"?"W":result==="Loss"?"L":result==="Tie"?"T":"?";
+  });
+  const padded=[...results,...Array(Math.max(0,10-results.length)).fill("?")].slice(0,10);
+  setHtml("player2-last10",padded.map(value=>{
+    const cls=value==="?"?"unknown":value.toLowerCase();
+    return '<i class="last10-'+cls+'" title="'+escapeAttr(value==="?"?"Unknown":value)+'"></i>';
+  }).join(""));
+}
+
 function fitPlayerName(){
   const el=document.getElementById("player-name-v3");
   const text=el?.querySelector(".player-name-text");
@@ -325,6 +337,7 @@ async function loadPlayerV3(){
   setText("kpi-peak-elo",ratings.hidden?"Hidden":ratings.peak_elo);
   setText("kpi-best-streak",fmt(ratings.best_streak));
   setText("kpi-pugs-week",ratings.pugs_per_week ?? "0.0");
+  renderPlayerLastTen(recentRows,playerId);
   const mvpGames=Number(h.mvp_games||0);
   const mvpPct=ratings.games>0? Math.round((mvpGames/ratings.games)*100): 0;
   const mvpEl=document.getElementById("kpi-mvps");

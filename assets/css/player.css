@@ -683,6 +683,13 @@
   margin-top:14px;
   color:#7dd3fc;
 }
+.player2-last10-wrap{display:flex;align-items:center;gap:14px;width:max-content;margin-top:24px;padding:11px 14px;border:1px solid var(--p2-border-soft);border-radius:10px;background:rgba(2,8,20,.5)}
+.player2-last10-label{color:#a8b4c7;font-size:10px;font-weight:950;letter-spacing:.1em;text-transform:uppercase}
+.player2-page .leaderboard-last10{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}
+.player2-page .leaderboard-last10 i{width:11px;height:11px;border:2px solid rgba(148,163,184,.45);border-radius:999px;background:transparent;box-shadow:0 0 8px rgba(148,163,184,.08)}
+.player2-page .leaderboard-last10 .last10-w{border-color:#4ade80;background:rgba(74,222,128,.35);box-shadow:0 0 8px rgba(74,222,128,.32)}
+.player2-page .leaderboard-last10 .last10-l{border-color:#fb7185;background:rgba(251,113,133,.32);box-shadow:0 0 8px rgba(251,113,133,.28)}
+.player2-page .leaderboard-last10 .last10-t{border-color:#facc15;background:rgba(250,204,21,.32);box-shadow:0 0 8px rgba(250,204,21,.24)}
 .player2-hidden-line{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .player-v3-page .player2-scoreboard{
