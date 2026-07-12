@@ -1,4 +1,5 @@
 .analytics-page {
+  --analytics-subtle: #64748b;
   color: #dbeafe;
 }
 
@@ -49,7 +50,7 @@
 
 .analytics-updated {
   margin: 8px 0 0;
-  color: #64748b;
+  color: var(--analytics-subtle);
   font-size: 12px;
   font-weight: 700;
 }
@@ -117,7 +118,7 @@
 
 .analytics-section-heading p {
   margin: 0;
-  color: #64748b;
+  color: var(--analytics-subtle);
   font-size: 13px;
   font-weight: 700;
   text-align: right;
@@ -165,7 +166,7 @@
 .analytics-card-head span {
   display: block;
   margin-top: 5px;
-  color: #64748b;
+  color: var(--analytics-subtle);
   font-size: 11px;
   font-weight: 700;
 }
@@ -199,7 +200,7 @@
 }
 
 .analytics-rank {
-  color: #64748b;
+  color: var(--analytics-subtle);
   font-size: 12px;
   font-weight: 900;
 }
@@ -232,7 +233,7 @@
 .analytics-card small {
   display: block;
   margin-top: 3px;
-  color: #64748b;
+  color: var(--analytics-subtle);
   font-size: 10px;
   font-weight: 700;
 }
@@ -274,7 +275,7 @@
 
 .analytics-empty {
   display: block !important;
-  color: #64748b;
+  color: var(--analytics-subtle);
   font-family: "Inter", system-ui, sans-serif;
   text-align: center;
 }
