@@ -10,10 +10,6 @@ p,small,.kpi-sub,.stat-detail,.search-result small,.search-empty,.matches2-subti
 a,a:link,a:visited{color:var(--tfc-blue);text-decoration:none;transition:.2s ease;}
 a:hover{color:#7cc2ff;text-shadow:0 0 8px rgba(114,216,255,.45);}
 
-/* Shared esports HUD navigation */
-.font-retro{font-family:'Orbitron',sans-serif;}
-h1.font-retro{text-shadow:0 0 20px rgba(77,166,255,.6),0 0 40px rgba(56,189,248,.25);}
-
 /* Shared Steam/player avatars */
 .nn-avatar{
 position:relative;
