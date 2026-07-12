@@ -57,7 +57,6 @@ EOFcat >> .gitignore << 'EOF'
 # Soldier data
 /soldier/data/
 
-/scripts
+/analysis
+/assets/models
 /assets/sprites
-assets/models/640hud7.spr
-assets/models/640hud7o.spr
