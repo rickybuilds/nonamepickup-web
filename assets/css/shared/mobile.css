@@ -1,8 +1,3 @@
-html,
-body{
-  overflow-x:clip;
-}
-
 .index-page main>*,
 .matches-page main>*,
 .leaderboard-page main>*,
@@ -92,7 +87,6 @@ body{
     gap:4px;
     padding:0 0 1px;
   }
-  .site-nav::-webkit-scrollbar{display:none;}
   .site-nav a,.site-nav a:link,.site-nav a:visited{min-height:26px;padding:4px 7px;font-size:10px;letter-spacing:.04em;white-space:nowrap;}
   .site-nav .nav-live,.site-nav .nav-live:link,.site-nav .nav-live:visited{min-height:26px;padding:4px 7px;text-shadow:0 0 6px rgba(251,146,60,.48);white-space:nowrap;}
   .site-search,.site-header-inner>.search-wrap{grid-column:1;}
