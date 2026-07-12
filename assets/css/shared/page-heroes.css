@@ -91,13 +91,6 @@
 .leaderboard-page .leaderboard-summary,
 .analytics-page .analytics-summary,
 .speedruns-page .speedrun-summary {
-  align-self: center !important;
-}
-
-.matches-page .matches2-kpi-grid,
-.leaderboard-page .leaderboard-summary,
-.analytics-page .analytics-summary,
-.speedruns-page .speedrun-summary {
   align-self: end !important;
   display: grid !important;
   grid-auto-flow: column !important;
