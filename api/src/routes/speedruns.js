@@ -3,6 +3,7 @@
 const express = require("express");
 const { checkSpeedrunDatabase, speedrunQuery } = require("../db/mariadb");
 const { createHealthHandler } = require("../helpers/health");
+const { positiveInt, cleanString: cleanText } = require("../helpers/values");
 
 const MAX_MAP_NAME_LENGTH = 64;
 const MAX_STEAM_ID_LENGTH = 35;
@@ -33,21 +34,11 @@ function createSpeedrunsRouter({ logRouteError }) {
     return res.status(400).json({ ok: false, error });
   }
 
-  function positiveInt(value, fallback, min, max) {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed)) return fallback;
-    return Math.min(max, Math.max(min, parsed));
-  }
-
   function optionalEnabled(value) {
     if (value == null || value === "") return null;
     if (String(value) === "1") return 1;
     if (String(value) === "0") return 0;
     return undefined;
-  }
-
-  function cleanText(value, maxLength) {
-    return String(value ?? "").trim().slice(0, maxLength);
   }
 
   function escapeLike(value) {
