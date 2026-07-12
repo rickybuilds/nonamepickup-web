@@ -509,6 +509,8 @@
   .leaderboard-podium {
     min-height: 0;
     grid-template-columns: 1fr;
+    gap: 74px;
+    padding-top: 74px;
   }
 
   .leaderboard-podium-card,
