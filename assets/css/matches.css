@@ -46,7 +46,7 @@
 .matches2-hero-pill small {
   display: block;
   margin-top: 8px;
-  color: #94a3b8;
+  color: var(--muted);
   font-weight: 850;
   text-transform: uppercase;
   letter-spacing: .10em;
@@ -204,7 +204,7 @@
 
 .m2-viewer-empty {
   padding: 28px;
-  color: #94a3b8;
+  color: var(--muted);
   font-weight: 850;
 }
 
@@ -312,7 +312,7 @@
 .m2-viewer-top small {
   display: block;
   margin-top: 7px;
-  color: #94a3b8;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 850;
 }
@@ -372,11 +372,11 @@
   border-color: rgba(148,163,184,.2);
 }
 .m2-viewer-score.is-pending strong {
-  color: #94a3b8;
+  color: var(--muted);
   font-size: 26px;
 }
 .m2-viewer-score.is-pending i {
-  color: #94a3b8;
+  color: var(--muted);
   font-family: Inter, system-ui, sans-serif;
   font-size: 11px;
   text-transform: uppercase;
@@ -593,7 +593,7 @@
   height: 8px;
   margin-top: 4px;
   border-radius: 999px;
-  background: #94a3b8;
+  background: var(--muted);
 }
 .m2-viewer-cap-event.blue > span { background: #60a5fa; }
 .m2-viewer-cap-event.red > span { background: #f87171; }
@@ -784,7 +784,7 @@
 .m2-card-meta time {
   display: block;
   margin-top: 5px;
-  color: #94a3b8;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -981,7 +981,7 @@
 
 .score-blue { background: linear-gradient(145deg, rgba(37,99,235,.92), rgba(14,82,160,.82)); }
 .score-red { background: linear-gradient(145deg, rgba(220,38,38,.88), rgba(127,29,29,.82)); }
-.score-dash { color: #94a3b8; }
+.score-dash { color: var(--muted); }
 
 .winner-badge {
   display: inline-flex;
@@ -1022,7 +1022,7 @@
 .matches2-empty {
   text-align: center;
   padding: 38px 12px !important;
-  color: #94a3b8 !important;
+  color: var(--muted) !important;
   font-weight: 850;
 }
 
@@ -1408,7 +1408,7 @@ padding:0 10px;
 .m2-expanded-top small {
   display: block;
   margin-top: 8px;
-  color: #94a3b8;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1476,7 +1476,7 @@ padding:0 10px;
   border-top: 1px solid rgba(148,163,184,.08);
 }
 .m2-elo-name { font-weight: 950; color: #e0f2fe !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.m2-elo-before-after { color: #94a3b8; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; font-weight: 850; }
+.m2-elo-before-after { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; font-weight: 850; }
 .m2-elo-delta { justify-self: end; min-width: 48px; text-align: center; border-radius: 10px; padding: 5px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 950; }
 .m2-delta-pos { color: #bbf7d0; background: rgba(34,197,94,.16); border: 1px solid rgba(34,197,94,.24); }
 .m2-delta-neg { color: #fecaca; background: rgba(239,68,68,.14); border: 1px solid rgba(239,68,68,.24); }
