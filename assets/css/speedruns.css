@@ -309,10 +309,7 @@
   max-height: min(68vh, 640px);
 }
 
-.speedrun-columns .speedrun-table-wrap {
-  max-height: min(36vh, 330px);
-}
-
+.speedrun-columns .speedrun-table-wrap,
 .speedrun-columns .speedrun-list {
   max-height: min(36vh, 330px);
 }
@@ -751,11 +748,9 @@
 
   .speedrun-summary,
   .speedrun-map-grid,
-  .speedrun-card-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .speedrun-list-row {
+  .speedrun-card-stats,
+  .speedrun-list-row,
+  .speedrun-class-toggles {
     grid-template-columns: 1fr;
   }
 
@@ -776,7 +771,4 @@
     height: 300px;
   }
 
-  .speedrun-class-toggles {
-    grid-template-columns: 1fr;
-  }
 }
