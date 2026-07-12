@@ -216,15 +216,14 @@
   .match-main{width:100%!important;padding:10px 8px 28px!important}
   .match-shell{padding:12px!important;border-radius:0!important;overflow:visible!important}
   .match-hero,.score-card,.match-card{padding:14px!important;border-radius:18px!important}
-  .match-mvps-grid{grid-template-columns:1fr}
-  .match-mvps-head{align-items:flex-start;flex-direction:column}
+  .match-mvps-grid,.match-mvp-reasons,.round-overview-grid,.round-leaders,.match-subgrid{grid-template-columns:1fr}
+  .match-mvps-head,.round-details-head{align-items:flex-start;flex-direction:column}
   .match-mvp-box{min-height:96px;padding:11px 12px}
   .match-mvps-icon{width:40px;height:40px;margin-right:10px}
   .match-mvp-name{font-size:20px}
   .match-mvp-chips{grid-template-columns:repeat(2,minmax(0,1fr))}
   .match-mvp-legend-lead{display:block}
   .match-mvp-legend-lead span{display:block;margin-top:2px}
-  .match-mvp-reasons{grid-template-columns:1fr}
   .round-leaders span,.round-stats-table th,.match-player-kpis span{font-size:10px}
   .score-row{grid-template-columns:1fr 44px 1fr;gap:9px}
   .score-team{min-height:82px;padding:12px}
@@ -233,11 +232,7 @@
   .score-vs{font-size:18px}
   .score-map{font-size:24px;margin-bottom:12px}
   .match-title{font-size:32px}
-  .round-overview-grid{grid-template-columns:1fr}
-  .round-details-head{align-items:flex-start;flex-direction:column}
   .round-score{padding:10px}
-  .round-leaders{grid-template-columns:1fr}
   .round-leaders>div+div{border-left:0;border-top:1px solid rgba(255,255,255,.07)}
   .match-player-kpis{grid-template-columns:repeat(2,1fr)}
-  .match-subgrid{grid-template-columns:1fr}
 }
