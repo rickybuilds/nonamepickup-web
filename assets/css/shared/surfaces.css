@@ -1,3 +1,8 @@
+:root {
+  --surface-radius-medium:20px;
+  --surface-radius-large:28px;
+}
+
 .home-panel,
 .mini-stat-card,
 .home-hero-stats div,
@@ -115,16 +120,17 @@ thead th,
   box-shadow:0 16px 36px rgba(0,0,0,.28);
 }
 
-.matches2-panel {
+.matches2-panel,
+.speedrun-map-card {
   border:1px solid rgba(77,166,255,.24);
-  border-radius:28px;
+  border-radius:var(--surface-radius-large);
   box-shadow:0 20px 50px rgba(0,0,0,.35);
 }
 
 .live2-panel,
 .live2-match-card {
   border:1px solid rgba(77,166,255,.22);
-  border-radius:28px;
+  border-radius:var(--surface-radius-large);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 22px 50px rgba(0,0,0,.36);
 }
 
@@ -135,27 +141,17 @@ thead th,
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 22px 50px rgba(0,0,0,.36);
 }
 
-.analytics-card {
-  border:1px solid rgba(96,165,250,.18);
-  border-radius:20px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 18px 40px rgba(0,0,0,.2);
-}
-
-.speedrun-map-card {
-  border:1px solid rgba(77,166,255,.24);
-  border-radius:28px;
-  box-shadow:0 20px 50px rgba(0,0,0,.35);
-}
-
+.analytics-card,
 .speedrun-list-row {
   border:1px solid rgba(96,165,250,.18);
-  border-radius:20px;
+  border-radius:var(--surface-radius-medium);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 18px 40px rgba(0,0,0,.2);
 }
 
-.speedrun-table-wrap {
+.speedrun-table-wrap,
+.leaderboard-table-wrap {
   border:1px solid rgba(148,163,184,.12);
-  border-radius:20px;
+  border-radius:var(--surface-radius-medium);
 }
 
 .leaderboard-summary article {
@@ -167,11 +163,6 @@ thead th,
 .leaderboard-toolbar {
   border:1px solid rgba(148,163,184,.14);
   border-radius:18px;
-}
-
-.leaderboard-table-wrap {
-  border:1px solid rgba(148,163,184,.12);
-  border-radius:20px;
 }
 
 .page-section {
