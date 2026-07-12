@@ -6,20 +6,15 @@
   background-size:200% 200%,180% 180%,42px 42px,42px 42px,auto;
   animation:bgShift 45s linear infinite;
 }
-.live-page{
-  --page-main-width:1100px;
-  --shell-border:rgba(251,146,60,.30);
-  --shell-glow:rgba(251,146,60,.15);
-  --shell-blur:8px;
-  --shell-sheen-color:rgba(251,146,60,.06);
-}
+.live-page,
 .live2-page{
-  --page-main-width:2200px;
   --shell-border:rgba(251,146,60,.30);
   --shell-glow:rgba(251,146,60,.15);
   --shell-blur:8px;
   --shell-sheen-color:rgba(251,146,60,.06);
 }
+.live-page{--page-main-width:1100px;}
+.live2-page{--page-main-width:2200px;}
 .player-v3-page{--page-main-width:1760px;}
 @keyframes bgShift{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
 @media (prefers-reduced-motion:reduce){
