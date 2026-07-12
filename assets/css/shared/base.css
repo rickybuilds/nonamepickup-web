@@ -1,13 +1,11 @@
 :root{
   --tfc-blue:#4da6ff;
   --tfc-red:#ff5c5c;
-  --tfc-orange:#fb923c;
   --bg:#030711;
   --text:#e5e7eb;
   --muted:#94a3b8;
   --page-bg:#030711;
   --page-grid-blue:rgba(77,166,255,.08);
-  --page-grid-orange:rgba(251,146,60,.055);
   --page-main-width:2200px;
   --page-gutter-desktop:2vw;
   --page-gutter-mobile:8px;
