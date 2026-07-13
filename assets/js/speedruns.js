@@ -149,6 +149,10 @@
   }
 
   function replayUrl(row) {
+    const runId = row?.runId ?? row?.run_id;
+    if (runId != null && String(runId).trim() !== "") {
+      return `speedrun-replay.html?runId=${encodeURIComponent(runId)}`;
+    }
     const map = row?.map || params().get("map") || "";
     const classId = row?.classId ?? row?.class_id ?? "";
     const steamId = row?.steamId || row?.steamid || "";
@@ -993,7 +997,7 @@
       setText("sr-player-global-total", data.summary?.globalRunnerCount ? `of ${compact(data.summary.globalRunnerCount)} runners` : "Speedrun runners");
 
       renderRecords("sr-player-record-list", data.worldRecords, "No current records.");
-      renderRuns("sr-player-recent", data.recentActivity, "No recent activity.");
+      renderRuns("sr-player-recent", data.recentActivity, "No runs recorded.");
       renderPlayerDashboard(data);
     } catch (error) {
       console.error("[speedrun-player]", error);
