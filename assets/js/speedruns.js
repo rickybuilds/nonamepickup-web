@@ -923,7 +923,7 @@
         <article class="speedrun-activity-row" role="link" tabindex="0" data-row-href="${escapeAttr(href)}">
           <div class="speedrun-activity-main">
             <strong>${runnerLink(row)}${status}</strong>
-            <span><a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a> · ${classBadge(row)}</span>
+            <span><a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a> · ${classBadge(row)}${hasReplay(row) ? replayLink(row) : ""}</span>
           </div>
           <div class="speedrun-activity-value"><strong>${time(row)}</strong><span>${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}</span></div>
           <span class="speedrun-row-arrow" aria-hidden="true">›</span>
@@ -965,7 +965,7 @@
           ${mapThumbnail(row.map, "small")}
           <div class="speedrun-world-record-main">
             <a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a>
-            <span>${runnerLink(row)} · ${classBadge(row)}</span>
+            <span>${runnerLink(row)} · ${classBadge(row)}${hasReplay(row) ? replayLink(row) : ""}</span>
           </div>
           <div class="speedrun-activity-value"><strong>${time(row, "bestTime")}</strong><span>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</span></div>
           <span class="speedrun-row-arrow" aria-hidden="true">›</span>

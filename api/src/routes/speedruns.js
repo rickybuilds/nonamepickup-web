@@ -390,7 +390,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_id,
           r.class_name,
           r.time_ms,
-          r.created_at
+          r.created_at,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.run_id = r.id AND g.is_complete = 1
+            LIMIT 1
+          ) AS has_replay
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         ORDER BY r.created_at DESC, r.id DESC
@@ -406,7 +411,13 @@ function createSpeedrunsRouter({ logRouteError }) {
           ranked.class_name,
           ranked.best_time_ms,
           ranked.pb_created_at,
-          ranked.updated_at
+          ranked.updated_at,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = ranked.map AND g.class_id = ranked.class_id AND g.steamid = ranked.steamid
+              AND g.ghost_time_ms = ranked.best_time_ms AND g.is_complete = 1
+            LIMIT 1
+          ) AS has_replay
         FROM (
           SELECT r.*, ROW_NUMBER() OVER (
             PARTITION BY r.map

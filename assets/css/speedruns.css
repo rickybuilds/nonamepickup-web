@@ -656,6 +656,14 @@
   color: #fbbf24;
 }
 
+.speedrun-dashboard-list .speedrun-replay-link {
+  min-height: 22px;
+  margin-left: 4px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 7px;
+}
+
 .speedrun-runner-rank {
   display: grid;
   width: 25px;
