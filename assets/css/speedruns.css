@@ -855,6 +855,7 @@
 
   .speedrun-board-runner {
     flex: 0 0 100%;
+    max-width: none;
     margin-top: 8px;
   }
 
