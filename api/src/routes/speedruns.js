@@ -337,6 +337,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       worldRecordDiscordId: row.worldRecordDiscordId || null,
       worldRecordClassId: row.worldRecordClassId == null ? null : Number(row.worldRecordClassId),
       worldRecordClassName: row.worldRecordClassName || null,
+      worldRecordHasReplay: Number(row.worldRecordHasReplay || 0) > 0,
       lastRunAt,
       last_run_at: lastRunAt
     };
@@ -824,7 +825,8 @@ function createSpeedrunsRouter({ logRouteError }) {
         wr.worldRecordSteamId,
         wr.worldRecordDiscordId,
         wr.worldRecordClassId,
-        wr.worldRecordClassName
+        wr.worldRecordClassName,
+        wr.worldRecordHasReplay
       FROM speedrun_maps m
       LEFT JOIN (
         SELECT
@@ -850,7 +852,13 @@ function createSpeedrunsRouter({ logRouteError }) {
           ranked.steamid AS worldRecordSteamId,
           l.discord_id AS worldRecordDiscordId,
           ranked.class_id AS worldRecordClassId,
-          ranked.class_name AS worldRecordClassName
+          ranked.class_name AS worldRecordClassName,
+          EXISTS (
+            SELECT 1 FROM speedrun_ghosts g
+            WHERE g.map = ranked.map AND g.class_id = ranked.class_id AND g.steamid = ranked.steamid
+              AND g.ghost_time_ms = ranked.best_time_ms AND g.is_complete = 1
+            LIMIT 1
+          ) AS worldRecordHasReplay
         FROM (
           SELECT r.*, ROW_NUMBER() OVER (
             PARTITION BY r.map

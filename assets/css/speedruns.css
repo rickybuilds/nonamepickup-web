@@ -385,12 +385,27 @@
   white-space: nowrap;
 }
 
-.speedrun-map-record > span {
+.speedrun-map-record-actions > span {
   overflow: hidden;
   color: #8ca0b8;
   font: 750 9px Inter, system-ui, sans-serif;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.speedrun-map-record-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.speedrun-map-record-actions .speedrun-replay-link {
+  min-height: 20px;
+  margin-left: 0;
+  padding: 3px 5px;
+  border-radius: 5px;
+  font-size: 7px;
 }
 
 .speedrun-map-record a,
@@ -1386,7 +1401,7 @@
     height: 34px;
   }
 
-  .speedrun-map-record > span {
+  .speedrun-map-record-actions > span {
     max-width: 110px;
   }
 

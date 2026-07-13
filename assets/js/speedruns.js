@@ -849,6 +849,12 @@
         classId: row.worldRecordClassId,
         className: row.worldRecordClassName
       };
+      const recordReplay = {
+        hasReplay: row.worldRecordHasReplay,
+        map: row.map,
+        classId: row.worldRecordClassId,
+        steamId: row.worldRecordSteamId
+      };
       return `
         <article class="speedrun-map-result" role="link" tabindex="0" data-row-href="${escapeAttr(href)}" aria-label="View ${escapeAttr(row.displayName || row.map)} map details">
           <div class="speedrun-map-identity">
@@ -860,7 +866,10 @@
           </div>
           <div class="speedrun-map-record">
             <strong>${time(row, "worldRecordTime")}</strong>
-            <span>${worldRecordRunnerLink(row)}</span>
+            <div class="speedrun-map-record-actions">
+              <span>${worldRecordRunnerLink(row)}</span>
+              ${hasReplay(recordReplay) ? replayLink(recordReplay) : ""}
+            </div>
           </div>
           <div class="speedrun-map-metric"><strong>${compact(row.totalRuns)}</strong><span>runs</span></div>
           <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRunners)}</strong><span>runners</span></div>
