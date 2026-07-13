@@ -139,3 +139,91 @@
 
 @media(max-width:1200px){.compare-search-panel{grid-template-columns:minmax(0,1fr) 48px minmax(0,1fr)}.compare-search-actions{grid-column:1/-1;grid-template-columns:1fr 100px}.compare-kpi-grid{grid-template-columns:repeat(2,1fr)}.compare-stat-list{grid-template-columns:1fr}}
 @media(max-width:700px){.compare-status-pill{display:inline-block;margin-top:13px}.compare-search-panel{grid-template-columns:1fr 42px 1fr;gap:8px;padding:10px;border-radius:16px}.compare-search-box label{font-size:8px}.compare-player-input{height:42px;padding:0 10px;font-size:11px}.compare-search-box small{font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.compare-swap-btn{width:42px;height:42px}.compare-search-actions{grid-template-columns:1fr 82px}.compare-run-btn,.compare-reset-btn{height:42px}.compare-versus-hero{grid-template-columns:1fr 46px 1fr}.compare-player-card{min-height:165px;padding:16px 12px;border-radius:17px}.compare-player-card h2{font-size:18px}.compare-player-card>p:last-of-type{font-size:11px}.compare-profile-link{padding:7px 8px;font-size:8px}.compare-vs-badge{width:44px;height:44px;font-size:13px}.compare-verdict-panel{grid-template-columns:1fr;gap:10px;padding:16px}.compare-verdict-panel h2{font-size:16px}.compare-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.compare-kpi{padding:13px}.compare-kpi strong{font-size:22px}.leader-kpi strong{font-size:16px}.compare-grid{grid-template-columns:1fr}.compare-panel{padding:14px;border-radius:17px}.compare-panel-header{align-items:flex-start}.compare-panel-header h2{font-size:16px}.compare-table-scroll{max-height:none;overflow:visible}.compare-table,.compare-table tbody{display:block;width:100%}.compare-table thead{display:none}.compare-table tr{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:10px;padding:8px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(3,8,20,.45)}.compare-table td{display:block;padding:8px;border:0!important;border-radius:0!important;background:transparent!important;font-size:10px}.compare-table td::before{content:attr(data-label);display:block;margin-bottom:4px;color:#64748b;font-size:7px;font-weight:950;letter-spacing:.1em;text-transform:uppercase}.compare-table td:nth-child(4),.compare-table td:nth-child(5),.compare-table td:nth-child(9){grid-column:1/-1}.compare-table .empty-match-row{grid-column:1/-1;padding:18px}.team-links{line-height:1.5}.match-action-links{min-width:0}.compare-search-box label,.compare-search-box small,.compare-profile-link,.compare-table td::before,.relation-pill,.compare-table a.match-action-pill{font-size:10px}}
+
+@media(max-width:700px){
+  .compare-page .compare-header{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;
+    width:100%;
+    max-width:100%;
+    overflow:hidden;
+  }
+  .compare-page .compare-header > div{
+    min-width:0;
+    max-width:100%;
+  }
+  .compare-page .compare-header h1{
+    max-width:100%;
+    font-size:clamp(28px,9vw,38px)!important;
+    line-height:1.08!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+  .compare-page .compare-status-pill{
+    justify-self:start;
+    margin-top:0;
+    max-width:100%;
+  }
+  .compare-search-panel{
+    grid-template-columns:minmax(0,1fr);
+    gap:10px;
+    padding:14px;
+  }
+  .compare-search-box,
+  .compare-search-actions{
+    min-width:0;
+    width:100%;
+  }
+  .compare-search-box small{
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .compare-swap-btn{
+    justify-self:center;
+    transform:rotate(90deg);
+  }
+  .compare-swap-btn:hover{
+    transform:rotate(90deg) scale(1.04);
+  }
+  .compare-search-actions{
+    grid-column:auto;
+    grid-template-columns:minmax(0,1fr) minmax(82px,.4fr);
+  }
+  .compare-versus-hero{
+    grid-template-columns:minmax(0,1fr);
+    gap:10px;
+  }
+  .compare-player-card{
+    min-height:0;
+    padding:20px;
+  }
+  .compare-player-card h2{
+    font-size:clamp(22px,8vw,32px);
+  }
+  .compare-vs-badge{
+    margin:-4px 0;
+  }
+  .compare-player-card.red-side{
+    text-align:left;
+  }
+  .red-side::after{
+    inset:auto -15% -65% 20%;
+  }
+  .compare-panel-header{
+    flex-direction:column;
+    gap:7px;
+  }
+}
+
+@media(max-width:430px){
+  .compare-kpi-grid,
+  .compare-table tr{
+    grid-template-columns:minmax(0,1fr);
+  }
+  .compare-table td,
+  .compare-table td:nth-child(4),
+  .compare-table td:nth-child(5),
+  .compare-table td:nth-child(9){
+    grid-column:auto;
+  }
+}

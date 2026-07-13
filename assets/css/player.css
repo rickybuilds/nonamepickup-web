@@ -1170,30 +1170,6 @@
 }
 
 @media(max-width:760px){
-  .player2-page .site-header-inner{
-    gap:7px!important;
-    padding:8px 10px!important;
-  }
-  .player2-page .site-nav{
-    justify-content:flex-start!important;
-    flex-wrap:nowrap!important;
-    overflow-x:auto!important;
-    padding-bottom:2px!important;
-    scrollbar-width:none;
-  }
-  .player2-page .site-nav::-webkit-scrollbar{display:none}
-  .player2-page .site-nav a,
-  .player2-page .site-nav a:link,
-  .player2-page .site-nav a:visited{
-    flex:0 0 auto;
-    min-height:30px;
-    padding:6px 9px;
-  }
-  .player2-page .site-search{
-    height:36px!important;
-    border-radius:13px!important;
-    font-size:13px!important;
-  }
   .player2-main{padding:10px 8px 22px}
   .player2-page .player2-hero{
     min-height:0!important;
@@ -1353,5 +1329,19 @@
   }
   .map-tendency-empty strong{
     font-size:18px;
+  }
+}
+
+@media(max-width:800px){
+  .player2-page .granular-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+    width:100%;
+  }
+  .player2-page .granular-class-panel,
+  .player2-page .granular-victim-panel,
+  .player2-page .granular-alias-panel{
+    grid-column:auto!important;
+    width:100%;
+    max-width:100%;
   }
 }
