@@ -789,29 +789,40 @@
   }
 
   function renderMaps(rows) {
-    setHtml("sr-map-grid", (rows || []).map(row => `
-      <article class="speedrun-map-card matches2-panel">
-        <div class="speedrun-map-heading">
-          <h3><a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.displayName || row.map)}</a></h3>
-          <span class="speedrun-map-wr"><span>WR</span><strong>${time(row, "worldRecordTime")}</strong></span>
-        </div>
-        <div class="speedrun-record-holder">
-          <span>Record by</span>
-          ${
+    const mapRows = (rows || []).map(row => `
+      <tr>
+        <td class="speedrun-board-map">
+          <a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.displayName || row.map)}</a>
+        </td>
+        <td class="speedrun-board-time" data-label="WR">${time(row, "worldRecordTime")}</td>
+        <td class="speedrun-board-runner" data-label="Runner">${
           row.worldRecordDiscordId
             ? `<a href="${escapeAttr(playerUrl(row.worldRecordDiscordId))}">
                 ${escapeHtml(row.worldRecordPlayer || row.worldRecordSteamId)}${supporterBadge(row.worldRecordDiscordId)}
               </a>`
             : escapeHtml(row.worldRecordPlayer || "No record")
-          }
-        </div>
-        <div class="speedrun-map-counts" aria-label="Map activity">
-          <span><strong>${compact(row.totalRuns)}</strong> runs</span>
-          <span><strong>${compact(row.totalRunners)}</strong> runners</span>
-          <span><strong>${compact(row.totalRecords)}</strong> records</span>
-        </div>
-      </article>
-    `).join("") || empty("No speedrun maps found."));
+        }</td>
+        <td class="speedrun-board-count" data-label="Runs">${compact(row.totalRuns)}</td>
+        <td class="speedrun-board-count" data-label="Runners">${compact(row.totalRunners)}</td>
+        <td class="speedrun-board-count" data-label="Records">${compact(row.totalRecords)}</td>
+      </tr>
+    `).join("");
+
+    setHtml("sr-map-grid", mapRows ? `
+      <table class="speedrun-record-board">
+        <thead>
+          <tr>
+            <th>Map</th>
+            <th>World record</th>
+            <th>Record holder</th>
+            <th>Runs</th>
+            <th>Runners</th>
+            <th>Records</th>
+          </tr>
+        </thead>
+        <tbody>${mapRows}</tbody>
+      </table>
+    ` : empty("No speedrun maps found."));
   }
 
   async function loadHome() {
