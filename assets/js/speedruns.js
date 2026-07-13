@@ -195,6 +195,60 @@
     return String(row?.classId ?? row?.class_id ?? classText(row) ?? "");
   }
 
+  function classAccent(row) {
+    const classId = Number(row?.classId ?? row?.class_id ?? row?.worldRecordClassId);
+    const index = Number.isFinite(classId) && classId > 0 ? classId - 1 : 0;
+    return progressionColors[index % progressionColors.length];
+  }
+
+  function classBadge(row) {
+    const label = classText(row);
+    if (!label || label === "-") return "";
+    return `<span class="speedrun-class-mark" style="--class-color:${escapeAttr(classAccent(row))}"><i></i>${escapeHtml(label)}</span>`;
+  }
+
+  function mapThumbnail(map, className = "") {
+    return `<span class="speedrun-map-thumb ${escapeAttr(className)}"><img data-speedrun-map-image="${escapeAttr(map)}" alt="" loading="lazy"></span>`;
+  }
+
+  function hydrateMapImages(scope) {
+    const root = typeof scope === "string" ? $(scope) : scope;
+    root?.querySelectorAll("[data-speedrun-map-image]").forEach(img => {
+      const map = img.dataset.speedrunMapImage || "";
+      if (typeof window.setMapImageFromName === "function") {
+        window.setMapImageFromName(img, map, { fallbackSrc: "assets/images/maps/NoMap.webp" });
+      } else {
+        img.src = mapPreviewUrl(map);
+        img.onerror = () => { img.src = "assets/images/maps/NoMap.webp"; };
+      }
+    });
+  }
+
+  function worldRecordRunnerLink(row) {
+    const name = row?.worldRecordPlayer || row?.worldRecordSteamId || "No record";
+    return row?.worldRecordDiscordId
+      ? `<a href="${escapeAttr(playerUrl(row.worldRecordDiscordId))}">${escapeHtml(name)}${supporterBadge(row.worldRecordDiscordId)}</a>`
+      : escapeHtml(name);
+  }
+
+  function setupLinkedRows(container) {
+    if (!container || container.dataset.linkedRowsReady === "1") return;
+    container.dataset.linkedRowsReady = "1";
+    container.addEventListener("click", event => {
+      if (event.target.closest("a, button, input, select")) return;
+      const row = event.target.closest("[data-row-href]");
+      if (row?.dataset.rowHref) window.location.href = row.dataset.rowHref;
+    });
+    container.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (event.target.closest("a, button, input, select")) return;
+      const row = event.target.closest("[data-row-href]");
+      if (!row?.dataset.rowHref) return;
+      event.preventDefault();
+      window.location.href = row.dataset.rowHref;
+    });
+  }
+
   function steamIdsText(player) {
     const ids = (player?.steamIds || player?.steam_ids || [])
       .map(id => String(id || "").trim())
@@ -789,47 +843,145 @@
   }
 
   function renderMaps(rows) {
-    const mapRows = (rows || []).map(row => `
-      <tr>
-        <td class="speedrun-board-map">
-          <a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.displayName || row.map)}</a>
-        </td>
-        <td class="speedrun-board-time" data-label="WR">${time(row, "worldRecordTime")}</td>
-        <td class="speedrun-board-runner" data-label="Runner">${
-          row.worldRecordDiscordId
-            ? `<a href="${escapeAttr(playerUrl(row.worldRecordDiscordId))}">
-                ${escapeHtml(row.worldRecordPlayer || row.worldRecordSteamId)}${supporterBadge(row.worldRecordDiscordId)}
-              </a>`
-            : escapeHtml(row.worldRecordPlayer || "No record")
-        }</td>
-        <td class="speedrun-board-count" data-label="Runs">${compact(row.totalRuns)}</td>
-        <td class="speedrun-board-count" data-label="Runners">${compact(row.totalRunners)}</td>
-        <td class="speedrun-board-count" data-label="Records">${compact(row.totalRecords)}</td>
-      </tr>
-    `).join("");
+    const mapRows = (rows || []).map(row => {
+      const href = mapUrl(row.map);
+      const recordClass = {
+        classId: row.worldRecordClassId,
+        className: row.worldRecordClassName
+      };
+      return `
+        <article class="speedrun-map-result" role="link" tabindex="0" data-row-href="${escapeAttr(href)}" aria-label="View ${escapeAttr(row.displayName || row.map)} map details">
+          <div class="speedrun-map-identity">
+            ${mapThumbnail(row.map)}
+            <div>
+              <a href="${escapeAttr(href)}">${escapeHtml(row.displayName || row.map)}</a>
+              ${classBadge(recordClass)}
+            </div>
+          </div>
+          <div class="speedrun-map-record">
+            <strong>${time(row, "worldRecordTime")}</strong>
+            <span>${worldRecordRunnerLink(row)}</span>
+          </div>
+          <div class="speedrun-map-metric"><strong>${compact(row.totalRuns)}</strong><span>runs</span></div>
+          <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRunners)}</strong><span>runners</span></div>
+          <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRecords)}</strong><span>records</span></div>
+          <span class="speedrun-row-arrow" aria-hidden="true">›</span>
+        </article>
+      `;
+    }).join("");
 
     setHtml("sr-map-grid", mapRows ? `
-      <table class="speedrun-record-board">
-        <thead>
-          <tr>
-            <th>Map</th>
-            <th>World record</th>
-            <th>Record holder</th>
-            <th>Runs</th>
-            <th>Runners</th>
-            <th>Records</th>
-          </tr>
-        </thead>
-        <tbody>${mapRows}</tbody>
-      </table>
+      <div class="speedrun-map-columns" aria-hidden="true">
+        <span>Map / class</span><span>World record / holder</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
+      </div>
+      <div class="speedrun-map-results">${mapRows}</div>
     ` : empty("No speedrun maps found."));
+    const container = $("sr-map-grid");
+    hydrateMapImages(container);
+    setupLinkedRows(container);
+  }
+
+  function renderTopMaps(rows) {
+    const topRows = (rows || []).slice(0, 10);
+    const maxRuns = Math.max(1, ...topRows.map(row => Number(row.totalRuns || 0)));
+    setHtml("sr-top-maps", topRows.map((row, index) => {
+      const href = mapUrl(row.map);
+      const width = Math.max(4, Math.round((Number(row.totalRuns || 0) / maxRuns) * 100));
+      return `
+        <article class="speedrun-ranked-map" role="link" tabindex="0" data-row-href="${escapeAttr(href)}" aria-label="View ${escapeAttr(row.displayName || row.map)} map details">
+          <span class="speedrun-map-rank">${index + 1}</span>
+          <div>
+            <a href="${escapeAttr(href)}">${escapeHtml(row.displayName || row.map)}</a>
+            <small>${compact(row.totalRunners)} runners</small>
+            <span class="speedrun-activity-track"><i style="width:${width}%"></i></span>
+          </div>
+          <strong>${compact(row.totalRuns)} <small>runs</small></strong>
+        </article>
+      `;
+    }).join("") || empty("No map activity yet."));
+    setupLinkedRows($("sr-top-maps"));
+  }
+
+  function recordMatchKey(row, timeKey) {
+    const map = row?.map || "";
+    const classId = row?.classId ?? row?.class_id ?? "";
+    const steamId = row?.steamId || row?.steamid || "";
+    const ms = row?.[timeKey] ?? row?.timeMs ?? row?.bestTimeMs ?? "";
+    return `${map}|${classId}|${steamId}|${ms}`;
+  }
+
+  function renderRecentRuns(rows, recentRecords, recentWorldRecords) {
+    const pbKeys = new Set((recentRecords || []).map(row => recordMatchKey(row, "bestTimeMs")));
+    const wrKeys = new Set((recentWorldRecords || []).map(row => recordMatchKey(row, "bestTimeMs")));
+    setHtml("sr-recent-runs", (rows || []).slice(0, 6).map(row => {
+      const href = mapUrl(row.map);
+      const key = recordMatchKey(row, "timeMs");
+      const status = wrKeys.has(key)
+        ? `<span class="speedrun-run-status wr">WR</span>`
+        : pbKeys.has(key) ? `<span class="speedrun-run-status">PB</span>` : "";
+      return `
+        <article class="speedrun-activity-row" role="link" tabindex="0" data-row-href="${escapeAttr(href)}">
+          <div class="speedrun-activity-main">
+            <strong>${runnerLink(row)}${status}</strong>
+            <span><a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a> · ${classBadge(row)}</span>
+          </div>
+          <div class="speedrun-activity-value"><strong>${time(row)}</strong><span>${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}</span></div>
+          <span class="speedrun-row-arrow" aria-hidden="true">›</span>
+        </article>
+      `;
+    }).join("") || empty("No recent runs yet."));
+    setupLinkedRows($("sr-recent-runs"));
+  }
+
+  function renderTopRunners(rows, profiles = new Map()) {
+    const topRows = (rows || []).slice(0, 6);
+    const maxRecords = Math.max(1, ...topRows.map(row => Number(row.currentRecords || 0)));
+    setHtml("sr-top-runners", topRows.map((row, index) => {
+      const href = playerUrl(row.discordId);
+      const profile = profiles.get(String(row.discordId)) || {};
+      const name = profile.personaname || row.playerName || row.discordId || "Unknown";
+      const avatar = profile.avatarfull || profile.avatarmedium || profile.avatar || "";
+      const width = Math.max(4, Math.round((Number(row.currentRecords || 0) / maxRecords) * 100));
+      return `
+        <article class="speedrun-runner-row" role="link" tabindex="0" data-row-href="${escapeAttr(href)}">
+          <span class="speedrun-runner-rank rank-${index + 1}">${index + 1}</span>
+          <span class="speedrun-runner-avatar">${speedrunAvatarMarkup(name, avatar)}</span>
+          <div class="speedrun-runner-info">
+            <a href="${escapeAttr(href)}">${escapeHtml(name)}${supporterBadge(row.discordId)}</a>
+            <span class="speedrun-runner-track"><i style="width:${width}%"></i></span>
+          </div>
+          <strong>${compact(row.currentRecords)} <small>records</small></strong>
+        </article>
+      `;
+    }).join("") || empty("No runners yet."));
+    setupLinkedRows($("sr-top-runners"));
+  }
+
+  function renderRecentWorldRecords(rows) {
+    setHtml("sr-recent-world-records", (rows || []).slice(0, 6).map(row => {
+      const href = mapUrl(row.map);
+      return `
+        <article class="speedrun-world-record-row" role="link" tabindex="0" data-row-href="${escapeAttr(href)}">
+          ${mapThumbnail(row.map, "small")}
+          <div class="speedrun-world-record-main">
+            <a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a>
+            <span>${runnerLink(row)} · ${classBadge(row)}</span>
+          </div>
+          <div class="speedrun-activity-value"><strong>${time(row, "bestTime")}</strong><span>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</span></div>
+          <span class="speedrun-row-arrow" aria-hidden="true">›</span>
+        </article>
+      `;
+    }).join("") || empty("No world records yet."));
+    hydrateMapImages($("sr-recent-world-records"));
+    setupLinkedRows($("sr-recent-world-records"));
   }
 
   async function loadHome() {
     try {
-      const [summary, maps] = await Promise.all([
+      const pageSize = 10;
+      const [summary, firstMapPage] = await Promise.all([
         api("/api/speedruns/summary"),
-        api("/api/speedruns/maps?limit=24&sort=name&with_records=1")
+        api(`/api/speedruns/maps?limit=${pageSize + 1}&sort=name&with_records=1`)
       ]);
 
       setText("sr-maps", compact(summary.maps));
@@ -838,45 +990,75 @@
       setText("sr-runners", compact(summary.runners));
       setText("sr-records", compact(summary.records));
       setText("speedrun-status", "Records loaded from the NoName timer.");
-      renderMaps(maps);
-      renderRuns("sr-recent-runs", summary.recentRuns, "No recent runs yet.");
+      renderTopMaps(summary.popularMaps);
+      renderRecentRuns(summary.recentRuns, summary.recentRecords, summary.recentWorldRecords);
+      renderTopRunners(summary.topRunners);
+      renderRecentWorldRecords(summary.recentWorldRecords);
 
-      setHtml("sr-top-runners", (summary.topRunners || []).map(row => listRow({
-        title: row.playerName || row.discordId || "Unknown",
-        titleHtml: runnerLink(row),
-        subtitle: `${compact(row.totalRuns)} total runs`,
-        value: `${compact(row.currentRecords)} records`,
-        href: playerUrl(row.discordId)
-      })).join("") || empty("No runners yet."));
-
-      setHtml("sr-popular-maps", (summary.popularMaps || []).map(row => listRow({
-        title: row.displayName || row.map,
-        subtitle: `${compact(row.totalRunners)} runners · ${row.category || "other"}`,
-        value: `${compact(row.totalRuns)} runs`,
-        href: mapUrl(row.map)
-      })).join("") || empty("No map activity yet."));
+      Promise.all((summary.topRunners || []).slice(0, 6).map(async row => [
+        String(row.discordId),
+        await loadSteamProfile(row.discordId)
+      ])).then(results => renderTopRunners(summary.topRunners, new Map(results.filter(([, profile]) => profile))));
 
       const search = $("sr-map-search");
       const sort = $("sr-map-sort");
+      const more = $("sr-map-more");
       let timer = null;
+      let visibleMaps = firstMapPage.slice(0, pageSize);
+      let hasMoreMaps = firstMapPage.length > pageSize;
+
+      const updateMapView = () => {
+        renderMaps(visibleMaps);
+        if (more) {
+          more.hidden = !hasMoreMaps;
+          more.disabled = false;
+          more.innerHTML = `View more maps <span aria-hidden="true">→</span>`;
+        }
+      };
+
+      const fetchMapPage = async reset => {
+        if (more) {
+          more.disabled = true;
+          more.textContent = "Loading maps…";
+        }
+        const query = new URLSearchParams({
+          limit: String(pageSize + 1),
+          offset: String(reset ? 0 : visibleMaps.length),
+          sort: sort?.value || "name",
+          with_records: "1"
+        });
+        if (search?.value.trim()) query.set("q", search.value.trim());
+        const page = await api(`/api/speedruns/maps?${query.toString()}`);
+        hasMoreMaps = page.length > pageSize;
+        visibleMaps = reset ? page.slice(0, pageSize) : visibleMaps.concat(page.slice(0, pageSize));
+        updateMapView();
+      };
+
       const reloadMaps = () => {
         clearTimeout(timer);
         timer = setTimeout(async () => {
           try {
-            const query = new URLSearchParams({
-              limit: "24",
-              sort: sort?.value || "name",
-              with_records: "1"
-            });
-            if (search?.value.trim()) query.set("q", search.value.trim());
-            renderMaps(await api(`/api/speedruns/maps?${query.toString()}`));
+            await fetchMapPage(true);
           } catch {
+            updateMapView();
             showError("Speedrun maps could not be loaded right now.");
           }
         }, 180);
       };
       search?.addEventListener("input", reloadMaps);
       sort?.addEventListener("change", reloadMaps);
+      more?.addEventListener("click", async () => {
+        try {
+          await fetchMapPage(false);
+        } catch {
+          if (more) {
+            more.disabled = false;
+            more.textContent = "Try again";
+          }
+          showError("More speedrun maps could not be loaded right now.");
+        }
+      });
+      updateMapView();
     } catch (error) {
       console.error("[speedruns]", error);
       setText("speedrun-status", "Speedruns unavailable");

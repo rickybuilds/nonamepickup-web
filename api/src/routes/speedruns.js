@@ -334,7 +334,8 @@ function createSpeedrunsRouter({ logRouteError }) {
       worldRecordDisplay: formatTimeMs(worldRecordTimeMs),
       worldRecordPlayer: row.worldRecordPlayer || null,
       worldRecordSteamId: row.worldRecordSteamId || null,
-      worldRecordDiscordId: row.worldRecordDiscordId || null,      
+      worldRecordDiscordId: row.worldRecordDiscordId || null,
+      worldRecordClassId: row.worldRecordClassId == null ? null : Number(row.worldRecordClassId),
       worldRecordClassName: row.worldRecordClassName || null,
       lastRunAt,
       last_run_at: lastRunAt
@@ -366,6 +367,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     const [
       countRows,
       recentRuns,
+      recentWorldRecords,
       recentRecords,
       topRunners,
       popularMaps
@@ -392,6 +394,29 @@ function createSpeedrunsRouter({ logRouteError }) {
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         ORDER BY r.created_at DESC, r.id DESC
+        LIMIT 10
+      `),
+      speedrunQuery(`
+        SELECT
+          ranked.steamid,
+          l.discord_id,
+          ranked.player_name,
+          ranked.map,
+          ranked.class_id,
+          ranked.class_name,
+          ranked.best_time_ms,
+          ranked.pb_created_at,
+          ranked.updated_at
+        FROM (
+          SELECT r.*, ROW_NUMBER() OVER (
+            PARTITION BY r.map
+            ORDER BY r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC, r.steamid ASC, r.class_id ASC
+          ) AS rn
+          FROM speedrun_records r
+        ) ranked
+        LEFT JOIN speedrun_player_links l ON l.steamid = ranked.steamid
+        WHERE ranked.rn = 1
+        ORDER BY COALESCE(ranked.pb_created_at, ranked.updated_at) DESC, ranked.map ASC
         LIMIT 10
       `),
       speedrunQuery(`
@@ -475,6 +500,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       records: Number(counts.records || 0),
       recentRuns: recentRuns.map(mapRun),
       recentRecords: recentRecords.map(row => mapRecord(row)),
+      recentWorldRecords: recentWorldRecords.map(row => mapRecord(row)),
       topRunners: topRunners.map(row => ({
       discordId: row.discord_id,
       playerName: row.player_name || row.discord_id,

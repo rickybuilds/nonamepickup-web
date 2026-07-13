@@ -14,11 +14,11 @@
 
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
-  <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260713sticky1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260713recordboard1">
-  <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/speedruns.js?v=20260713recordboard1" defer></script>
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260713hub1">
+  <script src="assets/js/main.js?v=20260713sticky1" defer></script>
+  <script src="assets/js/speedruns.js?v=20260713hub1" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -66,37 +66,81 @@
 
       <div id="speedrun-error" class="speedrun-error" hidden></div>
 
-      <section class="speedrun-section page-section">
-        <div class="speedrun-section-heading">
-          <div><h2>Maps</h2></div>
-          <div class="speedrun-filters">
-            <a class="speedrun-button" href="speedrun-maps.html">All Maps</a>
-            <input id="sr-map-search" type="search" placeholder="Search maps" autocomplete="off">
-            <select id="sr-map-sort" aria-label="Sort maps">
-              <option value="name">Name</option>
-              <option value="wr">World Record</option>
-              <option value="runs">Runs</option>
-              <option value="runners">Runners</option>
-              <option value="difficulty">Difficulty</option>
-            </select>
+      <div class="speedrun-home-grid">
+        <section class="speedrun-hub-panel speedrun-maps-panel" aria-labelledby="sr-maps-heading">
+          <div class="speedrun-hub-heading speedrun-maps-heading">
+            <div class="speedrun-hub-title">
+              <span class="speedrun-panel-icon" aria-hidden="true">◆</span>
+              <div>
+                <h2 id="sr-maps-heading">Map Leaderboard</h2>
+                <p>Browse maps, records, activity, and runners</p>
+              </div>
+            </div>
+            <div class="speedrun-filters">
+              <a class="speedrun-button" href="speedrun-maps.html">All Maps</a>
+              <input id="sr-map-search" type="search" placeholder="Search maps" autocomplete="off" aria-label="Search maps">
+              <select id="sr-map-sort" aria-label="Sort maps">
+                <option value="name">Name</option>
+                <option value="wr">World Record</option>
+                <option value="runs">Runs</option>
+                <option value="runners">Runners</option>
+                <option value="difficulty">Difficulty</option>
+              </select>
+            </div>
           </div>
-        </div>
-        <div id="sr-map-grid" class="speedrun-map-board"></div>
-      </section>
+          <div id="sr-map-grid" class="speedrun-map-browser" aria-live="polite"></div>
+          <div class="speedrun-panel-footer">
+            <button id="sr-map-more" class="speedrun-text-action" type="button" hidden>View more maps <span aria-hidden="true">→</span></button>
+          </div>
+        </section>
 
-      <section class="speedrun-section speedrun-columns">
-        <div>
-          <div class="speedrun-section-heading compact"><div><h2>Recent Runs</h2></div></div>
-          <div id="sr-recent-runs" class="speedrun-list"></div>
-        </div>
-        <div>
-          <div class="speedrun-section-heading compact"><div><h2>Top Runners</h2></div></div>
-          <div id="sr-top-runners" class="speedrun-list"></div>
-        </div>
-        <div>
-          <div class="speedrun-section-heading compact"><div><h2>Popular Maps</h2></div></div>
-          <div id="sr-popular-maps" class="speedrun-list"></div>
-        </div>
+        <aside class="speedrun-hub-panel speedrun-insights-panel" aria-labelledby="sr-top-maps-heading">
+          <div class="speedrun-hub-heading">
+            <div class="speedrun-hub-title">
+              <span class="speedrun-panel-icon" aria-hidden="true">★</span>
+              <div>
+                <h2 id="sr-top-maps-heading">Top Maps by Runs</h2>
+                <p>Most active maps in the timer</p>
+              </div>
+            </div>
+          </div>
+          <div id="sr-top-maps" class="speedrun-ranked-maps"></div>
+          <div class="speedrun-panel-footer">
+            <a class="speedrun-text-action" href="speedrun-maps.html">View full map stats <span aria-hidden="true">→</span></a>
+          </div>
+        </aside>
+      </div>
+
+      <section class="speedrun-lower-grid" aria-label="Speedrun activity">
+        <section class="speedrun-hub-panel" aria-labelledby="sr-recent-heading">
+          <div class="speedrun-hub-heading compact">
+            <div class="speedrun-hub-title">
+              <span class="speedrun-panel-icon" aria-hidden="true">◷</span>
+              <div><h2 id="sr-recent-heading">Recent Runs</h2><p>Latest timer completions</p></div>
+            </div>
+          </div>
+          <div id="sr-recent-runs" class="speedrun-dashboard-list"></div>
+        </section>
+
+        <section class="speedrun-hub-panel" aria-labelledby="sr-runners-heading">
+          <div class="speedrun-hub-heading compact">
+            <div class="speedrun-hub-title">
+              <span class="speedrun-panel-icon gold" aria-hidden="true">♛</span>
+              <div><h2 id="sr-runners-heading">Top Runners</h2><p>Current records held</p></div>
+            </div>
+          </div>
+          <div id="sr-top-runners" class="speedrun-dashboard-list"></div>
+        </section>
+
+        <section class="speedrun-hub-panel" aria-labelledby="sr-world-records-heading">
+          <div class="speedrun-hub-heading compact">
+            <div class="speedrun-hub-title">
+              <span class="speedrun-panel-icon gold" aria-hidden="true">♦</span>
+              <div><h2 id="sr-world-records-heading">Recent World Records</h2><p>Newest current map records</p></div>
+            </div>
+          </div>
+          <div id="sr-recent-world-records" class="speedrun-dashboard-list"></div>
+        </section>
       </section>
     </section>
   </main>
