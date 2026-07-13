@@ -791,28 +791,24 @@
   function renderMaps(rows) {
     setHtml("sr-map-grid", (rows || []).map(row => `
       <article class="speedrun-map-card matches2-panel">
-        <div>
+        <div class="speedrun-map-heading">
           <h3><a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.displayName || row.map)}</a></h3>
-          <div class="speedrun-map-meta">
-            <span class="speedrun-chip hot">${escapeHtml(row.category || "other")}</span>
-            <span class="speedrun-chip">D${escapeHtml(row.difficulty ?? "-")}</span>
-            <span class="speedrun-chip">${row.enabled ? "Enabled" : "Disabled"}</span>
-          </div>
+          <span class="speedrun-map-wr"><span>WR</span><strong>${time(row, "worldRecordTime")}</strong></span>
         </div>
-        <div class="speedrun-card-stats">
-          <div><span>Runs</span><strong>${compact(row.totalRuns)}</strong></div>
-          <div><span>Runners</span><strong>${compact(row.totalRunners)}</strong></div>
-          <div><span>Records</span><strong>${compact(row.totalRecords)}</strong></div>
-        </div>
-        <div class="speedrun-record-line">
-        <span>${
+        <div class="speedrun-record-holder">
+          <span>Record by</span>
+          ${
           row.worldRecordDiscordId
             ? `<a href="${escapeAttr(playerUrl(row.worldRecordDiscordId))}">
                 ${escapeHtml(row.worldRecordPlayer || row.worldRecordSteamId)}${supporterBadge(row.worldRecordDiscordId)}
               </a>`
             : escapeHtml(row.worldRecordPlayer || "No record")
-        }</span>
-          <strong>${time(row, "worldRecordTime")}</strong>
+          }
+        </div>
+        <div class="speedrun-map-counts" aria-label="Map activity">
+          <span><strong>${compact(row.totalRuns)}</strong> runs</span>
+          <span><strong>${compact(row.totalRunners)}</strong> runners</span>
+          <span><strong>${compact(row.totalRecords)}</strong> records</span>
         </div>
       </article>
     `).join("") || empty("No speedrun maps found."));
