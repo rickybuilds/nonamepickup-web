@@ -248,6 +248,8 @@ function createSpeedrunsRouter({ logRouteError }) {
     const createdAt = iso(row.created_at);
     return {
       id: row.id == null ? null : Number(row.id),
+      runId: row.id == null ? null : Number(row.id),
+      run_id: row.id == null ? null : Number(row.id),
       steamId: row.steamid || null,
       discordId: row.discord_id || null,
       playerName: row.player_name || null,
@@ -406,6 +408,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           EXISTS (
             SELECT 1 FROM speedrun_ghosts g
             WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+              AND g.ghost_time_ms = r.best_time_ms AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay
         FROM speedrun_records r
@@ -489,67 +492,60 @@ function createSpeedrunsRouter({ logRouteError }) {
     });
   }));
 
-  router.get("/replay/:map/:classId/:steamid", (req, res) => runEndpoint(req, res, "[/api/speedruns/replay/:map/:classId/:steamid]", async () => {
-    const mapName = cleanText(req.params.map, MAX_MAP_NAME_LENGTH);
-    const classId = Number.parseInt(req.params.classId, 10);
-    const steamid = cleanText(req.params.steamid, MAX_STEAM_ID_LENGTH);
-    if (!mapName) return badRequest(res, "invalid_map");
-    if (!Number.isFinite(classId) || classId < 0 || classId > 99) return badRequest(res, "invalid_class");
-    if (!steamid) return badRequest(res, "invalid_steamid");
-
+  async function replayResultForRun(runId, routeLabel) {
     const metadataRows = await speedrunQuery(`
-      SELECT *
-      FROM speedrun_ghosts
-      WHERE map = ? AND class_id = ? AND steamid = ?
+      SELECT
+        g.id AS ghost_id,
+        g.run_id,
+        g.map,
+        g.class_id,
+        g.steamid,
+        g.player_name,
+        g.class_name,
+        g.ghost_time_ms,
+        g.frame_interval,
+        g.projectiles_complete
+      FROM speedrun_ghosts g
+      WHERE g.run_id = ? AND g.is_complete = 1
       LIMIT 1
-    `, [mapName, classId, steamid]);
-    if (!metadataRows.length) return res.status(404).json({ ok: false, error: "replay_not_found" });
+    `, [runId]);
+    if (!metadataRows.length) return { status: 404, error: "replay_not_found" };
 
     const metadata = metadataRows[0];
-    const ghostId = firstValue(metadata, ["id", "ghost_id"]);
-    let chunkRows = [];
-    if (ghostId != null) {
-      chunkRows = await speedrunQuery(`
-        SELECT *
-        FROM speedrun_ghost_chunks
-        WHERE ghost_id = ?
-        ORDER BY chunk_id ASC
-      `, [ghostId]);
-    }
-    if (!chunkRows.length) {
-      chunkRows = await speedrunQuery(`
-        SELECT *
-        FROM speedrun_ghost_chunks
-        WHERE map = ? AND class_id = ? AND steamid = ?
-        ORDER BY chunk_id ASC
-      `, [mapName, classId, steamid]);
-    }
-    if (!chunkRows.length) return res.status(404).json({ ok: false, error: "replay_chunks_not_found" });
+    const ghostId = firstValue(metadata, ["ghost_id", "id"]);
+    const chunkRows = await speedrunQuery(`
+      SELECT *
+      FROM speedrun_ghost_chunks
+      WHERE ghost_id = ?
+      ORDER BY chunk_id ASC
+    `, [ghostId]);
+    if (!chunkRows.length) return { status: 404, error: "replay_chunks_not_found" };
 
     const serialized = chunkRows
       .map(row => normalizeFrameChunk(chunkPayload(row)))
       .join("");
     const frames = parseReplayFrames(serialized);
-    if (!frames.length) return res.status(404).json({ ok: false, error: "replay_empty" });
+    if (!frames.length) return { status: 404, error: "replay_empty" };
 
     let projectileFrames = [];
-    try {
-      const projectileRows = await speedrunQuery(`
-        SELECT *
-        FROM speedrun_projectile_chunks
-        WHERE map = ? AND class_id = ? AND steamid = ?
-        ORDER BY chunk_id ASC
-      `, [mapName, classId, steamid]);
-
-      if (projectileRows.length) {
-        const projectileSerialized = projectileRows
-          .map(row => normalizeFrameChunk(chunkPayload(row)))
-          .join("");
-        projectileFrames = parseProjectileFrames(projectileSerialized);
+    if (Number(metadata.projectiles_complete || 0) === 1) {
+      try {
+        const projectileRows = await speedrunQuery(`
+          SELECT *
+          FROM speedrun_projectile_chunks
+          WHERE ghost_id = ?
+          ORDER BY chunk_id ASC
+        `, [ghostId]);
+        if (projectileRows.length) {
+          const projectileSerialized = projectileRows
+            .map(row => normalizeFrameChunk(chunkPayload(row)))
+            .join("");
+          projectileFrames = parseProjectileFrames(projectileSerialized);
+        }
+      } catch (error) {
+        projectileFrames = [];
+        logRouteError(`${routeLabel} projectile load failed`, error);
       }
-    } catch (error) {
-      projectileFrames = [];
-      logRouteError("[/api/speedruns/replay/:map/:classId/:steamid] projectile load failed", error);
     }
 
     let zones = null;
@@ -560,36 +556,84 @@ function createSpeedrunsRouter({ logRouteError }) {
           FROM speedrun_maps
           WHERE map = ?
           LIMIT 1
-        `, [mapName]),
+        `, [metadata.map]),
         speedrunQuery(`
           SELECT map, checkpoint_number, x, y, z, axis, yaw
           FROM speedrun_map_checkpoints
           WHERE map = ?
           ORDER BY checkpoint_number ASC
-        `, [mapName])
+        `, [metadata.map])
       ]);
       zones = mapZonePayload(mapRows[0] || null, checkpointRows);
     } catch (error) {
-      zones = null;
-      logRouteError("[/api/speedruns/replay/:map/:classId/:steamid] zone load failed", error);
+      logRouteError(`${routeLabel} zone load failed`, error);
     }
 
     const metadataTimeMs = firstValue(metadata, ["ghost_time_ms", "time_ms", "best_time_ms", "duration_ms", "run_time_ms"]);
     const lastFrameTimeMs = Math.round(Math.max(0, frames[frames.length - 1].t) * 1000);
     const frameInterval = firstValue(metadata, ["frame_interval", "frameInterval", "tick_interval", "interval"]);
+    const classId = Number(metadata.class_id);
 
-    res.json({
-      map: metadata.map || mapName,
-      classId: metadata.class_id == null ? classId : Number(metadata.class_id),
-      className: className(metadata) || CLASS_NAMES[classId] || `Class ${classId}`,
-      playerName: metadata.player_name || metadata.name || null,
-      steamid: metadata.steamid || steamid,
-      timeMs: metadataTimeMs == null ? lastFrameTimeMs : Number(metadataTimeMs),
-      frameInterval: frameInterval == null ? inferFrameInterval(frames) : Number(frameInterval),
-      zones,
-      frames,
-      projectileFrames
-    });
+    return {
+      status: 200,
+      payload: {
+        runId: Number(metadata.run_id),
+        ghostId: Number(ghostId),
+        map: metadata.map,
+        classId,
+        className: className(metadata) || CLASS_NAMES[classId] || `Class ${classId}`,
+        playerName: metadata.player_name || null,
+        steamid: metadata.steamid || null,
+        timeMs: metadataTimeMs == null ? lastFrameTimeMs : Number(metadataTimeMs),
+        frameInterval: frameInterval == null ? inferFrameInterval(frames) : Number(frameInterval),
+        zones,
+        frames,
+        projectileFrames
+      }
+    };
+  }
+
+  function sendReplayResult(res, result) {
+    if (result.status !== 200) {
+      return res.status(result.status).json({ ok: false, error: result.error });
+    }
+    return res.json(result.payload);
+  }
+
+  router.get("/replay/run/:runId", (req, res) => runEndpoint(req, res, "[/api/speedruns/replay/run/:runId]", async () => {
+    if (!/^\d+$/.test(String(req.params.runId || ""))) return badRequest(res, "invalid_run_id");
+    const runId = Number(req.params.runId);
+    if (!Number.isSafeInteger(runId) || runId <= 0) return badRequest(res, "invalid_run_id");
+    return sendReplayResult(res, await replayResultForRun(runId, "[/api/speedruns/replay/run/:runId]"));
+  }));
+
+  router.get("/replay/:map/:classId/:steamid", (req, res) => runEndpoint(req, res, "[/api/speedruns/replay/:map/:classId/:steamid]", async () => {
+    const mapName = cleanText(req.params.map, MAX_MAP_NAME_LENGTH);
+    const classId = Number.parseInt(req.params.classId, 10);
+    const steamid = cleanText(req.params.steamid, MAX_STEAM_ID_LENGTH);
+    if (!mapName) return badRequest(res, "invalid_map");
+    if (!Number.isFinite(classId) || classId < 0 || classId > 99) return badRequest(res, "invalid_class");
+    if (!steamid) return badRequest(res, "invalid_steamid");
+
+    const rows = await speedrunQuery(`
+      SELECT g.run_id
+      FROM speedrun_records rec
+      JOIN speedrun_ghosts g
+        ON g.map = rec.map
+       AND g.class_id = rec.class_id
+       AND g.steamid = rec.steamid
+       AND g.ghost_time_ms = rec.best_time_ms
+       AND g.is_complete = 1
+      WHERE rec.map = ? AND rec.class_id = ? AND rec.steamid = ?
+      ORDER BY g.updated_at DESC, g.id DESC
+      LIMIT 1
+    `, [mapName, classId, steamid]);
+    if (!rows.length || rows[0].run_id == null) {
+      return res.status(404).json({ ok: false, error: "replay_not_found" });
+    }
+
+    const runId = Number(rows[0].run_id);
+    return sendReplayResult(res, await replayResultForRun(runId, "[/api/speedruns/replay/:map/:classId/:steamid]"));
   }));
 
   router.get("/server-maps", (req, res) => runEndpoint(req, res, "[/api/speedruns/server-maps]", async () => {
@@ -896,6 +940,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           EXISTS (
             SELECT 1 FROM speedrun_ghosts g
             WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+              AND g.ghost_time_ms = r.best_time_ms AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay
         FROM speedrun_records r
@@ -916,7 +961,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.created_at,
           EXISTS (
             SELECT 1 FROM speedrun_ghosts g
-            WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+            WHERE g.run_id = r.id AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay
         FROM speedrun_runs r
@@ -938,7 +983,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.created_at,
           EXISTS (
             SELECT 1 FROM speedrun_ghosts g
-            WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
+            WHERE g.run_id = r.id AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay
         FROM speedrun_runs r
@@ -1164,6 +1209,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           EXISTS (
             SELECT 1 FROM speedrun_ghosts g
             WHERE g.map = ranked_records.map AND g.class_id = ranked_records.class_id AND g.steamid = ranked_records.steamid
+              AND g.ghost_time_ms = ranked_records.best_time_ms AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay
         FROM (
@@ -1204,6 +1250,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           EXISTS (
             SELECT 1 FROM speedrun_ghosts g
             WHERE g.map = ranked_records.map AND g.class_id = ranked_records.class_id AND g.steamid = ranked_records.steamid
+              AND g.ghost_time_ms = ranked_records.best_time_ms AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay,
           (
@@ -1256,16 +1303,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.class_name,
           r.time_ms,
           r.created_at,
-          EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
-            WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
-            LIMIT 1
-          ) AS has_replay
+          (g.id IS NOT NULL) AS has_replay
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
+        LEFT JOIN speedrun_ghosts g ON g.run_id = r.id AND g.is_complete = 1
         WHERE r.steamid IN (${placeholders})
         ORDER BY r.created_at DESC, r.id DESC
-        LIMIT 25
       `, steamIds),
 
       speedrunQuery(`
