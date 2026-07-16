@@ -15,7 +15,7 @@
 .compare-page main.compare-main,
 .player-v3-page main.player-v3-main,
 .matches-page main.match-main {
-  width: min(96vw, var(--page-main-width)) !important;
+  width: min(calc(100% - (var(--page-gutter-desktop) * 2)), var(--page-main-width)) !important;
   margin: 0 auto;
   padding: var(--page-top-gap) 0 var(--page-bottom-gap) !important;
 }
@@ -246,6 +246,7 @@
 .leaderboard-page .leaderboard-hero::before,
 .analytics-page .analytics-hero::before,
 .speedruns-page .speedrun-hero::before,
+.speedruns-page .speedrun-player-hero::before,
 .compare-page .compare-header::before,
 .live2-page .live2-hero::before,
 .live-page .live2-hero::before,
@@ -268,6 +269,7 @@
 .leaderboard-page .leaderboard-hero::after,
 .analytics-page .analytics-hero::after,
 .speedruns-page .speedrun-hero::after,
+.speedruns-page .speedrun-player-hero::after,
 .compare-page .compare-header::after,
 .live2-page .live2-hero::after,
 .live-page .live2-hero::after,
@@ -288,6 +290,7 @@
 .leaderboard-page .leaderboard-hero > *,
 .analytics-page .analytics-hero > *,
 .speedruns-page .speedrun-hero > *,
+.speedruns-page .speedrun-player-hero > *,
 .compare-page .compare-header > *,
 .live2-page .live2-hero > *,
 .live-page .live2-hero > *,

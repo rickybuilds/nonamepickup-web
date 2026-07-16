@@ -23,8 +23,11 @@
   --shell-sheen-color:rgba(77,166,255,.06);
   --shell-sheen-stop:45%;
   --page-glow-left:rgba(77,166,255,.16);
+  --page-glow-right:rgba(77,166,255,.10);
   --page-glow-left-width:42%;
   --page-glow-height:220px;
+  --page-atmosphere-left:rgba(77,166,255,.08);
+  --page-atmosphere-right:rgba(77,166,255,.07);
   --surface-bg:rgba(8,13,26,.92);
 }
 
