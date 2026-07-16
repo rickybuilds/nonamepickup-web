@@ -57,7 +57,7 @@
 }
 
 .home-hero-card {
-  min-height: 506px;
+  min-height: 468px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -815,6 +815,24 @@ filter:
 
 .supporter-badge {
   -webkit-text-fill-color: initial;
+}
+
+@media (min-width: 1101px) {
+  .home-hero-card {
+    padding-bottom: 40px;
+  }
+
+  .newswire-card .milestone-row {
+    padding-block: 10px;
+  }
+
+  .queue-status {
+    padding-block: 14px 16px;
+  }
+
+  .live-match-box {
+    padding-block: 14px 10px;
+  }
 }
 
 @media (max-width: 1450px) {
