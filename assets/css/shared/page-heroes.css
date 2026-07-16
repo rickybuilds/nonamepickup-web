@@ -17,7 +17,7 @@
 .matches-page main.match-main {
   width: min(96vw, var(--page-main-width)) !important;
   margin: 0 auto;
-  padding: 28px 0 34px !important;
+  padding: var(--page-top-gap) 0 var(--page-bottom-gap) !important;
 }
 
 .live2-page,

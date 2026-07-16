@@ -3,7 +3,6 @@
    scrollbar basics remain in app.css/style.css/speedruns.css. */
 
 .speedruns-page[data-speedruns-view="player"] {
-  --page-main-width: 1500px;
   --speedrun-player-gap: 18px;
   --speedrun-player-card-radius: 28px;
   --speedrun-player-inner-radius: 16px;

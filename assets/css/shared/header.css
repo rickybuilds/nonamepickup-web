@@ -7,8 +7,6 @@
   box-shadow:0 10px 32px rgba(0,0,0,.28),inset 0 -1px 0 rgba(255,255,255,.025);
   backdrop-filter:blur(16px);
 }
-.speedruns-page .site-header{position:fixed;right:0;left:0;}
-.speedruns-page{padding-top:var(--site-header-height,78px);}
 .site-header-inner{
   width:min(100%,1200px);
   min-height:78px;

@@ -26,9 +26,8 @@
 }
 
 .home-main {
-  width: min(96vw, 2200px);
   margin: 0 auto;
-  padding: 28px 0 34px;
+  padding: var(--page-top-gap) 0 var(--page-bottom-gap);
 }
 
 .home-hero-grid,
@@ -877,10 +876,6 @@ filter:
 }
 
 @media (max-width: 1100px) {
-  .home-main {
-    width: min(94vw, 980px);
-  }
-
   .home-hero-grid,
   .main-grid {
     grid-template-columns: 1fr;
@@ -889,8 +884,8 @@ filter:
 
 @media (max-width: 760px) {
   .home-main {
-    width: 100%;
-    padding: 12px 8px 24px;
+    width: calc(100% - (var(--page-gutter-mobile) * 2));
+    padding: var(--page-top-gap) 0 var(--page-bottom-gap);
     overflow-x: hidden;
   }
 

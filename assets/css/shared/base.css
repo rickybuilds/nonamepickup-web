@@ -10,6 +10,8 @@
   --page-main-width:2200px;
   --page-gutter-desktop:2vw;
   --page-gutter-mobile:8px;
+  --page-top-gap:28px;
+  --page-bottom-gap:34px;
   --mobile-page-gutter:var(--page-gutter-mobile);
   --timeline-flag-size:38px;
   --shell-padding:34px;
@@ -34,6 +36,10 @@ button{font-family:inherit;}
 /* Keep the information-dense desktop UI comfortable at Chrome's 100% zoom. */
 @media (min-width:901px){
   html{zoom:var(--desktop-ui-scale);}
+}
+
+@media (max-width:900px){
+  :root{--page-top-gap:16px;--page-bottom-gap:24px;}
 }
 
 @media (max-width:768px){
