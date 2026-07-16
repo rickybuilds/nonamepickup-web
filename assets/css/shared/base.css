@@ -1,4 +1,5 @@
 :root{
+  --desktop-ui-scale:.9;
   --tfc-blue:#4da6ff;
   --tfc-red:#ff5c5c;
   --bg:#030711;
@@ -29,6 +30,11 @@
 html{scroll-behavior:smooth;overflow-x:clip;}
 body{margin:0;font-family:'Orbitron',system-ui,sans-serif;font-weight:500;color:var(--text);background:var(--bg);overflow-x:clip;}
 button{font-family:inherit;}
+
+/* Keep the information-dense desktop UI comfortable at Chrome's 100% zoom. */
+@media (min-width:901px){
+  html{zoom:var(--desktop-ui-scale);}
+}
 
 @media (max-width:768px){
   :root{--timeline-flag-size:30px;}
