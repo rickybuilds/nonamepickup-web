@@ -26,7 +26,7 @@ const ANALYTICS_WARM_INTERVAL_MS = nonNegativeInt(
   24 * 60 * 60 * 1000
 );
 const STEAM_API_KEY = process.env.STEAM_API_KEY || "";
-const CURRENT_RULESET = 2;
+const CURRENT_RULESET = 1;
 // TODO(production): Set a dedicated random ANALYTICS_SALT; the fallback is predictable and ADMIN_KEY reuse couples secrets.
 const ANALYTICS_SALT = process.env.ANALYTICS_SALT || process.env.ADMIN_KEY || "tfcbot";
 
