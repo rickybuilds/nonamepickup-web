@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { CURRENT_RULESET } = require("../config");
 const { checkSpeedrunDatabase, speedrunQuery } = require("../db/mariadb");
 const { createHealthHandler } = require("../helpers/health");
 const { positiveInt, cleanString: cleanText } = require("../helpers/values");
@@ -377,9 +378,9 @@ function createSpeedrunsRouter({ logRouteError }) {
         SELECT
           (SELECT COUNT(*) FROM speedrun_maps) AS maps,
           (SELECT COUNT(*) FROM speedrun_maps WHERE enabled = 1) AS enabledMaps,
-          (SELECT COUNT(*) FROM speedrun_runs) AS runs,
-          (SELECT COUNT(DISTINCT steamid) FROM speedrun_runs WHERE steamid IS NOT NULL AND steamid != '') AS runners,
-          (SELECT COUNT(*) FROM speedrun_records) AS records
+          (SELECT COUNT(*) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET}) AS runs,
+          (SELECT COUNT(DISTINCT steamid) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != '') AS runners,
+          (SELECT COUNT(*) FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET}) AS records
       `),
       speedrunQuery(`
         SELECT
@@ -393,12 +394,15 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.time_ms,
           r.created_at,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
-            WHERE g.run_id = r.id AND g.is_complete = 1
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
+            WHERE g.run_id = r.id AND gr.ruleset = ${CURRENT_RULESET} AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
+        WHERE r.ruleset = ${CURRENT_RULESET}
         ORDER BY r.created_at DESC, r.id DESC
         LIMIT 10
       `),
@@ -414,9 +418,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           ranked.pb_created_at,
           ranked.updated_at,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
             WHERE g.map = ranked.map AND g.class_id = ranked.class_id AND g.steamid = ranked.steamid
               AND g.ghost_time_ms = ranked.best_time_ms AND g.is_complete = 1
+              AND gr.ruleset = ${CURRENT_RULESET}
             LIMIT 1
           ) AS has_replay
         FROM (
@@ -425,6 +432,7 @@ function createSpeedrunsRouter({ logRouteError }) {
             ORDER BY r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC, r.steamid ASC, r.class_id ASC
           ) AS rn
           FROM speedrun_records r
+          WHERE r.ruleset = ${CURRENT_RULESET}
         ) ranked
         LEFT JOIN speedrun_player_links l ON l.steamid = ranked.steamid
         WHERE ranked.rn = 1
@@ -443,13 +451,17 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.pb_created_at,
           r.updated_at,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
             WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
               AND g.ghost_time_ms = r.best_time_ms AND g.is_complete = 1
+              AND gr.ruleset = ${CURRENT_RULESET}
             LIMIT 1
           ) AS has_replay
         FROM speedrun_records r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
+        WHERE r.ruleset = ${CURRENT_RULESET}
         ORDER BY COALESCE(r.pb_created_at, r.updated_at) DESC, r.best_time_ms ASC
         LIMIT 10
       `),
@@ -464,13 +476,13 @@ function createSpeedrunsRouter({ logRouteError }) {
         LEFT JOIN (
           SELECT steamid, COUNT(*) AS totalRuns
           FROM speedrun_runs
-          WHERE steamid IS NOT NULL AND steamid != '' AND steamid != 'STEAM_ID_LAN'
+          WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != '' AND steamid != 'STEAM_ID_LAN'
           GROUP BY steamid
         ) run_stats ON run_stats.steamid = l.steamid
         LEFT JOIN (
           SELECT steamid, COUNT(*) AS currentRecords
           FROM speedrun_records
-          WHERE steamid IS NOT NULL AND steamid != '' AND steamid != 'STEAM_ID_LAN'
+          WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != '' AND steamid != 'STEAM_ID_LAN'
           GROUP BY steamid
         ) record_stats ON record_stats.steamid = l.steamid
         LEFT JOIN (
@@ -478,7 +490,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           FROM (
             SELECT steamid, player_name, ROW_NUMBER() OVER (PARTITION BY steamid ORDER BY created_at DESC, id DESC) AS rn
             FROM speedrun_runs
-            WHERE steamid IS NOT NULL AND steamid != '' AND steamid != 'STEAM_ID_LAN'
+            WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != '' AND steamid != 'STEAM_ID_LAN'
           ) ranked_names
           WHERE rn = 1
         ) latest ON latest.steamid = l.steamid
@@ -495,7 +507,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           COUNT(r.id) AS totalRuns,
           COUNT(DISTINCT r.steamid) AS totalRunners
         FROM speedrun_maps m
-        LEFT JOIN speedrun_runs r ON r.map = m.map
+        LEFT JOIN speedrun_runs r ON r.map = m.map AND r.ruleset = ${CURRENT_RULESET}
         GROUP BY m.map, m.display_name, m.category
         HAVING totalRuns > 0
         ORDER BY totalRuns DESC, totalRunners DESC, display_name ASC
@@ -544,7 +556,8 @@ function createSpeedrunsRouter({ logRouteError }) {
         g.frame_interval,
         g.projectiles_complete
       FROM speedrun_ghosts g
-      WHERE g.run_id = ? AND g.is_complete = 1
+      JOIN speedrun_runs r ON r.id = g.run_id
+      WHERE g.run_id = ? AND r.ruleset = ${CURRENT_RULESET} AND g.is_complete = 1
       LIMIT 1
     `, [runId]);
     if (!metadataRows.length) return { status: 404, error: "replay_not_found" };
@@ -662,7 +675,10 @@ function createSpeedrunsRouter({ logRouteError }) {
        AND g.steamid = rec.steamid
        AND g.ghost_time_ms = rec.best_time_ms
        AND g.is_complete = 1
-      WHERE rec.map = ? AND rec.class_id = ? AND rec.steamid = ?
+      JOIN speedrun_runs r ON r.id = g.run_id
+      WHERE rec.ruleset = ${CURRENT_RULESET}
+        AND r.ruleset = ${CURRENT_RULESET}
+        AND rec.map = ? AND rec.class_id = ? AND rec.steamid = ?
       ORDER BY g.updated_at DESC, g.id DESC
       LIMIT 1
     `, [mapName, classId, steamid]);
@@ -704,11 +720,13 @@ function createSpeedrunsRouter({ logRouteError }) {
       LEFT JOIN (
         SELECT map, COUNT(*) AS totalRuns, COUNT(DISTINCT steamid) AS totalRunners, MAX(created_at) AS lastRunAt
         FROM speedrun_runs
+        WHERE ruleset = ${CURRENT_RULESET}
         GROUP BY map
       ) run_stats ON run_stats.map = sm.map
       LEFT JOIN (
         SELECT map, COUNT(*) AS totalRecords
         FROM speedrun_records
+        WHERE ruleset = ${CURRENT_RULESET}
         GROUP BY map
       ) record_stats ON record_stats.map = sm.map
       WHERE sm.exists_on_server = 1
@@ -835,6 +853,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           COUNT(DISTINCT steamid) AS totalRunners,
           MAX(created_at) AS lastRunAt
         FROM speedrun_runs
+        WHERE ruleset = ${CURRENT_RULESET}
         GROUP BY map
       ) run_stats ON run_stats.map = m.map
       LEFT JOIN (
@@ -842,6 +861,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           map,
           COUNT(*) AS totalRecords
         FROM speedrun_records
+        WHERE ruleset = ${CURRENT_RULESET}
         GROUP BY map
       ) record_stats ON record_stats.map = m.map
       LEFT JOIN (
@@ -854,9 +874,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           ranked.class_id AS worldRecordClassId,
           ranked.class_name AS worldRecordClassName,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
             WHERE g.map = ranked.map AND g.class_id = ranked.class_id AND g.steamid = ranked.steamid
               AND g.ghost_time_ms = ranked.best_time_ms AND g.is_complete = 1
+              AND gr.ruleset = ${CURRENT_RULESET}
             LIMIT 1
           ) AS worldRecordHasReplay
         FROM (
@@ -865,6 +888,7 @@ function createSpeedrunsRouter({ logRouteError }) {
             ORDER BY r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC, r.steamid ASC, r.class_id ASC
           ) AS rn
           FROM speedrun_records r
+          WHERE r.ruleset = ${CURRENT_RULESET}
         ) ranked
         LEFT JOIN speedrun_player_links l
           ON l.steamid = ranked.steamid
@@ -902,6 +926,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         r.created_at
       FROM speedrun_runs r
       WHERE r.map = ?
+        AND r.ruleset = ${CURRENT_RULESET}
         AND r.class_id IS NOT NULL
         AND r.time_ms IS NOT NULL
       ORDER BY r.class_id ASC, r.created_at ASC, r.id ASC
@@ -961,15 +986,15 @@ function createSpeedrunsRouter({ logRouteError }) {
     ] = await Promise.all([
       speedrunQuery(`
         SELECT
-          (SELECT COUNT(*) FROM speedrun_runs WHERE map = ?) AS totalRuns,
-          (SELECT COUNT(DISTINCT steamid) FROM speedrun_runs WHERE map = ? AND steamid IS NOT NULL AND steamid != '') AS totalRunners,
-          (SELECT COUNT(*) FROM speedrun_records WHERE map = ?) AS totalRecords,
-          (SELECT MAX(created_at) FROM speedrun_runs WHERE map = ?) AS lastRunAt,
-          (SELECT best_time_ms FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordTimeMs,
-          (SELECT player_name FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordPlayer,
-          (SELECT steamid FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordSteamId,
-          (SELECT class_id FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassId,
-          (SELECT class_name FROM speedrun_records WHERE map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassName
+          (SELECT COUNT(*) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND map = ?) AS totalRuns,
+          (SELECT COUNT(DISTINCT steamid) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND map = ? AND steamid IS NOT NULL AND steamid != '') AS totalRunners,
+          (SELECT COUNT(*) FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND map = ?) AS totalRecords,
+          (SELECT MAX(created_at) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND map = ?) AS lastRunAt,
+          (SELECT best_time_ms FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordTimeMs,
+          (SELECT player_name FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordPlayer,
+          (SELECT steamid FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordSteamId,
+          (SELECT class_id FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassId,
+          (SELECT class_name FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassName
       `, [mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName]),
       speedrunQuery(`
         SELECT
@@ -983,14 +1008,17 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.pb_created_at,
           r.updated_at,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
             WHERE g.map = r.map AND g.class_id = r.class_id AND g.steamid = r.steamid
               AND g.ghost_time_ms = r.best_time_ms AND g.is_complete = 1
+              AND gr.ruleset = ${CURRENT_RULESET}
             LIMIT 1
           ) AS has_replay
         FROM speedrun_records r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
-        WHERE r.map = ?
+        WHERE r.ruleset = ${CURRENT_RULESET} AND r.map = ?
         ORDER BY r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC, r.steamid ASC, r.class_id ASC
       `, [mapName]),
       speedrunQuery(`
@@ -1005,13 +1033,15 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.time_ms,
           r.created_at,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
-            WHERE g.run_id = r.id AND g.is_complete = 1
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
+            WHERE g.run_id = r.id AND gr.ruleset = ${CURRENT_RULESET} AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
-        WHERE r.map = ?
+        WHERE r.ruleset = ${CURRENT_RULESET} AND r.map = ?
         ORDER BY r.created_at DESC, r.id DESC
         LIMIT 25
       `, [mapName]),
@@ -1027,13 +1057,15 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.time_ms,
           r.created_at,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
-            WHERE g.run_id = r.id AND g.is_complete = 1
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
+            WHERE g.run_id = r.id AND gr.ruleset = ${CURRENT_RULESET} AND g.is_complete = 1
             LIMIT 1
           ) AS has_replay
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
-        WHERE r.map = ?
+        WHERE r.ruleset = ${CURRENT_RULESET} AND r.map = ?
         ORDER BY r.created_at ASC, r.id ASC
       `, [mapName])
     ]);
@@ -1121,13 +1153,13 @@ function createSpeedrunsRouter({ logRouteError }) {
   LEFT JOIN (
     SELECT steamid, COUNT(*) AS totalRuns, COUNT(DISTINCT map) AS mapsPlayed, MAX(created_at) AS lastRunAt
     FROM speedrun_runs
-    WHERE steamid IS NOT NULL AND steamid != ''
+    WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != ''
     GROUP BY steamid
   ) run_stats ON run_stats.steamid = l.steamid
   LEFT JOIN (
     SELECT steamid, COUNT(*) AS currentRecords
     FROM speedrun_records
-    WHERE steamid IS NOT NULL AND steamid != ''
+    WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != ''
     GROUP BY steamid
   ) record_stats ON record_stats.steamid = l.steamid
   LEFT JOIN (
@@ -1135,7 +1167,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     FROM (
       SELECT steamid, player_name, ROW_NUMBER() OVER (PARTITION BY steamid ORDER BY created_at DESC, id DESC) AS rn
       FROM speedrun_runs
-      WHERE steamid IS NOT NULL AND steamid != ''
+      WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != ''
     ) ranked_names
     WHERE rn = 1
   ) latest ON latest.steamid = l.steamid
@@ -1147,6 +1179,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC
       ) AS record_rank
       FROM speedrun_records
+      WHERE ruleset = ${CURRENT_RULESET}
     ) ranked_records
     WHERE record_rank <= 10
     GROUP BY steamid
@@ -1209,11 +1242,11 @@ function createSpeedrunsRouter({ logRouteError }) {
         FROM (
           SELECT steamid, player_name, created_at AS seen_at
           FROM speedrun_runs
-          WHERE steamid IN (${placeholders})
+          WHERE ruleset = ${CURRENT_RULESET} AND steamid IN (${placeholders})
           UNION ALL
           SELECT steamid, player_name, COALESCE(pb_created_at, updated_at) AS seen_at
           FROM speedrun_records
-          WHERE steamid IN (${placeholders})
+          WHERE ruleset = ${CURRENT_RULESET} AND steamid IN (${placeholders})
         ) names
         ORDER BY seen_at DESC
         LIMIT 1
@@ -1221,11 +1254,11 @@ function createSpeedrunsRouter({ logRouteError }) {
 
       speedrunQuery(`
         SELECT
-          (SELECT COUNT(*) FROM speedrun_runs WHERE steamid IN (${placeholders})) AS totalRuns,
-          (SELECT COUNT(DISTINCT map) FROM speedrun_runs WHERE steamid IN (${placeholders})) AS mapsPlayed,
-          (SELECT COUNT(DISTINCT map) FROM speedrun_records WHERE steamid IN (${placeholders})) AS mapsCompleted,
-          (SELECT COUNT(*) FROM speedrun_records WHERE steamid IN (${placeholders})) AS currentRecords,
-          (SELECT MAX(created_at) FROM speedrun_runs WHERE steamid IN (${placeholders})) AS lastRunAt,
+          (SELECT COUNT(*) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND steamid IN (${placeholders})) AS totalRuns,
+          (SELECT COUNT(DISTINCT map) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND steamid IN (${placeholders})) AS mapsPlayed,
+          (SELECT COUNT(DISTINCT map) FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND steamid IN (${placeholders})) AS mapsCompleted,
+          (SELECT COUNT(*) FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND steamid IN (${placeholders})) AS currentRecords,
+          (SELECT MAX(created_at) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND steamid IN (${placeholders})) AS lastRunAt,
           (SELECT COUNT(*) FROM speedrun_maps) AS totalMaps,
           (SELECT COUNT(*) FROM speedrun_maps WHERE enabled = 1) AS enabledMaps,
           (
@@ -1236,6 +1269,7 @@ function createSpeedrunsRouter({ logRouteError }) {
                 ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC
               ) AS record_rank
               FROM speedrun_records
+              WHERE ruleset = ${CURRENT_RULESET}
             ) ranked_records
             WHERE steamid IN (${placeholders})
           ) AS bestRecordRank
@@ -1252,9 +1286,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           pb_created_at,
           updated_at,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
             WHERE g.map = ranked_records.map AND g.class_id = ranked_records.class_id AND g.steamid = ranked_records.steamid
               AND g.ghost_time_ms = ranked_records.best_time_ms AND g.is_complete = 1
+              AND gr.ruleset = ${CURRENT_RULESET}
             LIMIT 1
           ) AS has_replay
         FROM (
@@ -1272,6 +1309,7 @@ function createSpeedrunsRouter({ logRouteError }) {
               ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC
             ) AS record_rank
           FROM speedrun_records
+          WHERE ruleset = ${CURRENT_RULESET}
         ) ranked_records
         WHERE record_rank = 1
           AND steamid IN (${placeholders})
@@ -1293,15 +1331,19 @@ function createSpeedrunsRouter({ logRouteError }) {
           record_stats.world_record_time_ms,
           ranked_records.best_time_ms - record_stats.world_record_time_ms AS wr_gap_ms,
           EXISTS (
-            SELECT 1 FROM speedrun_ghosts g
+            SELECT 1
+            FROM speedrun_ghosts g
+            JOIN speedrun_runs gr ON gr.id = g.run_id
             WHERE g.map = ranked_records.map AND g.class_id = ranked_records.class_id AND g.steamid = ranked_records.steamid
               AND g.ghost_time_ms = ranked_records.best_time_ms AND g.is_complete = 1
+              AND gr.ruleset = ${CURRENT_RULESET}
             LIMIT 1
           ) AS has_replay,
           (
             SELECT MIN(rr.time_ms) - ranked_records.best_time_ms
             FROM speedrun_runs rr
             WHERE rr.steamid = ranked_records.steamid
+              AND rr.ruleset = ${CURRENT_RULESET}
               AND rr.map = ranked_records.map
               AND rr.class_id = ranked_records.class_id
               AND rr.time_ms > ranked_records.best_time_ms
@@ -1321,6 +1363,7 @@ function createSpeedrunsRouter({ logRouteError }) {
               ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC
             ) AS record_rank
           FROM speedrun_records
+          WHERE ruleset = ${CURRENT_RULESET}
         ) ranked_records
         LEFT JOIN (
           SELECT
@@ -1329,6 +1372,7 @@ function createSpeedrunsRouter({ logRouteError }) {
             COUNT(DISTINCT steamid) AS total_runners,
             MIN(best_time_ms) AS world_record_time_ms
           FROM speedrun_records
+          WHERE ruleset = ${CURRENT_RULESET}
           GROUP BY map, class_id
         ) record_stats
           ON record_stats.map = ranked_records.map
@@ -1352,7 +1396,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         FROM speedrun_runs r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         LEFT JOIN speedrun_ghosts g ON g.run_id = r.id AND g.is_complete = 1
-        WHERE r.steamid IN (${placeholders})
+        WHERE r.ruleset = ${CURRENT_RULESET} AND r.steamid IN (${placeholders})
         ORDER BY r.created_at DESC, r.id DESC
       `, steamIds),
 
@@ -1381,13 +1425,13 @@ function createSpeedrunsRouter({ logRouteError }) {
             LEFT JOIN (
               SELECT steamid, COUNT(*) AS currentRecords
               FROM speedrun_records
-              WHERE steamid IS NOT NULL AND steamid != ''
+              WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != ''
               GROUP BY steamid
             ) record_stats ON record_stats.steamid = l.steamid
             LEFT JOIN (
               SELECT steamid, COUNT(*) AS totalRuns
               FROM speedrun_runs
-              WHERE steamid IS NOT NULL AND steamid != ''
+              WHERE ruleset = ${CURRENT_RULESET} AND steamid IS NOT NULL AND steamid != ''
               GROUP BY steamid
             ) run_stats ON run_stats.steamid = l.steamid
             LEFT JOIN (
@@ -1395,6 +1439,7 @@ function createSpeedrunsRouter({ logRouteError }) {
               FROM (
                 SELECT steamid, player_name, ROW_NUMBER() OVER (PARTITION BY steamid ORDER BY created_at DESC, id DESC) AS rn
                 FROM speedrun_runs
+                WHERE ruleset = ${CURRENT_RULESET}
               ) ranked_names
               WHERE rn = 1
             ) latest ON latest.steamid = l.steamid
@@ -1464,6 +1509,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         r.created_at
       FROM speedrun_runs r
       LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
+      WHERE r.ruleset = ${CURRENT_RULESET}
       ORDER BY r.created_at DESC, r.id DESC
       LIMIT ?
     `, [limit]);
@@ -1472,7 +1518,7 @@ function createSpeedrunsRouter({ logRouteError }) {
 
   router.get("/records", (req, res) => runEndpoint(req, res, "[/api/speedruns/records]", async () => {
     const limit = positiveInt(req.query.limit, 100, 1, 500);
-    const where = [];
+    const where = [`r.ruleset = ${CURRENT_RULESET}`];
     const params = [];
 
     const category = cleanText(req.query.category, 32);
