@@ -55,16 +55,33 @@ function projectileUsageField(frame) {
 
 function summarizeProjectileUsage(frames) {
   const usage = Object.fromEntries(PROJECTILE_USAGE_FIELDS.map(field => [field, 0]));
-  const countedProjectileIds = new Set();
+  const projectiles = new Map();
 
   for (const frame of Array.isArray(frames) ? frames : []) {
     const projectileId = Number(frame?.projectileId);
     const state = Number(frame?.state);
-    if (!Number.isFinite(projectileId) || state === 0 || countedProjectileIds.has(projectileId)) continue;
-
-    countedProjectileIds.add(projectileId);
+    if (!Number.isFinite(projectileId)) continue;
     const field = projectileUsageField(frame);
-    if (field) usage[field] += 1;
+    if (!field) continue;
+
+    const existing = projectiles.get(projectileId) || { field, hasActiveFrame: false };
+    existing.hasActiveFrame ||= state !== 0;
+    projectiles.set(projectileId, existing);
+  }
+
+  const activeByField = Object.fromEntries(PROJECTILE_USAGE_FIELDS.map(field => [field, 0]));
+  const removalOnlyByField = Object.fromEntries(PROJECTILE_USAGE_FIELDS.map(field => [field, 0]));
+  for (const projectile of projectiles.values()) {
+    const bucket = projectile.hasActiveFrame ? activeByField : removalOnlyByField;
+    bucket[projectile.field] += 1;
+  }
+
+  // Replay formats differ by recorder version. New captures contain continuous
+  // active frames; older captures may contain only one removal/detonation event.
+  // Prefer active tracks when present for a type, otherwise use the event-only
+  // representation so legitimate older runs are not undercounted.
+  for (const field of PROJECTILE_USAGE_FIELDS) {
+    usage[field] = activeByField[field] || removalOnlyByField[field];
   }
 
   return usage;
