@@ -5,6 +5,7 @@ const { CURRENT_RULESET } = require("../config");
 const { checkSpeedrunDatabase, speedrunQuery } = require("../db/mariadb");
 const { createHealthHandler } = require("../helpers/health");
 const { positiveInt, cleanString: cleanText } = require("../helpers/values");
+const { joinReplayChunks, normalizeFrameChunk, parseReplayFrames } = require("../helpers/replay");
 
 const MAX_MAP_NAME_LENGTH = 64;
 const MAX_STEAM_ID_LENGTH = 35;
@@ -77,12 +78,6 @@ function createSpeedrunsRouter({ logRouteError }) {
     return null;
   }
 
-  function normalizeFrameChunk(value) {
-    if (value == null) return "";
-    if (Buffer.isBuffer(value)) return value.toString("utf8");
-    return String(value);
-  }
-
   function chunkPayload(row) {
     const known = firstValue(row, ["ghost_chunk", "projectile_chunk", "chunk_data", "data", "frame_data", "frames", "payload", "chunk", "replay_data"]);
     if (known != null) return known;
@@ -91,29 +86,6 @@ function createSpeedrunsRouter({ logRouteError }) {
       if (!keyPattern.test(key) && value != null) return value;
     }
     return "";
-  }
-
-  function parseReplayFrames(serialized) {
-    return String(serialized || "")
-      .split(";")
-      .map(part => part.trim())
-      .filter(Boolean)
-      .map(part => {
-        const cols = part.split(",").map(value => Number(value.trim()));
-        if (cols.length < 8 || cols.some(value => !Number.isFinite(value))) return null;
-        return {
-          t: cols[0],
-          x: cols[1],
-          y: cols[2],
-          z: cols[3],
-          pitch: cols[4],
-          yaw: cols[5],
-          roll: cols[6],
-          buttons: Math.trunc(cols[7])
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.t - b.t);
   }
 
   function parseProjectileFrames(serialized) {
@@ -572,9 +544,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     `, [ghostId]);
     if (!chunkRows.length) return { status: 404, error: "replay_chunks_not_found" };
 
-    const serialized = chunkRows
-      .map(row => normalizeFrameChunk(chunkPayload(row)))
-      .join("");
+    const serialized = joinReplayChunks(chunkRows.map(row => chunkPayload(row)));
     const frames = parseReplayFrames(serialized);
     if (!frames.length) return { status: 404, error: "replay_empty" };
 

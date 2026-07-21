@@ -60,3 +60,4 @@ EOFcat >> .gitignore << 'EOF'
 /analysis
 /assets/models
 /assets/sprites
+/api/test
