@@ -247,9 +247,9 @@
 .speedrun-map-columns,
 .speedrun-map-result {
   display: grid;
-  grid-template-columns: minmax(190px, 1.55fr) minmax(145px, 1.05fr) minmax(180px, .65fr) 54px 54px 54px 18px;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(155px, .85fr) minmax(300px, 1.35fr) 48px 48px 48px 18px;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .speedrun-map-columns {
@@ -429,7 +429,7 @@
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
-  min-width: 74px;
+  min-width: 86px;
   min-height: 38px;
   padding: 3px 7px 3px 4px;
   border: 1px solid rgba(77, 166, 255, .1);
@@ -453,7 +453,7 @@
 
 .speedrun-ammo-label {
   overflow: hidden;
-  max-width: 72px;
+  max-width: 104px;
   color: #8196af;
   font: 800 7px Inter, system-ui, sans-serif;
   letter-spacing: .045em;

@@ -6,7 +6,7 @@ const { checkSpeedrunDatabase, speedrunQuery } = require("../db/mariadb");
 const { createHealthHandler } = require("../helpers/health");
 const { positiveInt, cleanString: cleanText } = require("../helpers/values");
 const { joinReplayChunks, normalizeFrameChunk, parseReplayFrames } = require("../helpers/replay");
-const { summarizeProjectileUsage } = require("../helpers/projectile-usage");
+const { replayTimingWindow, summarizeProjectileUsage } = require("../helpers/projectile-usage");
 
 const MAX_MAP_NAME_LENGTH = 64;
 const MAX_STEAM_ID_LENGTH = 35;
@@ -368,7 +368,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     };
   }
 
-  async function addCapturedProjectileUsage(cards, routeLabel) {
+  async function addCapturedProjectileUsage(cards, sourceRows, routeLabel) {
     const runIds = [...new Set(cards
       .filter(card => card.worldRecordHasReplay && card.worldRecordRunId != null)
       .map(card => Number(card.worldRecordRunId))
@@ -377,32 +377,75 @@ function createSpeedrunsRouter({ logRouteError }) {
 
     try {
       const placeholders = runIds.map(() => "?").join(", ");
-      const rows = await speedrunQuery(`
-        SELECT
-          g.run_id AS usage_run_id,
-          g.id AS usage_ghost_id,
-          pc.*
-        FROM speedrun_ghosts g
-        JOIN speedrun_projectile_chunks pc ON pc.ghost_id = g.id
-        WHERE g.run_id IN (${placeholders})
-          AND g.is_complete = 1
-          AND g.projectiles_complete = 1
-        ORDER BY g.run_id ASC, g.id ASC, pc.chunk_id ASC
-      `, runIds);
+      const [projectileRows, movementRows] = await Promise.all([
+        speedrunQuery(`
+          SELECT
+            g.run_id AS usage_run_id,
+            g.id AS usage_ghost_id,
+            pc.*
+          FROM speedrun_ghosts g
+          JOIN speedrun_projectile_chunks pc ON pc.ghost_id = g.id
+          WHERE g.run_id IN (${placeholders})
+            AND g.is_complete = 1
+            AND g.projectiles_complete = 1
+          ORDER BY g.run_id ASC, g.id ASC, pc.chunk_id ASC
+        `, runIds),
+        speedrunQuery(`
+          SELECT
+            g.run_id AS usage_run_id,
+            g.id AS usage_ghost_id,
+            gc.*
+          FROM speedrun_ghosts g
+          JOIN speedrun_ghost_chunks gc ON gc.ghost_id = g.id
+          WHERE g.run_id IN (${placeholders})
+            AND g.is_complete = 1
+            AND g.projectiles_complete = 1
+          ORDER BY g.run_id ASC, g.id ASC, gc.chunk_id ASC
+        `, runIds)
+      ]);
 
-      const chunksByGhost = new Map();
-      for (const row of rows) {
-        const runId = Number(row.usage_run_id);
-        const ghostId = Number(row.usage_ghost_id);
-        if (!Number.isSafeInteger(runId) || !Number.isSafeInteger(ghostId)) continue;
-        const key = `${runId}:${ghostId}`;
-        if (!chunksByGhost.has(key)) chunksByGhost.set(key, { runId, chunks: [] });
-        chunksByGhost.get(key).chunks.push(normalizeFrameChunk(chunkPayload(row)));
+      const groupChunksByGhost = rows => {
+        const grouped = new Map();
+        for (const row of rows) {
+          const runId = Number(row.usage_run_id);
+          const ghostId = Number(row.usage_ghost_id);
+          if (!Number.isSafeInteger(runId) || !Number.isSafeInteger(ghostId)) continue;
+          const key = `${runId}:${ghostId}`;
+          if (!grouped.has(key)) grouped.set(key, { runId, chunks: [] });
+          grouped.get(key).chunks.push(normalizeFrameChunk(chunkPayload(row)));
+        }
+        return grouped;
+      };
+
+      const projectileChunksByGhost = groupChunksByGhost(projectileRows);
+      const movementChunksByGhost = groupChunksByGhost(movementRows);
+      const metadataByRun = new Map();
+      for (const row of sourceRows) {
+        const worldRecordRunId = Number(row.worldRecordRunId);
+        if (!Number.isSafeInteger(worldRecordRunId)) continue;
+        const finishX = numberOrNull(row.usageFinishX);
+        const finishY = numberOrNull(row.usageFinishY);
+        const finishZ = numberOrNull(row.usageFinishZ);
+        metadataByRun.set(worldRecordRunId, {
+          timeMs: numberOrNull(row.worldRecordTimeMs),
+          finish: Number.isFinite(finishX) && Number.isFinite(finishY) && Number.isFinite(finishZ)
+            ? {
+                position: { x: finishX, y: finishY, z: finishZ },
+                radius: positiveNumberOrNull(row.usageZoneRadius) || 64
+              }
+            : null
+        });
       }
 
       const usageByRun = new Map();
-      for (const { runId, chunks } of chunksByGhost.values()) {
-        const usage = summarizeProjectileUsage(parseProjectileFrames(chunks.join("")));
+      for (const [key, { runId, chunks }] of projectileChunksByGhost) {
+        const movementChunks = movementChunksByGhost.get(key)?.chunks;
+        const metadata = metadataByRun.get(runId);
+        if (!movementChunks?.length || !metadata) continue;
+        const movementFrames = parseReplayFrames(movementChunks.join(""));
+        const timing = replayTimingWindow(movementFrames, metadata.timeMs, metadata.finish);
+        if (!timing) continue;
+        const usage = summarizeProjectileUsage(parseProjectileFrames(chunks.join("")), timing);
         const existing = usageByRun.get(runId) || {};
         for (const [field, count] of Object.entries(usage)) {
           existing[field] = Math.max(Number(existing[field] || 0), Number(count || 0));
@@ -703,8 +746,11 @@ function createSpeedrunsRouter({ logRouteError }) {
 
     const metadataTimeMs = firstValue(metadata, ["ghost_time_ms", "time_ms", "best_time_ms", "duration_ms", "run_time_ms"]);
     const lastFrameTimeMs = Math.round(Math.max(0, frames[frames.length - 1].t) * 1000);
+    const replayTimeMs = metadataTimeMs == null ? lastFrameTimeMs : Number(metadataTimeMs);
     const frameInterval = firstValue(metadata, ["frame_interval", "frameInterval", "tick_interval", "interval"]);
     const classId = Number(metadata.class_id);
+    const projectileTiming = replayTimingWindow(frames, replayTimeMs, zones?.finish);
+    const projectileUsage = summarizeProjectileUsage(projectileFrames, projectileTiming);
 
     return {
       status: 200,
@@ -716,12 +762,13 @@ function createSpeedrunsRouter({ logRouteError }) {
         className: className(metadata) || CLASS_NAMES[classId] || `Class ${classId}`,
         playerName: metadata.player_name || null,
         steamid: metadata.steamid || null,
-        timeMs: metadataTimeMs == null ? lastFrameTimeMs : Number(metadataTimeMs),
+        timeMs: replayTimeMs,
         frameInterval: frameInterval == null ? inferFrameInterval(frames) : Number(frameInterval),
         zones,
         frames,
         projectileEvents: projectileFrames,
-        projectileFrames
+        projectileFrames,
+        projectileUsage
       }
     };
   }
@@ -920,6 +967,10 @@ function createSpeedrunsRouter({ logRouteError }) {
         m.category,
         m.difficulty,
         m.enabled,
+        m.finish_x AS usageFinishX,
+        m.finish_y AS usageFinishY,
+        m.finish_z AS usageFinishZ,
+        m.zone_radius AS usageZoneRadius,
         COALESCE(run_stats.totalRuns, 0) AS totalRuns,
         COALESCE(run_stats.totalRunners, 0) AS totalRunners,
         COALESCE(record_stats.totalRecords, 0) AS totalRecords,
@@ -1003,7 +1054,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     `, [...params, limit, offset]);
 
     const cards = rows.map(mapCard);
-    await addCapturedProjectileUsage(cards, "[/api/speedruns/maps]");
+    await addCapturedProjectileUsage(cards, rows, "[/api/speedruns/maps]");
     res.json(cards);
   }));
 
