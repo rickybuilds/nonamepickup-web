@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedruns.css?v=20260721moremaps1">
   <script src="assets/js/main.js?v=20260713sticky1" defer></script>
-  <script src="assets/js/speedruns.js?v=20260721ammo3" defer></script>
+  <script src="assets/js/speedruns.js?v=20260721classfilter1" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -79,12 +79,18 @@
             <div class="speedrun-filters">
               <a class="speedrun-button" href="speedrun-maps.html">All Maps</a>
               <input id="sr-map-search" type="search" placeholder="Search maps" autocomplete="off" aria-label="Search maps">
-              <select id="sr-map-sort" aria-label="Sort maps">
-                <option value="name">Name</option>
-                <option value="wr">World Record</option>
-                <option value="runs">Runs</option>
-                <option value="runners">Runners</option>
-                <option value="difficulty">Difficulty</option>
+              <select id="sr-map-class" aria-label="Filter maps by class">
+                <option value="">All Classes</option>
+                <option value="1">Scout</option>
+                <option value="2">Sniper</option>
+                <option value="3">Soldier</option>
+                <option value="4">Demoman</option>
+                <option value="5">Medic</option>
+                <option value="6">Heavy</option>
+                <option value="7">Pyro</option>
+                <option value="8">Spy</option>
+                <option value="9">Engineer</option>
+                <option value="civilian">Civilian</option>
               </select>
             </div>
           </div>

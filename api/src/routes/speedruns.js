@@ -921,6 +921,21 @@ function createSpeedrunsRouter({ logRouteError }) {
     const withRecords = String(req.query.with_records || "") === "1";
     if (enabled === undefined) return badRequest(res, "invalid_enabled");
 
+    const requestedClass = cleanText(req.query.class_id, 16).toLowerCase();
+    let selectedClassIds = null;
+    if (requestedClass === "civilian") {
+      selectedClassIds = [0, 10, 11];
+    } else if (requestedClass) {
+      const classId = Number(requestedClass);
+      if (!/^\d+$/.test(requestedClass) || !Object.prototype.hasOwnProperty.call(CLASS_NAMES, classId)) {
+        return badRequest(res, "invalid_class_id");
+      }
+      selectedClassIds = [classId];
+    }
+    const classCondition = column => selectedClassIds
+      ? ` AND ${column} IN (${selectedClassIds.join(", ")})`
+      : "";
+
     const where = [];
     const params = [];
     const q = cleanText(req.query.q, 80);
@@ -991,7 +1006,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           COUNT(DISTINCT steamid) AS totalRunners,
           MAX(created_at) AS lastRunAt
         FROM speedrun_runs
-        WHERE ruleset = ${CURRENT_RULESET}
+        WHERE ruleset = ${CURRENT_RULESET}${classCondition("class_id")}
         GROUP BY map
       ) run_stats ON run_stats.map = m.map
       LEFT JOIN (
@@ -999,7 +1014,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           map,
           COUNT(*) AS totalRecords
         FROM speedrun_records
-        WHERE ruleset = ${CURRENT_RULESET}
+        WHERE ruleset = ${CURRENT_RULESET}${classCondition("class_id")}
         GROUP BY map
       ) record_stats ON record_stats.map = m.map
       LEFT JOIN (
@@ -1027,7 +1042,7 @@ function createSpeedrunsRouter({ logRouteError }) {
             ORDER BY r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC, r.steamid ASC, r.class_id ASC
           ) AS rn
           FROM speedrun_records r
-          WHERE r.ruleset = ${CURRENT_RULESET}
+          WHERE r.ruleset = ${CURRENT_RULESET}${classCondition("r.class_id")}
         ) ranked
         LEFT JOIN speedrun_player_links l
           ON l.steamid = ranked.steamid

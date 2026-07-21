@@ -1085,7 +1085,7 @@
       ])).then(results => renderTopRunners(summary.topRunners, new Map(results.filter(([, profile]) => profile))));
 
       const search = $("sr-map-search");
-      const sort = $("sr-map-sort");
+      const classFilter = $("sr-map-class");
       const more = $("sr-map-more");
       let timer = null;
       let visibleMaps = firstMapPage.slice(0, pageSize);
@@ -1108,10 +1108,11 @@
         const query = new URLSearchParams({
           limit: String(pageSize + 1),
           offset: String(reset ? 0 : visibleMaps.length),
-          sort: sort?.value || "name",
+          sort: "name",
           with_records: "1"
         });
         if (search?.value.trim()) query.set("q", search.value.trim());
+        if (classFilter?.value) query.set("class_id", classFilter.value);
         const page = await api(`/api/speedruns/maps?${query.toString()}`);
         hasMoreMaps = page.length > pageSize;
         visibleMaps = reset ? page.slice(0, pageSize) : visibleMaps.concat(page.slice(0, pageSize));
@@ -1130,7 +1131,7 @@
         }, 180);
       };
       search?.addEventListener("input", reloadMaps);
-      sort?.addEventListener("change", reloadMaps);
+      classFilter?.addEventListener("change", reloadMaps);
       more?.addEventListener("click", async () => {
         try {
           await fetchMapPage(false);
