@@ -23,33 +23,6 @@ function frameColumns(frame) {
   return null;
 }
 
-function firstParam(query, names) {
-  for (const name of names) {
-    const value = query.get(name);
-    if (value != null && String(value).trim() !== "") return String(value).trim();
-  }
-  return "";
-}
-
-export function replayApiPath(query) {
-  const runId = firstParam(query, ["runId", "run_id", "run"]);
-  if (runId) {
-    if (!/^\d+$/.test(runId) || Number(runId) <= 0) throw new Error("Invalid replay runId.");
-    return `/api/speedruns/replay/run/${encodeURIComponent(runId)}`;
-  }
-
-  const map = firstParam(query, ["map", "mapName", "m"]);
-  const classId = firstParam(query, ["classId", "class", "class_id", "cls", "c"]);
-  const steamid = firstParam(query, ["steamid", "steamId", "steam_id", "steam"]);
-  if (!map || !classId || !steamid) {
-    const missing = [!map ? "map" : "", !classId ? "classId" : "", !steamid ? "steamid" : ""]
-      .filter(Boolean)
-      .join(", ");
-    throw new Error(`Missing replay query params: ${missing}.`);
-  }
-  return `/api/speedruns/replay/${encodeURIComponent(map)}/${encodeURIComponent(classId)}/${encodeURIComponent(steamid)}`;
-}
-
 /** @returns {ReplayFrame|null} */
 export function decodeReplayFrame(frame) {
   const cols = frameColumns(frame);
@@ -81,43 +54,18 @@ export function decodeReplayFrames(frames) {
   return frames.map(decodeReplayFrame).filter(Boolean);
 }
 
-/**
- * Some recordings contain only a projectile's terminal state. Add one short,
- * velocity-based sample so the web replay can still show what detonated. Full
- * projectile tracks are returned untouched.
- */
-export function expandEventOnlyProjectiles(frames, leadSeconds = 0.35) {
+// Returns the earliest recorded event for each projectile. This intentionally
+// includes terminal-only events, which newer grenade recordings can emit.
+export function firstProjectileFrames(frames) {
   if (!Array.isArray(frames)) return [];
-
-  const idsWithFlightSamples = new Set(
-    frames
-      .filter(frame => Number(frame?.state) !== 0)
-      .map(frame => Number(frame?.projectileId))
-      .filter(Number.isFinite)
-  );
-
-  return frames.flatMap(frame => {
-    const projectileId = Number(frame?.projectileId);
-    const time = Number(frame?.t);
-    if (Number(frame?.state) !== 0 || idsWithFlightSamples.has(projectileId) || !Number.isFinite(time)) {
-      return [frame];
-    }
-
-    const lead = Math.min(Math.max(0, Number(leadSeconds) || 0), Math.max(0, time));
-    const velocity = [frame?.vx, frame?.vy, frame?.vz].map(Number);
-    const position = [frame?.x, frame?.y, frame?.z].map(Number);
-    if (!lead || velocity.some(value => !Number.isFinite(value)) || position.some(value => !Number.isFinite(value))) {
-      return [frame];
-    }
-
-    return [{
-      ...frame,
-      t: time - lead,
-      state: 1,
-      x: position[0] - (velocity[0] * lead),
-      y: position[1] - (velocity[1] * lead),
-      z: position[2] - (velocity[2] * lead),
-      synthetic: true
-    }, frame];
-  });
+  const seen = new Set();
+  return [...frames]
+    .filter(frame => Number.isFinite(Number(frame?.t)) && Number.isFinite(Number(frame?.projectileId)))
+    .sort((a, b) => (Number(a.t) - Number(b.t)) || (Number(a.projectileId) - Number(b.projectileId)) || (Number(b.state) - Number(a.state)))
+    .filter(frame => {
+      const projectileId = Number(frame.projectileId);
+      if (seen.has(projectileId)) return false;
+      seen.add(projectileId);
+      return true;
+    });
 }
