@@ -25,17 +25,20 @@ const CLASS_NAMES = {
   11: "Civilian"
 };
 const SPEEDRUN_USAGE_FIELDS = [
-  { column: "rockets_fired", resultAlias: "worldRecordRocketsFired" },
-  { column: "pipebombs_fired", resultAlias: "worldRecordPipebombsFired" },
-  { column: "grenades_thrown", resultAlias: "worldRecordGrenadesThrown" },
-  { column: "concs_used", resultAlias: "worldRecordConcsUsed" },
-  { column: "nails_fired", resultAlias: "worldRecordNailsFired" },
-  { column: "shells_fired", resultAlias: "worldRecordShellsFired" },
-  { column: "emp_used", resultAlias: "worldRecordEmpUsed" },
-  { column: "mirvs_used", resultAlias: "worldRecordMirvsUsed" },
-  { column: "caltrops_used", resultAlias: "worldRecordCaltropsUsed" },
-  { column: "medikit_used", resultAlias: "worldRecordMedikitUsed" },
-  { column: "spanner_used", resultAlias: "worldRecordSpannerUsed" }
+  { column: "crowbar_shots", resultAlias: "worldRecordCrowbarShots" },
+  { column: "shotgun_shots", resultAlias: "worldRecordShotgunShots" },
+  { column: "super_shotgun_shots", resultAlias: "worldRecordSuperShotgunShots" },
+  { column: "nailgun_shots", resultAlias: "worldRecordNailgunShots" },
+  { column: "super_nailgun_shots", resultAlias: "worldRecordSuperNailgunShots" },
+  { column: "grenade_launcher_shots", resultAlias: "worldRecordGrenadeLauncherShots" },
+  { column: "pipe_launcher_shots", resultAlias: "worldRecordPipeLauncherShots" },
+  { column: "rocket_launcher_shots", resultAlias: "worldRecordRocketLauncherShots" },
+  { column: "flamethrower_shots", resultAlias: "worldRecordFlamethrowerShots" },
+  { column: "railgun_shots", resultAlias: "worldRecordRailgunShots" },
+  { column: "medikit_uses", resultAlias: "worldRecordMedikitUses" },
+  { column: "spanner_uses", resultAlias: "worldRecordSpannerUses" },
+  { column: "gren1_used", resultAlias: "worldRecordGren1Used" },
+  { column: "gren2_used", resultAlias: "worldRecordGren2Used" }
 ];
 
 function createSpeedrunsRouter({ logRouteError }) {
@@ -329,7 +332,9 @@ function createSpeedrunsRouter({ logRouteError }) {
     const worldRecordRun = worldRecordRunId == null ? null : {
       id: worldRecordRunId,
       runId: worldRecordRunId,
-      run_id: worldRecordRunId
+      run_id: worldRecordRunId,
+      classId: row.worldRecordClassId == null ? null : Number(row.worldRecordClassId),
+      class_id: row.worldRecordClassId == null ? null : Number(row.worldRecordClassId)
     };
     if (worldRecordRun) {
       for (const field of SPEEDRUN_USAGE_FIELDS) {

@@ -41,18 +41,27 @@
     11: "Civilian"
   };
   const speedrunAmmoTypes = [
-    { field: "rockets_fired", camelField: "rocketsFired", label: "rocket", plural: "rockets", icon: "rocketlauncher0.webp" },
-    { field: "pipebombs_fired", camelField: "pipebombsFired", label: "pipebomb", plural: "pipebombs", icon: "bluegrenadelauncher.webp" },
-    { field: "grenades_thrown", camelField: "grenadesThrown", label: "grenade", plural: "grenades", icon: "fraggrenade.webp" },
-    { field: "concs_used", camelField: "concsUsed", label: "concussion grenade", plural: "concussion grenades", icon: "concussion.webp" },
-    { field: "nails_fired", camelField: "nailsFired", label: "nail", plural: "nails", icon: "nailgun.webp" },
-    { field: "shells_fired", camelField: "shellsFired", label: "shell", plural: "shells", icon: "shotgun.webp" },
-    { field: "emp_used", camelField: "empUsed", label: "EMP grenade", plural: "EMP grenades", icon: "emp.webp" },
-    { field: "mirvs_used", camelField: "mirvsUsed", label: "MIRV grenade", plural: "MIRV grenades", icon: "mirv.webp" },
-    { field: "caltrops_used", camelField: "caltropsUsed", label: "caltrop", plural: "caltrops", icon: "caltrops.webp" },
-    { field: "medikit_used", camelField: "medikitUsed", label: "medikit use", plural: "medikit uses", icon: "medkit.webp" },
-    { field: "spanner_used", camelField: "spannerUsed", label: "spanner use", plural: "spanner uses", icon: "spanner.webp" }
+    { fields: ["rocket_launcher_shots"], label: "rocket", plural: "rockets", icon: "rocketlauncher0.webp" },
+    { fields: ["pipe_launcher_shots"], label: "pipebomb", plural: "pipebombs", icon: "bluegrenadelauncher.webp" },
+    { fields: ["grenade_launcher_shots"], label: "launcher grenade", plural: "launcher grenades", icon: "grenadelauncher.webp" },
+    { fields: ["nailgun_shots", "super_nailgun_shots"], label: "nail", plural: "nails", icon: "nailgun.webp" },
+    { fields: ["shotgun_shots", "super_shotgun_shots"], label: "shell", plural: "shells", icon: "shotgun.webp" },
+    { fields: ["flamethrower_shots"], label: "flame", plural: "flames", icon: "flamethrower.webp" },
+    { fields: ["railgun_shots"], label: "railgun shot", plural: "railgun shots", icon: "railgun.webp" },
+    { fields: ["crowbar_shots"], label: "crowbar swing", plural: "crowbar swings", icon: "crowbar.webp" },
+    { fields: ["medikit_uses"], label: "medikit use", plural: "medikit uses", icon: "medkit.webp" },
+    { fields: ["spanner_uses"], label: "spanner use", plural: "spanner uses", icon: "spanner.webp" }
   ];
+  const secondaryGrenadeTypes = {
+    1: { label: "concussion grenade", plural: "concussion grenades", icon: "concussion.webp" },
+    3: { label: "nail grenade", plural: "nail grenades", icon: "nailgrenade.webp" },
+    4: { label: "MIRV grenade", plural: "MIRV grenades", icon: "mirv.webp" },
+    5: { label: "concussion grenade", plural: "concussion grenades", icon: "concussion.webp" },
+    6: { label: "MIRV grenade", plural: "MIRV grenades", icon: "mirv.webp" },
+    7: { label: "napalm grenade", plural: "napalm grenades", icon: "napalm.webp" },
+    8: { label: "gas grenade", plural: "gas grenades", icon: "gasgrenade.webp" },
+    9: { label: "EMP grenade", plural: "EMP grenades", icon: "emp.webp" }
+  };
 
   function setText(id, value) {
     const el = $(id);
@@ -244,10 +253,38 @@
       : escapeHtml(name);
   }
 
+  function ammoCount(run, fields) {
+    return fields.reduce((total, field) => {
+      const value = Number(run?.[field]);
+      return total + (Number.isFinite(value) && value > 0 ? value : 0);
+    }, 0);
+  }
+
+  function grenadeAmmoTypes(run) {
+    const classId = Number(run?.classId ?? run?.class_id);
+    const primary = classId === 1
+      ? { label: "caltrop", plural: "caltrops", icon: "caltrops.webp" }
+      : { label: "hand grenade", plural: "hand grenades", icon: "fraggrenade.webp" };
+    const secondary = secondaryGrenadeTypes[classId] || {
+      label: "secondary grenade",
+      plural: "secondary grenades",
+      icon: "fraggrenade.webp"
+    };
+    return [
+      { fields: ["gren1_used"], ...primary },
+      { fields: ["gren2_used"], ...secondary }
+    ];
+  }
+
   function ammoUsed(run) {
-    return speedrunAmmoTypes.flatMap(type => {
-      const value = Number(run?.[type.field] ?? run?.[type.camelField]);
-      if (!Number.isFinite(value) || value <= 0) return [];
+    const types = [
+      ...speedrunAmmoTypes.slice(0, 3),
+      ...grenadeAmmoTypes(run),
+      ...speedrunAmmoTypes.slice(3)
+    ];
+    return types.flatMap(type => {
+      const value = ammoCount(run, type.fields);
+      if (value <= 0) return [];
       return [{ ...type, count: Math.trunc(value) }];
     });
   }
