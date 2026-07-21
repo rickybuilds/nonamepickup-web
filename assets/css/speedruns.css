@@ -247,7 +247,7 @@
 .speedrun-map-columns,
 .speedrun-map-result {
   display: grid;
-  grid-template-columns: minmax(190px, 1.5fr) minmax(145px, 1fr) 62px 62px 62px 18px;
+  grid-template-columns: minmax(190px, 1.45fr) minmax(145px, 1fr) minmax(145px, .9fr) 54px 54px 54px 18px;
   align-items: center;
   gap: 12px;
 }
@@ -263,7 +263,7 @@
   text-transform: uppercase;
 }
 
-.speedrun-map-columns span:nth-child(n + 3) {
+.speedrun-map-columns span:nth-child(n + 4) {
   text-align: right;
 }
 
@@ -406,6 +406,42 @@
   padding: 3px 5px;
   border-radius: 5px;
   font-size: 7px;
+}
+
+.speedrun-ammo {
+  display: flex;
+  min-width: 0;
+  min-height: 34px;
+  padding: 3px 10px;
+  border-inline: 1px solid rgba(77, 166, 255, .1);
+  align-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+}
+
+.speedrun-ammo.is-empty {
+  border-color: transparent;
+}
+
+.speedrun-ammo-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.speedrun-ammo-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, .16));
+}
+
+.speedrun-ammo-count {
+  color: #cbd5e1;
+  font: 850 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: nowrap;
 }
 
 .speedrun-map-record a,
@@ -1353,6 +1389,25 @@
     text-align: right;
   }
 
+  .speedrun-ammo {
+    display: none;
+  }
+
+  .speedrun-map-result.has-ammo {
+    grid-template-rows: auto auto auto;
+  }
+
+  .speedrun-map-result.has-ammo .speedrun-ammo {
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-height: 0;
+    padding: 6px 0 1px;
+    border: 0;
+    border-top: 1px solid rgba(77, 166, 255, .1);
+    gap: 5px 12px;
+  }
+
   .speedrun-map-metric {
     display: flex;
     grid-column: 1;
@@ -1360,6 +1415,11 @@
     align-items: baseline;
     justify-self: start;
     gap: 4px;
+  }
+
+  .speedrun-map-result.has-ammo .speedrun-map-metric,
+  .speedrun-map-result.has-ammo > .speedrun-row-arrow {
+    grid-row: 3;
   }
 
   .speedrun-map-metric span {
@@ -1399,6 +1459,15 @@
   .speedrun-map-thumb {
     width: 48px;
     height: 34px;
+  }
+
+  .speedrun-ammo-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .speedrun-map-result.has-ammo .speedrun-ammo {
+    gap-inline: 9px;
   }
 
   .speedrun-map-record-actions > span {

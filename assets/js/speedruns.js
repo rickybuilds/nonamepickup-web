@@ -40,6 +40,19 @@
     10: "Civilian",
     11: "Civilian"
   };
+  const speedrunAmmoTypes = [
+    { field: "rockets_fired", camelField: "rocketsFired", label: "rocket", plural: "rockets", icon: "rocketlauncher0.webp" },
+    { field: "pipebombs_fired", camelField: "pipebombsFired", label: "pipebomb", plural: "pipebombs", icon: "bluegrenadelauncher.webp" },
+    { field: "grenades_thrown", camelField: "grenadesThrown", label: "grenade", plural: "grenades", icon: "fraggrenade.webp" },
+    { field: "concs_used", camelField: "concsUsed", label: "concussion grenade", plural: "concussion grenades", icon: "concussion.webp" },
+    { field: "nails_fired", camelField: "nailsFired", label: "nail", plural: "nails", icon: "nailgun.webp" },
+    { field: "shells_fired", camelField: "shellsFired", label: "shell", plural: "shells", icon: "shotgun.webp" },
+    { field: "emp_used", camelField: "empUsed", label: "EMP grenade", plural: "EMP grenades", icon: "emp.webp" },
+    { field: "mirvs_used", camelField: "mirvsUsed", label: "MIRV grenade", plural: "MIRV grenades", icon: "mirv.webp" },
+    { field: "caltrops_used", camelField: "caltropsUsed", label: "caltrop", plural: "caltrops", icon: "caltrops.webp" },
+    { field: "medikit_used", camelField: "medikitUsed", label: "medikit use", plural: "medikit uses", icon: "medkit.webp" },
+    { field: "spanner_used", camelField: "spannerUsed", label: "spanner use", plural: "spanner uses", icon: "spanner.webp" }
+  ];
 
   function setText(id, value) {
     const el = $(id);
@@ -229,6 +242,24 @@
     return row?.worldRecordDiscordId
       ? `<a href="${escapeAttr(playerUrl(row.worldRecordDiscordId))}">${escapeHtml(name)}${supporterBadge(row.worldRecordDiscordId)}</a>`
       : escapeHtml(name);
+  }
+
+  function ammoUsed(run) {
+    return speedrunAmmoTypes.flatMap(type => {
+      const value = Number(run?.[type.field] ?? run?.[type.camelField]);
+      if (!Number.isFinite(value) || value <= 0) return [];
+      return [{ ...type, count: Math.trunc(value) }];
+    });
+  }
+
+  function renderAmmoSummary(run, used = ammoUsed(run)) {
+    const summary = used.map(item => `${item.count} ${item.count === 1 ? item.label : item.plural}`).join(", ");
+    return `<div class="speedrun-ammo${used.length ? "" : " is-empty"}" aria-label="${escapeAttr(summary || "No ammunition used")}">${used.map(item => `
+      <span class="speedrun-ammo-item" title="${escapeAttr(`${item.count} ${item.count === 1 ? item.label : item.plural}`)}">
+        <img class="speedrun-ammo-icon" src="assets/images/icons/webp/${escapeAttr(item.icon)}" alt="" aria-hidden="true">
+        <span class="speedrun-ammo-count">&times;${escapeHtml(item.count)}</span>
+      </span>
+    `).join("")}</div>`;
   }
 
   function setupLinkedRows(container) {
@@ -845,18 +876,21 @@
   function renderMaps(rows) {
     const mapRows = (rows || []).map(row => {
       const href = mapUrl(row.map);
+      const worldRecordRun = row.worldRecordRun || row.world_record_run || row;
+      const usedAmmo = ammoUsed(worldRecordRun);
       const recordClass = {
         classId: row.worldRecordClassId,
         className: row.worldRecordClassName
       };
       const recordReplay = {
         hasReplay: row.worldRecordHasReplay,
+        runId: worldRecordRun?.runId ?? worldRecordRun?.run_id ?? row.worldRecordRunId,
         map: row.map,
         classId: row.worldRecordClassId,
         steamId: row.worldRecordSteamId
       };
       return `
-        <article class="speedrun-map-result" role="link" tabindex="0" data-row-href="${escapeAttr(href)}" aria-label="View ${escapeAttr(row.displayName || row.map)} map details">
+        <article class="speedrun-map-result${usedAmmo.length ? " has-ammo" : ""}" role="link" tabindex="0" data-row-href="${escapeAttr(href)}" aria-label="View ${escapeAttr(row.displayName || row.map)} map details">
           <div class="speedrun-map-identity">
             ${mapThumbnail(row.map)}
             <div>
@@ -871,6 +905,7 @@
               ${hasReplay(recordReplay) ? replayLink(recordReplay) : ""}
             </div>
           </div>
+          ${renderAmmoSummary(worldRecordRun, usedAmmo)}
           <div class="speedrun-map-metric"><strong>${compact(row.totalRuns)}</strong><span>runs</span></div>
           <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRunners)}</strong><span>runners</span></div>
           <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRecords)}</strong><span>records</span></div>
@@ -881,7 +916,7 @@
 
     setHtml("sr-map-grid", mapRows ? `
       <div class="speedrun-map-columns" aria-hidden="true">
-        <span>Map / class</span><span>World record / holder</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
+        <span>Map / class</span><span>World record / holder</span><span>Ammo used</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
       </div>
       <div class="speedrun-map-results">${mapRows}</div>
     ` : empty("No speedrun maps found."));

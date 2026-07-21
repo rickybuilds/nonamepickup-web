@@ -24,9 +24,40 @@ const CLASS_NAMES = {
   10: "Civilian",
   11: "Civilian"
 };
+const SPEEDRUN_USAGE_FIELDS = [
+  { column: "rockets_fired", resultAlias: "worldRecordRocketsFired" },
+  { column: "pipebombs_fired", resultAlias: "worldRecordPipebombsFired" },
+  { column: "grenades_thrown", resultAlias: "worldRecordGrenadesThrown" },
+  { column: "concs_used", resultAlias: "worldRecordConcsUsed" },
+  { column: "nails_fired", resultAlias: "worldRecordNailsFired" },
+  { column: "shells_fired", resultAlias: "worldRecordShellsFired" },
+  { column: "emp_used", resultAlias: "worldRecordEmpUsed" },
+  { column: "mirvs_used", resultAlias: "worldRecordMirvsUsed" },
+  { column: "caltrops_used", resultAlias: "worldRecordCaltropsUsed" },
+  { column: "medikit_used", resultAlias: "worldRecordMedikitUsed" },
+  { column: "spanner_used", resultAlias: "worldRecordSpannerUsed" }
+];
 
 function createSpeedrunsRouter({ logRouteError }) {
   const router = express.Router();
+  let speedrunRunColumnsPromise = null;
+
+  function speedrunRunColumns() {
+    if (!speedrunRunColumnsPromise) {
+      speedrunRunColumnsPromise = speedrunQuery(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'speedrun_runs'
+      `)
+        .then(rows => new Set(rows.map(row => String(row.COLUMN_NAME || row.column_name || ""))))
+        .catch(error => {
+          speedrunRunColumnsPromise = null;
+          throw error;
+        });
+    }
+    return speedrunRunColumnsPromise;
+  }
 
   function unavailable(res) {
     return res.status(503).json({ error: "Speedrun database unavailable" });
@@ -293,7 +324,20 @@ function createSpeedrunsRouter({ logRouteError }) {
 
   function mapCard(row) {
     const worldRecordTimeMs = row.worldRecordTimeMs == null ? null : Number(row.worldRecordTimeMs);
+    const worldRecordRunId = row.worldRecordRunId == null ? null : Number(row.worldRecordRunId);
     const lastRunAt = iso(row.lastRunAt);
+    const worldRecordRun = worldRecordRunId == null ? null : {
+      id: worldRecordRunId,
+      runId: worldRecordRunId,
+      run_id: worldRecordRunId
+    };
+    if (worldRecordRun) {
+      for (const field of SPEEDRUN_USAGE_FIELDS) {
+        if (Object.prototype.hasOwnProperty.call(row, field.resultAlias)) {
+          worldRecordRun[field.column] = Number(row[field.resultAlias] || 0);
+        }
+      }
+    }
     return {
       map: row.map,
       displayName: row.display_name || row.map,
@@ -311,6 +355,8 @@ function createSpeedrunsRouter({ logRouteError }) {
       worldRecordClassId: row.worldRecordClassId == null ? null : Number(row.worldRecordClassId),
       worldRecordClassName: row.worldRecordClassName || null,
       worldRecordHasReplay: Number(row.worldRecordHasReplay || 0) > 0,
+      worldRecordRunId,
+      worldRecordRun,
       lastRunAt,
       last_run_at: lastRunAt
     };
@@ -793,6 +839,15 @@ function createSpeedrunsRouter({ logRouteError }) {
     }[sort];
     if (!orderBy) return badRequest(res, "invalid_sort");
 
+    const runColumns = await speedrunRunColumns();
+    const usageFields = SPEEDRUN_USAGE_FIELDS.filter(field => runColumns.has(field.column));
+    const outerUsageSelect = usageFields
+      .map(field => `,\n        wr.${field.resultAlias}`)
+      .join("");
+    const innerUsageSelect = usageFields
+      .map(field => `,\n          wr_run.\`${field.column}\` AS ${field.resultAlias}`)
+      .join("");
+
     const rows = await speedrunQuery(`
       SELECT
         m.map,
@@ -810,7 +865,8 @@ function createSpeedrunsRouter({ logRouteError }) {
         wr.worldRecordDiscordId,
         wr.worldRecordClassId,
         wr.worldRecordClassName,
-        wr.worldRecordHasReplay
+        wr.worldRecordHasReplay,
+        wr.worldRecordRunId${outerUsageSelect}
       FROM speedrun_maps m
       LEFT JOIN (
         SELECT
@@ -847,7 +903,8 @@ function createSpeedrunsRouter({ logRouteError }) {
               AND g.ghost_time_ms = ranked.best_time_ms AND g.is_complete = 1
               AND gr.ruleset = ${CURRENT_RULESET}
             LIMIT 1
-          ) AS worldRecordHasReplay
+          ) AS worldRecordHasReplay,
+          wr_run.id AS worldRecordRunId${innerUsageSelect}
         FROM (
           SELECT r.*, ROW_NUMBER() OVER (
             PARTITION BY r.map
@@ -858,6 +915,21 @@ function createSpeedrunsRouter({ logRouteError }) {
         ) ranked
         LEFT JOIN speedrun_player_links l
           ON l.steamid = ranked.steamid
+        LEFT JOIN speedrun_runs wr_run
+          ON wr_run.id = (
+            SELECT matching_run.id
+            FROM speedrun_runs matching_run
+            WHERE matching_run.ruleset = ${CURRENT_RULESET}
+              AND matching_run.map = ranked.map
+              AND matching_run.class_id <=> ranked.class_id
+              AND matching_run.steamid <=> ranked.steamid
+              AND matching_run.time_ms = ranked.best_time_ms
+            ORDER BY
+              CASE WHEN COALESCE(ranked.pb_created_at, ranked.updated_at) IS NULL THEN 1 ELSE 0 END,
+              ABS(TIMESTAMPDIFF(MICROSECOND, matching_run.created_at, COALESCE(ranked.pb_created_at, ranked.updated_at))),
+              matching_run.id DESC
+            LIMIT 1
+          )
         WHERE ranked.rn = 1
       ) wr ON wr.map = m.map
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
