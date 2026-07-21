@@ -457,10 +457,10 @@ function createSpeedrunsRouter({ logRouteError }) {
         const usage = usageByRun.get(Number(card.worldRecordRunId));
         if (!usage || !card.worldRecordRun) continue;
         for (const [field, count] of Object.entries(usage)) {
-          card.worldRecordRun[field] = Math.max(
-            Number(card.worldRecordRun[field] || 0),
-            Number(count || 0)
-          );
+          // A complete replay is authoritative for projectile-backed usage.
+          // Database counters remain the fallback only when replay telemetry is
+          // missing or cannot be aligned to the official timing window.
+          card.worldRecordRun[field] = Number(count || 0);
         }
       }
     } catch (error) {
