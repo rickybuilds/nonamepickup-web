@@ -294,7 +294,10 @@
     return `<div class="speedrun-ammo${used.length ? "" : " is-empty"}" aria-label="${escapeAttr(summary || "No ammunition used")}">${used.map(item => `
       <span class="speedrun-ammo-item" title="${escapeAttr(`${item.count} ${item.count === 1 ? item.label : item.plural}`)}">
         <img class="speedrun-ammo-icon" src="assets/images/icons/webp/${escapeAttr(item.icon)}" alt="" aria-hidden="true">
-        <span class="speedrun-ammo-count">&times;${escapeHtml(item.count)}</span>
+        <span class="speedrun-ammo-details">
+          <span class="speedrun-ammo-label">${escapeHtml(item.label)}</span>
+          <span class="speedrun-ammo-count">&times;${escapeHtml(item.count)}</span>
+        </span>
       </span>
     `).join("")}</div>`;
   }

@@ -247,7 +247,7 @@
 .speedrun-map-columns,
 .speedrun-map-result {
   display: grid;
-  grid-template-columns: minmax(190px, 1.45fr) minmax(145px, 1fr) minmax(145px, .9fr) 54px 54px 54px 18px;
+  grid-template-columns: minmax(190px, 1.55fr) minmax(145px, 1.05fr) minmax(180px, .65fr) 54px 54px 54px 18px;
   align-items: center;
   gap: 12px;
 }
@@ -412,12 +412,12 @@
   display: flex;
   min-width: 0;
   min-height: 34px;
-  padding: 3px 10px;
+  padding: 3px 8px;
   border-inline: 1px solid rgba(77, 166, 255, .1);
   align-content: center;
   align-items: center;
   flex-wrap: wrap;
-  gap: 5px 10px;
+  gap: 6px;
 }
 
 .speedrun-ammo.is-empty {
@@ -427,20 +427,44 @@
 .speedrun-ammo-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex: 0 0 auto;
+  min-width: 74px;
+  min-height: 38px;
+  padding: 3px 7px 3px 4px;
+  border: 1px solid rgba(77, 166, 255, .1);
+  border-radius: 7px;
+  background: rgba(10, 24, 42, .52);
 }
 
 .speedrun-ammo-icon {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
   object-fit: contain;
-  filter: drop-shadow(0 0 4px rgba(56, 189, 248, .16));
+  filter: saturate(1.15) brightness(1.24) contrast(1.05) drop-shadow(0 0 5px rgba(56, 189, 248, .24));
+}
+
+.speedrun-ammo-details {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.speedrun-ammo-label {
+  overflow: hidden;
+  max-width: 72px;
+  color: #8196af;
+  font: 800 7px Inter, system-ui, sans-serif;
+  letter-spacing: .045em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .speedrun-ammo-count {
-  color: #cbd5e1;
-  font: 850 10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #e5f3ff;
+  font: 900 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   white-space: nowrap;
 }
 
@@ -1405,7 +1429,7 @@
     padding: 6px 0 1px;
     border: 0;
     border-top: 1px solid rgba(77, 166, 255, .1);
-    gap: 5px 12px;
+    gap: 6px;
   }
 
   .speedrun-map-metric {
@@ -1462,12 +1486,12 @@
   }
 
   .speedrun-ammo-icon {
-    width: 18px;
-    height: 18px;
+    width: 28px;
+    height: 28px;
   }
 
   .speedrun-map-result.has-ammo .speedrun-ammo {
-    gap-inline: 9px;
+    gap-inline: 6px;
   }
 
   .speedrun-map-record-actions > span {
