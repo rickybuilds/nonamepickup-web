@@ -80,3 +80,44 @@ export function decodeReplayFrames(frames) {
   if (!Array.isArray(frames)) return [];
   return frames.map(decodeReplayFrame).filter(Boolean);
 }
+
+/**
+ * Some recordings contain only a projectile's terminal state. Add one short,
+ * velocity-based sample so the web replay can still show what detonated. Full
+ * projectile tracks are returned untouched.
+ */
+export function expandEventOnlyProjectiles(frames, leadSeconds = 0.35) {
+  if (!Array.isArray(frames)) return [];
+
+  const idsWithFlightSamples = new Set(
+    frames
+      .filter(frame => Number(frame?.state) !== 0)
+      .map(frame => Number(frame?.projectileId))
+      .filter(Number.isFinite)
+  );
+
+  return frames.flatMap(frame => {
+    const projectileId = Number(frame?.projectileId);
+    const time = Number(frame?.t);
+    if (Number(frame?.state) !== 0 || idsWithFlightSamples.has(projectileId) || !Number.isFinite(time)) {
+      return [frame];
+    }
+
+    const lead = Math.min(Math.max(0, Number(leadSeconds) || 0), Math.max(0, time));
+    const velocity = [frame?.vx, frame?.vy, frame?.vz].map(Number);
+    const position = [frame?.x, frame?.y, frame?.z].map(Number);
+    if (!lead || velocity.some(value => !Number.isFinite(value)) || position.some(value => !Number.isFinite(value))) {
+      return [frame];
+    }
+
+    return [{
+      ...frame,
+      t: time - lead,
+      state: 1,
+      x: position[0] - (velocity[0] * lead),
+      y: position[1] - (velocity[1] * lead),
+      z: position[2] - (velocity[2] * lead),
+      synthetic: true
+    }, frame];
+  });
+}
