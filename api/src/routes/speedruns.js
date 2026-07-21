@@ -6,6 +6,7 @@ const { checkSpeedrunDatabase, speedrunQuery } = require("../db/mariadb");
 const { createHealthHandler } = require("../helpers/health");
 const { positiveInt, cleanString: cleanText } = require("../helpers/values");
 const { joinReplayChunks, normalizeFrameChunk, parseReplayFrames } = require("../helpers/replay");
+const { summarizeProjectileUsage } = require("../helpers/projectile-usage");
 
 const MAX_MAP_NAME_LENGTH = 64;
 const MAX_STEAM_ID_LENGTH = 35;
@@ -115,7 +116,7 @@ function createSpeedrunsRouter({ logRouteError }) {
   function chunkPayload(row) {
     const known = firstValue(row, ["ghost_chunk", "projectile_chunk", "chunk_data", "data", "frame_data", "frames", "payload", "chunk", "replay_data"]);
     if (known != null) return known;
-    const keyPattern = /^(id|ghost_id|map|class_id|steamid|chunk_id|created_at|updated_at)$/i;
+    const keyPattern = /^(id|ghost_id|usage_ghost_id|usage_run_id|map|class_id|steamid|chunk_id|created_at|updated_at)$/i;
     for (const [key, value] of Object.entries(row || {})) {
       if (!keyPattern.test(key) && value != null) return value;
     }
@@ -365,6 +366,65 @@ function createSpeedrunsRouter({ logRouteError }) {
       lastRunAt,
       last_run_at: lastRunAt
     };
+  }
+
+  async function addCapturedProjectileUsage(cards, routeLabel) {
+    const runIds = [...new Set(cards
+      .filter(card => card.worldRecordHasReplay && card.worldRecordRunId != null)
+      .map(card => Number(card.worldRecordRunId))
+      .filter(Number.isSafeInteger))];
+    if (!runIds.length) return cards;
+
+    try {
+      const placeholders = runIds.map(() => "?").join(", ");
+      const rows = await speedrunQuery(`
+        SELECT
+          g.run_id AS usage_run_id,
+          g.id AS usage_ghost_id,
+          pc.*
+        FROM speedrun_ghosts g
+        JOIN speedrun_projectile_chunks pc ON pc.ghost_id = g.id
+        WHERE g.run_id IN (${placeholders})
+          AND g.is_complete = 1
+          AND g.projectiles_complete = 1
+        ORDER BY g.run_id ASC, g.id ASC, pc.chunk_id ASC
+      `, runIds);
+
+      const chunksByGhost = new Map();
+      for (const row of rows) {
+        const runId = Number(row.usage_run_id);
+        const ghostId = Number(row.usage_ghost_id);
+        if (!Number.isSafeInteger(runId) || !Number.isSafeInteger(ghostId)) continue;
+        const key = `${runId}:${ghostId}`;
+        if (!chunksByGhost.has(key)) chunksByGhost.set(key, { runId, chunks: [] });
+        chunksByGhost.get(key).chunks.push(normalizeFrameChunk(chunkPayload(row)));
+      }
+
+      const usageByRun = new Map();
+      for (const { runId, chunks } of chunksByGhost.values()) {
+        const usage = summarizeProjectileUsage(parseProjectileFrames(chunks.join("")));
+        const existing = usageByRun.get(runId) || {};
+        for (const [field, count] of Object.entries(usage)) {
+          existing[field] = Math.max(Number(existing[field] || 0), Number(count || 0));
+        }
+        usageByRun.set(runId, existing);
+      }
+
+      for (const card of cards) {
+        const usage = usageByRun.get(Number(card.worldRecordRunId));
+        if (!usage || !card.worldRecordRun) continue;
+        for (const [field, count] of Object.entries(usage)) {
+          card.worldRecordRun[field] = Math.max(
+            Number(card.worldRecordRun[field] || 0),
+            Number(count || 0)
+          );
+        }
+      }
+    } catch (error) {
+      logRouteError(`${routeLabel} projectile usage load failed`, error);
+    }
+
+    return cards;
   }
 
   async function runEndpoint(req, res, label, handler) {
@@ -942,7 +1002,9 @@ function createSpeedrunsRouter({ logRouteError }) {
       LIMIT ? OFFSET ?
     `, [...params, limit, offset]);
 
-    res.json(rows.map(mapCard));
+    const cards = rows.map(mapCard);
+    await addCapturedProjectileUsage(cards, "[/api/speedruns/maps]");
+    res.json(cards);
   }));
 
   router.get("/maps/:map/progression", (req, res) => runEndpoint(req, res, "[/api/speedruns/maps/:map/progression]", async () => {
