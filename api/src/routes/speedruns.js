@@ -529,7 +529,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         g.projectiles_complete
       FROM speedrun_ghosts g
       JOIN speedrun_runs r ON r.id = g.run_id
-      WHERE g.run_id = ? AND r.ruleset = ${CURRENT_RULESET} AND g.is_complete = 1
+      WHERE g.run_id = ? AND g.is_complete = 1 AND r.ruleset = ${CURRENT_RULESET}
       LIMIT 1
     `, [runId]);
     if (!metadataRows.length) return { status: 404, error: "replay_not_found" };
@@ -609,6 +609,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         frameInterval: frameInterval == null ? inferFrameInterval(frames) : Number(frameInterval),
         zones,
         frames,
+        projectileEvents: projectileFrames,
         projectileFrames
       }
     };
@@ -638,18 +639,13 @@ function createSpeedrunsRouter({ logRouteError }) {
 
     const rows = await speedrunQuery(`
       SELECT g.run_id
-      FROM speedrun_records rec
+      FROM speedrun_runs r
       JOIN speedrun_ghosts g
-        ON g.map = rec.map
-       AND g.class_id = rec.class_id
-       AND g.steamid = rec.steamid
-       AND g.ghost_time_ms = rec.best_time_ms
+        ON g.run_id = r.id
        AND g.is_complete = 1
-      JOIN speedrun_runs r ON r.id = g.run_id
-      WHERE rec.ruleset = ${CURRENT_RULESET}
+      WHERE r.map = ? AND r.class_id = ? AND r.steamid = ?
         AND r.ruleset = ${CURRENT_RULESET}
-        AND rec.map = ? AND rec.class_id = ? AND rec.steamid = ?
-      ORDER BY g.updated_at DESC, g.id DESC
+      ORDER BY r.time_ms ASC, r.created_at DESC, r.id DESC
       LIMIT 1
     `, [mapName, classId, steamid]);
     if (!rows.length || rows[0].run_id == null) {
