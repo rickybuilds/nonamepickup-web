@@ -25,11 +25,6 @@ hltv/
 /assets/maps/
 /scripts/
 
-speedrun-replay.html
-speedrun-replay.css
-speedrun-replay.js
-
-
 # Generated analysis outputs
 /analysis/soldier/data/
 /analysis/soldier/index.html
