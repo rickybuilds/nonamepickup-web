@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const compression = require("compression");
 const { registerRoutes } = require("./routes");
 const { securityHeaders } = require("./middleware/securityHeaders");
 const { createCorsMiddleware } = require("./middleware/cors");
@@ -55,6 +56,7 @@ function createApp({
   app.set("trust proxy", TRUST_PROXY);
   app.use(express.json({ limit: "32kb" }));
   app.use(express.urlencoded({ extended: false, limit: "32kb" }));
+  app.use("/api/speedruns/replay", compression({ threshold: 0 }));
 
   app.use(securityHeaders);
 

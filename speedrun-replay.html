@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>NoName TFC | Speedrun Replay</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260707replay13">
+  <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260713freeroam5">
+  <script src="assets/js/main.js?v=20260618i" defer></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="assets/js/speedrun-replay.js?v=20260723runaddress1"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] speedruns-page replay-page replay-playing">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a>
+        <a href="speedruns.html" aria-current="page">Speedruns</a>
+        <a href="live.html" class="nav-live">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+      </nav>
+
+      <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+    </div>
+  </header>
+
+  <main class="replay-main">
+    <section class="replay-stage" aria-label="Speedrun replay viewer">
+      <canvas id="replay-canvas"></canvas>
+      <div id="replay-status" class="replay-status">Loading replay...</div>
+      <div id="replay-grenade-hud" class="replay-grenade-hud" aria-hidden="true">
+        <img id="replay-grenade-hud-image" alt="" />
+        <span id="replay-grenade-hud-label">GRENADE</span>
+      </div>
+      <aside class="replay-input-hud" aria-label="Recorded player inputs">
+        <div class="replay-speedometer">
+          <span>SPEED</span>
+          <strong id="replay-speedometer-value">0</strong>
+          <small>HU/S</small>
+        </div>
+        <div class="replay-keyboard" aria-label="Movement keys">
+          <kbd data-input="forward">W</kbd>
+          <kbd data-input="left">A</kbd>
+          <kbd data-input="back">S</kbd>
+          <kbd data-input="right">D</kbd>
+        </div>
+        <div class="replay-input-actions">
+          <kbd data-input="duck">CTRL</kbd>
+          <kbd data-input="jump">SPACE</kbd>
+          <kbd data-input="attack">M1</kbd>
+          <kbd data-input="attack2">M2</kbd>
+        </div>
+      </aside>
+
+      <section class="replay-topbar" aria-label="Replay details">
+        <div>
+          <p class="speedrun-kicker">REPLAY VIEWER</p>
+          <h1 id="replay-title">Speedrun Replay</h1>
+          <p id="replay-subtitle">-</p>
+        </div>
+        <div class="replay-actions">
+          <button id="replay-compare-toggle" type="button" class="replay-compare-button" aria-expanded="false" aria-controls="replay-compare-panel">Add run</button>
+          <button id="replay-export" type="button" class="replay-export-button">Export Replay</button>
+          <a id="replay-map-link" href="speedruns.html">Speedruns</a>
+        </div>
+      </section>
+
+      <section id="replay-compare-panel" class="replay-compare-panel" aria-label="Compare another run" hidden>
+        <div class="replay-compare-heading">
+          <div>
+            <span>RUN COMPARISON</span>
+            <strong>Add another run</strong>
+          </div>
+          <button id="replay-compare-close" type="button" aria-label="Close comparison picker">&times;</button>
+        </div>
+        <p>Choose a replay from this map. Both runs will start together at 0:00.</p>
+        <label>
+          <span>Run</span>
+          <select id="replay-compare-select" disabled>
+            <option>Loading runs...</option>
+          </select>
+        </label>
+        <div class="replay-compare-panel-actions">
+          <button id="replay-compare-add" type="button" disabled>Compare runs</button>
+          <button id="replay-compare-remove" type="button" class="secondary" hidden>Remove run</button>
+        </div>
+        <small id="replay-compare-status" role="status"></small>
+      </section>
+
+      <div id="replay-compare-legend" class="replay-compare-legend" hidden>
+        <span class="primary-dot"></span><strong id="replay-compare-primary">Primary run</strong>
+        <span class="compare-dot"></span><strong id="replay-compare-secondary">Comparison run</strong>
+        <span id="replay-compare-delta" class="replay-compare-delta"></span>
+      </div>
+
+      <div id="replay-free-roam-help" class="replay-free-roam-help" role="status" hidden>
+        <strong>FREE ROAM</strong><span>Click the replay to capture the mouse · WASD move · Q/E down/up</span>
+      </div>
+
+      <div id="replay-free-roam-touch" class="replay-free-roam-touch" aria-label="Free roam touch controls" hidden>
+        <div class="replay-touch-pad" role="group" aria-label="Camera movement">
+          <button type="button" class="forward" data-free-roam-key="KeyW" aria-label="Move forward">▲</button>
+          <button type="button" class="left" data-free-roam-key="KeyA" aria-label="Move left">◀</button>
+          <button type="button" class="back" data-free-roam-key="KeyS" aria-label="Move backward">▼</button>
+          <button type="button" class="right" data-free-roam-key="KeyD" aria-label="Move right">▶</button>
+        </div>
+        <div class="replay-touch-actions" role="group" aria-label="Camera height and mode">
+          <button type="button" data-free-roam-key="KeyE" aria-label="Move camera up">UP</button>
+          <button type="button" data-free-roam-key="KeyQ" aria-label="Move camera down">DOWN</button>
+          <button id="replay-free-roam-play" type="button" data-free-roam-action="play" aria-label="Pause replay">PAUSE</button>
+          <button type="button" data-free-roam-action="pov" aria-label="Return to player point of view">POV</button>
+        </div>
+      </div>
+
+      <section class="replay-stats" aria-label="Replay frame statistics">
+        <div><span>Speed</span><strong id="replay-stat-speed">-</strong></div>
+        <div><span>Position</span><strong id="replay-stat-position">-</strong></div>
+        <div><span>Look</span><strong id="replay-stat-look">-</strong></div>
+        <div><span>Buttons</span><strong id="replay-stat-buttons">-</strong></div>
+      </section>
+
+      <section class="replay-controls" aria-label="Playback controls">
+        <button id="replay-play" type="button" class="replay-button">Pause</button>
+        <button id="replay-restart" type="button" class="replay-button secondary">Restart</button>
+        <button id="replay-trail" type="button" class="replay-button secondary active">Trail</button>
+        <button id="replay-zones" type="button" class="replay-button secondary active">Zones</button>
+        <button id="replay-model-style" type="button" class="replay-button secondary" aria-pressed="false">Models: Classic</button>
+        <button id="replay-camera-mode" type="button" class="replay-button secondary" aria-pressed="false" disabled>Camera: POV</button>
+        <div class="replay-fov" role="group" aria-label="Camera field of view">
+          <button id="replay-fov-decrease" type="button" class="replay-button secondary">FOV -</button>
+          <span id="replay-fov-label" class="replay-fov-label">FOV: 75</span>
+          <button id="replay-fov-increase" type="button" class="replay-button secondary">FOV +</button>
+        </div>
+        <div class="replay-speed" role="group" aria-label="Playback speed">
+          <button type="button" data-speed="0.5">0.5x</button>
+          <button type="button" data-speed="1" class="active">1x</button>
+          <button type="button" data-speed="2">2x</button>
+        </div>
+        <label class="replay-scrubber">
+          <span id="replay-clock">0:00.000</span>
+          <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
+          <span id="replay-duration">0:00.000</span>
+        </label>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
