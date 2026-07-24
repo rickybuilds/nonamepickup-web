@@ -2,11 +2,11 @@
   --kick-red: #fb7185;
   --kick-hot: #f43f5e;
   --kick-orange: #fb923c;
-  --kick-line: rgba(251, 113, 133, .27);
-  --page-atmosphere-left: rgba(244, 63, 94, .11);
-  --page-atmosphere-right: rgba(251, 146, 60, .08);
-  --page-glow-left: rgba(244, 63, 94, .22);
-  --page-glow-right: rgba(251, 146, 60, .14);
+  --kick-line: rgba(77, 166, 255, .27);
+  --page-atmosphere-left: rgba(77, 166, 255, .08);
+  --page-atmosphere-right: rgba(77, 166, 255, .07);
+  --page-glow-left: rgba(77, 166, 255, .14);
+  --page-glow-right: rgba(77, 166, 255, .10);
   position: relative;
   min-height: 100vh;
   overflow-x: clip;
@@ -114,11 +114,11 @@
 .kicked-summary article,
 .kicked-panel {
   border: 1px solid var(--kick-line);
-  background: linear-gradient(145deg, rgba(27, 17, 30, .92), rgba(8, 13, 26, .94) 48%);
+  background: linear-gradient(145deg, rgba(15, 23, 42, .91), rgba(8, 13, 26, .94));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, .04),
     0 22px 50px rgba(0, 0, 0, .30),
-    0 0 36px rgba(244, 63, 94, .05);
+    0 0 36px rgba(77, 166, 255, .08);
 }
 
 .kicked-summary article {
@@ -245,12 +245,13 @@
 .kicked-bar-track {
   height: 16px;
   overflow: hidden;
-  border: 1px solid rgba(251, 113, 133, .17);
+  border: 1px solid rgba(77, 166, 255, .20);
   border-radius: 999px;
   background: rgba(15, 23, 42, .84);
 }
 
 .kicked-bar {
+  display: block;
   width: var(--bar-width);
   min-width: 7px;
   height: 100%;
