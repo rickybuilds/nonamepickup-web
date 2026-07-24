@@ -8,6 +8,7 @@ const { createCompareRouter } = require("./compare");
 const { createMatchesRouter } = require("./matches");
 const { createPlayersRouter } = require("./players");
 const { createQueueRouter } = require("./queue");
+const { createKickedRouter } = require("./kicked");
 const { createAnalyticsRouter } = require("./analytics");
 const { createHomeRouter } = require("./home");
 const { createSpeedrunsRouter } = require("./speedruns");
@@ -33,6 +34,7 @@ function registerRoutes(app, {
   cached,
   statsSummaryStmt,
   QUEUE_FILE,
+  KICKED_FILE,
   DATA_DIR,
   compareProfileStmt,
   compareMatchesStmt,
@@ -126,6 +128,12 @@ app.use("/api/speedruns", createSpeedrunsRouter({
 app.use("/api", createQueueRouter({
   queueFile: QUEUE_FILE,
   dataDir: DATA_DIR,
+  cleanString,
+  logRouteError
+}));
+app.use("/api", createKickedRouter({
+  kickedFile: KICKED_FILE,
+  fs,
   cleanString,
   logRouteError
 }));

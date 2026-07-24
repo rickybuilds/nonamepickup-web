@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NoName TFC Pickup missed server votes, kick history, and repeat offender leaderboard.">
+  <meta name="robots" content="noindex,follow">
+  <title>NoName TFC Pickups | Missed Votes</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/kicked.css?v=20260723a">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script src="assets/js/main.js?v=20260618i" defer></script>
+  <script src="assets/js/kicked.js?v=20260723a" defer></script>
+</head>
+
+<body class="kicked-page">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a>
+        <a href="speedruns.html">Speedruns</a>
+        <a href="live.html" class="nav-live">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+      </nav>
+
+      <input
+        id="global-search"
+        type="text"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="Search players..."
+        aria-label="Search players"
+        class="site-search"
+      >
+    </div>
+  </header>
+
+  <main class="kicked-main page-main-spacing">
+    <section class="kicked-shell">
+      <div class="kicked-hero">
+        <div class="kicked-hero-copy">
+          <p class="kicked-kicker">THE SHAME BOARD</p>
+          <h1>Missed the Vote<span>.</span></h1>
+          <p class="kicked-subtitle">Tracking every player who did not vote before the server ballot closed.</p>
+          <p id="kicked-updated" class="kicked-updated" aria-live="polite">Loading kick history...</p>
+        </div>
+
+        <div class="kicked-summary" aria-label="Missed vote totals">
+          <article>
+            <span>Total Kicks</span>
+            <strong id="kicked-total">—</strong>
+            <small>missed votes</small>
+          </article>
+          <article>
+            <span>Kick Events</span>
+            <strong id="kicked-events">—</strong>
+            <small>server ballots</small>
+          </article>
+          <article>
+            <span>Unique Players</span>
+            <strong id="kicked-players">—</strong>
+            <small>caught sleeping</small>
+          </article>
+          <article class="kicked-summary-worst">
+            <span>Worst Offender</span>
+            <strong id="kicked-worst">—</strong>
+            <small id="kicked-worst-note">waiting for data</small>
+          </article>
+        </div>
+      </div>
+
+      <div id="kicked-error" class="kicked-error" role="alert" hidden></div>
+
+      <section class="kicked-content-grid">
+        <article class="kicked-panel kicked-chart-panel" aria-labelledby="kicked-chart-title">
+          <div class="kicked-panel-heading">
+            <div>
+              <p>REPEAT OFFENDERS</p>
+              <h2 id="kicked-chart-title">Who Gets Kicked the Most?</h2>
+            </div>
+            <span>All time</span>
+          </div>
+          <div id="kicked-chart" class="kicked-chart" aria-live="polite"></div>
+        </article>
+
+        <article class="kicked-panel kicked-ranking-panel" aria-labelledby="kicked-ranking-title">
+          <div class="kicked-panel-heading">
+            <div>
+              <p>FULL STANDINGS</p>
+              <h2 id="kicked-ranking-title">Shame Rankings</h2>
+            </div>
+            <span id="kicked-ranking-count">0 players</span>
+          </div>
+          <ol id="kicked-ranking" class="kicked-ranking"></ol>
+        </article>
+      </section>
+
+      <section class="kicked-panel kicked-history-panel" aria-labelledby="kicked-history-title">
+        <div class="kicked-panel-heading kicked-history-heading">
+          <div>
+            <p>THE RECEIPTS</p>
+            <h2 id="kicked-history-title">Recent Kick History</h2>
+          </div>
+          <label class="kicked-filter">
+            <span class="sr-only">Filter kick history by player</span>
+            <input id="kicked-filter" type="search" autocomplete="off" placeholder="Filter by player...">
+          </label>
+        </div>
+        <div id="kicked-history" class="kicked-history" aria-live="polite"></div>
+        <p id="kicked-history-empty" class="kicked-empty" hidden>No kick events match that player.</p>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

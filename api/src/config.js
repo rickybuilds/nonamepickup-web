@@ -13,6 +13,7 @@ const DATA_DIR = process.env.TFCBOT_DATA_DIR || "/root/tfcbot";
 const ELO_DB = process.env.ELO_DB || path.join(DATA_DIR, "elo.db");
 const SUPPORTERS_FILE = process.env.SUPPORTERS_FILE || path.join(DATA_DIR, "supporters.json");
 const QUEUE_FILE = process.env.QUEUE_FILE || path.join(DATA_DIR, "queue.json");
+const KICKED_FILE = process.env.KICKED_FILE || path.join(DATA_DIR, "kicked.json");
 // TODO(production): TRUST_PROXY must match the real proxy hop topology or client IPs and rate limits can be unreliable.
 const TRUST_PROXY = process.env.TRUST_PROXY === "true" ? 1 : false;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "";
@@ -38,6 +39,7 @@ module.exports = {
   ELO_DB,
   SUPPORTERS_FILE,
   QUEUE_FILE,
+  KICKED_FILE,
   TRUST_PROXY,
   CORS_ORIGIN,
   API_RATE_LIMIT,
