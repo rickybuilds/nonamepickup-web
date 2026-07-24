@@ -86,6 +86,22 @@ document.addEventListener("DOMContentLoaded", () => {
     empty.hidden = filtered.length > 0;
   }
 
+  function renderCoverageRange(events) {
+    const earliest = events.reduce((oldest, event) => {
+      const value = Number(event.timestamp_ms) || Date.parse(event.timestamp || "");
+      if (!Number.isFinite(value)) return oldest;
+      return oldest == null || value < oldest ? value : oldest;
+    }, null);
+
+    document.getElementById("kicked-chart-range").textContent = earliest == null
+      ? "Since records began"
+      : `Since ${new Date(earliest).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        })}`;
+  }
+
   async function loadKicked() {
     const error = document.getElementById("kicked-error");
     const payload = await fetchJSON("/api/kicked");
@@ -100,6 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const summary = payload.summary || {};
     const leaderboard = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
     state.events = Array.isArray(payload.events) ? payload.events : [];
+    renderCoverageRange(state.events);
 
     document.getElementById("kicked-total").textContent = number.format(summary.missed_votes || 0);
     document.getElementById("kicked-events").textContent = number.format(summary.kick_events || 0);
