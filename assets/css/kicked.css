@@ -7,6 +7,8 @@
   --page-atmosphere-right: rgba(77, 166, 255, .07);
   --page-glow-left: rgba(77, 166, 255, .14);
   --page-glow-right: rgba(77, 166, 255, .10);
+  --page-hero-accent: rgba(77, 166, 255, .24);
+  --page-hero-accent-2: rgba(77, 166, 255, 0);
   position: relative;
   min-height: 100vh;
   overflow-x: clip;
@@ -55,10 +57,55 @@
 }
 
 .kicked-hero {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(380px, .78fr) minmax(660px, 1.22fr);
   gap: clamp(22px, 3vw, 50px);
-  align-items: center;
+  align-items: start;
+  align-content: start;
+  min-height: 230px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  padding: clamp(24px, 2.4vw, 38px);
+  border: 1px solid rgba(77, 166, 255, .26);
+  border-radius: 28px;
+  background:
+    linear-gradient(90deg, rgba(3, 7, 17, .97), rgba(3, 7, 17, .82) 42%, rgba(3, 7, 17, .46) 68%, rgba(3, 7, 17, .82)),
+    radial-gradient(circle at 18% 25%, var(--page-hero-accent), transparent 42%),
+    radial-gradient(circle at 86% 18%, var(--page-hero-accent-2), transparent 36%),
+    var(--page-hero-image) center / cover no-repeat,
+    var(--surface-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .045),
+    0 26px 70px rgba(0, 0, 0, .36),
+    0 0 48px rgba(77, 166, 255, .10);
+}
+
+.kicked-hero::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 18% 24%, var(--page-hero-accent), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, .04), transparent 36%);
+  opacity: .46;
+  pointer-events: none;
+  content: "";
+}
+
+.kicked-hero::after {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 0;
+  height: 42%;
+  background: linear-gradient(180deg, transparent, rgba(3, 7, 17, .88));
+  pointer-events: none;
+  content: "";
+}
+
+.kicked-hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .kicked-kicker,
@@ -170,7 +217,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(330px, .55fr);
   gap: 18px;
-  margin-top: 24px;
+  margin-top: 0;
 }
 
 .kicked-panel {
