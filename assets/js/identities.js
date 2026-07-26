@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <td data-label="SteamID"><span class="identities-mono">${escapeHtml(steamId)}</span></td>
           <td data-label="Discord ID"><span class="${unlinked ? "identities-unlinked-label" : "identities-mono"}">${escapeHtml(discordId)}</span></td>
           <td data-label="Current IP">${ipButton(player.current_ip, state.sharedIps[player.current_ip])}</td>
-          <td data-label="Current Server">${escapeHtml(text(player.current_server))}</td>
+          <td data-label="Last Server Seen In">${escapeHtml(text(player.current_server))}</td>
           <td data-label="Connections">${number.format(Number(player.connection_count || 0))}</td>
           <td data-label="First Seen"><time>${escapeHtml(formatDate(player.first_seen))}</time></td>
           <td data-label="Last Seen"><time>${escapeHtml(formatDate(player.last_seen))}</time></td>
@@ -143,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ["SteamID", text(player.steam_id)],
       ["Discord ID", text(player.discord_id, "Not linked")],
       ["Current IP", text(player.current_ip)],
-      ["Current Server", text(player.current_server)],
+      ["Last Server Seen In", text(player.current_server)],
       ["Connections", number.format(Number(player.connection_count || 0))],
       ["First Seen", formatDate(player.first_seen)],
       ["Last Seen", formatDate(player.last_seen)]
