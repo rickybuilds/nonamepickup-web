@@ -18,7 +18,7 @@
   <script src="assets/js/identities.js?v=20260726a" defer></script>
 </head>
 
-<body class="identities-page">
+<body class="identities-page speedruns-page">
   <header class="site-header">
     <div class="site-header-inner">
       <div class="nn-logo" aria-label="NoName TFC">
@@ -51,33 +51,30 @@
     </div>
   </header>
 
-  <main class="identities-main page-main-spacing">
-    <section class="identities-shell">
-      <div class="identities-hero">
-        <div>
-          <p class="identities-kicker">CONNECTION HISTORY</p>
-          <h1>Player Tracker<span>.</span></h1>
-          <p class="identities-subtitle">Search players by name, SteamID, Discord ID, or IP address across the TFC servers.</p>
-          <p id="identities-status" class="identities-status" aria-live="polite">Loading player records...</p>
+  <main class="identities-main speedrun-main">
+    <section class="identities-shell speedrun-shell">
+      <div class="speedrun-hero">
+        <div class="speedrun-hero-copy">
+          <p class="speedrun-kicker">CONNECTION HISTORY</p>
+          <h1>TFC Tracker</h1>
+          <p class="speedrun-subtitle">Search players by name, SteamID, Discord ID, or IP address across the TFC servers.</p>
+          <p id="identities-status" class="speedrun-updated" aria-live="polite">Loading player records...</p>
         </div>
 
-        <div class="identities-summary" aria-label="Player tracker totals">
-          <article>
+        <section class="speedrun-summary" aria-label="Player tracker totals">
+          <article class="matches2-kpi">
             <span>Known Players</span>
             <strong id="identities-total">—</strong>
-            <small>unique SteamIDs</small>
           </article>
-          <article class="identities-summary-warning">
+          <article class="matches2-kpi">
             <span>Unlinked Players</span>
             <strong id="identities-unlinked">—</strong>
-            <small>no Discord ID</small>
           </article>
-          <article>
+          <article class="matches2-kpi">
             <span>Connections</span>
             <strong id="identities-connections">—</strong>
-            <small>recorded joins</small>
           </article>
-        </div>
+        </section>
       </div>
 
       <div id="identities-error" class="identities-error" role="alert" hidden></div>
