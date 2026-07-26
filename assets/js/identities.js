@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
           class="${unlinked ? "identity-unlinked" : ""}"
           data-steam-id="${escapeAttr(steamId)}"
           tabindex="0"
-          aria-label="Open identity details for ${escapeAttr(text(player.current_name, steamId))}"
+          aria-label="Open player details for ${escapeAttr(text(player.current_name, steamId))}"
         >
           <td data-label="Player"><strong>${escapeHtml(text(player.current_name, "Unknown player"))}</strong></td>
           <td data-label="SteamID"><span class="identities-mono">${escapeHtml(steamId)}</span></td>
@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const payload = await fetchJSON(`/api/player-identities/${encodeURIComponent(steamId)}`);
     if (!payload.ok || !payload.player) {
-      content.innerHTML = `<p class="identities-modal-error">Player identity details could not be loaded.</p>`;
+      content.innerHTML = `<p class="identities-modal-error">Player details could not be loaded.</p>`;
       return;
     }
 
@@ -224,8 +224,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const error = document.getElementById("identities-error");
     if (!payload.ok || !Array.isArray(payload.data)) {
       error.hidden = false;
-      error.textContent = "The player identity database could not be loaded right now.";
-      document.getElementById("identities-status").textContent = "Identity records unavailable";
+      error.textContent = "The player tracker could not be loaded right now.";
+      document.getElementById("identities-status").textContent = "Player records unavailable";
       body.innerHTML = `<tr><td colspan="10" class="identities-empty">Unable to load identities.</td></tr>`;
       return;
     }
@@ -244,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("identities-unlinked").textContent = number.format(unlinked);
     document.getElementById("identities-connections").textContent = number.format(connections);
     document.getElementById("identities-status").textContent =
-      `${number.format(state.players.length)} identity records loaded`;
+      `${number.format(state.players.length)} player records loaded`;
     renderRows();
   }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="NoName TFC player identity database for server administration.">
+  <meta name="description" content="NoName TFC player and connection history tracker.">
   <meta name="robots" content="noindex,nofollow">
   <title>NoName TFC Pickups | Player Tracker</title>
 
@@ -55,13 +55,13 @@
     <section class="identities-shell">
       <div class="identities-hero">
         <div>
-          <p class="identities-kicker">SERVER ADMINISTRATION</p>
-          <h1>Player Identities<span>.</span></h1>
-          <p class="identities-subtitle">Search every player identity recorded across the TFC servers.</p>
-          <p id="identities-status" class="identities-status" aria-live="polite">Loading identity records...</p>
+          <p class="identities-kicker">CONNECTION HISTORY</p>
+          <h1>Player Tracker<span>.</span></h1>
+          <p class="identities-subtitle">Search players by name, SteamID, Discord ID, or IP address across the TFC servers.</p>
+          <p id="identities-status" class="identities-status" aria-live="polite">Loading player records...</p>
         </div>
 
-        <div class="identities-summary" aria-label="Identity totals">
+        <div class="identities-summary" aria-label="Player tracker totals">
           <article>
             <span>Known Players</span>
             <strong id="identities-total">—</strong>
@@ -85,11 +85,11 @@
       <section class="identities-panel" aria-labelledby="identities-table-title">
         <div class="identities-toolbar">
           <div>
-            <p>IDENTITY DIRECTORY</p>
-            <h2 id="identities-table-title">All Players</h2>
+            <p>PLAYER LOOKUP</p>
+            <h2 id="identities-table-title">All Player Records</h2>
           </div>
           <label class="identities-filter">
-            <span class="sr-only">Search player identities</span>
+            <span class="sr-only">Search player records</span>
             <input
               id="identities-filter"
               type="search"
@@ -130,8 +130,8 @@
     <div class="identities-modal-shell">
       <header class="identities-modal-header">
         <div>
-          <p>PLAYER INVESTIGATION</p>
-          <h2 id="identity-modal-title">Player Identity</h2>
+          <p>PLAYER LOOKUP</p>
+          <h2 id="identity-modal-title">Player Details</h2>
         </div>
         <button class="identities-modal-close" type="button" data-close-modal aria-label="Close player details">×</button>
       </header>
@@ -143,7 +143,7 @@
     <div class="identities-modal-shell">
       <header class="identities-modal-header">
         <div>
-          <p>SHARED ADDRESS</p>
+          <p>IP LOOKUP</p>
           <h2 id="ip-modal-title">IP History</h2>
         </div>
         <button class="identities-modal-close" type="button" data-close-modal aria-label="Close IP history">×</button>
