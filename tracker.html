@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NoName TFC player identity database for server administration.">
+  <meta name="robots" content="noindex,nofollow">
+  <title>NoName TFC Pickups | Player Tracker</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/identities.css?v=20260726a">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script src="assets/js/main.js?v=20260723kickedhero1" defer></script>
+  <script src="assets/js/identities.js?v=20260726a" defer></script>
+</head>
+
+<body class="identities-page">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a>
+        <a href="speedruns.html">Speedruns</a>
+        <a href="live.html" class="nav-live">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+      </nav>
+
+      <input
+        id="global-search"
+        type="text"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="Search players..."
+        aria-label="Search players"
+        class="site-search"
+      >
+    </div>
+  </header>
+
+  <main class="identities-main page-main-spacing">
+    <section class="identities-shell">
+      <div class="identities-hero">
+        <div>
+          <p class="identities-kicker">SERVER ADMINISTRATION</p>
+          <h1>Player Identities<span>.</span></h1>
+          <p class="identities-subtitle">Search every player identity recorded across the TFC servers.</p>
+          <p id="identities-status" class="identities-status" aria-live="polite">Loading identity records...</p>
+        </div>
+
+        <div class="identities-summary" aria-label="Identity totals">
+          <article>
+            <span>Known Players</span>
+            <strong id="identities-total">—</strong>
+            <small>unique SteamIDs</small>
+          </article>
+          <article class="identities-summary-warning">
+            <span>Unlinked Players</span>
+            <strong id="identities-unlinked">—</strong>
+            <small>no Discord ID</small>
+          </article>
+          <article>
+            <span>Connections</span>
+            <strong id="identities-connections">—</strong>
+            <small>recorded joins</small>
+          </article>
+        </div>
+      </div>
+
+      <div id="identities-error" class="identities-error" role="alert" hidden></div>
+
+      <section class="identities-panel" aria-labelledby="identities-table-title">
+        <div class="identities-toolbar">
+          <div>
+            <p>IDENTITY DIRECTORY</p>
+            <h2 id="identities-table-title">All Players</h2>
+          </div>
+          <label class="identities-filter">
+            <span class="sr-only">Search player identities</span>
+            <input
+              id="identities-filter"
+              type="search"
+              autocomplete="off"
+              placeholder="Name, SteamID, Discord ID, or IP..."
+            >
+          </label>
+          <span id="identities-visible-count">Loading players...</span>
+        </div>
+
+        <div class="identities-table-wrap">
+          <table class="identities-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>SteamID</th>
+                <th>Discord ID</th>
+                <th>Current IP</th>
+                <th>Current Server</th>
+                <th>Connections</th>
+                <th>First Seen</th>
+                <th>Last Seen</th>
+                <th>Alias Count</th>
+                <th>IP Count</th>
+              </tr>
+            </thead>
+            <tbody id="identities-body">
+              <tr><td colspan="10" class="identities-empty">Loading player identities...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="identities-empty" class="identities-empty identities-no-results" hidden>No identities match that search.</p>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="identity-modal" class="identities-modal" aria-labelledby="identity-modal-title">
+    <div class="identities-modal-shell">
+      <header class="identities-modal-header">
+        <div>
+          <p>PLAYER INVESTIGATION</p>
+          <h2 id="identity-modal-title">Player Identity</h2>
+        </div>
+        <button class="identities-modal-close" type="button" data-close-modal aria-label="Close player details">×</button>
+      </header>
+      <div id="identity-modal-content" class="identities-modal-content"></div>
+    </div>
+  </dialog>
+
+  <dialog id="ip-modal" class="identities-modal identities-ip-modal" aria-labelledby="ip-modal-title">
+    <div class="identities-modal-shell">
+      <header class="identities-modal-header">
+        <div>
+          <p>SHARED ADDRESS</p>
+          <h2 id="ip-modal-title">IP History</h2>
+        </div>
+        <button class="identities-modal-close" type="button" data-close-modal aria-label="Close IP history">×</button>
+      </header>
+      <div id="ip-modal-content" class="identities-modal-content"></div>
+    </div>
+  </dialog>
+</body>
+</html>

@@ -13,6 +13,7 @@ const { createAnalyticsRouter } = require("./analytics");
 const { createHomeRouter } = require("./home");
 const { createSpeedrunsRouter } = require("./speedruns");
 const { createStatusRouter } = require("./status");
+const { createPlayerIdentitiesRouter } = require("./playerIdentities");
 
 function registerRoutes(app, {
   leaderboardHandler,
@@ -78,6 +79,12 @@ app.use("/api", createPlayersRouter({
   serializeMatch,
   parseIdList,
   cached
+}));
+app.use("/api", createPlayerIdentitiesRouter({
+  db,
+  cleanString,
+  sendError,
+  logRouteError
 }));
 // Map player breakdown
 // Map matches
