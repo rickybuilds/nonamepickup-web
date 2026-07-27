@@ -458,8 +458,8 @@
           <strong>${safeTitle}</strong>
           <small>${subtitleHtml || escapeHtml(subtitle || "")}</small>
         </div>
-        ${actionHtml}
         <div class="speedrun-list-value">${escapeHtml(value || "-")}</div>
+        ${actionHtml}
       </article>
     `;
   }
@@ -953,8 +953,8 @@
               <span>${worldRecordRunnerLink(row)}</span>
             </div>
           </div>
-          ${renderAmmoSummary(worldRecordRun, usedAmmo)}
           ${replayAction(recordReplay)}
+          ${renderAmmoSummary(worldRecordRun, usedAmmo)}
           <div class="speedrun-map-metric"><strong>${compact(row.totalRuns)}</strong><span>runs</span></div>
           <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRunners)}</strong><span>runners</span></div>
           <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRecords)}</strong><span>records</span></div>
@@ -965,7 +965,7 @@
 
     setHtml("sr-map-grid", mapRows ? `
       <div class="speedrun-map-columns" aria-hidden="true">
-        <span>Map / class</span><span>World record / holder</span><span>Ammo used</span><span>Replay</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
+        <span>Map / class</span><span>World record / holder</span><span>Replay</span><span>Ammo used</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
       </div>
       <div class="speedrun-map-results">${mapRows}</div>
     ` : empty("No speedrun maps found."));
@@ -1018,8 +1018,8 @@
             <strong>${runnerLink(row)}${status}</strong>
             <span><a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a> · ${classBadge(row)}</span>
           </div>
-          ${replayAction(row)}
           <div class="speedrun-activity-value"><strong>${time(row)}</strong><span>${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}</span></div>
+          ${replayAction(row)}
           <span class="speedrun-row-arrow" aria-hidden="true">›</span>
         </article>
       `;
@@ -1061,8 +1061,8 @@
             <a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a>
             <span>${runnerLink(row)} · ${classBadge(row)}</span>
           </div>
-          ${replayAction(row)}
           <div class="speedrun-activity-value"><strong>${time(row, "bestTime")}</strong><span>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</span></div>
+          ${replayAction(row)}
           <span class="speedrun-row-arrow" aria-hidden="true">›</span>
         </article>
       `;
