@@ -122,7 +122,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 10px;
+  width: 76px;
+  min-height: 28px;
   padding: 5px 8px;
   border: 1px solid rgba(56, 189, 248, .35);
   border-radius: 6px;
@@ -133,6 +134,24 @@
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+}
+
+.speedrun-replay-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  min-width: 76px;
+}
+
+.speedrun-replay-cell,
+.speedrun-replay-heading {
+  width: 108px;
+  text-align: center !important;
+}
+
+.speedrun-replay-cell .speedrun-replay-action {
+  margin-inline: auto;
 }
 
 .speedrun-list-row a,
@@ -247,7 +266,7 @@
 .speedrun-map-columns,
 .speedrun-map-result {
   display: grid;
-  grid-template-columns: minmax(180px, 1.1fr) minmax(155px, .85fr) minmax(300px, 1.35fr) 48px 48px 48px 18px;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(155px, .85fr) minmax(230px, 1.35fr) 76px 48px 48px 48px 18px;
   align-items: center;
   gap: 10px;
 }
@@ -263,8 +282,12 @@
   text-transform: uppercase;
 }
 
-.speedrun-map-columns span:nth-child(n + 4) {
+.speedrun-map-columns span:nth-child(n + 5) {
   text-align: right;
+}
+
+.speedrun-map-columns span:nth-child(4) {
+  text-align: center;
 }
 
 .speedrun-map-results {
@@ -398,14 +421,6 @@
   align-items: center;
   gap: 5px;
   min-width: 0;
-}
-
-.speedrun-map-record-actions .speedrun-replay-link {
-  min-height: 20px;
-  margin-left: 0;
-  padding: 3px 5px;
-  border-radius: 5px;
-  font-size: 7px;
 }
 
 .speedrun-ammo {
@@ -652,11 +667,11 @@
 }
 
 .speedrun-activity-row {
-  grid-template-columns: minmax(0, 1fr) auto 12px;
+  grid-template-columns: minmax(0, 1fr) 76px auto 12px;
 }
 
 .speedrun-world-record-row {
-  grid-template-columns: 58px minmax(0, 1fr) auto 12px;
+  grid-template-columns: 58px minmax(0, 1fr) 76px auto 12px;
 }
 
 .speedrun-runner-row {
@@ -733,14 +748,6 @@
 .speedrun-run-status.wr {
   border-color: rgba(251, 191, 36, .35);
   color: #fbbf24;
-}
-
-.speedrun-dashboard-list .speedrun-replay-link {
-  min-height: 22px;
-  margin-left: 4px;
-  padding: 3px 6px;
-  border-radius: 5px;
-  font-size: 7px;
 }
 
 .speedrun-runner-rank {
@@ -918,6 +925,10 @@
   align-items: center;
   min-height: 62px;
   padding: 16px 18px;
+}
+
+.speedrun-list-row.has-action {
+  grid-template-columns: minmax(0, 1fr) 76px auto;
 }
 
 .speedrun-list-row strong {
@@ -1330,9 +1341,21 @@
   }
 
   .speedrun-summary,
-  .speedrun-list-row,
   .speedrun-class-toggles {
     grid-template-columns: 1fr;
+  }
+
+  .speedrun-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .speedrun-list-row.has-action {
+    grid-template-columns: minmax(0, 1fr) 76px;
+  }
+
+  .speedrun-list-row.has-action .speedrun-list-value {
+    grid-column: 1;
+    text-align: left;
   }
 
   .progression .speedrun-list-row {
@@ -1393,8 +1416,8 @@
   }
 
   .speedrun-map-result {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
+    grid-template-columns: minmax(0, 1fr) 76px;
+    grid-template-rows: auto auto auto;
     gap: 9px 12px;
     min-height: 88px;
     padding: 11px 13px;
@@ -1411,10 +1434,12 @@
   }
 
   .speedrun-map-record {
-    grid-column: 2;
-    grid-row: 1;
-    justify-items: end;
-    text-align: right;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    text-align: left;
   }
 
   .speedrun-ammo {
@@ -1422,13 +1447,13 @@
   }
 
   .speedrun-map-result.has-ammo {
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
   }
 
   .speedrun-map-result.has-ammo .speedrun-ammo {
     display: flex;
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
     min-height: 0;
     padding: 6px 0 1px;
     border: 0;
@@ -1439,7 +1464,7 @@
   .speedrun-map-metric {
     display: flex;
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 3;
     align-items: baseline;
     justify-self: start;
     gap: 4px;
@@ -1447,7 +1472,7 @@
 
   .speedrun-map-result.has-ammo .speedrun-map-metric,
   .speedrun-map-result.has-ammo > .speedrun-row-arrow {
-    grid-row: 3;
+    grid-row: 4;
   }
 
   .speedrun-map-metric span {
@@ -1460,7 +1485,13 @@
 
   .speedrun-map-result > .speedrun-row-arrow {
     grid-column: 2;
-    grid-row: 2;
+    grid-row: 3;
+    justify-self: end;
+  }
+
+  .speedrun-map-result > .speedrun-replay-action {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .speedrun-ranked-maps,
@@ -1469,7 +1500,7 @@
   }
 
   .speedrun-world-record-row {
-    grid-template-columns: 48px minmax(0, 1fr) auto 10px;
+    grid-template-columns: 48px minmax(0, 1fr) 76px auto 10px;
   }
 
   .speedrun-world-record-row .speedrun-map-thumb.small {
@@ -1502,8 +1533,35 @@
     max-width: 110px;
   }
 
+  .speedrun-activity-row,
   .speedrun-world-record-row {
-    grid-template-columns: minmax(0, 1fr) auto 10px;
+    grid-template-columns: minmax(0, 1fr) 76px;
+    grid-template-rows: auto auto;
+  }
+
+  .speedrun-activity-row > .speedrun-replay-action,
+  .speedrun-world-record-row > .speedrun-replay-action {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .speedrun-activity-row > .speedrun-activity-value,
+  .speedrun-world-record-row > .speedrun-activity-value {
+    grid-column: 1;
+    grid-row: 2;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .speedrun-activity-row > .speedrun-row-arrow,
+  .speedrun-world-record-row > .speedrun-row-arrow {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .speedrun-world-record-row {
+    grid-template-columns: minmax(0, 1fr) 76px;
   }
 
   .speedrun-world-record-row > .speedrun-map-thumb {

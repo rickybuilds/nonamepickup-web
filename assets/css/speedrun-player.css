@@ -645,6 +645,15 @@
     white-space: normal;
   }
 
+  .speedrun-player-pb-table td.speedrun-replay-cell {
+    width: auto;
+    text-align: left !important;
+  }
+
+  .speedrun-player-pb-table .speedrun-replay-cell .speedrun-replay-action {
+    margin-inline: 0;
+  }
+
   .speedrun-player-pb-table td::before {
     content: attr(data-label);
     color: #64748b;

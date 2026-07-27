@@ -186,6 +186,11 @@
     return `<a class="speedrun-replay-link" href="${escapeAttr(replayUrl(row))}">${escapeHtml(label)}</a>`;
   }
 
+  function replayAction(row, className = "") {
+    const classes = ["speedrun-replay-action", className].filter(Boolean).join(" ");
+    return `<div class="${classes}">${replayLink(row)}</div>`;
+  }
+
   function mapPreviewUrl(map) {
     return `https://tfcmaps.net/images/maps/source/${encodeURIComponent(map || "")}.jpg`;
   }
@@ -443,16 +448,17 @@
     return `<div class="speedrun-empty">${escapeHtml(message)}</div>`;
   }
 
-  function listRow({ title, titleHtml, subtitle, subtitleHtml, value, href }) {
+  function listRow({ title, titleHtml, subtitle, subtitleHtml, value, href, actionHtml = "" }) {
     const safeTitle = titleHtml || (href
       ? `<a href="${escapeAttr(href)}">${escapeHtml(title)}</a>`
       : escapeHtml(title));
     return `
-      <article class="speedrun-list-row analytics-card">
+      <article class="speedrun-list-row analytics-card${actionHtml ? " has-action" : ""}">
         <div>
           <strong>${safeTitle}</strong>
           <small>${subtitleHtml || escapeHtml(subtitle || "")}</small>
         </div>
+        ${actionHtml}
         <div class="speedrun-list-value">${escapeHtml(value || "-")}</div>
       </article>
     `;
@@ -461,18 +467,20 @@
   function renderRuns(targetId, rows, emptyText) {
     setHtml(targetId, (rows || []).map(row => listRow({
       title: row.map || "Unknown map",
-      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}${hasReplay(row) ? ` &middot; ${replayLink(row)}` : ""}`,
+      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}`,
       value: time(row),
-      href: mapUrl(row.map)
+      href: mapUrl(row.map),
+      actionHtml: replayAction(row)
     })).join("") || empty(emptyText));
   }
 
   function renderRecords(targetId, rows, emptyText) {
     setHtml(targetId, (rows || []).map(row => listRow({
       title: row.map || "Unknown map",
-      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(achievedTimestamp(row)))}${hasReplay(row) ? ` &middot; ${replayLink(row)}` : ""}`,
+      subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(achievedTimestamp(row)))}`,
       value: time(row, "bestTime"),
-      href: mapUrl(row.map)
+      href: mapUrl(row.map),
+      actionHtml: replayAction(row)
     })).join("") || empty(emptyText));
   }
 
@@ -578,14 +586,15 @@
         <tr>
           <td data-label="Map"><a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(row.map || "-")}</a><small>${escapeHtml(mapCategory(row, mapLookup))}</small></td>
           <td data-label="Class">${escapeHtml(classText(row))}</td>
-          <td data-label="PB Time" class="speedrun-time">${escapeHtml(time(row, "bestTime"))}${replayLink(row)}</td>
+          <td data-label="PB Time" class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
+          <td data-label="Replay" class="speedrun-replay-cell">${replayAction(row)}</td>
           <td data-label="Rank">${rankBadge(row)}</td>
           <td data-label="Total"><span class="speedrun-total-runners">/ ${escapeHtml(row.totalRunners ?? row.total_runners ?? "-")}</span></td>
           <td data-label="WR Gap" class="${Number(row.wrGapMs ?? row.wr_gap_ms) <= 0 ? "speedrun-wr-gap is-wr" : "speedrun-wr-gap"}">${escapeHtml(formatGap(row.wrGapMs ?? row.wr_gap_ms))}</td>
           <td data-label="Improvement" class="speedrun-improvement">${escapeHtml(formatImprovementValue(row.improvementMs ?? row.improvement_ms))}</td>
           <td data-label="Set">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
-      `).join("") || `<tr><td colspan="8">${empty("No personal bests match these filters.")}</td></tr>`);
+      `).join("") || `<tr><td colspan="9">${empty("No personal bests match these filters.")}</td></tr>`);
     };
 
     [classFilter, categoryFilter, rankFilter].forEach(control => {
@@ -942,10 +951,10 @@
             <strong>${time(row, "worldRecordTime")}</strong>
             <div class="speedrun-map-record-actions">
               <span>${worldRecordRunnerLink(row)}</span>
-              ${hasReplay(recordReplay) ? replayLink(recordReplay) : ""}
             </div>
           </div>
           ${renderAmmoSummary(worldRecordRun, usedAmmo)}
+          ${replayAction(recordReplay)}
           <div class="speedrun-map-metric"><strong>${compact(row.totalRuns)}</strong><span>runs</span></div>
           <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRunners)}</strong><span>runners</span></div>
           <div class="speedrun-map-metric secondary"><strong>${compact(row.totalRecords)}</strong><span>records</span></div>
@@ -956,7 +965,7 @@
 
     setHtml("sr-map-grid", mapRows ? `
       <div class="speedrun-map-columns" aria-hidden="true">
-        <span>Map / class</span><span>World record / holder</span><span>Ammo used</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
+        <span>Map / class</span><span>World record / holder</span><span>Ammo used</span><span>Replay</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
       </div>
       <div class="speedrun-map-results">${mapRows}</div>
     ` : empty("No speedrun maps found."));
@@ -1007,8 +1016,9 @@
         <article class="speedrun-activity-row" role="link" tabindex="0" data-row-href="${escapeAttr(href)}">
           <div class="speedrun-activity-main">
             <strong>${runnerLink(row)}${status}</strong>
-            <span><a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a> · ${classBadge(row)}${hasReplay(row) ? replayLink(row) : ""}</span>
+            <span><a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a> · ${classBadge(row)}</span>
           </div>
+          ${replayAction(row)}
           <div class="speedrun-activity-value"><strong>${time(row)}</strong><span>${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}</span></div>
           <span class="speedrun-row-arrow" aria-hidden="true">›</span>
         </article>
@@ -1049,8 +1059,9 @@
           ${mapThumbnail(row.map, "small")}
           <div class="speedrun-world-record-main">
             <a href="${escapeAttr(href)}">${escapeHtml(row.map || "Unknown map")}</a>
-            <span>${runnerLink(row)} · ${classBadge(row)}${hasReplay(row) ? replayLink(row) : ""}</span>
+            <span>${runnerLink(row)} · ${classBadge(row)}</span>
           </div>
+          ${replayAction(row)}
           <div class="speedrun-activity-value"><strong>${time(row, "bestTime")}</strong><span>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</span></div>
           <span class="speedrun-row-arrow" aria-hidden="true">›</span>
         </article>
@@ -1195,10 +1206,11 @@
           <td>#${compact(index + 1)}</td>
           <td>${runnerLink(row)}</td>
           <td>${escapeHtml(classText(row))}</td>
-          <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}${replayLink(row)}</td>
+          <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
+          <td class="speedrun-replay-cell">${replayAction(row)}</td>
           <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
-        `).join("") || `<tr><td colspan="5">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
+        `).join("") || `<tr><td colspan="6">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
       };
 
       classFilter?.addEventListener("change", renderLeaderboard);
