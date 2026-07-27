@@ -122,9 +122,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  min-height: 24px;
-  padding: 4px 6px;
+  width: 78px;
+  min-height: 28px;
+  padding: 5px 8px;
   border: 1px solid rgba(56, 189, 248, .35);
   border-radius: 6px;
   color: #dff7ff;
@@ -140,13 +140,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  min-width: 64px;
+  width: 78px;
+  min-width: 78px;
 }
 
 .speedrun-replay-cell,
 .speedrun-replay-heading {
-  width: 92px;
+  width: 106px;
   text-align: center !important;
 }
 
@@ -266,7 +266,7 @@
 .speedrun-map-columns,
 .speedrun-map-result {
   display: grid;
-  grid-template-columns: minmax(180px, 1.1fr) minmax(155px, .85fr) 64px minmax(230px, 1.35fr) 48px 48px 48px 18px;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(155px, .85fr) 78px minmax(230px, 1.35fr) 48px 48px 48px 18px;
   align-items: center;
   gap: 10px;
 }
@@ -667,11 +667,11 @@
 }
 
 .speedrun-activity-row {
-  grid-template-columns: minmax(0, 1fr) auto 64px 12px;
+  grid-template-columns: minmax(0, 1fr) auto 78px 12px;
 }
 
 .speedrun-world-record-row {
-  grid-template-columns: 58px minmax(0, 1fr) auto 64px 12px;
+  grid-template-columns: 58px minmax(0, 1fr) auto 78px 12px;
 }
 
 .speedrun-runner-row {
@@ -928,7 +928,7 @@
 }
 
 .speedrun-list-row.has-action {
-  grid-template-columns: minmax(0, 1fr) auto 64px;
+  grid-template-columns: minmax(0, 1fr) auto 78px;
 }
 
 .speedrun-list-row strong {
@@ -1350,7 +1350,7 @@
   }
 
   .speedrun-list-row.has-action {
-    grid-template-columns: minmax(0, 1fr) 64px;
+    grid-template-columns: minmax(0, 1fr) 78px;
   }
 
   .speedrun-list-row.has-action > :first-child {
@@ -1426,7 +1426,7 @@
   }
 
   .speedrun-map-result {
-    grid-template-columns: minmax(0, 1fr) 64px;
+    grid-template-columns: minmax(0, 1fr) 78px;
     grid-template-rows: auto auto auto;
     gap: 9px 12px;
     min-height: 88px;
@@ -1510,7 +1510,7 @@
   }
 
   .speedrun-world-record-row {
-    grid-template-columns: 48px minmax(0, 1fr) auto 64px 10px;
+    grid-template-columns: 48px minmax(0, 1fr) auto 78px 10px;
   }
 
   .speedrun-world-record-row .speedrun-map-thumb.small {
@@ -1545,7 +1545,7 @@
 
   .speedrun-activity-row,
   .speedrun-world-record-row {
-    grid-template-columns: minmax(0, 1fr) 64px;
+    grid-template-columns: minmax(0, 1fr) 78px;
     grid-template-rows: auto auto;
   }
 
@@ -1571,7 +1571,7 @@
   }
 
   .speedrun-world-record-row {
-    grid-template-columns: minmax(0, 1fr) 64px;
+    grid-template-columns: minmax(0, 1fr) 78px;
   }
 
   .speedrun-world-record-row > .speedrun-map-thumb {
