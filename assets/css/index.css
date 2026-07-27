@@ -728,6 +728,11 @@ filter:
   min-width: 0;
 }
 
+.spotlight-row strong {
+  justify-self: stretch;
+  text-align: left;
+}
+
 .spotlight-row small {
   text-align: right;
   white-space: nowrap;
