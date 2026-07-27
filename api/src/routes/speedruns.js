@@ -1214,7 +1214,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         WHERE r.ruleset = ${CURRENT_RULESET} AND r.map = ?
         ORDER BY r.created_at DESC, r.id DESC
-        LIMIT 25
+        LIMIT 30
       `, [mapName]),
       speedrunQuery(`
         SELECT
