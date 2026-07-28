@@ -1110,7 +1110,7 @@
 
     setHtml("sr-map-grid", mapRows ? `
       <div class="speedrun-map-columns" aria-hidden="true">
-        <span>Map / class</span><span>World record / holder</span><span>Replay</span><span>Ammo used</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
+        <span>Map / class</span><span>NN // record / holder</span><span>Replay</span><span>Ammo used</span><span>Runs</span><span>Runners</span><span>Records</span><span></span>
       </div>
       <div class="speedrun-map-results">${mapRows}</div>
     ` : empty("No speedrun maps found."));
