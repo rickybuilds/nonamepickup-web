@@ -16,9 +16,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260728globalcomparison1">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260728globalcomparison2">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/speedruns.js?v=20260728globalcomparison1" defer></script>
+  <script src="assets/js/speedruns.js?v=20260728globalcomparison2" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -81,23 +81,32 @@
         </div>
       </section>
 
+      <section class="speedrun-section page-section speedrun-global-comparison-section" aria-labelledby="sr-global-comparison-title">
+        <div class="speedrun-section-heading compact">
+          <div>
+            <h2 id="sr-global-comparison-title">Global Comparison</h2>
+            <p class="speedrun-section-subtitle">Compare the selected class record with imported community baselines.</p>
+          </div>
+          <div class="speedrun-filters">
+            <select id="sr-map-class-filter" aria-label="Filter leaderboard and comparison by class">
+              <option value="">All Classes</option>
+            </select>
+          </div>
+        </div>
+        <div
+          id="sr-map-comparisons"
+          class="speedrun-global-comparison"
+          aria-live="polite"
+          aria-label="Selected class global comparison"
+        >
+          <div class="speedrun-comparison-message">Loading global comparison...</div>
+        </div>
+      </section>
+
       <section class="speedrun-section speedrun-columns speedrun-map-detail-cards">
         <div>
           <div class="speedrun-section-heading compact">
             <div><h2>Leaderboard</h2></div>
-            <div class="speedrun-filters">
-              <select id="sr-map-class-filter" aria-label="Filter leaderboard by class">
-                <option value="">All Classes</option>
-              </select>
-            </div>
-          </div>
-          <div
-            id="sr-map-comparisons"
-            class="speedrun-map-comparisons"
-            aria-live="polite"
-            aria-label="Internal and global records by class"
-          >
-            <div class="speedrun-comparison-message">Loading global comparisons...</div>
           </div>
           <div class="speedrun-table-wrap leaderboard-table-wrap">
             <table class="speedrun-table">

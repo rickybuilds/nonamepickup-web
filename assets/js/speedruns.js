@@ -274,74 +274,92 @@
     return "";
   }
 
-  function renderExternalComparison(comparison) {
-    if (!comparison?.fastestExternal) {
-      return `<div class="speedrun-comparison-empty">No external baseline available.</div>`;
+  function comparisonDifference(comparison) {
+    if (comparison?.difference?.display) {
+      return `
+        <div class="speedrun-comparison-difference ${escapeAttr(comparison.difference.relation || "")}">
+          <span>Difference</span>
+          <strong>${escapeHtml(comparison.difference.display)} sec</strong>
+          <small>Internal vs fastest external</small>
+        </div>
+      `;
+    }
+    if (comparison?.status === "no_internal") {
+      return `<div class="speedrun-comparison-outcome">External baseline available</div>`;
+    }
+    if (comparison?.status === "no_external") {
+      return `<div class="speedrun-comparison-outcome">Local record only</div>`;
+    }
+    return `<div class="speedrun-comparison-outcome">Comparison unavailable.</div>`;
+  }
+
+  function renderGlobalComparison(targetId, comparisons, selectedClass = "") {
+    if (!selectedClass) {
+      setHtml(
+        targetId,
+        `<div class="speedrun-comparison-message">Select a class to compare its internal WR with the global baseline.</div>`
+      );
+      return;
     }
 
+    const comparison = (comparisons || [])
+      .find(item => comparisonClassValue(item) === selectedClass);
+    if (!comparison) {
+      setHtml(targetId, `<div class="speedrun-comparison-message">No comparison data for this class.</div>`);
+      return;
+    }
+
+    const internal = comparison.internal;
+    const external = comparison.fastestExternal;
     const leaders = externalComparisonLeaders(comparison);
-    const label = comparison.status === "no_internal"
+    const classInfo = {
+      classId: comparison.class?.id,
+      className: comparison.class?.name
+    };
+    const externalLabel = comparison.status === "no_internal"
       ? "Fastest known time"
+      : comparison.status === "no_external"
+        ? "External baseline"
       : comparison.status === "internal_faster"
         ? "Fastest external"
         : "Global best";
-    const leaderRows = leaders.map(record => `
+    const sources = leaders.map(record => `
       <div class="speedrun-comparison-source">
         <span>${comparisonPlayer(record)}</span>
         <small>Source: ${comparisonSource(record)}</small>
       </div>
     `).join("");
-    const difference = comparison?.difference?.display
-      ? `<div class="speedrun-comparison-difference ${escapeAttr(comparison.difference.relation || "")}">
-          <span>Difference</span>
-          <strong>${escapeHtml(comparison.difference.display)} sec</strong>
-        </div>`
-      : "";
 
-    return `
-      <div class="speedrun-comparison-external">
-        <span class="speedrun-comparison-label">${escapeHtml(label)}</span>
-        <strong class="speedrun-comparison-time">${escapeHtml(comparison.fastestExternal.time?.display || "-")}</strong>
-        <div class="speedrun-comparison-sources">${leaderRows}</div>
-        ${difference}
-      </div>
-    `;
-  }
-
-  function renderMapComparisons(comparisons, selectedClass = "") {
-    const rows = selectedClass
-      ? (comparisons || []).filter(comparison => comparisonClassValue(comparison) === selectedClass)
-      : (comparisons || []);
-
-    setHtml("sr-map-comparisons", rows.map(comparison => {
-      const internal = comparison.internal;
-      const classInfo = {
-        classId: comparison.class?.id,
-        className: comparison.class?.name
-      };
-      const internalContent = internal
-        ? `
-          <span class="speedrun-comparison-label">Current Internal WR</span>
-          <strong class="speedrun-comparison-time">${escapeHtml(internal.time?.display || "-")}</strong>
-          <span class="speedrun-comparison-player">${comparisonPlayer(internal, true)}</span>
-          <small>${escapeHtml(formatDateTime(internal.achievedAt))}</small>
+    setHtml(targetId, `
+      <article class="speedrun-comparison-panel ${escapeAttr(comparison.status || "")}" data-comparison-class="${escapeAttr(selectedClass)}">
+        <div class="speedrun-comparison-panel-heading">
+          ${classBadge(classInfo)}
           ${comparisonBadge(comparison)}
-        `
-        : `
-          <span class="speedrun-comparison-label">Internal WR</span>
-          <strong class="speedrun-comparison-missing">No local record yet.</strong>
-        `;
-
-      return `
-        <article class="speedrun-comparison-row ${escapeAttr(comparison.status || "")}" data-comparison-class="${escapeAttr(comparisonClassValue(comparison))}">
-          <div class="speedrun-comparison-class">${classBadge(classInfo)}</div>
-          <div class="speedrun-comparison-internal">${internalContent}</div>
-          ${renderExternalComparison(comparison)}
-        </article>
-      `;
-    }).join("") || `<div class="speedrun-comparison-message">${
-      escapeHtml(selectedClass ? "No comparison data for this class." : "No class comparison data is available for this map.")
-    }</div>`);
+        </div>
+        <div class="speedrun-comparison-panel-body">
+          <section class="speedrun-comparison-side internal">
+            <span class="speedrun-comparison-label">Current Internal WR</span>
+            ${internal
+              ? `
+                <strong class="speedrun-comparison-time">${escapeHtml(internal.time?.display || "-")}</strong>
+                <span class="speedrun-comparison-player">${comparisonPlayer(internal, true)}</span>
+                <small>${escapeHtml(formatDateTime(internal.achievedAt))}</small>
+              `
+              : `<strong class="speedrun-comparison-missing">No local record yet.</strong>`}
+          </section>
+          ${comparisonDifference(comparison)}
+          <section class="speedrun-comparison-side external">
+            <span class="speedrun-comparison-label">${escapeHtml(externalLabel)}</span>
+            ${external
+              ? `
+                <strong class="speedrun-comparison-time">${escapeHtml(external.time?.display || "-")}</strong>
+                <div class="speedrun-comparison-sources">${sources}</div>
+              `
+              : `<strong class="speedrun-comparison-missing">No external baseline available.</strong>`}
+          </section>
+        </div>
+      </article>
+    `);
   }
 
   function mapThumbnail(map, className = "") {
@@ -1338,7 +1356,7 @@
         `).join("") || `<tr><td colspan="6">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
 
         if (comparisonResult.status === "fulfilled") {
-          renderMapComparisons(comparisons, selectedClass);
+          renderGlobalComparison("sr-map-comparisons", comparisons, selectedClass);
         } else {
           setHtml(
             "sr-map-comparisons",

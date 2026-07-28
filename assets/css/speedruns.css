@@ -853,69 +853,6 @@
   max-width: 170px;
 }
 
-.speedrun-map-comparisons {
-  display: grid;
-  gap: 9px;
-  max-height: min(58vh, 560px);
-  overflow: auto;
-  padding: 4px 6px 4px 0;
-  scrollbar-color: rgba(77, 166, 255, .36) rgba(3, 8, 20, .6);
-  scrollbar-width: thin;
-}
-
-.speedrun-map-comparisons::-webkit-scrollbar {
-  width: 9px;
-}
-
-.speedrun-map-comparisons::-webkit-scrollbar-thumb {
-  border: 2px solid rgba(3, 8, 20, .8);
-  border-radius: 999px;
-  background: rgba(77, 166, 255, .34);
-}
-
-.speedrun-map-comparisons::-webkit-scrollbar-track {
-  border-radius: 999px;
-  background: rgba(3, 8, 20, .45);
-}
-
-.speedrun-comparison-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  overflow: hidden;
-  border: 1px solid rgba(77, 166, 255, .16);
-  border-radius: 10px;
-  background: rgba(3, 8, 20, .46);
-}
-
-.speedrun-comparison-row.internal_faster {
-  border-color: rgba(52, 211, 153, .36);
-}
-
-.speedrun-comparison-row.tied {
-  border-color: rgba(250, 204, 21, .34);
-}
-
-.speedrun-comparison-class {
-  grid-column: 1;
-  padding: 8px 11px;
-  border-bottom: 1px solid rgba(148, 163, 184, .08);
-  background: rgba(15, 23, 42, .42);
-}
-
-.speedrun-comparison-internal,
-.speedrun-comparison-external {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 11px;
-}
-
-.speedrun-comparison-external {
-  border-top: 1px solid rgba(148, 163, 184, .1);
-  background: rgba(14, 165, 233, .035);
-}
-
 .speedrun-comparison-label {
   color: #64748b;
   font-size: 9px;
@@ -932,10 +869,6 @@
   font-size: 19px;
   font-weight: 950;
   line-height: 1.15;
-}
-
-.speedrun-comparison-external .speedrun-comparison-time {
-  color: #7dd3fc;
 }
 
 .speedrun-comparison-player,
@@ -963,7 +896,6 @@
   text-decoration: underline;
 }
 
-.speedrun-comparison-internal > small,
 .speedrun-comparison-source > small {
   display: block;
   margin-top: 3px;
@@ -1038,19 +970,12 @@
   color: #fef08a;
 }
 
-.speedrun-comparison-missing,
-.speedrun-comparison-empty {
+.speedrun-comparison-missing {
   margin-top: 8px;
   color: #94a3b8;
   font-size: 11px;
   font-weight: 850;
   line-height: 1.45;
-}
-
-.speedrun-comparison-empty {
-  grid-column: 1;
-  padding: 13px 11px;
-  border-top: 1px solid rgba(148, 163, 184, .1);
 }
 
 .speedrun-comparison-message {
@@ -1067,10 +992,142 @@
   color: #fda4af;
 }
 
+.speedrun-global-comparison-section .speedrun-section-heading {
+  align-items: center;
+}
+
+.speedrun-global-comparison-section .speedrun-section-subtitle {
+  margin: 5px 0 0;
+}
+
+.speedrun-global-comparison-section .speedrun-filters select {
+  min-width: 190px;
+}
+
+.speedrun-global-comparison {
+  margin-top: 16px;
+}
+
+.speedrun-comparison-panel {
+  overflow: hidden;
+  border: 1px solid rgba(77, 166, 255, .2);
+  border-radius: 12px;
+  background: rgba(3, 8, 20, .48);
+}
+
+.speedrun-comparison-panel.internal_faster {
+  border-color: rgba(52, 211, 153, .36);
+}
+
+.speedrun-comparison-panel.tied {
+  border-color: rgba(250, 204, 21, .34);
+}
+
+.speedrun-comparison-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, .09);
+  background: rgba(15, 23, 42, .42);
+}
+
+.speedrun-comparison-panel-heading .speedrun-comparison-badge {
+  margin-top: 0;
+}
+
+.speedrun-comparison-panel-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, .58fr) minmax(0, 1fr);
+  min-height: 124px;
+}
+
+.speedrun-comparison-side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 18px 22px;
+}
+
+.speedrun-comparison-side.external {
+  background: rgba(14, 165, 233, .035);
+}
+
+.speedrun-comparison-side.external .speedrun-comparison-time {
+  color: #7dd3fc;
+}
+
+.speedrun-comparison-side > small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.speedrun-comparison-panel .speedrun-comparison-time {
+  font-size: clamp(20px, 2vw, 28px);
+}
+
+.speedrun-comparison-panel .speedrun-comparison-sources {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.speedrun-comparison-panel .speedrun-comparison-source + .speedrun-comparison-source {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.speedrun-comparison-panel .speedrun-comparison-difference {
+  display: flex;
+  width: auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 18px;
+  border-top: 0;
+  border-right: 1px solid rgba(148, 163, 184, .1);
+  border-left: 1px solid rgba(148, 163, 184, .1);
+  background: rgba(15, 23, 42, .24);
+  text-align: center;
+}
+
+.speedrun-comparison-panel .speedrun-comparison-difference strong {
+  font-size: 18px;
+}
+
+.speedrun-comparison-panel .speedrun-comparison-difference small {
+  color: #475569;
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.speedrun-comparison-outcome {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border-right: 1px solid rgba(148, 163, 184, .1);
+  border-left: 1px solid rgba(148, 163, 184, .1);
+  background: rgba(15, 23, 42, .24);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.45;
+  text-align: center;
+}
+
 .leaderboard-table-wrap {
-  margin-top: 12px;
-  padding-top: 12px !important;
-  border-top: 1px solid rgba(148, 163, 184, .1);
+  margin-top: 0;
+  padding-top: 4px !important;
+  border-top: 0;
 }
 
 .speedrun-columns > div {
@@ -1565,8 +1622,36 @@
     grid-template-columns: 1fr;
   }
 
-  .speedrun-map-comparisons {
-    max-height: none;
+  .speedrun-global-comparison-section .speedrun-filters select {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .speedrun-comparison-panel-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .speedrun-comparison-panel-body {
+    grid-template-columns: 1fr;
+  }
+
+  .speedrun-comparison-side {
+    padding: 16px;
+  }
+
+  .speedrun-comparison-panel .speedrun-comparison-difference,
+  .speedrun-comparison-outcome {
+    min-height: 86px;
+    border-top: 1px solid rgba(148, 163, 184, .1);
+    border-right: 0;
+    border-bottom: 1px solid rgba(148, 163, 184, .1);
+    border-left: 0;
+  }
+
+  .speedrun-comparison-panel .speedrun-comparison-sources {
+    grid-template-columns: 1fr;
   }
 
   .speedrun-list-row {
