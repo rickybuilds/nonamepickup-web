@@ -238,6 +238,23 @@
     return String(comparison?.class?.id ?? "");
   }
 
+  function defaultGlobalComparisonClass(comparisons) {
+    let fastest = null;
+    for (const comparison of comparisons || []) {
+      const milliseconds = Number(comparison?.fastestOverall?.time?.milliseconds);
+      if (!Number.isFinite(milliseconds)) continue;
+      const classId = Number(comparison?.class?.id);
+      if (
+        !fastest ||
+        milliseconds < fastest.milliseconds ||
+        (milliseconds === fastest.milliseconds && classId < fastest.classId)
+      ) {
+        fastest = { milliseconds, classId, value: comparisonClassValue(comparison) };
+      }
+    }
+    return fastest?.value || "";
+  }
+
   function comparisonPlayer(record, linkInternal = false) {
     const player = record?.player || {};
     const name = player.name || player.steamId || "Unknown runner";
@@ -1336,6 +1353,7 @@
         classFilter.innerHTML = `<option value="">All Classes</option>${classOptions.map(([value, label]) =>
           `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`
         ).join("")}`;
+        classFilter.value = defaultGlobalComparisonClass(comparisons);
       }
 
       const renderLeaderboard = () => {
