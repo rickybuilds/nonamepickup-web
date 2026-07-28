@@ -7,24 +7,15 @@ const { createHealthHandler } = require("../helpers/health");
 const { positiveInt, cleanString: cleanText } = require("../helpers/values");
 const { joinReplayChunks, normalizeFrameChunk, parseReplayFrames } = require("../helpers/replay");
 const { replayTimingWindow, summarizeProjectileUsage } = require("../helpers/projectile-usage");
+const {
+  CLASS_NAMES,
+  recordClassName,
+  formatTimeMs
+} = require("../speedruns/domain");
 
 const MAX_MAP_NAME_LENGTH = 64;
 const MAX_STEAM_ID_LENGTH = 35;
 const MAX_DISCORD_ID_LENGTH = 32;
-const CLASS_NAMES = {
-  0: "Civilian",
-  1: "Scout",
-  2: "Sniper",
-  3: "Soldier",
-  4: "Demoman",
-  5: "Medic",
-  6: "Heavy",
-  7: "Pyro",
-  8: "Spy",
-  9: "Engineer",
-  10: "Civilian",
-  11: "Civilian"
-};
 const SPEEDRUN_USAGE_FIELDS = [
   { column: "crowbar_shots", resultAlias: "worldRecordCrowbarShots" },
   { column: "shotgun_shots", resultAlias: "worldRecordShotgunShots" },
@@ -88,22 +79,8 @@ function createSpeedrunsRouter({ logRouteError }) {
     return String(value);
   }
 
-  function formatTimeMs(value) {
-    if (value == null) return null;
-    const ms = Number(value);
-    if (!Number.isFinite(ms) || ms < 0) return null;
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    const millis = Math.floor(ms % 1000);
-    return `${minutes}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
-  }
-
   function className(row) {
-    const existing = String(row.class_name || "").trim();
-    if (existing && existing !== "-") return existing;
-    const classId = row.class_id == null ? null : Number(row.class_id);
-    if (classId == null || !Number.isFinite(classId)) return null;
-    return CLASS_NAMES[classId] || `Class ${classId}`;
+    return recordClassName(row);
   }
 
   function firstValue(row, keys) {

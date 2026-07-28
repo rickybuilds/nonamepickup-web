@@ -14,6 +14,7 @@ const { createHomeRouter } = require("./home");
 const { createSpeedrunsRouter } = require("./speedruns");
 const { createStatusRouter } = require("./status");
 const { createPlayerIdentitiesRouter } = require("./playerIdentities");
+const { createSpeedrunComparisonsRouter } = require("./speedrunComparisons");
 
 function registerRoutes(app, {
   leaderboardHandler,
@@ -129,6 +130,9 @@ app.use("/api", createHomeRouter({
 }));
 
 app.use("/api/speedruns", createSpeedrunsRouter({
+  logRouteError
+}));
+app.use("/api/speedruns/comparisons", createSpeedrunComparisonsRouter({
   logRouteError
 }));
 
