@@ -67,6 +67,17 @@ Each comparison includes:
   `no_external`, or `no_records`;
 - fastest external owner.
 
+## Record eligibility
+
+`MIN_VALID_RUN_TIME_MS` defines the minimum completion time that can participate
+in public speedrun records. It defaults to `2000` milliseconds. Internal runs,
+internal records, and imported external baselines below the threshold remain in
+MariaDB for auditing, but are excluded before ranking, counting, progression,
+comparison snapshots, player summaries, and candidate announcement checks.
+
+Candidate comparisons expose `eligible` and `minimumValidTimeMs`; an ineligible
+candidate never receives a delta or `beatsExternal` result.
+
 ## Service interface
 
 The reusable service exposes:

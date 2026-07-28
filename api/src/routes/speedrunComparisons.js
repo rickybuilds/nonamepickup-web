@@ -1,7 +1,7 @@
 "use strict";
 
 const express = require("express");
-const { CURRENT_RULESET } = require("../config");
+const { CURRENT_RULESET, MIN_VALID_RUN_TIME_MS } = require("../config");
 const { speedrunQuery } = require("../db/mariadb");
 const { SpeedrunComparisonRepository } = require("../speedruns/comparisonRepository");
 const { ExternalBaselineService, VALID_STATUSES } = require("../speedruns/externalBaselineService");
@@ -15,6 +15,7 @@ function createDefaultService() {
   return new ExternalBaselineService({
     repository: new SpeedrunComparisonRepository({ query: speedrunQuery }),
     ruleset: CURRENT_RULESET,
+    minimumValidTimeMs: MIN_VALID_RUN_TIME_MS,
     cacheTtlMs: cacheTtlMs()
   });
 }

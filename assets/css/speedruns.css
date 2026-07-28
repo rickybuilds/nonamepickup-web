@@ -534,6 +534,36 @@
   background: rgba(8, 18, 34, .66);
 }
 
+.speedrun-pagination {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.speedrun-page-status {
+  color: #7890ab;
+  font: 800 9px Inter, system-ui, sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.speedrun-pagination .speedrun-text-action {
+  min-width: 88px;
+}
+
+.speedrun-pagination .speedrun-text-action:last-child {
+  justify-content: flex-end;
+}
+
+.speedrun-pagination .speedrun-text-action:first-child {
+  justify-content: flex-start;
+}
+
+.speedrun-pagination .speedrun-text-action:disabled {
+  color: #53657a;
+  opacity: .52;
+  cursor: not-allowed;
+}
+
 .speedrun-text-action {
   display: inline-flex;
   align-items: center;

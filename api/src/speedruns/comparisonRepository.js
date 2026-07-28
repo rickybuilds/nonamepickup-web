@@ -13,6 +13,7 @@ const COMPARISON_SNAPSHOT_SQL = `
       ) AS record_rank
     FROM speedrun_records r
     WHERE r.ruleset = ?
+      AND r.best_time_ms >= ?
   ),
   internal_wr AS (
     SELECT *
@@ -40,7 +41,7 @@ const COMPARISON_SNAPSHOT_SQL = `
       scraped_at,
       updated_at
     FROM speedrun_external_records
-    WHERE time_ms > 0
+    WHERE time_ms >= ?
   ),
   comparison_keys AS (
     SELECT map AS map_key, class_id FROM internal_wr
@@ -103,6 +104,7 @@ const PLAYER_RECORDS_SQL = `
       ON links.steamid = records.steamid
     WHERE links.discord_id = ?
       AND records.ruleset = ?
+      AND records.best_time_ms >= ?
   )
   SELECT
     map,
@@ -125,12 +127,12 @@ class SpeedrunComparisonRepository {
     this.query = query;
   }
 
-  fetchComparisonRows(ruleset) {
-    return this.query(COMPARISON_SNAPSHOT_SQL, [ruleset]);
+  fetchComparisonRows(ruleset, minimumValidTimeMs = 1) {
+    return this.query(COMPARISON_SNAPSHOT_SQL, [ruleset, minimumValidTimeMs, minimumValidTimeMs]);
   }
 
-  fetchPlayerRecords(discordId, ruleset) {
-    return this.query(PLAYER_RECORDS_SQL, [discordId, ruleset]);
+  fetchPlayerRecords(discordId, ruleset, minimumValidTimeMs = 1) {
+    return this.query(PLAYER_RECORDS_SQL, [discordId, ruleset, minimumValidTimeMs]);
   }
 }
 

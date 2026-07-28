@@ -16,9 +16,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260727replaylayout3">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260728pagination1">
   <script src="assets/js/main.js?v=20260713sticky1" defer></script>
-  <script src="assets/js/speedruns.js?v=20260727replaylayout2" defer></script>
+  <script src="assets/js/speedruns.js?v=20260728pagination1" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -95,8 +95,14 @@
             </div>
           </div>
           <div id="sr-map-grid" class="speedrun-map-browser" aria-live="polite"></div>
-          <div class="speedrun-panel-footer">
-            <button id="sr-map-more" class="speedrun-text-action" type="button" hidden>View more maps <span aria-hidden="true">→</span></button>
+          <div class="speedrun-panel-footer speedrun-pagination" aria-label="Map leaderboard pagination">
+            <button id="sr-map-previous" class="speedrun-text-action" type="button">
+              <span aria-hidden="true">←</span> Previous
+            </button>
+            <span id="sr-map-page-status" class="speedrun-page-status" aria-live="polite">Page 1</span>
+            <button id="sr-map-next" class="speedrun-text-action" type="button">
+              Next <span aria-hidden="true">→</span>
+            </button>
           </div>
         </section>
 

@@ -2,7 +2,8 @@
 
 const {
   classNameForId,
-  normalizeMapLookup
+  normalizeMapLookup,
+  isValidRunTimeMs
 } = require("./domain");
 const {
   sourceModel,
@@ -26,10 +27,11 @@ const VALID_STATUSES = new Set([
 ]);
 
 class ExternalBaselineService {
-  constructor({ repository, ruleset, cacheTtlMs = 30_000, now = () => Date.now() }) {
+  constructor({ repository, ruleset, minimumValidTimeMs = 1, cacheTtlMs = 30_000, now = () => Date.now() }) {
     if (!repository) throw new TypeError("repository is required");
     this.repository = repository;
     this.ruleset = ruleset;
+    this.minimumValidTimeMs = minimumValidTimeMs;
     this.cacheTtlMs = cacheTtlMs;
     this.now = now;
     this.cachedSnapshot = null;
@@ -48,7 +50,7 @@ class ExternalBaselineService {
     }
 
     this.cachedAt = now;
-    this.cachedSnapshot = this.repository.fetchComparisonRows(this.ruleset)
+    this.cachedSnapshot = this.repository.fetchComparisonRows(this.ruleset, this.minimumValidTimeMs)
       .then(rows => this.buildSnapshot(rows, now))
       .catch(error => {
         this.invalidate();
@@ -275,7 +277,7 @@ class ExternalBaselineService {
   async getPlayerSummary(discordId) {
     const [snapshot, rows] = await Promise.all([
       this.snapshot(),
-      this.repository.fetchPlayerRecords(discordId, this.ruleset)
+      this.repository.fetchPlayerRecords(discordId, this.ruleset, this.minimumValidTimeMs)
     ]);
     const entries = rows.map(row => {
       const comparison = snapshot.index.get(
@@ -344,17 +346,20 @@ class ExternalBaselineService {
   }
 
   async compareCandidate({ map, classId, timeMs }) {
+    const eligible = isValidRunTimeMs(timeMs, this.minimumValidTimeMs);
     const comparison = await this.getMapClass(map, classId);
     const fastestExternal = comparison?.fastestExternal || null;
     const candidate = {
-      time: timeModel(timeMs),
+      time: eligible ? timeModel(timeMs) : null,
       class: { id: Number(classId), name: classNameForId(classId) }
     };
     return {
       baseline: comparison,
       candidate,
-      difference: differenceModel(candidate, fastestExternal),
-      beatsExternal: fastestExternal
+      eligible,
+      minimumValidTimeMs: this.minimumValidTimeMs,
+      difference: differenceModel(eligible ? candidate : null, fastestExternal),
+      beatsExternal: eligible && fastestExternal
         ? Number(timeMs) < fastestExternal.time.milliseconds
         : null
     };

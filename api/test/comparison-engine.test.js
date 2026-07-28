@@ -17,7 +17,8 @@ const {
 const {
   CLASS_NAMES,
   recordClassName,
-  formatTimeMs
+  formatTimeMs,
+  isValidRunTimeMs
 } = require("../src/speedruns/domain");
 
 function row(overrides = {}) {
@@ -148,6 +149,7 @@ function serviceFixture(options = {}) {
   const service = new ExternalBaselineService({
     repository,
     ruleset: 2,
+    minimumValidTimeMs: options.minimumValidTimeMs || 1,
     cacheTtlMs: options.cacheTtlMs || 30_000,
     now: options.now || (() => Date.parse("2026-07-28T12:00:00Z"))
   });
@@ -159,6 +161,8 @@ test("shared speedrun domain preserves existing class and time behavior", () => 
   assert.equal(recordClassName({ class_id: 6, class_name: "-" }), "Heavy");
   assert.equal(recordClassName({ class_id: 3, class_name: "Soldier" }), "Soldier");
   assert.equal(formatTimeMs(31_442), "0:31.442");
+  assert.equal(isValidRunTimeMs(2_000, 2_000), true);
+  assert.equal(isValidRunTimeMs(1_999, 2_000), false);
 });
 
 test("compares one map/class and identifies the fastest source and signed delta", async () => {
@@ -227,14 +231,31 @@ test("repository owns reusable window-function SQL and passes bounded parameters
     }
   });
 
-  await repository.fetchComparisonRows(2);
-  await repository.fetchPlayerRecords("123", 2);
+  await repository.fetchComparisonRows(2, 2_000);
+  await repository.fetchPlayerRecords("123", 2, 2_000);
 
   assert.equal(calls.length, 2);
-  assert.deepEqual(calls[0].params, [2]);
-  assert.deepEqual(calls[1].params, ["123", 2]);
+  assert.deepEqual(calls[0].params, [2, 2_000, 2_000]);
+  assert.deepEqual(calls[1].params, ["123", 2, 2_000]);
   assert.match(COMPARISON_SNAPSHOT_SQL, /ROW_NUMBER\(\) OVER/);
   assert.match(COMPARISON_SNAPSHOT_SQL, /comparison_keys/);
+  assert.match(COMPARISON_SNAPSHOT_SQL, /best_time_ms >= \?/);
+  assert.match(COMPARISON_SNAPSHOT_SQL, /time_ms >= \?/);
+});
+
+test("sub-threshold candidates cannot become comparison records or announcements", async () => {
+  const { service } = serviceFixture({ minimumValidTimeMs: 2_000 });
+  const result = await service.compareCandidate({
+    map: "aowconc",
+    classId: 3,
+    timeMs: 1_999
+  });
+
+  assert.equal(result.eligible, false);
+  assert.equal(result.minimumValidTimeMs, 2_000);
+  assert.equal(result.candidate.time, null);
+  assert.equal(result.difference.relation, "unknown");
+  assert.equal(result.beatsExternal, null);
 });
 
 test("comparison HTTP routes remain thin service adapters", async t => {

@@ -42,10 +42,19 @@ function normalizeMapLookup(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function isValidRunTimeMs(value, minimumMs) {
+  const milliseconds = Number(value);
+  const minimum = Number(minimumMs);
+  return Number.isFinite(milliseconds) &&
+    Number.isFinite(minimum) &&
+    milliseconds >= minimum;
+}
+
 module.exports = {
   CLASS_NAMES,
   classNameForId,
   recordClassName,
   formatTimeMs,
-  normalizeMapLookup
+  normalizeMapLookup,
+  isValidRunTimeMs
 };

@@ -1221,7 +1221,7 @@
       const pageSize = 10;
       const [summary, firstMapPage] = await Promise.all([
         api("/api/speedruns/summary"),
-        api(`/api/speedruns/maps?limit=${pageSize + 1}&sort=name&with_records=1`)
+        api(`/api/speedruns/maps?limit=${pageSize}&sort=name&with_records=1&paginated=1`)
       ]);
 
       setText("sr-maps", compact(summary.maps));
@@ -1242,44 +1242,64 @@
 
       const search = $("sr-map-search");
       const classFilter = $("sr-map-class");
-      const more = $("sr-map-more");
+      const previous = $("sr-map-previous");
+      const next = $("sr-map-next");
+      const pageStatus = $("sr-map-page-status");
       let timer = null;
-      let visibleMaps = firstMapPage.slice(0, pageSize);
-      let hasMoreMaps = firstMapPage.length > pageSize;
+      let visibleMaps = firstMapPage.items || [];
+      let hasNextPage = Boolean(firstMapPage.pagination?.hasNext);
+      let currentPage = 0;
+      let loadingMaps = false;
+      let mapRequestId = 0;
 
       const updateMapView = () => {
         renderMaps(visibleMaps);
-        if (more) {
-          more.hidden = !hasMoreMaps;
-          more.disabled = false;
-          more.innerHTML = `View more maps <span aria-hidden="true">→</span>`;
+        if (previous) previous.disabled = loadingMaps || currentPage === 0;
+        if (next) next.disabled = loadingMaps || !hasNextPage;
+        if (pageStatus) {
+          pageStatus.textContent = loadingMaps
+            ? `Loading page ${currentPage + 1}…`
+            : `Page ${currentPage + 1}`;
         }
       };
 
-      const fetchMapPage = async reset => {
-        if (more) {
-          more.disabled = true;
-          more.textContent = "Loading maps…";
-        }
+      const fetchMapPage = async pageNumber => {
+        const requestedPage = Math.max(0, pageNumber);
+        const previousPage = currentPage;
+        const requestId = ++mapRequestId;
+        loadingMaps = true;
+        currentPage = requestedPage;
+        updateMapView();
         const query = new URLSearchParams({
-          limit: String(pageSize + 1),
-          offset: String(reset ? 0 : visibleMaps.length),
+          limit: String(pageSize),
+          offset: String(requestedPage * pageSize),
           sort: "name",
-          with_records: "1"
+          with_records: "1",
+          paginated: "1"
         });
         if (search?.value.trim()) query.set("q", search.value.trim());
         if (classFilter?.value) query.set("class_id", classFilter.value);
-        const page = await api(`/api/speedruns/maps?${query.toString()}`);
-        hasMoreMaps = page.length > pageSize;
-        visibleMaps = reset ? page.slice(0, pageSize) : visibleMaps.concat(page.slice(0, pageSize));
-        updateMapView();
+        try {
+          const page = await api(`/api/speedruns/maps?${query.toString()}`);
+          if (requestId !== mapRequestId) return;
+          hasNextPage = Boolean(page.pagination?.hasNext);
+          visibleMaps = page.items || [];
+        } catch (error) {
+          if (requestId === mapRequestId) currentPage = previousPage;
+          throw error;
+        } finally {
+          if (requestId === mapRequestId) {
+            loadingMaps = false;
+            updateMapView();
+          }
+        }
       };
 
       const reloadMaps = () => {
         clearTimeout(timer);
         timer = setTimeout(async () => {
           try {
-            await fetchMapPage(true);
+            await fetchMapPage(0);
           } catch {
             updateMapView();
             showError("Speedrun maps could not be loaded right now.");
@@ -1288,15 +1308,20 @@
       };
       search?.addEventListener("input", reloadMaps);
       classFilter?.addEventListener("change", reloadMaps);
-      more?.addEventListener("click", async () => {
+      previous?.addEventListener("click", async () => {
+        if (loadingMaps || currentPage === 0) return;
         try {
-          await fetchMapPage(false);
+          await fetchMapPage(currentPage - 1);
         } catch {
-          if (more) {
-            more.disabled = false;
-            more.textContent = "Try again";
-          }
-          showError("More speedrun maps could not be loaded right now.");
+          showError("The previous map page could not be loaded right now.");
+        }
+      });
+      next?.addEventListener("click", async () => {
+        if (loadingMaps || !hasNextPage) return;
+        try {
+          await fetchMapPage(currentPage + 1);
+        } catch {
+          showError("The next map page could not be loaded right now.");
         }
       });
       updateMapView();
