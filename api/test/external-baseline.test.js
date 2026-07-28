@@ -10,6 +10,7 @@ const {
   deduplicateRecords
 } = require("../src/externalBaseline/normalizer");
 const {
+  stripEmbeddedScripts,
   findMapPages,
   parseSquishyMapHtml
 } = require("../src/externalBaseline/importers/squishy");
@@ -68,6 +69,15 @@ test("Squishy index and map parsers use semantic table headers", () => {
     time_raw: "40.9859",
     time_ms: 40_986
   });
+});
+
+test("Squishy parser removes embedded script payloads before DOM parsing", () => {
+  const html = '<div>before</div><script>const huge = "<table>fake</table>";</script><div>after</div>';
+  const stripped = stripEmbeddedScripts(html);
+  assert.equal(stripped.includes("<script"), false);
+  assert.equal(stripped.includes("<table>fake</table>"), false);
+  assert.equal(stripped.includes("<div>before</div>"), true);
+  assert.equal(stripped.includes("<div>after</div>"), true);
 });
 
 test("Church parser finds reordered record columns and deduplicates snapshots", () => {

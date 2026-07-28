@@ -7,10 +7,17 @@ const { normalizeHeader, tableRows, valueByHeader } = require("../table");
 
 const SOURCE = "squishy";
 const SOURCE_URL = "http://squishysbatcave.com/";
-const DEFAULT_CONCURRENCY = 6;
+const DEFAULT_CONCURRENCY = 2;
+
+function stripEmbeddedScripts(html) {
+  // Squishy embeds a multi-megabyte Plotly bundle on every page. The record
+  // tables are server-rendered HTML, so retaining script bodies only wastes
+  // memory when Cheerio constructs the DOM.
+  return String(html || "").replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "");
+}
 
 function findMapPages(html) {
-  const $ = cheerio.load(html);
+  const $ = cheerio.load(stripEmbeddedScripts(html));
   const pages = [];
 
   $("table").each((_, table) => {
@@ -40,7 +47,7 @@ function findMapPages(html) {
 function parseSquishyMapHtml(html, mapPage, options = {}) {
   const diagnostics = options.diagnostics || {};
   const logger = options.logger || console;
-  const $ = cheerio.load(html);
+  const $ = cheerio.load(stripEmbeddedScripts(html));
   const records = [];
   let matchingTables = 0;
 
@@ -112,18 +119,43 @@ async function scrapeSquishy(options = {}) {
     throw new Error("unexpected HTML: no completed map links in the All Maps table");
   }
 
+  const configuredConcurrency = Number.parseInt(
+    process.env.EXTERNAL_BASELINE_SQUISHY_CONCURRENCY || "",
+    10
+  );
+  const concurrency = options.concurrency || (
+    Number.isFinite(configuredConcurrency)
+      ? Math.max(1, Math.min(configuredConcurrency, 8))
+      : DEFAULT_CONCURRENCY
+  );
+  let completed = 0;
+  let extracted = 0;
+
+  logger.log?.(
+    `[${SOURCE}] found ${mapPages.length} completed maps; fetching ${concurrency} at a time`
+  );
+
   const batches = await mapConcurrent(
     mapPages,
-    options.concurrency || DEFAULT_CONCURRENCY,
+    concurrency,
     async mapPage => {
+      let records = [];
       try {
         const html = await request(mapPage.url);
-        return parseSquishyMapHtml(html, mapPage, { diagnostics, logger });
+        records = parseSquishyMapHtml(html, mapPage, { diagnostics, logger });
       } catch (error) {
         diagnostics.failed = (diagnostics.failed || 0) + 1;
         logger.warn?.(`[${SOURCE}] failed ${mapPage.url}: ${error.message}`);
-        return [];
+      } finally {
+        completed += 1;
+        extracted += records.length;
+        if (completed % 25 === 0 || completed === mapPages.length) {
+          logger.log?.(
+            `[${SOURCE}] ${completed}/${mapPages.length} maps fetched; ${extracted} records extracted`
+          );
+        }
       }
+      return records;
     }
   );
 
@@ -133,6 +165,7 @@ async function scrapeSquishy(options = {}) {
 module.exports = {
   SOURCE,
   SOURCE_URL,
+  stripEmbeddedScripts,
   findMapPages,
   parseSquishyMapHtml,
   scrape: scrapeSquishy

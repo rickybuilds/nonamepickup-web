@@ -16,6 +16,10 @@ The importer uses the existing `SPEEDRUN_DB_HOST`, `SPEEDRUN_DB_PORT`,
 configuration. It creates `speedrun_external_records` if the migration has not
 already been applied.
 
+Squishy map pages are fetched two at a time by default to keep memory use low
+on the production host. `EXTERNAL_BASELINE_SQUISHY_CONCURRENCY` can override
+this with a value from 1 through 8.
+
 `map_id` stores the matched value from the existing `speedrun_maps.map`
 identifier. It remains `NULL` when no normalized match exists. This project
 currently identifies maps by the `map` string rather than a numeric ID.
