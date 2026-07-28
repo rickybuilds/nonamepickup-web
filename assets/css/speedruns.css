@@ -1455,6 +1455,15 @@
   white-space: nowrap;
 }
 
+.speedrun-catalog-table thead th {
+  position: sticky;
+  z-index: 4;
+  top: 0;
+  border-bottom-color: rgba(77, 166, 255, .22);
+  background: #070d1a;
+  box-shadow: 0 10px 18px rgba(2, 6, 23, .72);
+}
+
 .speedrun-catalog-table th:nth-child(7),
 .speedrun-catalog-table th:nth-child(8),
 .speedrun-catalog-table th:nth-child(9),
