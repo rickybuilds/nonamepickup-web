@@ -1464,7 +1464,62 @@
 
   async function loadMapCatalog() {
     try {
-      const serverMaps = await api("/api/speedruns/server-maps");
+      async function loadCatalogComparisons() {
+        const items = [];
+        let offset = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const page = await api(`/api/speedruns/comparisons/leaderboard?limit=500&offset=${offset}`);
+          const pageItems = page?.items || [];
+          items.push(...pageItems);
+          hasMore = Boolean(page?.pagination?.hasMore) && pageItems.length > 0;
+          offset += pageItems.length;
+        }
+        return items;
+      }
+
+      function fastestRecordsByMap(comparisons) {
+        const maps = new Map();
+        for (const comparison of comparisons || []) {
+          const mapKey = String(comparison?.map?.id || comparison?.map?.normalized || "").trim().toLowerCase();
+          if (!mapKey) continue;
+          const records = [comparison.internal, ...(comparison.externals || [])].filter(Boolean);
+          const sourceRecords = maps.get(mapKey) || {};
+
+          for (const record of records) {
+            const sourceId = record?.source?.id;
+            if (!["internal", "squishy", "churchofconc"].includes(sourceId)) continue;
+            const milliseconds = Number(record?.time?.milliseconds);
+            if (!Number.isFinite(milliseconds)) continue;
+            const current = sourceRecords[sourceId];
+            const classId = Number(record?.class?.id);
+            const currentClassId = Number(current?.class?.id);
+            if (
+              !current ||
+              milliseconds < current.time.milliseconds ||
+              (milliseconds === current.time.milliseconds && classId < currentClassId)
+            ) {
+              sourceRecords[sourceId] = record;
+            }
+          }
+          maps.set(mapKey, sourceRecords);
+        }
+        return maps;
+      }
+
+      const [serverMapsResult, comparisonsResult] = await Promise.allSettled([
+        api("/api/speedruns/server-maps"),
+        loadCatalogComparisons()
+      ]);
+      if (serverMapsResult.status === "rejected") throw serverMapsResult.reason;
+
+      const serverMaps = serverMapsResult.value;
+      const catalogueRecords = fastestRecordsByMap(
+        comparisonsResult.status === "fulfilled" ? comparisonsResult.value : []
+      );
+      if (comparisonsResult.status === "rejected") {
+        console.error("[speedrun-map-catalog-comparisons]", comparisonsResult.reason);
+      }
       const search = $("sr-catalog-search");
       const filter = $("sr-catalog-filter");
       const head = $("sr-catalog-head");
@@ -1475,13 +1530,32 @@
       setText("sr-catalog-not-logged", compact(serverMaps.filter(row => row.setup_status === "not_logged").length));
       setText("sr-catalog-needs-setup", compact(serverMaps.filter(row => row.setup_status !== "configured").length));
       setText("sr-catalog-records", compact(serverMaps.reduce((sum, row) => sum + Number(row.totalRecords || 0), 0)));
-      setText("speedrun-status", "Server map inventory loaded.");
+      setText(
+        "speedrun-status",
+        comparisonsResult.status === "fulfilled"
+          ? "Server map inventory and global records loaded."
+          : "Server map inventory loaded. Global records are temporarily unavailable."
+      );
 
       const header = `
         <tr>
-          <th>Name</th><th>Servers</th><th>Status</th><th>Runs</th><th>Runners</th><th>Records</th><th>Difficulty</th><th>Enabled</th><th>Last Seen</th>
+          <th>Name</th><th>Servers</th><th>Status</th><th>Runs</th><th>Runners</th><th>Records</th><th>NN WR</th><th>Squishy WR</th><th>CoC WR</th><th>Enabled</th><th>Last Seen</th>
         </tr>
       `;
+
+      const recordCell = (row, sourceId, sourceLabel) => {
+        const mapRecords = catalogueRecords.get(String(row?.map || "").trim().toLowerCase());
+        const record = mapRecords?.[sourceId];
+        if (!record) return `<span class="speedrun-catalog-wr-empty">—</span>`;
+        const player = record.player?.name || "Unknown runner";
+        const className = record.class?.name || `Class ${record.class?.id ?? "-"}`;
+        return `
+          <span class="speedrun-catalog-wr source-${escapeAttr(sourceId)}" title="${escapeAttr(`${sourceLabel}: ${player} · ${className}`)}">
+            <a href="${escapeAttr(mapUrl(row.map))}">${escapeHtml(record.time?.display || "-")}</a>
+            <small>${escapeHtml(className)}</small>
+          </span>
+        `;
+      };
 
       const renderRows = rows => rows.map(row => `
         <tr>
@@ -1491,7 +1565,9 @@
           <td>${compact(row.totalRuns)}</td>
           <td>${compact(row.totalRunners)}</td>
           <td>${compact(row.totalRecords)}</td>
-          <td>${row.difficulty == null ? "-" : `D${escapeHtml(row.difficulty)}`}</td>
+          <td>${recordCell(row, "internal", "NoName")}</td>
+          <td>${recordCell(row, "squishy", "Squishy's Batcave")}</td>
+          <td>${recordCell(row, "churchofconc", "Church of Conc")}</td>
           <td>${row.enabled == null ? "-" : yesNo(row.enabled)}</td>
           <td>${escapeHtml(formatDateTime(timestampValue(row, "lastSeen", "last_seen")))}</td>
         </tr>
@@ -1515,7 +1591,7 @@
         rows = rows.filter(row => `${(row.servers || row.server_keys || []).join(" ")} ${row.map || ""}`.toLowerCase().includes(q));
         if (head) head.innerHTML = header;
         if (body) {
-          body.innerHTML = renderRows(rows) || `<tr><td colspan="9">${empty("No maps found.")}</td></tr>`;
+          body.innerHTML = renderRows(rows) || `<tr><td colspan="11">${empty("No maps found.")}</td></tr>`;
         }
       };
 
