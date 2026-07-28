@@ -234,6 +234,116 @@
     return `<span class="speedrun-class-mark" style="--class-color:${escapeAttr(classAccent(row))}"><i></i>${escapeHtml(label)}</span>`;
   }
 
+  function comparisonClassValue(comparison) {
+    return String(comparison?.class?.id ?? "");
+  }
+
+  function comparisonPlayer(record, linkInternal = false) {
+    const player = record?.player || {};
+    const name = player.name || player.steamId || "Unknown runner";
+    if (linkInternal && player.discordId) {
+      return `<a href="${escapeAttr(playerUrl(player.discordId))}">${escapeHtml(name)}${supporterBadge(player.discordId)}</a>`;
+    }
+    return escapeHtml(name);
+  }
+
+  function comparisonSource(record) {
+    const label = record?.source?.label || record?.source?.id || "External community";
+    return record?.sourceUrl
+      ? `<a href="${escapeAttr(record.sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+      : escapeHtml(label);
+  }
+
+  function externalComparisonLeaders(comparison) {
+    const overallExternalLeaders = (comparison?.fastestOverallLeaders || [])
+      .filter(record => record?.recordType === "external");
+    if (overallExternalLeaders.length) return overallExternalLeaders;
+    return comparison?.fastestExternal ? [comparison.fastestExternal] : [];
+  }
+
+  function comparisonBadge(comparison) {
+    if (comparison?.status === "internal_faster") {
+      return `<span class="speedrun-comparison-badge global">🌎 Global Record</span>`;
+    }
+    if (comparison?.status === "tied") {
+      return `<span class="speedrun-comparison-badge tied">Tied Global Record</span>`;
+    }
+    if (comparison?.internal) {
+      return `<span class="speedrun-comparison-badge local">🏆 Local Record</span>`;
+    }
+    return "";
+  }
+
+  function renderExternalComparison(comparison) {
+    if (!comparison?.fastestExternal) {
+      return `<div class="speedrun-comparison-empty">No external baseline available.</div>`;
+    }
+
+    const leaders = externalComparisonLeaders(comparison);
+    const label = comparison.status === "no_internal"
+      ? "Fastest known time"
+      : comparison.status === "internal_faster"
+        ? "Fastest external"
+        : "Global best";
+    const leaderRows = leaders.map(record => `
+      <div class="speedrun-comparison-source">
+        <span>${comparisonPlayer(record)}</span>
+        <small>Source: ${comparisonSource(record)}</small>
+      </div>
+    `).join("");
+    const difference = comparison?.difference?.display
+      ? `<div class="speedrun-comparison-difference ${escapeAttr(comparison.difference.relation || "")}">
+          <span>Difference</span>
+          <strong>${escapeHtml(comparison.difference.display)} sec</strong>
+        </div>`
+      : "";
+
+    return `
+      <div class="speedrun-comparison-external">
+        <span class="speedrun-comparison-label">${escapeHtml(label)}</span>
+        <strong class="speedrun-comparison-time">${escapeHtml(comparison.fastestExternal.time?.display || "-")}</strong>
+        <div class="speedrun-comparison-sources">${leaderRows}</div>
+        ${difference}
+      </div>
+    `;
+  }
+
+  function renderMapComparisons(comparisons, selectedClass = "") {
+    const rows = selectedClass
+      ? (comparisons || []).filter(comparison => comparisonClassValue(comparison) === selectedClass)
+      : (comparisons || []);
+
+    setHtml("sr-map-comparisons", rows.map(comparison => {
+      const internal = comparison.internal;
+      const classInfo = {
+        classId: comparison.class?.id,
+        className: comparison.class?.name
+      };
+      const internalContent = internal
+        ? `
+          <span class="speedrun-comparison-label">Current Internal WR</span>
+          <strong class="speedrun-comparison-time">${escapeHtml(internal.time?.display || "-")}</strong>
+          <span class="speedrun-comparison-player">${comparisonPlayer(internal, true)}</span>
+          <small>${escapeHtml(formatDateTime(internal.achievedAt))}</small>
+          ${comparisonBadge(comparison)}
+        `
+        : `
+          <span class="speedrun-comparison-label">Internal WR</span>
+          <strong class="speedrun-comparison-missing">No local record yet.</strong>
+        `;
+
+      return `
+        <article class="speedrun-comparison-row ${escapeAttr(comparison.status || "")}" data-comparison-class="${escapeAttr(comparisonClassValue(comparison))}">
+          <div class="speedrun-comparison-class">${classBadge(classInfo)}</div>
+          <div class="speedrun-comparison-internal">${internalContent}</div>
+          ${renderExternalComparison(comparison)}
+        </article>
+      `;
+    }).join("") || `<div class="speedrun-comparison-message">${
+      escapeHtml(selectedClass ? "No comparison data for this class." : "No class comparison data is available for this map.")
+    }</div>`);
+  }
+
   function mapThumbnail(map, className = "") {
     return `<span class="speedrun-map-thumb ${escapeAttr(className)}"><img data-speedrun-map-image="${escapeAttr(map)}" alt="" loading="lazy"></span>`;
   }
@@ -1171,7 +1281,19 @@
     }
 
     try {
-      const data = await api(`/api/speedruns/maps/${encodeURIComponent(mapName)}`);
+      const [mapResult, comparisonResult] = await Promise.allSettled([
+        api(`/api/speedruns/maps/${encodeURIComponent(mapName)}`),
+        api(`/api/speedruns/comparisons/maps/${encodeURIComponent(mapName)}`)
+      ]);
+      if (mapResult.status === "rejected") throw mapResult.reason;
+
+      const data = mapResult.value;
+      const comparisons = comparisonResult.status === "fulfilled"
+        ? (comparisonResult.value?.comparisons || [])
+        : [];
+      if (comparisonResult.status === "rejected") {
+        console.error("[speedrun-map-comparisons]", comparisonResult.reason);
+      }
       document.title = `NoName TFC | ${data.displayName || data.map} Speedrun`;
       setText("sr-map-title", data.displayName || data.map);
       setText("sr-map-subtitle", `${data.map} · ${data.category || "other"} · ${data.enabled ? "enabled" : "disabled"}`);
@@ -1182,10 +1304,13 @@
       setText("sr-map-difficulty", data.difficulty == null ? "-" : `D${data.difficulty}`);
 
       const classFilter = $("sr-map-class-filter");
-      const classOptions = [...new Map((data.leaderboard || []).map(row => [
-        classValue(row),
-        classText(row)
-      ])).entries()]
+      const classOptions = [...new Map([
+        ...(data.leaderboard || []).map(row => [classValue(row), classText(row)]),
+        ...comparisons.map(comparison => [
+          comparisonClassValue(comparison),
+          comparison.class?.name || `Class ${comparison.class?.id}`
+        ])
+      ]).entries()]
         .filter(([value]) => value)
         .sort((a, b) => a[1].localeCompare(b[1]));
 
@@ -1211,6 +1336,15 @@
           <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
         `).join("") || `<tr><td colspan="6">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
+
+        if (comparisonResult.status === "fulfilled") {
+          renderMapComparisons(comparisons, selectedClass);
+        } else {
+          setHtml(
+            "sr-map-comparisons",
+            `<div class="speedrun-comparison-message unavailable">Global comparisons are temporarily unavailable.</div>`
+          );
+        }
       };
 
       classFilter?.addEventListener("change", renderLeaderboard);
