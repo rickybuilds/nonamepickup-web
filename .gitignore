@@ -55,4 +55,6 @@ EOFcat >> .gitignore << 'EOF'
 /analysis
 /assets/models
 /assets/sprites
-/api/test
+
+api/test/kicked.test.js
+api/test/projectile-usage.test.js

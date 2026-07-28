@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "import:external-baselines": "node externalBaselineImport.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "better-sqlite3": "^12.2.0",
+    "cheerio": "^1.1.2",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
