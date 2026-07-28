@@ -1,5 +1,7 @@
 "use strict";
 
+require("dotenv").config();
+
 const { getSpeedrunPool, closeSpeedrunPool } = require("./src/db/mariadb");
 const squishy = require("./src/externalBaseline/importers/squishy");
 const churchofconc = require("./src/externalBaseline/importers/churchofconc");
