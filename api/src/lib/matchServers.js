@@ -3,6 +3,11 @@
 const fs = require("fs");
 const path = require("path");
 
+// Live-state files are transient, while a database match can remain in_progress
+// briefly after the bot removes or replaces its file. Keep every association
+// observed by this API process so that transition does not erase server data.
+const knownMatchesByDataDir = new Map();
+
 function splitServerAddress(value) {
   const raw = String(value || "").trim();
   if (!raw) return { host: null, port: 27015 };
@@ -53,7 +58,12 @@ function readServers(dataDir) {
 }
 
 function readMatchServers(dataDir) {
-  const matches = new Map();
+  const cacheKey = path.resolve(String(dataDir || "."));
+  let knownMatches = knownMatchesByDataDir.get(cacheKey);
+  if (!knownMatches) {
+    knownMatches = new Map();
+    knownMatchesByDataDir.set(cacheKey, knownMatches);
+  }
 
   try {
     const servers = readServers(dataDir);
@@ -67,7 +77,7 @@ function readMatchServers(dataDir) {
         const matchId = String(live.match_id || live.matchId || "").trim();
         if (!matchId) continue;
 
-        matches.set(matchId, {
+        knownMatches.set(matchId, {
           serverKey,
           serverIp: servers.get(serverKey)?.serverIp || null
         });
@@ -79,7 +89,7 @@ function readMatchServers(dataDir) {
     // Server metadata is optional; callers still return their normal match data.
   }
 
-  return matches;
+  return new Map(knownMatches);
 }
 
 module.exports = {

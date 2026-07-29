@@ -32,6 +32,12 @@ test("readMatchServers joins a live match id to its server key and IP", t => {
     serverKey: "central",
     serverIp: "144.202.48.25"
   });
+
+  fs.rmSync(path.join(dataDir, "live_central.json"));
+  assert.deepEqual(readMatchServers(dataDir).get("9TJEJH"), {
+    serverKey: "central",
+    serverIp: "144.202.48.25"
+  });
 });
 
 test("readMatchServers tolerates missing and malformed metadata", t => {
