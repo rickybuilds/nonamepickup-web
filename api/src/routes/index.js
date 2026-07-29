@@ -62,6 +62,7 @@ app.use("/api", createMatchesRouter({
   nonNegativeInt,
   maxMatchLimit: MAX_MATCH_LIMIT,
   cleanString,
+  dataDir: DATA_DIR,
   matchColumns,
   loadMatchPlayers,
   serializeMatch,

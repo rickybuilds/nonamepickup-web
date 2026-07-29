@@ -2,6 +2,7 @@
 
 const express = require("express");
 const { buildNnMvp } = require("../lib/nnMvp");
+const { readMatchServers } = require("../lib/matchServers");
 
 function createMatchesRouter({
   db,
@@ -10,6 +11,7 @@ function createMatchesRouter({
   nonNegativeInt,
   maxMatchLimit,
   cleanString,
+  dataDir,
   matchColumns,
   loadMatchPlayers,
   serializeMatch,
@@ -28,6 +30,7 @@ function createMatchesRouter({
       const cacheKey = `matches:${rawLimit}:${offset}:${includePending ? 1 : 0}`;
 
       const payload = cachedFor(cacheKey, 1000, () => {
+        const matchServers = readMatchServers(dataDir);
         const total = db.prepare(`SELECT COUNT(*) as c FROM matches ${whereClause}`).get().c;
         const sql = `
         SELECT ${matchColumns("m")}
@@ -38,7 +41,15 @@ function createMatchesRouter({
       `;
         const rows = db.prepare(sql).all(rawLimit, offset);
         const playersByMatch = loadMatchPlayers(rows);
-        const out = rows.map(row => serializeMatch(row, playersByMatch));
+        const out = rows.map(row => {
+          const match = serializeMatch(row, playersByMatch);
+          const server = matchServers.get(String(row.match_id));
+          return {
+            ...match,
+            serverKey: server?.serverKey || null,
+            serverIp: server?.serverIp || null
+          };
+        });
         return { ok: true, data: out, count: out.length, total, offset, limit: rawLimit };
       });
 
