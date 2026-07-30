@@ -1387,19 +1387,50 @@ function createSpeedrunsRouter({ logRouteError }) {
     }));
   }));
 
-    router.get("/players/:discordId", (req, res) => runEndpoint(req, res, "[/api/speedruns/players/:discordId]", async () => {
-    const discordId = cleanText(req.params.discordId, MAX_DISCORD_ID_LENGTH);
-    if (!discordId) return badRequest(res, "invalid_discord_id");
+    router.get("/players/:playerId", (req, res) => runEndpoint(req, res, "[/api/speedruns/players/:playerId]", async () => {
+    const playerId = cleanText(req.params.playerId, MAX_STEAM_ID_LENGTH);
+    if (!playerId) return badRequest(res, "invalid_player_id");
 
-    const linkedRows = await speedrunQuery(`
-      SELECT steamid, player_name
-      FROM speedrun_player_links
-      WHERE discord_id = ?
-      ORDER BY linked_at ASC, steamid ASC
-    `, [discordId]);
+    const isSteamId = /^STEAM_[0-5]:[01]:\d+$/i.test(playerId);
+    if (playerId.toUpperCase().startsWith("STEAM_") && !isSteamId) {
+      return badRequest(res, "invalid_steam_id");
+    }
+    if (!isSteamId && playerId.length > MAX_DISCORD_ID_LENGTH) {
+      return badRequest(res, "invalid_discord_id");
+    }
 
-    if (!linkedRows.length) {
-      return res.status(404).json({ ok: false, error: "player_not_linked" });
+    let discordId = null;
+    let linkedRows;
+
+    if (isSteamId) {
+      const directLinkRows = await speedrunQuery(`
+        SELECT steamid, discord_id, player_name
+        FROM speedrun_player_links
+        WHERE steamid = ?
+        ORDER BY linked_at ASC
+        LIMIT 1
+      `, [playerId]);
+      discordId = directLinkRows[0]?.discord_id ? String(directLinkRows[0].discord_id) : null;
+      linkedRows = discordId
+        ? await speedrunQuery(`
+            SELECT steamid, player_name
+            FROM speedrun_player_links
+            WHERE discord_id = ?
+            ORDER BY linked_at ASC, steamid ASC
+          `, [discordId])
+        : [{ steamid: playerId, player_name: directLinkRows[0]?.player_name || null }];
+    } else {
+      discordId = playerId;
+      linkedRows = await speedrunQuery(`
+        SELECT steamid, player_name
+        FROM speedrun_player_links
+        WHERE discord_id = ?
+        ORDER BY linked_at ASC, steamid ASC
+      `, [discordId]);
+
+      if (!linkedRows.length) {
+        return res.status(404).json({ ok: false, error: "player_not_linked" });
+      }
     }
 
     const steamIds = [...new Set(linkedRows.map(row => row.steamid).filter(Boolean))];
@@ -1655,7 +1686,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         discordId,
         steamIds,
         steam_ids: steamIds,
-        playerName: player.player_name || linkedRows[0].player_name || discordId
+        playerName: player.player_name || linkedRows[0].player_name || discordId || playerId
       },
       summary: {
         totalRuns: Number(summary.totalRuns || 0),

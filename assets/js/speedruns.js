@@ -195,18 +195,19 @@
     return `https://tfcmaps.net/images/maps/source/${encodeURIComponent(map || "")}.jpg`;
   }
 
- function playerUrl(discordId) {
-    return `speedrun-player.html?id=${encodeURIComponent(discordId || "")}`;
+ function playerUrl(playerId) {
+    return `speedrun-player.html?id=${encodeURIComponent(playerId || "")}`;
   }
 
   function runnerLink(row) {
     const steamId = row?.steamId || row?.steamid;
     const discordId = row?.discordId || row?.discord_id;
+    const playerId = discordId || steamId;
     const name = row?.playerName || row?.player_name || steamId || "Unknown";
     const badge = discordId ? supporterBadge(discordId) : "";
 
-    return discordId
-      ? `<a href="${escapeAttr(playerUrl(discordId))}">${escapeHtml(name)}${badge}</a>`
+    return playerId
+      ? `<a href="${escapeAttr(playerUrl(playerId))}">${escapeHtml(name)}${badge}</a>`
       : `${escapeHtml(name)}${badge}`;
   }
 
@@ -258,8 +259,9 @@
   function comparisonPlayer(record, linkInternal = false) {
     const player = record?.player || {};
     const name = player.name || player.steamId || "Unknown runner";
-    if (linkInternal && player.discordId) {
-      return `<a href="${escapeAttr(playerUrl(player.discordId))}">${escapeHtml(name)}${supporterBadge(player.discordId)}</a>`;
+    const playerId = player.discordId || player.steamId;
+    if (linkInternal && playerId) {
+      return `<a href="${escapeAttr(playerUrl(playerId))}">${escapeHtml(name)}${player.discordId ? supporterBadge(player.discordId) : ""}</a>`;
     }
     return escapeHtml(name);
   }
@@ -398,8 +400,9 @@
 
   function worldRecordRunnerLink(row) {
     const name = row?.worldRecordPlayer || row?.worldRecordSteamId || "No record";
-    return row?.worldRecordDiscordId
-      ? `<a href="${escapeAttr(playerUrl(row.worldRecordDiscordId))}">${escapeHtml(name)}${supporterBadge(row.worldRecordDiscordId)}</a>`
+    const playerId = row?.worldRecordDiscordId || row?.worldRecordSteamId;
+    return playerId
+      ? `<a href="${escapeAttr(playerUrl(playerId))}">${escapeHtml(name)}${row?.worldRecordDiscordId ? supporterBadge(row.worldRecordDiscordId) : ""}</a>`
       : escapeHtml(name);
   }
 
@@ -1433,23 +1436,22 @@
   }
 
   async function loadPlayer() {
-    const discordId = params().get("id") || "";
-    if (!discordId) {
+    const playerId = params().get("id") || "";
+    if (!playerId) {
       showError("Missing runner ID.");
       setText("sr-player-title", "Runner not found");
       return;
     }
 
     try {
-      const [data, steamProfile] = await Promise.all([
-        api(`/api/speedruns/players/${encodeURIComponent(discordId)}`),
-        loadSteamProfile(discordId)
-      ]);
-      const playerName = steamProfile?.personaname || data.player?.playerName || discordId;
+      const data = await api(`/api/speedruns/players/${encodeURIComponent(playerId)}`);
+      const discordId = data.player?.discordId || "";
+      const steamProfile = await loadSteamProfile(discordId);
+      const playerName = steamProfile?.personaname || data.player?.playerName || playerId;
       document.title = `NoName TFC | ${playerName} Speedruns`;
       setHtml(
         "sr-player-title",
-        `<span class="speedrun-player-name-text">${escapeHtml(playerName)}</span>${supporterBadge(data.player?.discordId || discordId)}`
+        `<span class="speedrun-player-name-text">${escapeHtml(playerName)}</span>${discordId ? supporterBadge(discordId) : ""}`
       );
       requestAnimationFrame(fitSpeedrunPlayerName);
       setHtml(
@@ -1466,7 +1468,9 @@
       );
       setHtml(
         "sr-player-profile-links",
-        `<a class="speedrun-profile-link" href="${escapeAttr(`player.html?id=${encodeURIComponent(data.player?.discordId || discordId)}`)}">Player Profile</a>`
+        discordId
+          ? `<a class="speedrun-profile-link" href="${escapeAttr(`player.html?id=${encodeURIComponent(discordId)}`)}">Player Profile</a>`
+          : ""
       );
       setText("sr-player-runs", compact(data.summary?.totalRuns));
       setText("sr-player-maps", compact(data.summary?.mapsCompleted ?? data.summary?.mapsPlayed));
