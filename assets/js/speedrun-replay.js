@@ -190,8 +190,8 @@ const PROJECTILE_DEFS = [
   { key: "conc", classnames: ["tf_weapon_concussiongrenade"], models: ["models/conc_grenade.mdl"], color: 0x22c55e, primitive: "sphere", radius: 18, impact: "conc", effect: "shockwave" },
   { key: "grenade", classnames: ["tf_weapon_normalgrenade"], models: ["models/w_grenade.mdl"], color: 0xfacc15, primitive: "sphere", radius: 18, impact: "generic", effect: "explode01" },
   { key: "rocket", classnames: ["tf_rpg_rocket"], models: ["models/rpgrocket.mdl"], color: 0xf97316, primitive: "rocket", radius: 16, impact: "generic", effect: "explode01", flare: true, flareSprite: "animglow01", smokeSprite: "smoke", modelYawOffsetDeg: 180 },
-  { key: "pipe-blue", classnames: ["tf_gl_pipebomb"], models: ["models/pipebomb.mdl"], assetModel: "models/pipebomb_blue_variant", color: 0x3b82f6, primitive: "pipe", radius: 17, impact: "generic", effect: "explode01", forceFallback: true },
-  { key: "pipe-yellow", classnames: ["tf_gl_grenade"], models: ["models/pipebomb.mdl"], assetModel: "models/pipebomb_yellow_variant", color: 0xfacc15, primitive: "pipe", radius: 17, impact: "generic", effect: "explode01", forceFallback: true },
+  { key: "pipe-yellow", classnames: ["tf_gl_pipebomb"], models: ["models/pipebomb.mdl"], assetModel: "models/pipebomb_yellow_variant", color: 0xfacc15, primitive: "pipe", radius: 17, impact: "generic", effect: "explode01", forceFallback: true },
+  { key: "pipe-blue", classnames: ["tf_gl_grenade"], models: ["models/pipebomb.mdl"], assetModel: "models/pipebomb_blue_variant", color: 0x3b82f6, primitive: "pipe", radius: 17, impact: "generic", effect: "explode01", forceFallback: true },
   { key: "mirv", classnames: ["tf_weapon_mirvgrenade"], models: ["models/mirv_grenade.mdl"], color: 0xef4444, primitive: "sphere", radius: 19, impact: "mirv", effect: "explode02", modelRotationDeg: { x: -75, y: 180, z: 58 }, spinAxis: "z", spinSpeedRad: 0.0035 },
   { key: "mirv-bomblet", classnames: ["tf_weapon_mirvbomblet"], models: ["models/bomblet.mdl"], color: 0xfb923c, primitive: "sphere", radius: 12, impact: "mirvlet", effect: "explode01" },
   { key: "nail", classnames: ["tf_weapon_nailgrenade"], models: ["models/ngrenade.mdl"], color: 0x22d3ee, primitive: "sphere", radius: 18, impact: "generic", effect: "explode01" },
@@ -1560,7 +1560,7 @@ function projectileDefinitionForFrame(frame) {
   if (classname.includes("napalm") || model.includes("napalm")) return PROJECTILE_DEF_BY_KEY.get("napalm");
   if (classname.includes("nailgrenade") || model.includes("ngrenade")) return PROJECTILE_DEF_BY_KEY.get("nail");
   if (classname.includes("grenade")) return PROJECTILE_DEF_BY_KEY.get("grenade");
-  if (classname.includes("pipe") || model.includes("pipebomb")) return PROJECTILE_DEF_BY_KEY.get("pipe-blue");
+  if (classname.includes("pipe") || model.includes("pipebomb")) return PROJECTILE_DEF_BY_KEY.get("pipe-yellow");
   return DEFAULT_PROJECTILE_DEF;
 }
 

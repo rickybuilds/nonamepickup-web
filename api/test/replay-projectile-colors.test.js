@@ -13,18 +13,18 @@ test("pickup and speedrun replays use the same launcher projectile colors", () =
   for (const source of [pickup, speedrun]) {
     assert.match(
       source,
-      /key:\s*"pipe-blue",\s*classnames:\s*\["tf_gl_pipebomb"\][^\n]+pipebomb_blue_variant/
+      /key:\s*"pipe-yellow",\s*classnames:\s*\["tf_gl_pipebomb"\][^\n]+pipebomb_yellow_variant/
     );
     assert.match(
       source,
-      /key:\s*"pipe-yellow",\s*classnames:\s*\["tf_gl_grenade"\][^\n]+pipebomb_yellow_variant/
+      /key:\s*"pipe-blue",\s*classnames:\s*\["tf_gl_grenade"\][^\n]+pipebomb_blue_variant/
     );
   }
 });
 
 test("pickup replay cache key exposes the latest projectile classifier", () => {
   const module = read("assets/js/pickup-replay.js");
-  assert.match(module, /replay-projectile-visuals\.js\?v=20260730pickup5/);
+  assert.match(module, /replay-projectile-visuals\.js\?v=20260730pickup6/);
 });
 
 test("shared pipebomb model cannot override launcher entity class", () => {
