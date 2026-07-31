@@ -56,18 +56,38 @@ test("schema-v3 player visuals are persistent across weapons, crouch, death, and
   assert.match(source, /if \(alignFeetToOrigin\) model\.position\.y = -bounds\.min\.y \* scale/);
   assert.match(source, /fallbackPlayerMesh\(team, track\.schemaVersion === 3\)/);
   assert.match(source, /catalog\?\.heldVariants\?\.\[classKey\]/);
-  assert.match(source, /track\.playerVisual\.scale\.set\(1, playerVisualScaleY\(frame\), 1\)/);
+  assert.doesNotMatch(source, /playerVisualScaleY/);
+  assert.doesNotMatch(source, /track\.playerVisual\.scale/);
+  assert.match(source, /modelPose === pose/);
+  assert.match(source, /poseSuffix = ducking \? "_crouch" : ""/);
+  assert.match(source, /track\.playerVisual\.position\.y = crouched \? 2\.5 : 0/);
+  assert.match(source, /track\.weaponVisual\.position\.y = crouched \? -18 : 0/);
 });
 
-test("schema-v3 crouch shortens the player visual without moving its recorded origin", () => {
-  const body = source.match(/function playerVisualScaleY\(frame\) \{[\s\S]*?\n\}/)?.[0];
-  assert.ok(body, "playerVisualScaleY source is present");
-  const helper = vm.runInNewContext(`(${body})`, {
-    isDucking: frame => frame.ducking
-  });
-  assert.equal(helper({ schemaVersion: 3, ducking: true }), 0.5);
-  assert.equal(helper({ schemaVersion: 3, ducking: false }), 1);
-  assert.equal(helper({ schemaVersion: 2, ducking: true }), 1);
+test("schema-v3 crouch uses baked crouch_idle player geometry instead of scaling", () => {
+  const root = path.resolve(__dirname, "..", "..");
+  const playerRoot = path.join(root, "assets", "models", "player");
+  const crouched = fs.readdirSync(playerRoot, { recursive: true })
+    .filter(name => /_(?:blue|red|yellow|green)_crouch\.glb$/.test(name));
+  assert.equal(crouched.length, 40);
+
+  const glbHeight = file => {
+    const bytes = fs.readFileSync(file);
+    const jsonLength = bytes.readUInt32LE(12);
+    const document = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString("utf8"));
+    const vectors = document.accessors.filter(accessor => accessor.type === "VEC3" && accessor.min && accessor.max);
+    return Math.max(...vectors.map(accessor => accessor.max[1])) -
+      Math.min(...vectors.map(accessor => accessor.min[1]));
+  };
+  const standing = path.join(playerRoot, "engineer", "engineer2_blue.glb");
+  const crouch = path.join(playerRoot, "engineer", "engineer2_blue_crouch.glb");
+  assert.ok(glbHeight(crouch) > 40, "crouch remains a full articulated model");
+  assert.ok(glbHeight(crouch) < glbHeight(standing) * 0.65, "crouch pose fits the crouched hull");
+
+  const converter = fs.readFileSync(path.join(root, "scripts", "convert_goldsrc_player_models.py"), "utf8");
+  const teamConverter = fs.readFileSync(path.join(root, "scripts", "convert_goldsrc_team_player_models.py"), "utf8");
+  assert.match(converter, /sequence_name: str = "idle"/);
+  assert.match(teamConverter, /sequence_name="crouch_idle"/);
 });
 
 test("schema-v3 buildables use stable IDs, model replacement, components, and terminal active state", () => {

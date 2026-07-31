@@ -27,6 +27,13 @@ def main() -> None:
                 team_color=color,
                 generator="NoName GoldSrc team player converter",
             )
+            convert(
+                source,
+                target=source.with_name(f"{source.stem}_{team}_crouch.glb"),
+                team_color=color,
+                sequence_name="crouch_idle",
+                generator="NoName GoldSrc crouched team player converter",
+            )
 
 
 if __name__ == "__main__":

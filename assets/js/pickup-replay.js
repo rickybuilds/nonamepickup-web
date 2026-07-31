@@ -201,10 +201,6 @@ function isDucking(frame) {
   return frame.schemaVersion === 3 ? frame.ducking : Boolean(frame.buttons & 4);
 }
 
-function playerVisualScaleY(frame) {
-  return frame.schemaVersion === 3 && isDucking(frame) ? 0.5 : 1;
-}
-
 function projectileSnapshot(track, time) {
   const frame = trackFrame(track, time);
   if (!frame || value(frame, 1, false) === 0) return null;
@@ -282,15 +278,16 @@ function fallbackPlayerMesh(team, preserveNativeOrigin = false) {
   return group;
 }
 
-function modelUrl(classId, team) {
+function modelUrl(classId, team, ducking = false) {
   const info = CLASS_MODELS[classId] || CLASS_MODELS[0];
   const classic = info[0] === "civilian" ? info[1] : `${info[1]}2`;
   const teamSuffix = `_${teamInfo(team).name.toLowerCase()}`;
-  return `assets/models/player/${info[0]}/${classic}${teamSuffix}.glb?v=20260730pickup1`;
+  const poseSuffix = ducking ? "_crouch" : "";
+  return `assets/models/player/${info[0]}/${classic}${teamSuffix}${poseSuffix}.glb?v=20260731crouch1`;
 }
 
-async function modelAsset(classId, team) {
-  return loadModelAsset(modelUrl(classId, team));
+async function modelAsset(classId, team, ducking = false) {
+  return loadModelAsset(modelUrl(classId, team, ducking));
 }
 
 async function loadModelAsset(url) {
@@ -362,18 +359,20 @@ function clonedPlayerModel(asset, alignFeetToOrigin = false) {
   return model;
 }
 
-async function setPlayerModel(track, classId, team, modelId = 0) {
+async function setPlayerModel(track, classId, team, modelId = 0, ducking = false) {
+  const pose = ducking ? "crouch" : "stand";
   if (track.mesh.userData.modelClass === classId && track.mesh.userData.modelTeam === team &&
-      track.mesh.userData.playerModelId === modelId) return;
+      track.mesh.userData.playerModelId === modelId && track.mesh.userData.modelPose === pose) return;
   track.mesh.userData.modelClass = classId;
   track.mesh.userData.modelTeam = team;
   track.mesh.userData.playerModelId = modelId;
+  track.mesh.userData.modelPose = pose;
   const recordedUrl = catalogUrl(modelId, "player");
   const asset = CLASS_MODELS[classId]
-    ? await modelAsset(classId, team)
-    : recordedUrl ? await loadModelAsset(recordedUrl) : await modelAsset(0, team);
+    ? await modelAsset(classId, team, ducking)
+    : recordedUrl ? await loadModelAsset(recordedUrl) : await modelAsset(0, team, ducking);
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team ||
-      track.mesh.userData.playerModelId !== modelId) return;
+      track.mesh.userData.playerModelId !== modelId || track.mesh.userData.modelPose !== pose) return;
   const model = clonedPlayerModel(asset, track.schemaVersion === 2);
   track.modelVisual.clear();
   track.modelVisual.add(model);
@@ -700,13 +699,15 @@ function updatePlayers() {
     // Keep the legacy visual offset only for schema 2's basic fallback.
     if (frame.schemaVersion === 2) track.mesh.position.y -= isDucking(frame) ? 18 : 36;
     track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyYaw : frame.yaw);
-    track.playerVisual.scale.set(1, playerVisualScaleY(frame), 1);
+    const crouched = frame.schemaVersion === 3 && isDucking(frame);
+    track.playerVisual.position.y = crouched ? 2.5 : 0;
+    track.weaponVisual.position.y = crouched ? -18 : 0;
     track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyPitch : 0);
     track.playerVisual.rotation.z = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyRoll : 0);
     const isSelectedPov =
       state.cameraMode === "pov" && track.sessionId === state.selectedSession;
     track.mesh.visible = frame.alive && !isSelectedPov;
-    void setPlayerModel(track, frame.classId, frame.team, frame.playerModelId || 0);
+    void setPlayerModel(track, frame.classId, frame.team, frame.playerModelId || 0, crouched);
     if (frame.schemaVersion === 3) {
       void setWeaponModel(track, frame.weaponModelId, frame.classId);
       Object.assign(track.playerVisual.userData, {

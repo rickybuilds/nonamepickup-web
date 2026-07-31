@@ -67,18 +67,25 @@ def animation_value(data: bytes, anim_offset: int, channel: int, frame: int, bas
         cursor += (valid + 1) * 2
 
 
-def bone_transforms(data: bytes, driver_data: bytes | None = None) -> list[np.ndarray]:
+def bone_transforms(
+    data: bytes,
+    driver_data: bytes | None = None,
+    sequence_name: str = "idle",
+    driver_sequence_name: str | None = None,
+    sequence_frame: int = 0,
+) -> list[np.ndarray]:
     bone_count = i32(data, 140)
     bone_index = i32(data, 144)
     seq_count = i32(data, 164)
     seq_index = i32(data, 168)
-    idle_anim_index = None
-    idle_frame = 0
+    pose_anim_index = None
+    pose_frame = 0
     for seq_number in range(seq_count):
         offset = seq_index + seq_number * 176
-        if cstring(data[offset:offset + 32]).lower() == "idle":
-            idle_anim_index = i32(data, offset + 124)
-            idle_frame = 0
+        if cstring(data[offset:offset + 32]).lower() == sequence_name.lower():
+            pose_anim_index = i32(data, offset + 124)
+            frame_count = max(1, i32(data, offset + 56))
+            pose_frame = min(max(0, sequence_frame), frame_count - 1)
             break
 
     bones = []
@@ -92,10 +99,10 @@ def bone_transforms(data: bytes, driver_data: bytes | None = None) -> list[np.nd
         parents.append(parent)
         values = np.array(unpack(data, "6f", offset + 64), dtype=np.float64)
         scales = np.array(unpack(data, "6f", offset + 88), dtype=np.float64)
-        if idle_anim_index is not None:
-            anim_offset = idle_anim_index + bone_number * 12
+        if pose_anim_index is not None:
+            anim_offset = pose_anim_index + bone_number * 12
             pose = np.array([
-                animation_value(data, anim_offset, channel, idle_frame, values[channel], scales[channel])
+                animation_value(data, anim_offset, channel, pose_frame, values[channel], scales[channel])
                 for channel in range(6)
             ], dtype=np.float64)
         else:
@@ -107,7 +114,11 @@ def bone_transforms(data: bytes, driver_data: bytes | None = None) -> list[np.nd
 
     driver_bones = {}
     if driver_data is not None:
-        driver_transforms = bone_transforms(driver_data)
+        driver_transforms = bone_transforms(
+            driver_data,
+            sequence_name=driver_sequence_name or sequence_name,
+            sequence_frame=sequence_frame,
+        )
         driver_count = i32(driver_data, 140)
         driver_index = i32(driver_data, 144)
         for driver_number in range(driver_count):
@@ -361,13 +372,22 @@ def convert(
     team_color: tuple[int, int, int] | None = None,
     driver_source: Path | None = None,
     force_team_recolor: bool = False,
+    sequence_name: str = "idle",
+    driver_sequence_name: str | None = None,
+    sequence_frame: int = 0,
 ) -> Path:
     data = source.read_bytes()
     if data[:4] != b"IDST" or i32(data, 4) != 10:
         raise ValueError(f"Unsupported MDL: {source}")
     textures = texture_records(data)
     driver_data = driver_source.read_bytes() if driver_source is not None else None
-    bones = bone_transforms(data, driver_data)
+    bones = bone_transforms(
+        data,
+        driver_data,
+        sequence_name=sequence_name,
+        driver_sequence_name=driver_sequence_name,
+        sequence_frame=sequence_frame,
+    )
     primitives = mesh_primitives(
         data,
         bones,
