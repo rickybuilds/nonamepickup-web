@@ -10,8 +10,9 @@ Group=root
 UMask=0077
 EnvironmentFile=/etc/tfc/pickup-replay-uploader.env
 ExecStart=/usr/local/sbin/upload-pickup-replays
+StateDirectory=tfc-pickup-uploader
+StateDirectoryMode=0700
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/root/steamcmd/tfc/tfc/addons/amxmodx/data/pickup_replays /var/lib/tfc-pickup-uploader
-
+ReadWritePaths=-/root/steamcmd/tfc/tfc/addons/amxmodx/data/pickup_replays /var/lib/tfc-pickup-uploader
