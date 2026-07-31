@@ -29,12 +29,12 @@ test("assault cannon fire requires the recorded AC model, +attack, and a living 
 test("assault cannon tracers are deterministic, seekable, and map-clipped", () => {
   assert.match(source, /const AC_ROUNDS_PER_SECOND = 12/);
   assert.match(source, /Array\.from\(\{ length: 3 \}/);
-  assert.match(source, /new THREE\.CylinderGeometry\(0\.24, 0\.24, 1/);
+  assert.match(source, /new THREE\.CylinderGeometry\(0\.34, 0\.34, 1/);
   assert.match(source, /Math\.floor\(time \* AC_ROUNDS_PER_SECOND\)/);
   assert.match(source, /deterministicSpread\(shot, 1\)/);
   assert.match(source, /acRaycaster\.intersectObject\(mapModel, true\)/);
   assert.match(source, /startDistance = offset === 0 \? 0 : Math\.min\(range, phase \* range\)/);
-  assert.match(source, /tracerLength = offset === 0 \? 54 : 36/);
+  assert.match(source, /tracerLength = offset === 0 \? 72 : 48/);
   assert.doesNotMatch(source, /Math\.random\(\)/);
 });
 
@@ -46,12 +46,14 @@ test("assault cannon effects originate at the player muzzle and honor the projec
   assert.match(source, /addScaledVector\(forward, 27\)/);
   assert.match(source, /addScaledVector\(right, 14\)/);
   assert.match(source, /state\.showProjectiles && assaultCannonActive\(frame\)/);
-  assert.match(source, /new THREE\.SphereGeometry\(1\.2, 8, 6\)/);
-  assert.match(source, /flashPulse = 1 \+ .* \* 0\.25/);
+  assert.match(source, /new THREE\.ConeGeometry\(2\.1, 6, 8, 1, true\)/);
+  assert.match(source, /visual\.flash\.position\.copy\(muzzle\)\.addScaledVector\(forward, 3\)/);
+  assert.match(source, /visual\.flash\.quaternion\.setFromUnitVectors\(segmentUp, forward\)/);
+  assert.match(source, /flashPulse = 1 \+ .* \* 0\.2/);
   assert.match(source, /updateAssaultCannonVisual\(track, frame, state\.playbackTime\)/);
   assert.match(source, /hitscanRoot\.visible = state\.showProjectiles/);
   assert.match(source, /if \(track\.acFireVisual\) track\.acFireVisual\.group\.visible = false/);
-  assert.match(html, /pickup-replay\.js\?v=20260731schema3fix12/);
+  assert.match(html, /pickup-replay\.js\?v=20260731schema3fix13/);
 });
 
 test("held weapons inherit the normalized player model scale", () => {
