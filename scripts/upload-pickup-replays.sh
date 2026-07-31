@@ -13,6 +13,9 @@ readonly REQUIRED_FILES=(
   events.csv
   manifest.json
 )
+readonly SCHEMA_V3_FILES=(
+  render_models.csv
+)
 
 log() {
   printf '[pickup-replay-uploader] %s\n' "$*"
@@ -123,6 +126,21 @@ process_round() {
     }
   done
 
+  local schema_version
+  schema_version="$(jq -er '.schema_version | select(type == "number" and floor == .)' "$round_dir/manifest.json")" || {
+    log "manifest has no valid schema_version"
+    return 1
+  }
+  if (( schema_version == 3 )); then
+    [[ -f "$round_dir/render_models.csv" ]] || {
+      log "skipping schema-v3 round missing render_models.csv: $(basename "$round_dir")"
+      return 1
+    }
+  elif (( schema_version != 2 )); then
+    log "unsupported replay schema version: $schema_version"
+    return 1
+  fi
+
   local match_id manifest_round directory_round
   match_id="$(jq -er '.match_id | select(type == "string")' "$round_dir/manifest.json")" || {
     log "manifest has no valid match_id"
@@ -171,8 +189,10 @@ process_round() {
     archive="${candidates[0]}"
   else
     temporary="$(mktemp "$spool_root/tmp/$match_id-round-$round_pad-XXXXXX.part")"
+    local -a package_files=("${REQUIRED_FILES[@]}")
+    if (( schema_version == 3 )); then package_files+=("${SCHEMA_V3_FILES[@]}"); fi
     if ! tar --zstd -C "$round_dir" -cf "$temporary" \
-      "${REQUIRED_FILES[@]}" "$marker"; then
+      "${package_files[@]}" "$marker"; then
       rm -f -- "$temporary"
       log "archive creation failed for $match_id round $manifest_round"
       return 1

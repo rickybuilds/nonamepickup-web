@@ -7,7 +7,7 @@ const { spawn } = require("node:child_process");
 const { Writable } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const { TextDecoder } = require("node:util");
-const { parseCsv, normalizeRoster } = require("./csv");
+const { parseCsv, parseCsvDocument, normalizeRoster } = require("./csv");
 const { validateManifest } = require("./manifest");
 const { pickupError } = require("./errors");
 
@@ -21,9 +21,85 @@ const REQUIRED_FILES = Object.freeze([
   "events.csv",
   "manifest.json"
 ]);
+const RENDER_MODELS_FILE = "render_models.csv";
 const READY_FILES = new Set(["complete.ready", "aborted.ready"]);
-const ALLOWED_FILES = new Set([...REQUIRED_FILES, ...READY_FILES]);
+const ALLOWED_FILES = new Set([...REQUIRED_FILES, RENDER_MODELS_FILE, ...READY_FILES]);
 const utf8 = new TextDecoder("utf-8", { fatal: true });
+
+const PLAYERS_V2_COLUMNS = Object.freeze([
+  "snapshot", "time_ms", "session_id", "slot", "alive", "team", "class",
+  "goalitem_flags", "weapon", "buttons", "health", "armor", "x", "y", "z",
+  "vx", "vy", "vz", "pitch", "yaw", "roll"
+]);
+const PLAYERS_V3_COLUMNS = Object.freeze([...PLAYERS_V2_COLUMNS,
+  "ducking", "oldbuttons", "player_model_id", "weapon_model_id", "body", "skin",
+  "sequence", "gaitsequence", "frame", "framerate", "animtime", "body_pitch",
+  "body_yaw", "body_roll", "controller0", "controller1", "controller2", "controller3",
+  "blending0", "blending1"
+]);
+const RENDER_MODEL_COLUMNS = Object.freeze(["model_id", "kind", "path", "first_seen_ms"]);
+
+function exactHeaders(actual, expected, code) {
+  if (actual.length !== expected.length || actual.some((name, index) => name !== expected[index])) {
+    throw pickupError(422, code, { quarantine: true });
+  }
+}
+
+function requiredInteger(value, code, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}) {
+  if (!/^-?\d+$/.test(String(value))) throw pickupError(422, code, { quarantine: true });
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
+    throw pickupError(422, code, { quarantine: true });
+  }
+  return parsed;
+}
+
+function safeTfcModelPath(value) {
+  if (typeof value !== "string" || value.length < 12 || value.length > 255 ||
+      value.includes("\\") || value.includes("\0") || path.posix.isAbsolute(value) ||
+      value.split("/").some(part => !part || part === "." || part === "..") ||
+      !/^models\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.mdl$/i.test(value)) {
+    throw pickupError(422, "unsafe_render_model_path", { quarantine: true });
+  }
+  return value;
+}
+
+function validateRenderModels(document) {
+  exactHeaders(document.headers, RENDER_MODEL_COLUMNS, "invalid_render_models_headers");
+  const models = new Map();
+  for (const row of document.rows) {
+    const modelId = requiredInteger(row.model_id, "invalid_render_model_id", { min: 1 });
+    if (models.has(modelId)) throw pickupError(422, "duplicate_render_model_id", { quarantine: true });
+    if (row.kind !== "player" && row.kind !== "weapon") {
+      throw pickupError(422, "invalid_render_model_kind", { quarantine: true });
+    }
+    models.set(modelId, {
+      modelId,
+      kind: row.kind,
+      path: safeTfcModelPath(row.path),
+      firstSeenMs: requiredInteger(row.first_seen_ms, "invalid_render_model_timestamp", { min: 0 })
+    });
+  }
+  return models;
+}
+
+function validatePlayers(document, schemaVersion, renderModels) {
+  exactHeaders(
+    document.headers,
+    schemaVersion === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS,
+    "invalid_players_headers"
+  );
+  if (schemaVersion === 2) return;
+  for (const row of document.rows) {
+    for (const [column, kind] of [["player_model_id", "player"], ["weapon_model_id", "weapon"]]) {
+      const id = requiredInteger(row[column], "invalid_render_model_reference", { min: 0 });
+      if (id === 0) continue;
+      const model = renderModels.get(id);
+      if (!model) throw pickupError(422, "undefined_render_model_id", { quarantine: true });
+      if (model.kind !== kind) throw pickupError(422, "render_model_kind_mismatch", { quarantine: true });
+    }
+  }
+}
 
 function decodeTarString(buffer) {
   const nul = buffer.indexOf(0);
@@ -242,9 +318,6 @@ async function validateArchive({
   if (markers.length !== 1) {
     throw pickupError(422, "invalid_ready_markers", { quarantine: true });
   }
-  if (extractor.files.size !== REQUIRED_FILES.length + 1) {
-    throw pickupError(422, "unexpected_archive_file", { quarantine: true });
-  }
   if (extractor.files.get(markers[0]).size > 4096) {
     throw pickupError(422, "invalid_ready_marker", { quarantine: true });
   }
@@ -261,6 +334,34 @@ async function validateArchive({
   const complete = markers[0] === "complete.ready";
   validateManifest(manifest, { matchId, round, complete });
 
+  const hasRenderModels = extractor.files.has(RENDER_MODELS_FILE);
+  if (manifest.schema_version === 3 && !hasRenderModels) {
+    throw pickupError(422, "missing_render_models_file", { quarantine: true });
+  }
+  if (manifest.schema_version === 2 && hasRenderModels) {
+    throw pickupError(422, "unexpected_archive_file", { quarantine: true });
+  }
+  const expectedFileCount = REQUIRED_FILES.length + 1 + (manifest.schema_version === 3 ? 1 : 0);
+  if (extractor.files.size !== expectedFileCount) {
+    throw pickupError(422, "unexpected_archive_file", { quarantine: true });
+  }
+
+  let renderModels = new Map();
+  if (hasRenderModels) {
+    const renderFile = extractor.files.get(RENDER_MODELS_FILE);
+    if (manifest.bytes[RENDER_MODELS_FILE] !== renderFile.size) {
+      throw pickupError(422, "render_models_manifest_mismatch", { quarantine: true });
+    }
+    const renderText = await fsp.readFile(renderFile.path, "utf8");
+    const renderDocument = parseCsvDocument(renderText, "render_models");
+    if (manifest.rows.render_models !== renderDocument.rows.length) {
+      throw pickupError(422, "render_models_manifest_mismatch", { quarantine: true });
+    }
+    renderModels = validateRenderModels(renderDocument);
+  }
+  const playersText = await fsp.readFile(extractor.files.get("players.csv").path, "utf8");
+  validatePlayers(parseCsvDocument(playersText, "players"), manifest.schema_version, renderModels);
+
   const rosterText = await fsp.readFile(extractor.files.get("roster.csv").path, "utf8");
   const roster = normalizeRoster(parseCsv(rosterText, "roster"));
   return { manifest, roster, complete, extractedBytes: extractor.totalBytes };
@@ -268,6 +369,11 @@ async function validateArchive({
 
 module.exports = {
   REQUIRED_FILES,
+  RENDER_MODELS_FILE,
+  PLAYERS_V2_COLUMNS,
+  PLAYERS_V3_COLUMNS,
+  RENDER_MODEL_COLUMNS,
+  safeTfcModelPath,
   SafeTarExtractor,
   openZstdStream,
   validateArchive

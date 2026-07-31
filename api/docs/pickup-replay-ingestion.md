@@ -1,6 +1,6 @@
 # Pickup replay ingestion
 
-`POST /api/pickup-replays` accepts one version-2 TFC 4v4 round replay package. The
+`POST /api/pickup-replays` accepts one schema-version-2 or schema-version-3 TFC 4v4 round replay package. The
 route is upload-only. Replay storage is private and is not registered as an
 Express static directory.
 
@@ -86,6 +86,7 @@ projectiles.csv
 objective_defs.csv
 objectives.csv
 events.csv
+render_models.csv    # schema version 3 only
 manifest.json
 complete.ready       # exactly one ready marker
 ```
@@ -97,12 +98,23 @@ duplicate names, symlinks, hard links, devices, and other tar entry types are
 rejected. The manifest is limited to 1 MiB and `roster.csv` to 16 MiB in
 addition to the global extracted-byte and file-count limits.
 
-Schema version 2 requires `schema_version`, `match_id`, `round`, `map`,
+Schema versions 2 and 3 require `schema_version`, `match_id`, `round`, `map`,
 `complete`, `reason`, `started_at_epoch`, `ended_at_epoch`, `duration_ms`,
 `sample_interval_seconds`, `snapshots`, `dropped_snapshots`, `write_error`,
-`rows`, and `bytes`. Header identifiers must equal manifest identifiers, and
-the ready marker must agree with `complete`. Versions other than 2 are rejected
-with `unsupported_schema_version`; future versions are never reinterpreted.
+`rows`, and `bytes`. Version 3 additionally requires `rows.render_models`,
+`bytes["render_models.csv"]`, and `render_models.csv`. Header identifiers must
+equal manifest identifiers, and the ready marker must agree with `complete`.
+Versions other than 2 and 3 are rejected with `unsupported_schema_version`;
+future versions are never reinterpreted.
+
+The schema-2 `players.csv` header is the original 21-column contract. Schema 3
+appends recorder animation state and the `player_model_id` and
+`weapon_model_id` dictionary references. `render_models.csv` contains
+`model_id,kind,path,first_seen_ms`; IDs are positive and unique, while a player
+reference of zero means no model was available. Nonzero references must exist
+and match the expected `player` or `weapon` kind. Model paths must be safe,
+relative `models/.../*.mdl` paths with no backslashes, absolute paths, or dot
+segments.
 
 `roster.csv` uses these canonical columns:
 
@@ -139,7 +151,7 @@ upserts `pickup_matches`, `pickup_rounds`, `pickup_players`,
 ```text
 storage_backend = local
 artifact_kind = round_replay
-format_version = 2
+format_version = <manifest schema_version>
 ```
 
 The repository expects these existing column/index contracts:

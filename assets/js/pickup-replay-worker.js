@@ -28,10 +28,14 @@ function csvFields(line) {
   return fields;
 }
 
-function rows(text, callback) {
+function rows(text, callback, expectedHeaders = null) {
   const firstBreak = text.indexOf("\n");
   if (firstBreak < 0) return;
   const headers = csvFields(text.slice(0, firstBreak).replace(/\r$/, ""));
+  if (expectedHeaders &&
+      (headers.length !== expectedHeaders.length || headers.some((name, index) => name !== expectedHeaders[index]))) {
+    throw new Error("Telemetry CSV header does not match its replay schema.");
+  }
   const index = Object.fromEntries(headers.map((name, position) => [name, position]));
   let start = firstBreak + 1;
   while (start < text.length) {
@@ -41,6 +45,18 @@ function rows(text, callback) {
     start = end + 1;
   }
 }
+
+const PLAYERS_V2_COLUMNS = [
+  "snapshot", "time_ms", "session_id", "slot", "alive", "team", "class",
+  "goalitem_flags", "weapon", "buttons", "health", "armor", "x", "y", "z",
+  "vx", "vy", "vz", "pitch", "yaw", "roll"
+];
+const PLAYERS_V3_COLUMNS = [...PLAYERS_V2_COLUMNS,
+  "ducking", "oldbuttons", "player_model_id", "weapon_model_id", "body", "skin",
+  "sequence", "gaitsequence", "frame", "framerate", "animtime", "body_pitch",
+  "body_yaw", "body_roll", "controller0", "controller1", "controller2", "controller3",
+  "blending0", "blending1"
+];
 
 const number = value => {
   const parsed = Number(value);
@@ -70,12 +86,29 @@ async function loadRoster(url) {
   return output;
 }
 
-async function loadPlayers(url) {
+async function loadRenderModels(url) {
+  const models = [];
+  rows(await text(url), (cols, i) => {
+    const modelId = number(cols[i.model_id]);
+    const kind = cols[i.kind];
+    const modelPath = cols[i.path] || "";
+    if (!Number.isSafeInteger(modelId) || modelId < 1 || (kind !== "player" && kind !== "weapon") ||
+        modelPath.includes("\\") || modelPath.split("/").some(part => !part || part === "." || part === "..") ||
+        !/^models\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.mdl$/i.test(modelPath)) {
+      throw new Error("Invalid render model dictionary.");
+    }
+    models.push({ modelId, kind, path: modelPath, firstSeenMs: number(cols[i.first_seen_ms]) });
+  }, ["model_id", "kind", "path", "first_seen_ms"]);
+  return models;
+}
+
+async function loadPlayers(url, schemaVersion, renderModels) {
   const tracks = new Map();
+  const models = new Map(renderModels.map(model => [model.modelId, model]));
   rows(await text(url), (cols, i) => {
     const sessionId = number(cols[i.session_id]);
     if (!tracks.has(sessionId)) tracks.set(sessionId, []);
-    tracks.get(sessionId).push(
+    const values = [
       number(cols[i.time_ms]) / 1000,
       number(cols[i.x]), number(cols[i.y]), number(cols[i.z]),
       number(cols[i.vx]), number(cols[i.vy]), number(cols[i.vz]),
@@ -83,11 +116,31 @@ async function loadPlayers(url) {
       number(cols[i.alive]), number(cols[i.team]), number(cols[i.class]),
       number(cols[i.weapon]), number(cols[i.buttons]),
       number(cols[i.health]), number(cols[i.armor])
-    );
-  });
+    ];
+    if (schemaVersion === 3) {
+      const playerModelId = number(cols[i.player_model_id]);
+      const weaponModelId = number(cols[i.weapon_model_id]);
+      for (const [id, kind] of [[playerModelId, "player"], [weaponModelId, "weapon"]]) {
+        if (!Number.isSafeInteger(id) || id < 0 || (id !== 0 && models.get(id)?.kind !== kind)) {
+          throw new Error("Player snapshot references an invalid render model.");
+        }
+      }
+      values.push(
+        number(cols[i.ducking]), number(cols[i.oldbuttons]), playerModelId, weaponModelId,
+        number(cols[i.body]), number(cols[i.skin]), number(cols[i.sequence]),
+        number(cols[i.gaitsequence]), number(cols[i.frame]), number(cols[i.framerate]),
+        number(cols[i.animtime]), number(cols[i.body_pitch]), number(cols[i.body_yaw]),
+        number(cols[i.body_roll]), number(cols[i.controller0]), number(cols[i.controller1]),
+        number(cols[i.controller2]), number(cols[i.controller3]), number(cols[i.blending0]),
+        number(cols[i.blending1])
+      );
+    }
+    tracks.get(sessionId).push(...values);
+  }, schemaVersion === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS);
   return [...tracks].map(([sessionId, values]) => ({
     sessionId,
-    stride: 17,
+    schemaVersion,
+    stride: schemaVersion === 3 ? 37 : 17,
     frames: new Float32Array(values)
   }));
 }
@@ -208,10 +261,13 @@ async function loadEvents(url) {
 self.onmessage = async event => {
   try {
     const files = event.data.files;
+    const schemaVersion = Number(event.data.schemaVersion);
+    if (schemaVersion !== 2 && schemaVersion !== 3) throw new Error("Unsupported replay schema version.");
     self.postMessage({ type: "progress", label: "Loading roster…" });
     const roster = await loadRoster(files.roster);
+    const renderModels = schemaVersion === 3 ? await loadRenderModels(files.renderModels) : [];
     self.postMessage({ type: "progress", label: "Loading player snapshots…" });
-    const players = await loadPlayers(files.players);
+    const players = await loadPlayers(files.players, schemaVersion, renderModels);
     self.postMessage({ type: "progress", label: "Loading projectile telemetry…" });
     const projectileDefinitions = await loadProjectileDefinitions(files.projectileDefs);
     for (const definition of projectileDefinitions) {
@@ -235,6 +291,7 @@ self.onmessage = async event => {
       type: "complete",
       payload: {
         roster,
+        renderModels,
         players,
         projectileDefinitions,
         projectiles,

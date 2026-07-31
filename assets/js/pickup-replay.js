@@ -32,6 +32,7 @@ const modelCache = new Map();
 const state = {
   metadata: null,
   roster: [],
+  renderModels: new Map(),
   players: [],
   playerBySession: new Map(),
   projectileDefinitions: new Map(),
@@ -155,7 +156,7 @@ function angle(frame, index) {
 function playerSnapshot(track, time) {
   const frame = trackFrame(track, time);
   if (!frame) return null;
-  return {
+  const snapshot = {
     time: value(frame, 0),
     x: value(frame, 1), y: value(frame, 2), z: value(frame, 3),
     vx: value(frame, 4), vy: value(frame, 5), vz: value(frame, 6),
@@ -166,8 +167,26 @@ function playerSnapshot(track, time) {
     weapon: Math.round(value(frame, 13, false)),
     buttons: Math.round(value(frame, 14, false)),
     health: Math.round(value(frame, 15, false)),
-    armor: Math.round(value(frame, 16, false))
+    armor: Math.round(value(frame, 16, false)),
+    schemaVersion: track.schemaVersion || 2
   };
+  if (snapshot.schemaVersion === 3) Object.assign(snapshot, {
+    ducking: value(frame, 17, false) === 1,
+    oldbuttons: Math.round(value(frame, 18, false)),
+    playerModelId: Math.round(value(frame, 19, false)),
+    weaponModelId: Math.round(value(frame, 20, false)),
+    body: Math.round(value(frame, 21, false)), skin: Math.round(value(frame, 22, false)),
+    sequence: Math.round(value(frame, 23, false)), gaitsequence: Math.round(value(frame, 24, false)),
+    frame: value(frame, 25), framerate: value(frame, 26), animtime: value(frame, 27),
+    bodyPitch: angle(frame, 28), bodyYaw: angle(frame, 29), bodyRoll: angle(frame, 30),
+    controller: [31, 32, 33, 34].map(index => value(frame, index, false)),
+    blending: [35, 36].map(index => value(frame, index, false))
+  });
+  return snapshot;
+}
+
+function isDucking(frame) {
+  return frame.schemaVersion === 3 ? frame.ducking : Boolean(frame.buttons & 4);
 }
 
 function projectileSnapshot(track, time) {
@@ -274,8 +293,29 @@ async function setPlayerModel(track, classId, team) {
   const asset = await modelAsset(classId, team);
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team) return;
   const model = clonedPlayerModel(asset);
-  track.mesh.clear();
-  track.mesh.add(model);
+  track.playerVisual.clear();
+  track.playerVisual.add(model);
+}
+
+function thirdPersonModelUrl(model) {
+  if (!model || model.kind !== "weapon") return null;
+  const name = model.path.split("/").pop();
+  if (!/^p_[A-Za-z0-9_.-]+\.mdl$/i.test(name)) return null;
+  return `/assets/${model.path.replace(/\.mdl$/i, ".glb")}`;
+}
+
+async function setWeaponModel(track, modelId) {
+  if (track.mesh.userData.weaponModelId === modelId) return;
+  track.mesh.userData.weaponModelId = modelId;
+  track.weaponVisual.clear();
+  if (!modelId) return;
+  const url = thirdPersonModelUrl(state.renderModels.get(modelId));
+  if (!url) return;
+  const asset = await loadModelAsset(url);
+  if (!asset || track.mesh.userData.weaponModelId !== modelId) return;
+  const model = asset.clone(true);
+  model.traverse(child => { if (child.isMesh) child.frustumCulled = false; });
+  track.weaponVisual.add(model);
 }
 
 function layCorpseModel(model, side) {
@@ -369,7 +409,11 @@ function buildVisuals() {
   for (const track of state.players) {
     const roster = state.roster.find(row => row.sessionId === track.sessionId);
     const team = roster?.team || 0;
-    track.mesh = fallbackPlayerMesh(team);
+    track.mesh = new THREE.Group();
+    track.playerVisual = new THREE.Group();
+    track.weaponVisual = new THREE.Group();
+    track.playerVisual.add(fallbackPlayerMesh(team));
+    track.mesh.add(track.playerVisual, track.weaponVisual);
     track.mesh.visible = false;
     track.mesh.userData.sessionId = track.sessionId;
     playerRoot.add(track.mesh);
@@ -506,12 +550,23 @@ function updatePlayers() {
     track.mesh.visible = Boolean(frame && state.playbackTime >= joined);
     if (!frame) continue;
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
-    track.mesh.position.y -= (frame.buttons & 4) ? 18 : 36;
-    track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
+    track.mesh.position.y -= isDucking(frame) ? 18 : 36;
+    track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyYaw : frame.yaw);
+    track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyPitch : 0);
+    track.playerVisual.rotation.z = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyRoll : 0);
     const isSelectedPov =
       state.cameraMode === "pov" && track.sessionId === state.selectedSession;
     track.mesh.visible = frame.alive && !isSelectedPov;
     void setPlayerModel(track, frame.classId, frame.team);
+    if (frame.schemaVersion === 3) {
+      void setWeaponModel(track, frame.weaponModelId);
+      Object.assign(track.playerVisual.userData, {
+        recordedPlayerModel: state.renderModels.get(frame.playerModelId)?.path || null,
+        body: frame.body, skin: frame.skin, sequence: frame.sequence,
+        gaitsequence: frame.gaitsequence, frame: frame.frame, framerate: frame.framerate,
+        animtime: frame.animtime, controller: frame.controller, blending: frame.blending
+      });
+    }
 
     const button = document.querySelector(`.pickup-player[data-session-id="${track.sessionId}"]`);
     if (button) {
@@ -585,7 +640,7 @@ function updateCamera() {
   const point = sourcePoint(frame.x, frame.y, frame.z);
   const direction = viewDirection(frame);
   if (state.cameraMode === "pov") {
-    point.y += (frame.buttons & 4) ? 12 : 28;
+    point.y += isDucking(frame) ? 12 : 28;
     camera.position.copy(point);
     camera.lookAt(point.clone().add(direction.multiplyScalar(320)));
   } else if (state.cameraMode === "chase") {
@@ -778,7 +833,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260730pickup2");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -794,7 +849,7 @@ function loadTelemetry(files) {
       worker.terminate();
       reject(new Error(event.message || "Replay worker failed."));
     };
-    worker.postMessage({ files });
+    worker.postMessage({ files, schemaVersion: state.metadata?.manifest?.schema_version });
   });
 }
 
@@ -824,6 +879,7 @@ async function init() {
     setStatus("Loading projectile models and effects…");
     await projectileVisuals.preload(telemetry.projectileDefinitions);
     state.roster = telemetry.roster;
+    state.renderModels = new Map(telemetry.renderModels.map(model => [model.modelId, model]));
     state.players = telemetry.players;
     state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
     state.projectileDefinitions = new Map(telemetry.projectileDefinitions.map(def => [def.projectileId, def]));

@@ -24,6 +24,12 @@ const { PickupRepository } = require("../src/pickup/repository");
 const { createPickupReplaysRouter } = require("../src/routes/pickupReplays");
 const { PickupReplayViewer, parseViewerIdentity } = require("../src/pickup/viewer");
 
+const PLAYERS_V2_HEADER = "snapshot,time_ms,session_id,slot,alive,team,class,goalitem_flags,weapon,buttons,health,armor,x,y,z,vx,vy,vz,pitch,yaw,roll";
+const PLAYERS_V2_ROW = "1,0,1,2,1,2,3,0,7,0,100,50,10,20,30,0,0,0,5,90,0";
+const PLAYERS_V3_HEADER = `${PLAYERS_V2_HEADER},ducking,oldbuttons,player_model_id,weapon_model_id,body,skin,sequence,gaitsequence,frame,framerate,animtime,body_pitch,body_yaw,body_roll,controller0,controller1,controller2,controller3,blending0,blending1`;
+const PLAYERS_V3_ROW = `${PLAYERS_V2_ROW},0,0,1,2,0,0,4,1,12.5,1,0,5,90,0,0,0,0,0,0,0`;
+const RENDER_MODELS = "model_id,kind,path,first_seen_ms\n1,player,models/player/soldier/soldier.mdl,0\n2,weapon,models/p_rpg.mdl,0\n";
+
 function octal(value, length) {
   return `${value.toString(8).padStart(length - 2, "0")}\0 `;
 }
@@ -70,16 +76,29 @@ function validManifest(overrides = {}) {
   };
 }
 
+function validV3Manifest(renderModels = RENDER_MODELS, overrides = {}) {
+  return validManifest({
+    schema_version: 3,
+    rows: { roster: 8, players: 1, render_models: 2 },
+    bytes: { roster: 100, players: 1000, "render_models.csv": Buffer.byteLength(renderModels) },
+    ...overrides
+  });
+}
+
 function archiveBuffer({
   manifest = validManifest(),
   marker = "complete.ready",
   markerContent = "",
   omit = [],
+  renderModels = manifest.schema_version === 3 ? RENDER_MODELS : null,
+  players = manifest.schema_version === 3
+    ? `${PLAYERS_V3_HEADER}\n${PLAYERS_V3_ROW}\n`
+    : `${PLAYERS_V2_HEADER}\n${PLAYERS_V2_ROW}\n`,
   extraEntries = []
 } = {}) {
   const content = {
     "roster.csv": "session_id,slot,userid,steamid,name,initial_team,is_bot,joined_ms\n1,2,51,STEAM_0:1:1,Alice,2,0,0\n",
-    "players.csv": "tick\n1\n",
+    "players.csv": players,
     "projectile_defs.csv": "id\n1\n",
     "projectiles.csv": "tick\n1\n",
     "objective_defs.csv": "id\n1\n",
@@ -87,7 +106,8 @@ function archiveBuffer({
     "events.csv": "tick\n1\n",
     "manifest.json": JSON.stringify(manifest)
   };
-  const entries = REQUIRED_FILES
+  if (renderModels != null) content["render_models.csv"] = renderModels;
+  const entries = [...REQUIRED_FILES, ...(renderModels == null ? [] : ["render_models.csv"])]
     .filter(name => !omit.includes(name))
     .map(name => tarEntry(name, content[name]));
   if (marker) entries.push(tarEntry(marker, markerContent));
@@ -512,14 +532,57 @@ test("missing required files and multiple ready markers are rejected", async t =
   );
 });
 
-test("manifest/header mismatch and unsupported schema versions are rejected", async t => {
+test("manifest/header mismatch and unsupported future schema versions are rejected", async t => {
   await assert.rejects(
     validateBuffer(t, archiveBuffer({ manifest: validManifest({ round: 2 }) })),
     error => error.code === "manifest_header_mismatch"
   );
   await assert.rejects(
-    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 3 }) })),
+    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 4 }), renderModels: null })),
     error => error.code === "unsupported_schema_version"
+  );
+});
+
+test("valid schema-v2 artifact keeps the exact original 21-column player contract", async t => {
+  const validated = await validateBuffer(t, archiveBuffer());
+  assert.equal(validated.manifest.schema_version, 2);
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ players: `${PLAYERS_V2_HEADER},ducking\n${PLAYERS_V2_ROW},0\n` })),
+    error => error.code === "invalid_players_headers"
+  );
+});
+
+test("valid schema-v3 artifact retains and validates render_models.csv", async t => {
+  const validated = await validateBuffer(t, archiveBuffer({ manifest: validV3Manifest() }));
+  assert.equal(validated.manifest.schema_version, 3);
+  assert.equal(validated.manifest.rows.render_models, 2);
+});
+
+test("schema-v3 accepts model ID zero as unavailable", async t => {
+  const players = `${PLAYERS_V3_HEADER}\n${PLAYERS_V3_ROW.replace(",1,2,0,0,4,", ",0,0,0,0,4,")}\n`;
+  await validateBuffer(t, archiveBuffer({ manifest: validV3Manifest(), players }));
+});
+
+test("schema-v3 rejects undefined nonzero model IDs", async t => {
+  const players = `${PLAYERS_V3_HEADER}\n${PLAYERS_V3_ROW.replace(",1,2,0,0,4,", ",1,99,0,0,4,")}\n`;
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ manifest: validV3Manifest(), players })),
+    error => error.code === "undefined_render_model_id"
+  );
+});
+
+test("schema-v3 rejects a missing render_models.csv", async t => {
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ manifest: validV3Manifest(), renderModels: null })),
+    error => error.code === "missing_render_models_file"
+  );
+});
+
+test("schema-v3 rejects traversal in render model paths", async t => {
+  const renderModels = RENDER_MODELS.replace("models/p_rpg.mdl", "models/../p_rpg.mdl");
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ manifest: validV3Manifest(renderModels), renderModels })),
+    error => error.code === "unsafe_render_model_path"
   );
 });
 
@@ -643,6 +706,25 @@ test("viewer returns verified primary metadata and allowlisted file URLs", async
     "projectiles",
     "roster"
   ]);
+});
+
+test("schema-v3 viewer advertises render_models.csv", async () => {
+  const pool = {
+    async execute() {
+      return [[{
+        artifact_id: 9,
+        sha256: "c".repeat(64),
+        byte_size: 1,
+        storage_key: "2026/07/test/round-01-v3.tar.zst",
+        manifest_json: JSON.stringify({ schema_version: 3 }),
+        match_id: "test",
+        round_number: 1
+      }]];
+    }
+  };
+  const viewer = new PickupReplayViewer({ pool, storage: {} });
+  const metadata = await viewer.metadata("test", 1);
+  assert.equal(metadata.files.renderModels, "/api/pickup-replays/viewer/test/1/files/render_models.csv");
 });
 
 test("viewer extracts only an allowlisted CSV with fixed tar arguments", async t => {

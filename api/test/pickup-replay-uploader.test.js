@@ -21,6 +21,7 @@ test("game-server uploader packages a fixed allowlist after a ready marker", () 
   for (const name of [
     "roster.csv",
     "players.csv",
+    "render_models.csv",
     "projectile_defs.csv",
     "projectiles.csv",
     "objective_defs.csv",

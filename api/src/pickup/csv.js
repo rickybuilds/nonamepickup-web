@@ -2,7 +2,7 @@
 
 const { pickupError } = require("./errors");
 
-function parseCsv(text, label) {
+function parseCsvDocument(text, label) {
   if (typeof text !== "string" || text.includes("\0")) {
     throw pickupError(422, "invalid_csv", { quarantine: true });
   }
@@ -56,12 +56,17 @@ function parseCsv(text, label) {
     throw pickupError(422, "invalid_csv_headers", { quarantine: true });
   }
 
-  return records.map((values, rowIndex) => {
+  const rows = records.map(values => {
     if (values.length !== headers.length) {
       throw pickupError(422, "invalid_csv_row", { quarantine: true });
     }
     return Object.fromEntries(headers.map((header, index) => [header, values[index]]));
   });
+  return { headers, rows };
+}
+
+function parseCsv(text, label) {
+  return parseCsvDocument(text, label).rows;
 }
 
 function firstValue(row, names) {
@@ -196,4 +201,4 @@ function normalizeRoster(rows) {
   return sessions;
 }
 
-module.exports = { parseCsv, normalizeRoster };
+module.exports = { parseCsv, parseCsvDocument, normalizeRoster };

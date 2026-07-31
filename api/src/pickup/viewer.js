@@ -8,6 +8,7 @@ const MATCH_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const VIEWER_FILES = new Set([
   "roster.csv",
   "players.csv",
+  "render_models.csv",
   "projectile_defs.csv",
   "projectiles.csv",
   "objective_defs.csv",
@@ -84,6 +85,10 @@ class PickupReplayViewer {
   async metadata(matchId, round) {
     const row = await this.artifact(matchId, round);
     const base = `/api/pickup-replays/viewer/${encodeURIComponent(matchId)}/${round}`;
+    const manifest = parseManifest(row.manifest_json);
+    const viewerFiles = [...VIEWER_FILES].filter(name =>
+      name !== "render_models.csv" || manifest.schema_version === 3
+    );
     return {
       artifactId: Number(row.artifact_id),
       matchId: row.match_id,
@@ -104,8 +109,8 @@ class PickupReplayViewer {
       },
       sha256: row.sha256,
       byteSize: Number(row.byte_size || 0),
-      manifest: parseManifest(row.manifest_json),
-      files: Object.fromEntries([...VIEWER_FILES].map(name => [
+      manifest,
+      files: Object.fromEntries(viewerFiles.map(name => [
         name.replace(/\.csv$/, "").replace(/_([a-z])/g, (_match, letter) => letter.toUpperCase()),
         `${base}/files/${name}`
       ]))

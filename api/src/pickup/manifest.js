@@ -2,7 +2,8 @@
 
 const { pickupError } = require("./errors");
 
-const CURRENT_SCHEMA_VERSION = 2;
+const MIN_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 function isPlainObject(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -32,10 +33,7 @@ function validateManifest(value, expected) {
   if (!Number.isSafeInteger(value.schema_version)) {
     throw pickupError(422, "invalid_manifest", { quarantine: true });
   }
-  if (value.schema_version > CURRENT_SCHEMA_VERSION) {
-    throw pickupError(422, "unsupported_schema_version", { quarantine: true });
-  }
-  if (value.schema_version !== CURRENT_SCHEMA_VERSION) {
+  if (value.schema_version < MIN_SCHEMA_VERSION || value.schema_version > CURRENT_SCHEMA_VERSION) {
     throw pickupError(422, "unsupported_schema_version", { quarantine: true });
   }
   if (value.match_id !== expected.matchId || value.round !== expected.round) {
@@ -69,6 +67,11 @@ function validateManifest(value, expected) {
   requireInteger(value, "dropped_snapshots");
   requireCountObject(value, "rows");
   requireCountObject(value, "bytes");
+  if (value.schema_version === 3 &&
+      (!Number.isSafeInteger(value.rows.render_models) ||
+       !Number.isSafeInteger(value.bytes["render_models.csv"]))) {
+    throw pickupError(422, "invalid_manifest", { quarantine: true });
+  }
   if (value.ended_at_epoch < value.started_at_epoch) {
     throw pickupError(422, "invalid_manifest", { quarantine: true });
   }
@@ -78,4 +81,4 @@ function validateManifest(value, expected) {
   return value;
 }
 
-module.exports = { CURRENT_SCHEMA_VERSION, validateManifest };
+module.exports = { MIN_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION, validateManifest };
