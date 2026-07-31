@@ -19,6 +19,7 @@ const {
 } = require("../src/pickup/ingestion");
 const { PickupStorage } = require("../src/pickup/storage");
 const { pickupError } = require("../src/pickup/errors");
+const { PickupRepository } = require("../src/pickup/repository");
 const { createPickupReplaysRouter } = require("../src/routes/pickupReplays");
 
 function octal(value, length) {
@@ -74,7 +75,7 @@ function archiveBuffer({
   extraEntries = []
 } = {}) {
   const content = {
-    "roster.csv": "session_index,steam_id,player_name,team_number,joined_at_epoch,left_at_epoch\n1,STEAM_0:1:1,Alice,1,1785440000,1785440900\n",
+    "roster.csv": "session_id,steamid,name,initial_slot,team_number,primary_class_id,is_bot,joined_ms,left_ms,kills,deaths\n1,STEAM_0:1:1,Alice,1,1,3,0,0,900000,10,5\n",
     "players.csv": "tick\n1\n",
     "projectile_defs.csv": "id\n1\n",
     "projectiles.csv": "tick\n1\n",
@@ -150,6 +151,83 @@ class MemoryRepository {
     return { ...this.current, created: true, promotedPath, createdStorage: true };
   }
 }
+
+test("MariaDB repository targets the deployed pickup table contract", async () => {
+  const statements = [];
+  let committed = false;
+  let released = false;
+  const connection = {
+    async beginTransaction() {},
+    async commit() { committed = true; },
+    async rollback() {},
+    release() { released = true; },
+    async execute(sql, params = []) {
+      const normalized = sql.replace(/\s+/g, " ").trim();
+      assert.equal(
+        params.length,
+        (sql.match(/\?/g) || []).length,
+        `placeholder mismatch: ${normalized}`
+      );
+      statements.push({ sql: normalized, params });
+      if (normalized.startsWith("INSERT INTO pickup_matches")) return [{ insertId: 10 }];
+      if (normalized.startsWith("INSERT INTO pickup_rounds")) return [{ insertId: 20 }];
+      if (normalized.startsWith("SELECT id FROM pickup_rounds")) return [[{ id: 20 }]];
+      if (normalized.includes("FROM pickup_artifacts")) return [[]];
+      if (normalized.startsWith("INSERT INTO pickup_players")) return [{ insertId: 30 }];
+      if (normalized.startsWith("INSERT INTO pickup_artifacts")) return [{ insertId: 123 }];
+      return [{ affectedRows: 1 }];
+    }
+  };
+  const repository = new PickupRepository({
+    async getConnection() { return connection; },
+    async execute() { throw new Error("unexpected commit confirmation"); }
+  });
+  const result = await repository.persist({
+    matchId: "pug-20260730-1842",
+    serverId: "central-1",
+    round: 1,
+    sha256: "a".repeat(64),
+    byteSize: 12345,
+    storageKey: "2026/07/pug-20260730-1842/round-01-test.tar.zst",
+    status: "complete",
+    manifest: validManifest(),
+    roster: [{
+      steamId: "STEAM_0:1:1",
+      playerName: "Alice",
+      sessionIndex: 1,
+      initialSlot: 1,
+      teamNumber: 1,
+      teamName: "Blue",
+      primaryClassId: 3,
+      isBot: false,
+      joinedMs: 0,
+      leftMs: 900000,
+      kills: 10,
+      deaths: 5,
+      assists: 2,
+      suicides: 0,
+      damageDealt: 1000,
+      damageTaken: 800,
+      flagPickups: 1,
+      flagDrops: 0,
+      flagCaptures: 1,
+      flagReturns: 0
+    }]
+  }, async () => "/private/artifact");
+
+  assert.equal(result.artifactId, 123);
+  assert.equal(committed, true);
+  assert.equal(released, true);
+  const sql = statements.map(entry => entry.sql).join("\n");
+  assert.match(sql, /pickup_matches \(match_id, source_server/);
+  assert.match(sql, /pickup_rounds \(match_pk, round_number, map/);
+  assert.match(sql, /sample_interval_ms/);
+  assert.match(sql, /pickup_players \(steamid, current_name/);
+  assert.match(sql, /pickup_round_players \(round_pk, player_pk, session_id/);
+  assert.match(sql, /pickup_artifacts \(round_pk, artifact_kind, status/);
+  assert.match(sql, /manifest_json/);
+  assert.doesNotMatch(sql, /\bround_id\b|\bplayer_id\b|\bserver_id\b|\bmap_name\b/);
+});
 
 function createIngestion(storage, repository, overrides = {}) {
   return new PickupIngestion({

@@ -79,6 +79,23 @@ function optionalInteger(value, code) {
   return parsed;
 }
 
+function boundedInteger(value, code, { min = 0, max = 0xffffffff, fallback = null } = {}) {
+  const parsed = optionalInteger(value, code);
+  if (parsed == null) return fallback;
+  if (parsed < min || parsed > max) {
+    throw pickupError(422, code, { quarantine: true });
+  }
+  return parsed;
+}
+
+function booleanValue(value, code) {
+  if (value == null || value === "") return false;
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes"].includes(normalized)) return true;
+  if (["0", "false", "no"].includes(normalized)) return false;
+  throw pickupError(422, code, { quarantine: true });
+}
+
 function normalizeRoster(rows) {
   if (rows.length < 1 || rows.length > 256) {
     throw pickupError(422, "invalid_roster_session_count", { quarantine: true });
@@ -86,43 +103,91 @@ function normalizeRoster(rows) {
   const sessions = rows.map((row, index) => {
     const steamId = firstValue(row, ["steam_id", "steamid", "authid"]);
     const playerName = firstValue(row, ["player_name", "name"]);
+    const isBot = booleanValue(firstValue(row, ["is_bot", "bot"]), "invalid_roster_bot");
     if (!steamId ||
-        !/^STEAM_[0-5]:[01]:\d{1,20}$/i.test(steamId) ||
+        (!/^STEAM_[0-5]:[01]:\d{1,20}$/i.test(steamId) &&
+         !(isBot && /^(BOT|HLTV)(?::[A-Za-z0-9_-]{1,24})?$/i.test(steamId))) ||
         !playerName ||
-        playerName.length > 128 ||
+        playerName.length > 64 ||
         /[\0-\x1f\x7f]/.test(playerName)) {
       throw pickupError(422, "invalid_roster_player", { quarantine: true });
     }
-    const teamNumber = optionalInteger(firstValue(row, ["team_number", "team"]), "invalid_roster_team");
-    if (teamNumber != null && (teamNumber < 0 || teamNumber > 4)) {
-      throw pickupError(422, "invalid_roster_team", { quarantine: true });
-    }
-    const sessionIndex = optionalInteger(
+    const teamNumber = boundedInteger(
+      firstValue(row, ["team_number", "team"]),
+      "invalid_roster_team",
+      { max: 4 }
+    );
+    const sessionIndex = boundedInteger(
       firstValue(row, ["session_index", "session_id", "session"]),
-      "invalid_roster_session"
-    ) ?? index + 1;
-    if (sessionIndex < 1) throw pickupError(422, "invalid_roster_session", { quarantine: true });
+      "invalid_roster_session",
+      { min: 1, fallback: index + 1 }
+    );
 
     return {
       steamId,
       playerName,
       sessionIndex,
+      initialSlot: boundedInteger(
+        firstValue(row, ["initial_slot", "slot"]),
+        "invalid_roster_slot",
+        { max: 255 }
+      ),
       teamNumber,
       teamName: ({ 1: "Blue", 2: "Red", 3: "Yellow", 4: "Green" })[teamNumber] || null,
-      joinedAtEpoch: optionalInteger(
-        firstValue(row, ["joined_at_epoch", "connected_at_epoch", "started_at_epoch"]),
+      primaryClassId: boundedInteger(
+        firstValue(row, ["primary_class_id", "class_id"]),
+        "invalid_roster_class",
+        { max: 255 }
+      ),
+      isBot,
+      joinedMs: boundedInteger(
+        firstValue(row, ["joined_ms", "connected_ms"]),
         "invalid_roster_timestamp"
       ),
-      leftAtEpoch: optionalInteger(
-        firstValue(row, ["left_at_epoch", "disconnected_at_epoch", "ended_at_epoch"]),
+      leftMs: boundedInteger(
+        firstValue(row, ["left_ms", "disconnected_ms"]),
         "invalid_roster_timestamp"
+      ),
+      kills: boundedInteger(firstValue(row, ["kills"]), "invalid_roster_stat", { fallback: 0 }),
+      deaths: boundedInteger(firstValue(row, ["deaths"]), "invalid_roster_stat", { fallback: 0 }),
+      assists: boundedInteger(firstValue(row, ["assists"]), "invalid_roster_stat", { fallback: 0 }),
+      suicides: boundedInteger(firstValue(row, ["suicides"]), "invalid_roster_stat", { fallback: 0 }),
+      damageDealt: boundedInteger(
+        firstValue(row, ["damage_dealt"]),
+        "invalid_roster_stat",
+        { fallback: 0 }
+      ),
+      damageTaken: boundedInteger(
+        firstValue(row, ["damage_taken"]),
+        "invalid_roster_stat",
+        { fallback: 0 }
+      ),
+      flagPickups: boundedInteger(
+        firstValue(row, ["flag_pickups"]),
+        "invalid_roster_stat",
+        { fallback: 0 }
+      ),
+      flagDrops: boundedInteger(
+        firstValue(row, ["flag_drops"]),
+        "invalid_roster_stat",
+        { fallback: 0 }
+      ),
+      flagCaptures: boundedInteger(
+        firstValue(row, ["flag_captures"]),
+        "invalid_roster_stat",
+        { fallback: 0 }
+      ),
+      flagReturns: boundedInteger(
+        firstValue(row, ["flag_returns"]),
+        "invalid_roster_stat",
+        { fallback: 0 }
       ),
       source: row
     };
   });
   const sessionKeys = new Set();
   for (const session of sessions) {
-    const key = `${session.steamId.toUpperCase()}\0${session.sessionIndex}`;
+    const key = String(session.sessionIndex);
     if (sessionKeys.has(key)) {
       throw pickupError(422, "duplicate_roster_session", { quarantine: true });
     }

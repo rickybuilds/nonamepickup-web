@@ -106,14 +106,17 @@ with `unsupported_schema_version`; future versions are never reinterpreted.
 `roster.csv` uses these canonical columns:
 
 ```text
-session_index,steam_id,player_name,team_number,joined_at_epoch,left_at_epoch
+session_id,steamid,name,initial_slot,team_number,primary_class_id,is_bot,
+joined_ms,left_ms,kills,deaths,assists,suicides,damage_dealt,damage_taken,
+flag_pickups,flag_drops,flag_captures,flag_returns
 ```
 
-`session_id`/`session`, `authid`/`steamid`, `name`, `team`,
-`connected_at_epoch`, and `disconnected_at_epoch` are accepted recorder
-aliases. Each row is a distinct round session, so reconnects remain separate
-while `steam_id` upserts the shared player. Team numbers map to Blue (1), Red
-(2), Yellow (3), and Green (4).
+`session_index`/`session`, `steam_id`/`authid`, `player_name`, `slot`, `team`,
+`class_id`, `bot`, `connected_ms`, and `disconnected_ms` are accepted recorder
+aliases. Missing aggregate statistics default to zero. Each `session_id` must
+be unique within the round. Each row is a distinct round session, so reconnects
+remain separate while `steamid` upserts the shared player. Team numbers map to
+Blue (1), Red (2), Yellow (3), and Green (4).
 
 ## Storage and MariaDB lifecycle
 
@@ -140,21 +143,24 @@ format_version = 2
 
 The repository expects these existing column/index contracts:
 
-- `pickup_matches`: `id`, unique `match_id`, `server_id`, `started_at`,
+- `pickup_matches`: `id`, unique `match_id`, `source_server`, `started_at`,
   `ended_at`, `status`, `created_at`, `updated_at`
-- `pickup_rounds`: `id`, `match_id`, `round_number`, `map_name`, `status`,
+- `pickup_rounds`: `id`, `match_pk`, `round_number`, `map`, `status`,
   `completion_reason`, `started_at`, `ended_at`, `duration_ms`,
-  `schema_version`, `sample_interval_seconds`, `snapshots`,
-  `dropped_snapshots`, `write_error`, JSON `row_counts`, JSON `byte_counts`,
-  `created_at`, `updated_at`, unique (`match_id`, `round_number`)
-- `pickup_players`: `id`, unique `steam_id`, `last_name`, `created_at`,
-  `updated_at`
-- `pickup_round_players`: `round_id`, `player_id`, `session_index`,
-  `player_name`, `team_number`, `team_name`, `joined_at_epoch`,
-  `left_at_epoch`, JSON `session_data`, `created_at`
-- `pickup_artifacts`: `id`, `round_id`, `storage_backend`, `artifact_kind`,
-  `format_version`, `sha256`, `byte_size`, `storage_key`, `is_primary`,
-  `created_at`, with uniqueness protecting a round/checksum artifact
+  `schema_version`, `sample_interval_ms`, `snapshot_count`,
+  `dropped_snapshot_count`, the four typed row-count columns, `created_at`,
+  `updated_at`, unique (`match_pk`, `round_number`)
+- `pickup_players`: `id`, unique `steamid`, `current_name`, `first_seen_at`,
+  `last_seen_at`, `created_at`, `updated_at`
+- `pickup_round_players`: `round_pk`, `player_pk`, `session_id`,
+  `initial_slot`, `team_number`, `team_name`, `primary_class_id`, `is_bot`,
+  `joined_ms`, `left_ms`, the aggregate combat/objective columns,
+  `created_at`, `updated_at`
+- `pickup_artifacts`: `id`, `round_pk`, `artifact_kind`, `status`,
+  `storage_backend`, `storage_key`, `content_type`, `compression`, `byte_size`,
+  `sha256`, `format_version`, `is_primary`, `manifest_json`, `uploaded_at`,
+  `verified_at`, `created_at`, `updated_at`, with uniqueness on
+  (`round_pk`, `artifact_kind`, `sha256`)
 
 Confirm the deployed table definitions match this contract before restarting
 PM2. No migration is run by the application.

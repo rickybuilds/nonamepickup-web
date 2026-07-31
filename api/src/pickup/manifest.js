@@ -49,7 +49,7 @@ function validateManifest(value, expected) {
   }
   if (value.reason !== null &&
       (typeof value.reason !== "string" ||
-       value.reason.length > 255 ||
+       value.reason.length > 96 ||
        /[\0-\x1f\x7f]/.test(value.reason))) {
     throw pickupError(422, "invalid_manifest", { quarantine: true });
   }
@@ -62,7 +62,8 @@ function validateManifest(value, expected) {
   if (typeof value.sample_interval_seconds !== "number" ||
       !Number.isFinite(value.sample_interval_seconds) ||
       value.sample_interval_seconds <= 0 ||
-      value.sample_interval_seconds > 3600) {
+      value.sample_interval_seconds > 65.535 ||
+      !Number.isInteger(value.sample_interval_seconds * 1000)) {
     throw pickupError(422, "invalid_manifest", { quarantine: true });
   }
   requireInteger(value, "snapshots");
