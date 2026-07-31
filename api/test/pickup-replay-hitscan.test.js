@@ -38,6 +38,9 @@ test("assault cannon tracers are deterministic, seekable, and map-clipped", () =
 });
 
 test("assault cannon effects originate at the player muzzle and honor the projectile toggle", () => {
+  assert.match(source, /track\.weaponModel\.localToWorld\(track\.weaponMuzzleLocal\.clone\(\)\)/);
+  assert.match(source, /track\.weaponMuzzleLocal = modelBarrelTip\(model\)/);
+  assert.match(source, /vertex\.x >= maxX - 1\.5/);
   assert.match(source, /sourcePoint\(frame\.x, frame\.y, frame\.z\)/);
   assert.match(source, /addScaledVector\(forward, 27\)/);
   assert.match(source, /addScaledVector\(right, 14\)/);
@@ -45,5 +48,27 @@ test("assault cannon effects originate at the player muzzle and honor the projec
   assert.match(source, /updateAssaultCannonVisual\(track, frame, state\.playbackTime\)/);
   assert.match(source, /hitscanRoot\.visible = state\.showProjectiles/);
   assert.match(source, /if \(track\.acFireVisual\) track\.acFireVisual\.group\.visible = false/);
-  assert.match(html, /pickup-replay\.js\?v=20260731schema3fix10/);
+  assert.match(html, /pickup-replay\.js\?v=20260731schema3fix11/);
+});
+
+test("held weapons inherit the normalized player model scale", () => {
+  assert.match(source, /model\.userData\.replayScale = scale/);
+  assert.match(source, /track\.weaponVisual\.scale\.setScalar\(model\.userData\.replayScale \|\| 1\)/);
+
+  const glbBounds = file => {
+    const bytes = fs.readFileSync(file);
+    const jsonLength = bytes.readUInt32LE(12);
+    const document = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString("utf8"));
+    const vectors = document.accessors.filter(accessor => accessor.type === "VEC3" && accessor.min && accessor.max);
+    return {
+      height: Math.max(...vectors.map(accessor => accessor.max[1])) -
+        Math.min(...vectors.map(accessor => accessor.min[1])),
+      maxX: Math.max(...vectors.map(accessor => accessor.max[0]))
+    };
+  };
+  const player = glbBounds(path.join(root, "assets", "models", "player", "hvyweapon", "hvyweapon2_red.glb"));
+  const cannon = glbBounds(path.join(root, "assets", "tfc", "models", "held", "hvyweapon", "p_mini.glb"));
+  const playerScale = 72 / player.height;
+  assert.ok(playerScale > 0.9 && playerScale < 0.95);
+  assert.ok(cannon.maxX * playerScale < cannon.maxX, "the oversized raw cannon is reduced with its player");
 });

@@ -48,7 +48,10 @@ test("pickup replay keeps explicit schema-v2 fallback and schema-v3 render state
 test("schema-v3 player visuals are persistent across weapons, crouch, death, and respawn", () => {
   assert.match(source, /for \(const track of state\.players\)[\s\S]*track\.weaponVisual = new THREE\.Group\(\)/);
   assert.match(source, /weaponModelKey === weaponKey/);
-  assert.match(source, /track\.weaponVisual\.clear\(\);\s+if \(!modelId\) return/);
+  assert.match(source, /track\.weaponVisual\.clear\(\)/);
+  assert.match(source, /track\.weaponModel = null/);
+  assert.match(source, /track\.weaponMuzzleLocal = null/);
+  assert.match(source, /if \(!modelId\) return/);
   assert.match(source, /boundaryIndexes = track\.schemaVersion === 3[\s\S]*\[10, 11, 12, 19, 20\]/);
   assert.match(source, /if \(frame\.schemaVersion === 2\) track\.mesh\.position\.y -=/);
   assert.doesNotMatch(source, /if \(frame\.schemaVersion === 3\) track\.mesh\.position\.y -=/);

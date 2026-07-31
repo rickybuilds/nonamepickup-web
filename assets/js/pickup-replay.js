@@ -264,10 +264,18 @@ function updateAssaultCannonVisual(track, frame, time) {
   const forward = viewDirection(frame);
   const right = new THREE.Vector3(-forward.z, 0, forward.x).normalize();
   const crouched = frame.schemaVersion === 3 && isDucking(frame);
-  const muzzle = sourcePoint(frame.x, frame.y, frame.z)
-    .add(new THREE.Vector3(0, crouched ? 4 : 6, 0))
-    .addScaledVector(forward, 27)
-    .addScaledVector(right, 14);
+  let muzzle;
+  if (track.weaponModel && track.weaponMuzzleLocal) {
+    world.updateMatrixWorld(true);
+    track.mesh.updateMatrixWorld(true);
+    muzzle = track.weaponModel.localToWorld(track.weaponMuzzleLocal.clone());
+    muzzle = world.worldToLocal(muzzle);
+  } else {
+    muzzle = sourcePoint(frame.x, frame.y, frame.z)
+      .add(new THREE.Vector3(0, crouched ? 4 : 6, 0))
+      .addScaledVector(forward, 27)
+      .addScaledVector(right, 14);
+  }
   const baseShot = Math.floor(time * AC_ROUNDS_PER_SECOND);
 
   visual.tracers.forEach((tracer, offset) => {
@@ -444,6 +452,7 @@ function clonedPlayerModel(asset, alignFeetToOrigin = false, targetHeight = PLAY
   const size = bounds.getSize(new THREE.Vector3());
   const scale = size.y > 0 ? targetHeight / size.y : 1;
   model.scale.setScalar(scale);
+  model.userData.replayScale = scale;
   // Studio models are authored around the GoldSrc entity origin. Schema 3
   // records that origin directly, so moving bounds.min.y to zero lifts the
   // player by about 36 units. Only the legacy schema-2 fallback expects a
@@ -470,6 +479,7 @@ async function setPlayerModel(track, classId, team, modelId = 0, ducking = false
   const model = clonedPlayerModel(asset, track.schemaVersion === 2, targetHeight);
   track.modelVisual.clear();
   track.modelVisual.add(model);
+  track.weaponVisual.scale.setScalar(model.userData.replayScale || 1);
 }
 
 function thirdPersonModelUrl(model, classId) {
@@ -487,6 +497,8 @@ async function setWeaponModel(track, modelId, classId) {
   track.mesh.userData.weaponModelKey = weaponKey;
   track.mesh.userData.weaponModelId = modelId;
   track.weaponVisual.clear();
+  track.weaponModel = null;
+  track.weaponMuzzleLocal = null;
   if (!modelId) return;
   const url = thirdPersonModelUrl(state.renderModels.get(modelId), classId);
   if (!url) return;
@@ -495,6 +507,28 @@ async function setWeaponModel(track, modelId, classId) {
   const model = asset.clone(true);
   model.traverse(child => { if (child.isMesh) child.frustumCulled = false; });
   track.weaponVisual.add(model);
+  track.weaponModel = model;
+  track.weaponMuzzleLocal = modelBarrelTip(model);
+}
+
+function modelBarrelTip(model) {
+  model.updateMatrixWorld(true);
+  const vertices = [];
+  model.traverse(child => {
+    const positions = child.isMesh ? child.geometry?.getAttribute("position") : null;
+    if (!positions) return;
+    for (let index = 0; index < positions.count; index += 1) {
+      const vertex = new THREE.Vector3().fromBufferAttribute(positions, index);
+      child.localToWorld(vertex);
+      model.worldToLocal(vertex);
+      vertices.push(vertex);
+    }
+  });
+  if (!vertices.length) return null;
+  const maxX = Math.max(...vertices.map(vertex => vertex.x));
+  const tip = vertices.filter(vertex => vertex.x >= maxX - 1.5);
+  return tip.reduce((sum, vertex) => sum.add(vertex), new THREE.Vector3())
+    .multiplyScalar(1 / tip.length);
 }
 
 async function setBuildableModel(track, modelId, team) {
