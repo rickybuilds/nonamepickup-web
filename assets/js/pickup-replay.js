@@ -24,6 +24,7 @@ const CLASS_MODELS = [
 ];
 const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const CORPSE_LIFETIME_SECONDS = 15;
+const TFC_MODEL_ASSET_VERSION = "20260731schema3fix4";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
 const projectileVisuals = new ReplayProjectileVisuals(loader);
@@ -278,12 +279,15 @@ async function modelAsset(classId, team) {
 }
 
 async function loadModelAsset(url) {
-  if (!modelCache.has(url)) {
-    modelCache.set(url, new Promise(resolve => {
-      loader.load(url, gltf => resolve(gltf.scene || null), undefined, () => resolve(null));
+  const assetUrl = url?.includes("/assets/tfc/models/")
+    ? `${url}${url.includes("?") ? "&" : "?"}v=${TFC_MODEL_ASSET_VERSION}`
+    : url;
+  if (!modelCache.has(assetUrl)) {
+    modelCache.set(assetUrl, new Promise(resolve => {
+      loader.load(assetUrl, gltf => resolve(gltf.scene || null), undefined, () => resolve(null));
     }));
   }
-  return modelCache.get(url);
+  return modelCache.get(assetUrl);
 }
 
 function catalogUrl(modelId, expectedKind) {
@@ -1022,7 +1026,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix3");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix4");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -1043,7 +1047,7 @@ function loadTelemetry(files) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix3", { cache: "force-cache" });
+  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix4", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));

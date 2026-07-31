@@ -100,4 +100,7 @@ test("catalog provides class-held weapons and distinct buildable team palettes",
   assert.match(converter, /driver_source/);
   assert.match(converter, /bip01 r clavicle.*bip01 r arm/);
   assert.match(converter, /force_team_recolor/);
+  assert.match(source, /const TFC_MODEL_ASSET_VERSION = "20260731schema3fix4"/);
+  assert.match(source, /url\?\.includes\("\/assets\/tfc\/models\/"\)/);
+  assert.match(source, /loader\.load\(assetUrl/);
 });
