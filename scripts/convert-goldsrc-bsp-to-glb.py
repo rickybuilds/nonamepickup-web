@@ -320,12 +320,20 @@ def should_skip_texture(name):
 
 
 def texture_kind(name):
-    value = name or ""
+    value = (name or "").lower()
+    animated_value = re.sub(r"^[+-]\d", "", value)
     if value.startswith("!"):
         return "water"
     if value.startswith("{"):
         return "masked"
-    if value.startswith("+"):
+    if re.match(r"^(water|slime|lava|toxic|liquid)(?:$|[_\d-])", animated_value):
+        return "water"
+    if (
+        re.search(r"(?:^|[_-])(laser|forcefield|force_field|energy)", animated_value)
+        or re.match(r"^(?:(?:e7|tsi)?beam)\d", animated_value)
+    ):
+        return "effect"
+    if value.startswith(("+", "-")):
         return "animated"
     return "normal"
 
@@ -553,14 +561,16 @@ def write_glb(path, primitives_by_texture, textures, stats):
             return material_by_texture[texture_id]
 
         kind = texture_kind(texture.get("name") or "")
+        opacity = 0.22 if kind == "water" else 0.20 if kind == "effect" else 1.0
         material = {
             "name": texture.get("name") or f"texture_{texture_id}",
             "pbrMetallicRoughness": {
-                "baseColorFactor": [1.0, 1.0, 1.0, 0.72 if kind == "water" else 1.0],
+                "baseColorFactor": [1.0, 1.0, 1.0, opacity],
                 "metallicFactor": 0.0,
-                "roughnessFactor": 0.35 if kind == "water" else 0.92,
+                "roughnessFactor": 0.35 if kind == "water" else 0.55 if kind == "effect" else 0.92,
             },
             "doubleSided": True,
+            "extras": {"goldsrcTextureKind": kind},
         }
         png = texture.get("png") if texture else b""
         if png:
@@ -575,10 +585,10 @@ def write_glb(path, primitives_by_texture, textures, stats):
             if kind == "masked":
                 material["alphaMode"] = "MASK"
                 material["alphaCutoff"] = 0.5
-            elif kind == "water":
-                material["alphaMode"] = "BLEND"
         else:
-            material["pbrMetallicRoughness"]["baseColorFactor"] = [0.62, 0.70, 0.78, 1.0]
+            material["pbrMetallicRoughness"]["baseColorFactor"] = [0.62, 0.70, 0.78, opacity]
+        if kind in ("water", "effect"):
+            material["alphaMode"] = "BLEND"
 
         materials.append(material)
         material_by_texture[texture_id] = len(materials) - 1

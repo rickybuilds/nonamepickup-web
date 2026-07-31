@@ -23,7 +23,8 @@ test("pickup replay corpse visibility is deterministic while seeking", () => {
 test("pickup replay grounds corpses against the nearest BSP surface below", () => {
   assert.match(source, /new THREE\.Raycaster\(\)/);
   assert.match(source, /new THREE\.Vector3\(0, -1, 0\)/);
-  assert.match(source, /intersectObject\(mapModel, true\)\[0\]/);
+  assert.match(source, /intersectObject\(mapModel, true\)\.find/);
+  assert.match(source, /isReplayMapGroundMaterial/);
   assert.match(source, /corpse\.mesh\.position\.y = ground\.y \+ 1/);
   assert.match(source, /world\.add\(mapModel\);\s+settleCorpses\(\);/);
 });

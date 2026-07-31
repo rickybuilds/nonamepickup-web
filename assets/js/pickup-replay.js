@@ -4,6 +4,10 @@ import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
 } from "./replay-projectile-visuals.js?v=20260730pickup7";
+import {
+  configureReplayMapMaterial,
+  isReplayMapGroundMaterial
+} from "./replay-map-materials.js?v=20260730mapmaterials1";
 
 const $ = id => document.getElementById(id);
 const TEAM = {
@@ -299,7 +303,12 @@ function settleCorpse(corpse) {
   corpseGroundRay.set(origin, corpseDown);
   corpseGroundRay.near = 0;
   corpseGroundRay.far = 8192;
-  const hit = corpseGroundRay.intersectObject(mapModel, true)[0];
+  const hit = corpseGroundRay.intersectObject(mapModel, true).find(intersection =>
+    isReplayMapGroundMaterial(
+      intersection.object.material,
+      intersection.face?.materialIndex || 0
+    )
+  );
   if (!hit) return false;
   const ground = corpseRoot.worldToLocal(hit.point.clone());
   corpse.mesh.position.y = ground.y + 1;
@@ -627,8 +636,7 @@ function loadMap() {
       child.frustumCulled = false;
       const materials = Array.isArray(child.material) ? child.material : [child.material];
       for (const material of materials) {
-        material.side = THREE.DoubleSide;
-        material.depthWrite = !material.transparent;
+        configureReplayMapMaterial(material, THREE.DoubleSide);
       }
     });
     world.add(mapModel);
