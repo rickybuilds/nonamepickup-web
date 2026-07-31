@@ -22,6 +22,7 @@ const { getPickupPool, closePickupPool } = require("./db/pickupMariadb");
 const { PickupRepository } = require("./pickup/repository");
 const { PickupStorage } = require("./pickup/storage");
 const { PickupIngestion } = require("./pickup/ingestion");
+const { PickupReplayViewer } = require("./pickup/viewer");
 
 config.validatePickupConfiguration();
 
@@ -40,6 +41,10 @@ const pickupIngestion = new PickupIngestion({
   },
   storage: new PickupStorage(config.PICKUP_STORAGE_PATH, { publicRoot: config.PUBLIC_DIR }),
   repository: new PickupRepository(getPickupPool(config))
+});
+const pickupReplayViewer = new PickupReplayViewer({
+  pool: getPickupPool(config),
+  storage: new PickupStorage(config.PICKUP_STORAGE_PATH, { publicRoot: config.PUBLIC_DIR })
 });
 
 const app = createApp({
@@ -63,7 +68,8 @@ const app = createApp({
   },
   loadMatchPlayers,
   statements,
-  pickupIngestion
+  pickupIngestion,
+  pickupReplayViewer
 });
 
 const server = app.listen(config.PORT, "0.0.0.0", () => {

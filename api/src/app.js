@@ -10,7 +10,7 @@ const { registerRateLimit } = require("./middleware/rateLimit");
 const { createAnalyticsMiddleware } = require("./middleware/analytics");
 const { registerErrorHandlers } = require("./middleware/errors");
 const { checkSpeedrunDatabase } = require("./db/mariadb");
-const { createPickupReplaysRouter } = require("./routes/pickupReplays");
+const { createPickupReplaysRouter, createPickupReplayViewerRouter } = require("./routes/pickupReplays");
 
 function createApp({
   db,
@@ -20,7 +20,8 @@ function createApp({
   serializers,
   loadMatchPlayers,
   statements,
-  pickupIngestion
+  pickupIngestion,
+  pickupReplayViewer
 }) {
   const {
     PUBLIC_DIR,
@@ -78,6 +79,10 @@ function createApp({
 
   app.use("/api", createPickupReplaysRouter({
     ingestion: pickupIngestion
+  }));
+  app.use("/api/pickup-replays/viewer", compression({ threshold: 1024 }));
+  app.use("/api", createPickupReplayViewerRouter({
+    viewer: pickupReplayViewer
   }));
 
   app.use(express.json({ limit: "32kb" }));

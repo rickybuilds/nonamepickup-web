@@ -2,6 +2,7 @@
 
 const express = require("express");
 const { PickupError } = require("../pickup/errors");
+const { parseViewerIdentity } = require("../pickup/viewer");
 
 function closeAfterResponse(req, res) {
   res.set("Connection", "close");
@@ -56,4 +57,39 @@ function createPickupReplaysRouter({ ingestion, logger = console }) {
   return router;
 }
 
-module.exports = { createPickupReplaysRouter };
+function createPickupReplayViewerRouter({ viewer, logger = console }) {
+  const router = express.Router();
+
+  router.get("/pickup-replays/viewer/:matchId/:round", async (req, res) => {
+    try {
+      const identity = parseViewerIdentity(req.params.matchId, req.params.round);
+      res.json(await viewer.metadata(identity.matchId, identity.round));
+    } catch (error) {
+      const expected = error instanceof PickupError;
+      if (!expected || error.status >= 500) logger.error?.("[pickup replay viewer] metadata_failed");
+      res.status(expected ? error.status : 500).json({
+        ok: false,
+        error: expected ? error.code : "replay_load_failed"
+      });
+    }
+  });
+
+  router.get("/pickup-replays/viewer/:matchId/:round/files/:fileName", async (req, res) => {
+    try {
+      const identity = parseViewerIdentity(req.params.matchId, req.params.round);
+      await viewer.streamFile(identity.matchId, identity.round, req.params.fileName, res);
+    } catch (error) {
+      if (res.headersSent || res.destroyed) return res.destroy();
+      const expected = error instanceof PickupError;
+      if (!expected || error.status >= 500) logger.error?.("[pickup replay viewer] file_failed");
+      res.status(expected ? error.status : 500).json({
+        ok: false,
+        error: expected ? error.code : "replay_file_failed"
+      });
+    }
+  });
+
+  return router;
+}
+
+module.exports = { createPickupReplaysRouter, createPickupReplayViewerRouter };

@@ -8,6 +8,7 @@ const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const { PassThrough, Readable } = require("node:stream");
+const { EventEmitter } = require("node:events");
 const test = require("node:test");
 const express = require("express");
 const { validateArchive, REQUIRED_FILES } = require("../src/pickup/archive");
@@ -21,6 +22,7 @@ const { PickupStorage } = require("../src/pickup/storage");
 const { pickupError } = require("../src/pickup/errors");
 const { PickupRepository } = require("../src/pickup/repository");
 const { createPickupReplaysRouter } = require("../src/routes/pickupReplays");
+const { PickupReplayViewer, parseViewerIdentity } = require("../src/pickup/viewer");
 
 function octal(value, length) {
   return `${value.toString(8).padStart(length - 2, "0")}\0 `;
@@ -566,4 +568,142 @@ test("database failure removes the promoted link and quarantines the verified so
   const quarantined = await fsp.readdir(path.join(root, "quarantine"));
   assert.equal(quarantined.filter(name => name.endsWith(".tar.zst")).length, 1);
   assert.equal(quarantined.filter(name => name.endsWith(".json")).length, 1);
+});
+
+test("viewer validates public replay identities", () => {
+  assert.deepEqual(parseViewerIdentity("test_match-1", "2"), {
+    matchId: "test_match-1",
+    round: 2
+  });
+  assert.throws(() => parseViewerIdentity("../test", "1"), error => {
+    assert.equal(error.status, 400);
+    assert.equal(error.code, "invalid_match_id");
+    return true;
+  });
+  assert.throws(() => parseViewerIdentity("test", "0"), error => {
+    assert.equal(error.status, 400);
+    assert.equal(error.code, "invalid_round");
+    return true;
+  });
+});
+
+test("viewer returns verified primary metadata and allowlisted file URLs", async () => {
+  let capturedSql = "";
+  let capturedParams = null;
+  const pool = {
+    async execute(sql, params) {
+      capturedSql = sql;
+      capturedParams = params;
+      return [[{
+        artifact_id: 7,
+        sha256: "a".repeat(64),
+        byte_size: 123456,
+        storage_key: `2026/07/test/round-01-${"a".repeat(64)}.tar.zst`,
+        manifest_json: JSON.stringify({ schema_version: 2, map: "cranked" }),
+        match_id: "test",
+        source_server: "vultr",
+        round_number: 1,
+        map: "cranked",
+        status: "aborted",
+        completion_reason: "map_change",
+        duration_ms: 943587,
+        sample_interval_ms: 20,
+        snapshot_count: 45194,
+        dropped_snapshot_count: 9,
+        player_row_count: 360034,
+        projectile_row_count: 295376,
+        objective_row_count: 90390,
+        event_row_count: 4660
+      }]];
+    }
+  };
+  const viewer = new PickupReplayViewer({
+    pool,
+    storage: { artifactPath() { throw new Error("not used"); } }
+  });
+
+  const metadata = await viewer.metadata("test", 1);
+  assert.deepEqual(capturedParams, ["test", 1]);
+  assert.match(capturedSql, /a\.is_primary = 1/);
+  assert.match(capturedSql, /a\.status = 'verified'/);
+  assert.equal(metadata.artifactId, 7);
+  assert.equal(metadata.status, "aborted");
+  assert.equal(metadata.manifest.schema_version, 2);
+  assert.equal(metadata.files.players, "/api/pickup-replays/viewer/test/1/files/players.csv");
+  assert.equal(
+    metadata.files.projectileDefs,
+    "/api/pickup-replays/viewer/test/1/files/projectile_defs.csv"
+  );
+  assert.deepEqual(Object.keys(metadata.files).sort(), [
+    "events",
+    "objectiveDefs",
+    "objectives",
+    "players",
+    "projectileDefs",
+    "projectiles",
+    "roster"
+  ]);
+});
+
+test("viewer extracts only an allowlisted CSV with fixed tar arguments", async t => {
+  const { storage } = await tempContext(t);
+  const storageKey = `2026/07/test/round-01-${"b".repeat(64)}.tar.zst`;
+  const archivePath = storage.artifactPath(storageKey);
+  await fsp.mkdir(path.dirname(archivePath), { recursive: true });
+  await fsp.writeFile(archivePath, "private archive placeholder");
+
+  const pool = {
+    async execute() {
+      return [[{
+        artifact_id: 8,
+        sha256: "b".repeat(64),
+        byte_size: 27,
+        storage_key: storageKey,
+        manifest_json: "{}",
+        match_id: "test",
+        round_number: 1
+      }]];
+    }
+  };
+  let spawnCall = null;
+  const spawnProcess = (command, args, options) => {
+    spawnCall = { command, args, options };
+    const child = new EventEmitter();
+    child.stdout = Readable.from("snapshot,time_ms\n1,0\n");
+    child.stderr = Readable.from("");
+    child.kill = () => {};
+    child.stdout.once("end", () => child.emit("close", 0));
+    return child;
+  };
+  const viewer = new PickupReplayViewer({ pool, storage, spawnProcess });
+  const response = new PassThrough();
+  const chunks = [];
+  response.status = code => {
+    response.statusCode = code;
+    return response;
+  };
+  response.type = contentType => {
+    response.contentType = contentType;
+    return response;
+  };
+  response.set = () => response;
+  response.on("data", chunk => chunks.push(chunk));
+
+  await viewer.streamFile("test", 1, "players.csv", response);
+  if (!response.readableEnded) {
+    await new Promise(resolve => response.once("end", resolve));
+  }
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.contentType, "text/csv");
+  assert.deepEqual(spawnCall, {
+    command: "tar",
+    args: ["--zstd", "-xOf", archivePath, "players.csv"],
+    options: { stdio: ["ignore", "pipe", "pipe"], windowsHide: true }
+  });
+  assert.equal(Buffer.concat(chunks).toString("utf8"), "snapshot,time_ms\n1,0\n");
+  await assert.rejects(
+    viewer.streamFile("test", 1, "../manifest.json", response),
+    error => error.code === "replay_file_not_found"
+  );
 });

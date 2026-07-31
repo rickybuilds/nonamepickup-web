@@ -211,3 +211,49 @@ Game servers may delete their local archives only after receiving a verified
 HTTP 200 or 201 success response **and** completing the separately configured
 local retention window. A timeout, disconnect, or error response is not
 permission to delete the local artifact.
+
+## Web replay viewer
+
+The first 4v4 viewer reuses the speedrun replay renderer, map GLBs, classic TFC
+player models, playback controls, and free-roam camera. Open a verified round
+with:
+
+```text
+/pickup-replay.html?matchId=<match_id>&round=<round_number>
+```
+
+For the field-test artifacts this is:
+
+```text
+/pickup-replay.html?matchId=test&round=1
+/pickup-replay.html?matchId=test&round=2
+```
+
+The page requests public replay metadata from:
+
+```text
+GET /api/pickup-replays/viewer/<match_id>/<round_number>
+```
+
+It then loads the seven recorded CSV streams in a Web Worker. The worker
+converts high-volume snapshot rows into transferable typed arrays so parsing
+does not block the page's render thread.
+
+The API never publishes the storage directory or sends the original archive.
+It looks up only a verified primary `round_replay` artifact in MariaDB, resolves
+its private relative storage key, and streams only these allowlisted members:
+
+```text
+roster.csv
+players.csv
+projectile_defs.csv
+projectiles.csv
+objective_defs.csv
+objectives.csv
+events.csv
+```
+
+Archive members are read with a fixed `tar` argument array. Match IDs and round
+numbers are validated again at the viewer boundary, and a requested filename
+cannot supply a path. The viewer requires GNU tar with zstd support on the API
+host, which is already required to inspect `.tar.zst` replay packages.
