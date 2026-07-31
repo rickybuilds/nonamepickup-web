@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const source = fs.readFileSync(
   path.resolve(__dirname, "..", "..", "assets", "js", "pickup-replay.js"),
@@ -68,10 +69,27 @@ test("schema-v3 buildables use stable IDs, model replacement, components, and te
   assert.match(source, /frame\.rendermode === 0\s+\? 1/);
   assert.match(source, /frame\.effects & 128/);
   assert.match(source, /catalog\?\.teamVariants\?\.\[teamKey\]/);
-  assert.match(source, /const visualTeam = buildableVisualTeam\(frame, state\.playbackTime\)/);
+  assert.match(source, /const visualTeam = buildableVisualTeam\(track, frame, state\.playbackTime\)/);
   assert.match(source, /ownerFrame\?\.team/);
+  assert.match(source, /track\.definition\?\.initialOwnerSession/);
+  assert.match(source, /representedTeams\.size === 1/);
   assert.match(source, /team: frame\.team, visualTeam/);
   assert.match(source, /frame\.rendermode !== 0 && frame\.color\.some/);
+});
+
+test("buildable palette falls back to the only represented player team", () => {
+  const body = source.match(/function buildableVisualTeam\(track, frame, time\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(body, "buildableVisualTeam source is present");
+  const state = {
+    playerBySession: new Map(),
+    roster: [{ sessionId: 7, team: 1 }],
+    players: [{ snapshot: { team: 1 } }]
+  };
+  const helper = vm.runInNewContext(`(${body})`, {
+    state,
+    playerSnapshot: player => player.snapshot
+  });
+  assert.equal(helper({ definition: { initialOwnerSession: 0 } }, { ownerSession: 0, team: 2 }, 45), 1);
 });
 
 test("worker streams large CSVs and branches projectile/objective definitions by schema", () => {
@@ -100,7 +118,7 @@ test("catalog provides class-held weapons and distinct buildable team palettes",
   assert.match(converter, /driver_source/);
   assert.match(converter, /bip01 r clavicle.*bip01 r arm/);
   assert.match(converter, /force_team_recolor/);
-  assert.match(source, /const TFC_MODEL_ASSET_VERSION = "20260731schema3fix4"/);
+  assert.match(source, /const TFC_MODEL_ASSET_VERSION = "20260731schema3fix5"/);
   assert.match(source, /url\?\.includes\("\/assets\/tfc\/models\/"\)/);
   assert.match(source, /loader\.load\(assetUrl/);
 });

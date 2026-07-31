@@ -24,7 +24,7 @@ const CLASS_MODELS = [
 ];
 const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const CORPSE_LIFETIME_SECONDS = 15;
-const TFC_MODEL_ASSET_VERSION = "20260731schema3fix4";
+const TFC_MODEL_ASSET_VERSION = "20260731schema3fix5";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
 const projectileVisuals = new ReplayProjectileVisuals(loader);
@@ -245,13 +245,24 @@ function buildableSnapshot(track, time) {
   };
 }
 
-function buildableVisualTeam(frame, time) {
-  const ownerSession = Math.round(frame.ownerSession);
-  const ownerTrack = state.playerBySession.get(ownerSession);
-  const ownerFrame = ownerTrack ? playerSnapshot(ownerTrack, time) : null;
-  if (ownerFrame?.team) return ownerFrame.team;
-  const rosterTeam = state.roster.find(row => row.sessionId === ownerSession)?.team;
-  return rosterTeam || Math.round(frame.team);
+function buildableVisualTeam(track, frame, time) {
+  const ownerSessions = [frame.ownerSession, track.definition?.initialOwnerSession]
+    .map(Number)
+    .filter(Number.isFinite)
+    .map(Math.round);
+  for (const ownerSession of new Set(ownerSessions)) {
+    if (!ownerSession) continue;
+    const ownerTrack = state.playerBySession.get(ownerSession);
+    const ownerFrame = ownerTrack ? playerSnapshot(ownerTrack, time) : null;
+    if (ownerFrame?.team) return ownerFrame.team;
+    const rosterTeam = state.roster.find(row => row.sessionId === ownerSession)?.team;
+    if (rosterTeam) return rosterTeam;
+  }
+  const representedTeams = new Set(state.players
+    .map(player => playerSnapshot(player, time)?.team)
+    .filter(Boolean));
+  if (representedTeams.size === 1) return representedTeams.values().next().value;
+  return Math.round(frame.team);
 }
 
 function fallbackPlayerMesh(team, preserveNativeOrigin = false) {
@@ -725,7 +736,7 @@ function updateBuildables() {
     track.mesh.scale.setScalar(frame.scale > 0 ? frame.scale : 1);
     // A few recorder builds emitted the engine entity's stale team field for
     // sentries. The owner snapshot is authoritative for the buildable palette.
-    const visualTeam = buildableVisualTeam(frame, state.playbackTime);
+    const visualTeam = buildableVisualTeam(track, frame, state.playbackTime);
     void setBuildableModel(track, frame.modelId, visualTeam);
     const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
     if (track.mesh.userData.renderSignature !== signature) {
@@ -1026,7 +1037,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix4");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix5");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -1047,7 +1058,7 @@ function loadTelemetry(files) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix4", { cache: "force-cache" });
+  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix5", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));
