@@ -33,6 +33,8 @@ const RENDER_MODELS = "model_id,kind,path,first_seen_ms\n1,player,models/player/
 const BUILDABLE_DEFS = "buildable_id,entity,kind,classname,initial_owner_session,first_seen_ms\n1,100,sentry,building_sentrygun,1,0\n";
 const BUILDABLES_HEADER = "snapshot,time_ms,buildable_id,entity,active,owner_session,owner_entity,team,model_id,colormap,movetype,solid,effects,health,x,y,z,vx,vy,vz,pitch,yaw,roll,body,skin,sequence,gaitsequence,frame,framerate,animtime,scale,rendermode,renderamt,renderfx,render_r,render_g,render_b,controller0,controller1,controller2,controller3,blending0,blending1,aiment";
 const BUILDABLES = `${BUILDABLES_HEADER}\n1,0,1,100,1,1,1,2,0,0,0,1,0,100,10,20,30,0,0,0,0,90,0,0,0,0,0,0,1,0,1,0,255,0,255,255,255,0,0,0,0,0,0,0\n`;
+const BRUSH_DEFS = "brush_id,entity,classname,model,targetname,target,spawnflags,first_seen_ms\n1,101,func_door,*12,door_a,,0,0\n";
+const BRUSHES = "snapshot,time_ms,brush_id,active,x,y,z,vx,vy,vz,pitch,yaw,roll,avel_pitch,avel_yaw,avel_roll,effects,solid,movetype,rendermode,renderamt,renderfx,render_r,render_g,render_b\n1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,7,0,0,0,255,255,255\n2,20,1,1,1,0,0,50,0,0,0,0,0,0,0,0,0,1,7,0,0,0,255,255,255\n";
 
 test("large replay timelines are validated as bounded streams", () => {
   assert.match(archiveSource, /fs\.createReadStream\(filePath, \{ encoding: "utf8", highWaterMark: 64 \* 1024 \}\)/);
@@ -107,17 +109,38 @@ function validV3Manifest(renderModels = RENDER_MODELS, overrides = {}) {
   });
 }
 
+function validV4Manifest(overrides = {}) {
+  return validV3Manifest(RENDER_MODELS, {
+    schema_version: 4,
+    rows: {
+      roster: 8, players: 1, render_models: 5, buildable_definitions: 1, buildables: 1,
+      brush_definitions: 1, brushes: 2
+    },
+    bytes: {
+      roster: 100, players: 1000,
+      "render_models.csv": Buffer.byteLength(RENDER_MODELS),
+      "buildable_defs.csv": Buffer.byteLength(BUILDABLE_DEFS),
+      "buildables.csv": Buffer.byteLength(BUILDABLES),
+      "brush_defs.csv": Buffer.byteLength(BRUSH_DEFS),
+      "brushes.csv": Buffer.byteLength(BRUSHES)
+    },
+    ...overrides
+  });
+}
+
 function archiveBuffer({
   manifest = validManifest(),
   marker = "complete.ready",
   markerContent = "",
   omit = [],
-  renderModels = manifest.schema_version === 3 ? RENDER_MODELS : null,
+  renderModels = manifest.schema_version >= 3 ? RENDER_MODELS : null,
   buildableDefs = BUILDABLE_DEFS,
   buildables = BUILDABLES,
   projectileDefs = null,
   objectiveDefs = null,
-  players = manifest.schema_version === 3
+  brushDefs = manifest.schema_version === 4 ? BRUSH_DEFS : null,
+  brushes = manifest.schema_version === 4 ? BRUSHES : null,
+  players = manifest.schema_version >= 3
     ? `${PLAYERS_V3_HEADER}\n${PLAYERS_V3_ROW}\n`
     : `${PLAYERS_V2_HEADER}\n${PLAYERS_V2_ROW}\n`,
   extraEntries = []
@@ -125,11 +148,11 @@ function archiveBuffer({
   const content = {
     "roster.csv": "session_id,slot,userid,steamid,name,initial_team,is_bot,joined_ms\n1,2,51,STEAM_0:1:1,Alice,2,0,0\n",
     "players.csv": players,
-    "projectile_defs.csv": projectileDefs || (manifest.schema_version === 3
+    "projectile_defs.csv": projectileDefs || (manifest.schema_version >= 3
       ? "projectile_id,entity,owner_session,classname,model_id,spawned_ms\n1,10,1,tf_gl_pipebomb,0,0\n"
       : "projectile_id,entity,owner_session,classname,model,spawned_ms\n1,10,1,tf_gl_pipebomb,models/pipebomb.mdl,0\n"),
     "projectiles.csv": "snapshot,time_ms,projectile_id,state,x,y,z,vx,vy,vz,pitch,yaw,roll\n1,0,1,1,10,20,30,0,0,0,0,90,0\n",
-    "objective_defs.csv": objectiveDefs || (manifest.schema_version === 3
+    "objective_defs.csv": objectiveDefs || (manifest.schema_version >= 3
       ? "objective_id,entity,classname,model_id,targetname,base_x,base_y,base_z,base_yaw,first_seen_ms\n1,20,item_tfgoal,0,blue_flag,0,0,0,0,0\n"
       : "objective_id,entity,classname,model,targetname,base_x,base_y,base_z,base_yaw,first_seen_ms\n1,20,item_tfgoal,models/flag.mdl,blue_flag,0,0,0,0,0\n"),
     "objectives.csv": "snapshot,time_ms,objective_id,state,carrier_session,solid,effects,x,y,z,yaw\n1,0,1,1,0,1,0,0,0,0,0\n",
@@ -141,7 +164,15 @@ function archiveBuffer({
     content["buildable_defs.csv"] = buildableDefs;
     content["buildables.csv"] = buildables;
   }
-  const entries = [...REQUIRED_FILES, ...(renderModels == null ? [] : ["render_models.csv", "buildable_defs.csv", "buildables.csv"])]
+  if (brushDefs != null) {
+    content["brush_defs.csv"] = brushDefs;
+    content["brushes.csv"] = brushes;
+  }
+  const entries = [
+    ...REQUIRED_FILES,
+    ...(renderModels == null ? [] : ["render_models.csv", "buildable_defs.csv", "buildables.csv"]),
+    ...(brushDefs == null ? [] : ["brush_defs.csv", "brushes.csv"])
+  ]
     .filter(name => !omit.includes(name))
     .map(name => tarEntry(name, content[name]));
   if (marker) entries.push(tarEntry(marker, markerContent));
@@ -597,7 +628,7 @@ test("manifest/header mismatch and unsupported future schema versions are reject
     error => error.code === "manifest_header_mismatch"
   );
   await assert.rejects(
-    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 4 }), renderModels: null })),
+    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 5 }), renderModels: null })),
     error => error.code === "unsupported_schema_version"
   );
 });
@@ -615,6 +646,28 @@ test("valid schema-v3 artifact retains and validates render_models.csv", async t
   const validated = await validateBuffer(t, archiveBuffer({ manifest: validV3Manifest() }));
   assert.equal(validated.manifest.schema_version, 3);
   assert.equal(validated.manifest.rows.render_models, 5);
+});
+
+test("valid schema-v4 artifact validates sparse brush definitions and states", async t => {
+  const validated = await validateBuffer(t, archiveBuffer({ manifest: validV4Manifest() }));
+  assert.equal(validated.manifest.schema_version, 4);
+  assert.equal(validated.manifest.rows.brush_definitions, 1);
+  assert.equal(validated.manifest.rows.brushes, 2);
+});
+
+test("schema-v4 requires both brush streams and literal BSP submodel names", async t => {
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ manifest: validV4Manifest(), omit: ["brushes.csv"] })),
+    error => error.code === "missing_brush_streams"
+  );
+  const invalidDefs = BRUSH_DEFS.replace("*12", "models/door.mdl");
+  const invalidManifest = validV4Manifest({
+    bytes: { ...validV4Manifest().bytes, "brush_defs.csv": Buffer.byteLength(invalidDefs) }
+  });
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ manifest: invalidManifest, brushDefs: invalidDefs })),
+    error => error.code === "invalid_brush_definition"
+  );
 });
 
 test("schema-v3 accepts standard rocket and hand-grenade projectile models", async t => {
@@ -873,6 +926,26 @@ test("schema-v3 viewer advertises render_models.csv", async () => {
   assert.equal(metadata.files.renderModels, "/api/pickup-replays/viewer/test/1/files/render_models.csv");
   assert.equal(metadata.files.buildableDefs, "/api/pickup-replays/viewer/test/1/files/buildable_defs.csv");
   assert.equal(metadata.files.buildables, "/api/pickup-replays/viewer/test/1/files/buildables.csv");
+});
+
+test("schema-v4 viewer advertises brush streams", async () => {
+  const pool = {
+    async execute() {
+      return [[{
+        artifact_id: 10,
+        sha256: "d".repeat(64),
+        byte_size: 1,
+        storage_key: "2026/07/test/round-01-v4.tar.zst",
+        manifest_json: JSON.stringify({ schema_version: 4, rows: { brush_definitions: 1, brushes: 2 } }),
+        match_id: "test",
+        round_number: 1
+      }]];
+    }
+  };
+  const metadata = await new PickupReplayViewer({ pool, storage: {} }).metadata("test", 1);
+  assert.equal(metadata.files.brushDefs, "/api/pickup-replays/viewer/test/1/files/brush_defs.csv");
+  assert.equal(metadata.files.brushes, "/api/pickup-replays/viewer/test/1/files/brushes.csv");
+  assert.equal(metadata.rowCounts.brushes, 2);
 });
 
 test("viewer extracts only an allowlisted CSV with fixed tar arguments", async t => {

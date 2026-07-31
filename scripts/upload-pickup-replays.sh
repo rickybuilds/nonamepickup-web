@@ -18,6 +18,10 @@ readonly SCHEMA_V3_FILES=(
   buildable_defs.csv
   buildables.csv
 )
+readonly SCHEMA_V4_FILES=(
+  brush_defs.csv
+  brushes.csv
+)
 
 log() {
   printf '[pickup-replay-uploader] %s\n' "$*"
@@ -133,14 +137,22 @@ process_round() {
     log "manifest has no valid schema_version"
     return 1
   }
-  if (( schema_version == 3 )); then
+  if (( schema_version >= 3 && schema_version <= 4 )); then
     local schema_file
     for schema_file in "${SCHEMA_V3_FILES[@]}"; do
       [[ -f "$round_dir/$schema_file" ]] || {
-        log "skipping schema-v3 round missing $schema_file: $(basename "$round_dir")"
+        log "skipping schema-v${schema_version} round missing $schema_file: $(basename "$round_dir")"
         return 1
       }
     done
+    if (( schema_version == 4 )); then
+      for schema_file in "${SCHEMA_V4_FILES[@]}"; do
+        [[ -f "$round_dir/$schema_file" ]] || {
+          log "skipping schema-v4 round missing $schema_file: $(basename "$round_dir")"
+          return 1
+        }
+      done
+    fi
   elif (( schema_version != 2 )); then
     log "unsupported replay schema version: $schema_version"
     return 1
@@ -195,7 +207,8 @@ process_round() {
   else
     temporary="$(mktemp "$spool_root/tmp/$match_id-round-$round_pad-XXXXXX.part")"
     local -a package_files=("${REQUIRED_FILES[@]}")
-    if (( schema_version == 3 )); then package_files+=("${SCHEMA_V3_FILES[@]}"); fi
+    if (( schema_version >= 3 )); then package_files+=("${SCHEMA_V3_FILES[@]}"); fi
+    if (( schema_version == 4 )); then package_files+=("${SCHEMA_V4_FILES[@]}"); fi
     if ! tar --zstd -C "$round_dir" -cf "$temporary" \
       "${package_files[@]}" "$marker"; then
       rm -f -- "$temporary"

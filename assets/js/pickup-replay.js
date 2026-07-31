@@ -48,6 +48,8 @@ const state = {
   modelCatalog: new Map(),
   buildableDefinitions: new Map(),
   buildables: [],
+  brushDefinitions: new Map(),
+  brushes: [],
   events: [],
   impacts: [],
   corpses: [],
@@ -132,12 +134,12 @@ function className(classId) {
   return CLASSES[classId] || `Class ${classId}`;
 }
 
-function trackFrame(track, time, interpolate = true) {
+function trackFrame(track, time, interpolate = true, maxTailSeconds = 0.25) {
   const data = track?.frames;
   const stride = track?.stride || 0;
   const count = stride ? Math.floor(data.length / stride) : 0;
   if (!count) return null;
-  if (time < data[0] || time > data[(count - 1) * stride] + 0.25) return null;
+  if (time < data[0] || time > data[(count - 1) * stride] + maxTailSeconds) return null;
   let low = 0;
   let high = count - 1;
   while (low < high) {
@@ -169,7 +171,7 @@ function angle(frame, index) {
 function playerSnapshot(track, time) {
   const frame = trackFrame(track, time);
   if (!frame) return null;
-  const boundaryIndexes = track.schemaVersion === 3
+  const boundaryIndexes = track.schemaVersion >= 3
     ? [10, 11, 12, 19, 20]
     : [10, 11, 12];
   if (frame.nextOffset !== frame.offset && (
@@ -190,7 +192,7 @@ function playerSnapshot(track, time) {
     armor: Math.round(value(frame, 16, false)),
     schemaVersion: track.schemaVersion || 2
   };
-  if (snapshot.schemaVersion === 3) Object.assign(snapshot, {
+  if (snapshot.schemaVersion >= 3) Object.assign(snapshot, {
     ducking: value(frame, 17, false) === 1,
     oldbuttons: Math.round(value(frame, 18, false)),
     playerModelId: Math.round(value(frame, 19, false)),
@@ -206,7 +208,7 @@ function playerSnapshot(track, time) {
 }
 
 function isDucking(frame) {
-  return frame.schemaVersion === 3 ? frame.ducking : Boolean(frame.buttons & 4);
+  return frame.schemaVersion >= 3 ? frame.ducking : Boolean(frame.buttons & 4);
 }
 
 function assaultCannonActive(frame) {
@@ -263,7 +265,7 @@ function updateAssaultCannonVisual(track, frame, time) {
 
   const forward = viewDirection(frame);
   const right = new THREE.Vector3(-forward.z, 0, forward.x).normalize();
-  const crouched = frame.schemaVersion === 3 && isDucking(frame);
+  const crouched = frame.schemaVersion >= 3 && isDucking(frame);
   let muzzle;
   if (track.weaponModel && track.weaponMuzzleLocal) {
     world.updateMatrixWorld(true);
@@ -347,6 +349,29 @@ function buildableSnapshot(track, time) {
     color: [32, 33, 34].map(index => value(frame, index, false)),
     controller: [35, 36, 37, 38].map(index => value(frame, index, false)),
     blending: [39, 40].map(index => value(frame, index, false)), aiment: value(frame, 41, false)
+  };
+}
+
+function brushSnapshot(track, time) {
+  const frame = trackFrame(track, time, true, Number.POSITIVE_INFINITY);
+  if (!frame) return null;
+  const span = frame.data[frame.nextOffset] - frame.data[frame.offset];
+  const moving = [5, 6, 7, 11, 12, 13]
+    .some(index => Math.abs(frame.data[frame.offset + index]) >= 0.001);
+  if (frame.nextOffset !== frame.offset &&
+      (value(frame, 1, false) !== frame.data[frame.nextOffset + 1] || (span > 0.25 && !moving))) {
+    frame.mix = 0;
+  }
+  return {
+    active: value(frame, 1, false) === 1,
+    x: value(frame, 2), y: value(frame, 3), z: value(frame, 4),
+    vx: value(frame, 5), vy: value(frame, 6), vz: value(frame, 7),
+    pitch: angle(frame, 8), yaw: angle(frame, 9), roll: angle(frame, 10),
+    avelPitch: value(frame, 11), avelYaw: value(frame, 12), avelRoll: value(frame, 13),
+    effects: value(frame, 14, false), solid: value(frame, 15, false),
+    movetype: value(frame, 16, false), rendermode: value(frame, 17, false),
+    renderamt: value(frame, 18, false), renderfx: value(frame, 19, false),
+    color: [20, 21, 22].map(index => value(frame, index, false))
   };
 }
 
@@ -670,7 +695,7 @@ function buildVisuals() {
     track.playerVisual = new THREE.Group();
     track.modelVisual = new THREE.Group();
     track.weaponVisual = new THREE.Group();
-    track.modelVisual.add(fallbackPlayerMesh(team, track.schemaVersion === 3));
+    track.modelVisual.add(fallbackPlayerMesh(team, track.schemaVersion >= 3));
     track.playerVisual.add(track.modelVisual, track.weaponVisual);
     track.mesh.add(track.playerVisual);
     track.mesh.visible = false;
@@ -739,6 +764,29 @@ function buildVisuals() {
     track.mesh.visible = false;
     track.mesh.userData.buildableId = track.buildableId;
     buildableRoot.add(track.mesh);
+  }
+}
+
+function bindBrushNodes() {
+  if (!mapModel) return;
+  const nodes = new Map();
+  mapModel.traverse(child => {
+    if (/^\*[1-9]\d*$/.test(child.name) && !nodes.has(child.name)) nodes.set(child.name, child);
+  });
+  for (const track of state.brushes) {
+    track.definition = state.brushDefinitions.get(track.brushId);
+    track.node = nodes.get(track.definition?.model) || null;
+    if (!track.node) continue;
+    track.node.userData.brushId = track.brushId;
+    track.node.traverse(child => {
+      if (!child.isMesh) return;
+      if (Array.isArray(child.material)) child.material = child.material.map(material => material.clone());
+      else if (child.material) child.material = child.material.clone();
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (material?.color) material.userData.replayBaseColor = material.color.clone();
+      }
+    });
   }
 }
 
@@ -835,17 +883,17 @@ function updatePlayers() {
     // Schema 3 records the authoritative entity origin, including crouch transitions.
     // Keep the legacy visual offset only for schema 2's basic fallback.
     if (frame.schemaVersion === 2) track.mesh.position.y -= isDucking(frame) ? 18 : 36;
-    track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyYaw : frame.yaw);
-    const crouched = frame.schemaVersion === 3 && isDucking(frame);
+    track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
+    const crouched = frame.schemaVersion >= 3 && isDucking(frame);
     track.playerVisual.position.y = crouched ? 2.5 : 0;
     track.weaponVisual.position.y = crouched ? -18 : 0;
-    track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyPitch : 0);
-    track.playerVisual.rotation.z = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyRoll : 0);
+    track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyPitch : 0);
+    track.playerVisual.rotation.z = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyRoll : 0);
     const isSelectedPov =
       state.cameraMode === "pov" && track.sessionId === state.selectedSession;
     track.mesh.visible = frame.alive && !isSelectedPov;
     void setPlayerModel(track, frame.classId, frame.team, frame.playerModelId || 0, crouched);
-    if (frame.schemaVersion === 3) {
+    if (frame.schemaVersion >= 3) {
       void setWeaponModel(track, frame.weaponModelId, frame.classId);
       Object.assign(track.playerVisual.userData, {
         recordedPlayerModel: state.renderModels.get(frame.playerModelId)?.path || null,
@@ -919,6 +967,45 @@ function updateBuildables() {
       framerate: frame.framerate, animtime: frame.animtime,
       controller: frame.controller, blending: frame.blending, aiment: frame.aiment,
       unsupportedGoldSrcState: ["body", "skin", "sequence", "gaitsequence", "controller", "blending", "aiment"]
+    });
+  }
+}
+
+function updateBrushes() {
+  for (const track of state.brushes) {
+    if (!track.node) continue;
+    const frame = brushSnapshot(track, state.playbackTime);
+    track.node.visible = Boolean(frame?.active && !(frame.effects & 128));
+    if (!track.node.visible) continue;
+    track.node.position.set(frame.x, frame.z, -frame.y);
+    track.node.rotation.set(
+      THREE.MathUtils.degToRad(frame.pitch),
+      THREE.MathUtils.degToRad(frame.yaw),
+      THREE.MathUtils.degToRad(frame.roll)
+    );
+    const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
+    if (track.node.userData.renderSignature === signature) continue;
+    track.node.userData.renderSignature = signature;
+    const opacity = frame.rendermode === 0 ? 1 : THREE.MathUtils.clamp(frame.renderamt / 255, 0, 1);
+    const tint = new THREE.Color(
+      THREE.MathUtils.clamp(frame.color[0] / 255, 0, 1),
+      THREE.MathUtils.clamp(frame.color[1] / 255, 0, 1),
+      THREE.MathUtils.clamp(frame.color[2] / 255, 0, 1)
+    );
+    track.node.traverse(child => {
+      if (!child.isMesh) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (!material) continue;
+        if (material.color && material.userData.replayBaseColor) {
+          material.color.copy(material.userData.replayBaseColor);
+          if (frame.rendermode !== 0 && frame.color.some(channel => channel > 0)) material.color.multiply(tint);
+        }
+        material.opacity = opacity;
+        material.transparent = opacity < 1 || frame.rendermode !== 0;
+        material.depthWrite = opacity >= 1;
+        material.needsUpdate = true;
+      }
     });
   }
 }
@@ -1018,6 +1105,7 @@ function updateScene() {
   updateProjectiles();
   updateObjectives();
   updateBuildables();
+  updateBrushes();
   updateCamera();
   updateSelectedStats();
   renderEvents();
@@ -1028,7 +1116,7 @@ function updateScene() {
 }
 
 function mapAssetUrl(map) {
-  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260730pickup1`;
+  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260731brushes1`;
 }
 
 function loadMap() {
@@ -1045,6 +1133,8 @@ function loadMap() {
     });
     world.add(mapModel);
     settleCorpses();
+    bindBrushNodes();
+    updateBrushes();
     if (grid) grid.visible = false;
   }, undefined, () => {
     if (grid) grid.visible = true;
@@ -1182,7 +1272,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix5");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731brushes1");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -1217,6 +1307,7 @@ function cleanupReplayObjects() {
   state.projectileDefinitions.clear();
   state.objectiveDefinitions.clear();
   state.buildableDefinitions.clear();
+  state.brushDefinitions.clear();
 }
 
 async function init() {
@@ -1260,6 +1351,10 @@ async function init() {
       telemetry.buildableDefinitions.map(definition => [definition.buildableId, definition])
     );
     state.buildables = telemetry.buildables;
+    state.brushDefinitions = new Map(
+      telemetry.brushDefinitions.map(definition => [definition.brushId, definition])
+    );
+    state.brushes = telemetry.brushes;
     state.events = telemetry.events;
     buildRoster();
     selectPlayer(state.roster[0]?.sessionId);

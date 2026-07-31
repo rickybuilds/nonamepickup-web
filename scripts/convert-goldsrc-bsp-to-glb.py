@@ -31,6 +31,7 @@ LUMP_FACES = 7
 LUMP_LIGHTING = 8
 LUMP_EDGES = 12
 LUMP_SURFEDGES = 13
+LUMP_MODELS = 14
 
 SKIP_TEXTURE_PREFIXES = (
     "aaatrigger",
@@ -271,6 +272,24 @@ def parse_texinfos(data, lump):
     return texinfos
 
 
+def parse_models(data, lump):
+    offset, length = lump
+    models = []
+    for pos in range(offset, offset + length, 64):
+        if pos + 64 > offset + length:
+            break
+        origin = struct.unpack_from("<fff", data, pos + 24)
+        first_face = read_i32(data, pos + 56)
+        face_count = read_i32(data, pos + 60)
+        models.append({
+            "name": "worldspawn" if not models else f"*{len(models)}",
+            "origin": origin,
+            "first_face": first_face,
+            "face_count": face_count,
+        })
+    return models
+
+
 def parse_edges(data, lump):
     offset, length = lump
     edges = []
@@ -431,13 +450,18 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
     texinfos = parse_texinfos(data, lumps[LUMP_TEXINFO])
     edges = parse_edges(data, lumps[LUMP_EDGES])
     surfedges = parse_surfedges(data, lumps[LUMP_SURFEDGES])
+    models = parse_models(data, lumps[LUMP_MODELS])
+    face_models = {}
+    for model_index, model in enumerate(models):
+        for face_index in range(model["first_face"], model["first_face"] + model["face_count"]):
+            face_models[face_index] = model_index
 
     face_offset, face_length = lumps[LUMP_FACES]
-    primitives = {}
+    primitives = {model_index: {} for model_index in range(len(models))}
     kept_faces = 0
     skipped_faces = 0
 
-    for pos in range(face_offset, face_offset + face_length, 20):
+    for face_index, pos in enumerate(range(face_offset, face_offset + face_length, 20)):
         first_edge = read_i32(data, pos + 4)
         edge_count = read_i16(data, pos + 8)
         texinfo_id = read_i16(data, pos + 10)
@@ -476,7 +500,8 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
                 subtract(tri[1]["position"], tri[0]["position"]),
                 subtract(tri[2]["position"], tri[0]["position"]),
             ))
-            primitive = primitives.setdefault(texture_id, {
+            model_index = face_models.get(face_index, 0)
+            primitive = primitives.setdefault(model_index, {}).setdefault(texture_id, {
                 "texture": texture,
                 "positions": [],
                 "normals": [],
@@ -490,7 +515,11 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
                 primitive["colors"].extend(light_color)
         kept_faces += 1
 
-    total_vertices = sum(len(primitive["positions"]) // 3 for primitive in primitives.values())
+    total_vertices = sum(
+        len(primitive["positions"]) // 3
+        for model_primitives in primitives.values()
+        for primitive in model_primitives.values()
+    )
     return primitives, textures, {
         "textures": len(textures),
         "texturedMaterials": sum(1 for texture in textures if texture.get("png")),
@@ -502,6 +531,7 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
         "skippedFaces": skipped_faces,
         "triangles": total_vertices // 3,
         "vertices": total_vertices,
+        "models": models,
     }
 
 
@@ -524,7 +554,8 @@ def write_glb(path, primitives_by_texture, textures, stats):
     materials = []
     images = []
     texture_defs = []
-    mesh_primitives = []
+    meshes = []
+    nodes = []
     material_by_texture = {}
 
     def append_buffer_view(blob, target=None):
@@ -595,26 +626,45 @@ def write_glb(path, primitives_by_texture, textures, stats):
         material_by_texture[texture_id] = len(materials) - 1
         return material_by_texture[texture_id]
 
-    for texture_id, primitive in sorted(primitives_by_texture.items(), key=lambda item: (item[1]["texture"].get("name") if item[1]["texture"] else "")):
-        positions = primitive["positions"]
-        normals = primitive["normals"]
-        uvs = primitive["uvs"]
-        colors = primitive["colors"]
-        if not positions:
+    model_stats = stats.get("models") or []
+    for model_index, primitives_by_texture in sorted(primitives_by_texture.items()):
+        mesh_primitives = []
+        for texture_id, primitive in sorted(
+            primitives_by_texture.items(),
+            key=lambda item: (item[1]["texture"].get("name") if item[1]["texture"] else "")
+        ):
+            positions = primitive["positions"]
+            normals = primitive["normals"]
+            uvs = primitive["uvs"]
+            colors = primitive["colors"]
+            if not positions:
+                continue
+            position_accessor = append_accessor(positions, 3, "VEC3", True)
+            normal_accessor = append_accessor(normals, 3, "VEC3")
+            uv_accessor = append_accessor(uvs, 2, "VEC2")
+            color_accessor = append_accessor(colors, 3, "VEC3")
+            mesh_primitives.append({
+                "attributes": {
+                    "POSITION": position_accessor,
+                    "NORMAL": normal_accessor,
+                    "TEXCOORD_0": uv_accessor,
+                    "COLOR_0": color_accessor,
+                },
+                "material": material_for(texture_id, primitive["texture"] or {}),
+                "mode": 4,
+            })
+        if not mesh_primitives:
             continue
-        position_accessor = append_accessor(positions, 3, "VEC3", True)
-        normal_accessor = append_accessor(normals, 3, "VEC3")
-        uv_accessor = append_accessor(uvs, 2, "VEC2")
-        color_accessor = append_accessor(colors, 3, "VEC3")
-        mesh_primitives.append({
-            "attributes": {
-                "POSITION": position_accessor,
-                "NORMAL": normal_accessor,
-                "TEXCOORD_0": uv_accessor,
-                "COLOR_0": color_accessor,
+        model = model_stats[model_index] if model_index < len(model_stats) else {}
+        name = model.get("name") or ("worldspawn" if model_index == 0 else f"*{model_index}")
+        meshes.append({"name": name, "primitives": mesh_primitives})
+        nodes.append({
+            "mesh": len(meshes) - 1,
+            "name": name,
+            "extras": {
+                "goldsrcModel": name,
+                "goldsrcOrigin": list(model.get("origin") or (0.0, 0.0, 0.0)),
             },
-            "material": material_for(texture_id, primitive["texture"] or {}),
-            "mode": 4,
         })
 
     bin_blob = b"".join(bin_chunks)
@@ -625,12 +675,9 @@ def write_glb(path, primitives_by_texture, textures, stats):
             "generator": "Website-NNPugs GoldSrc BSP converter",
         },
         "scene": 0,
-        "scenes": [{"nodes": [0]}],
-        "nodes": [{"mesh": 0, "name": stats.get("mapName", "GoldSrc BSP")}],
-        "meshes": [{
-            "name": "worldspawn",
-            "primitives": mesh_primitives,
-        }],
+        "scenes": [{"nodes": list(range(len(nodes)))}],
+        "nodes": nodes,
+        "meshes": meshes,
         "buffers": [{"byteLength": len(bin_blob)}],
         "bufferViews": buffer_views,
         "accessors": accessors,

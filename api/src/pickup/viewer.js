@@ -11,6 +11,8 @@ const VIEWER_FILES = new Set([
   "render_models.csv",
   "buildable_defs.csv",
   "buildables.csv",
+  "brush_defs.csv",
+  "brushes.csv",
   "projectile_defs.csv",
   "projectiles.csv",
   "objective_defs.csv",
@@ -88,10 +90,13 @@ class PickupReplayViewer {
     const row = await this.artifact(matchId, round);
     const base = `/api/pickup-replays/viewer/${encodeURIComponent(matchId)}/${round}`;
     const manifest = parseManifest(row.manifest_json);
-    const viewerFiles = [...VIEWER_FILES].filter(name =>
-      !["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(name) ||
-      manifest.schema_version === 3
-    );
+    const viewerFiles = [...VIEWER_FILES].filter(name => {
+      if (["brush_defs.csv", "brushes.csv"].includes(name)) return manifest.schema_version === 4;
+      if (["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(name)) {
+        return manifest.schema_version >= 3;
+      }
+      return true;
+    });
     return {
       artifactId: Number(row.artifact_id),
       matchId: row.match_id,
@@ -111,6 +116,8 @@ class PickupReplayViewer {
         events: Number(row.event_row_count || 0)
         ,buildableDefinitions: Number(manifest.rows?.buildable_definitions || 0)
         ,buildables: Number(manifest.rows?.buildables || 0)
+        ,brushDefinitions: Number(manifest.rows?.brush_definitions || 0)
+        ,brushes: Number(manifest.rows?.brushes || 0)
       },
       sha256: row.sha256,
       byteSize: Number(row.byte_size || 0),
@@ -127,7 +134,10 @@ class PickupReplayViewer {
     const row = await this.artifact(matchId, round);
     const manifest = parseManifest(row.manifest_json);
     if (["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(fileName) &&
-        manifest.schema_version !== 3) {
+        manifest.schema_version < 3) {
+      throw pickupError(404, "replay_file_not_found");
+    }
+    if (["brush_defs.csv", "brushes.csv"].includes(fileName) && manifest.schema_version !== 4) {
       throw pickupError(404, "replay_file_not_found");
     }
     await this.storage.ensureReady();

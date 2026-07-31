@@ -25,9 +25,12 @@ const REQUIRED_FILES = Object.freeze([
 const RENDER_MODELS_FILE = "render_models.csv";
 const BUILDABLE_DEFS_FILE = "buildable_defs.csv";
 const BUILDABLES_FILE = "buildables.csv";
+const BRUSH_DEFS_FILE = "brush_defs.csv";
+const BRUSHES_FILE = "brushes.csv";
 const READY_FILES = new Set(["complete.ready", "aborted.ready"]);
 const SCHEMA_V3_FILES = Object.freeze([RENDER_MODELS_FILE, BUILDABLE_DEFS_FILE, BUILDABLES_FILE]);
-const ALLOWED_FILES = new Set([...REQUIRED_FILES, ...SCHEMA_V3_FILES, ...READY_FILES]);
+const SCHEMA_V4_FILES = Object.freeze([BRUSH_DEFS_FILE, BRUSHES_FILE]);
+const ALLOWED_FILES = new Set([...REQUIRED_FILES, ...SCHEMA_V3_FILES, ...SCHEMA_V4_FILES, ...READY_FILES]);
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
 const PLAYERS_V2_COLUMNS = Object.freeze([
@@ -64,6 +67,18 @@ const BUILDABLES_COLUMNS = Object.freeze([
   "pitch", "yaw", "roll", "body", "skin", "sequence", "gaitsequence", "frame", "framerate", "animtime",
   "scale", "rendermode", "renderamt", "renderfx", "render_r", "render_g", "render_b", "controller0",
   "controller1", "controller2", "controller3", "blending0", "blending1", "aiment"
+]);
+const BRUSH_DEFS_COLUMNS = Object.freeze([
+  "brush_id", "entity", "classname", "model", "targetname", "target", "spawnflags", "first_seen_ms"
+]);
+const BRUSHES_COLUMNS = Object.freeze([
+  "snapshot", "time_ms", "brush_id", "active", "x", "y", "z", "vx", "vy", "vz",
+  "pitch", "yaw", "roll", "avel_pitch", "avel_yaw", "avel_roll", "effects", "solid",
+  "movetype", "rendermode", "renderamt", "renderfx", "render_r", "render_g", "render_b"
+]);
+const BRUSH_CLASSES = new Set([
+  "func_door", "func_door_rotating", "func_button", "func_rot_button", "func_plat",
+  "func_platrot", "func_train", "func_tracktrain"
 ]);
 const PROJECTILES_COLUMNS = Object.freeze([
   "snapshot", "time_ms", "projectile_id", "state", "x", "y", "z", "vx", "vy", "vz", "pitch", "yaw", "roll"
@@ -506,22 +521,30 @@ async function validateArchive({
   validateManifest(manifest, { matchId, round, complete });
 
   const missingSchemaFiles = SCHEMA_V3_FILES.filter(name => !extractor.files.has(name));
-  if (manifest.schema_version === 3 && missingSchemaFiles.length) {
+  if (manifest.schema_version >= 3 && missingSchemaFiles.length) {
     const code = missingSchemaFiles.includes(RENDER_MODELS_FILE)
       ? "missing_render_models_file"
       : "missing_buildable_streams";
     throw pickupError(422, code, { quarantine: true });
   }
+  if (manifest.schema_version < 4 && SCHEMA_V4_FILES.some(name => extractor.files.has(name))) {
+    throw pickupError(422, "unexpected_archive_file", { quarantine: true });
+  }
+  if (manifest.schema_version === 4 && SCHEMA_V4_FILES.some(name => !extractor.files.has(name))) {
+    throw pickupError(422, "missing_brush_streams", { quarantine: true });
+  }
   if (manifest.schema_version === 2 && SCHEMA_V3_FILES.some(name => extractor.files.has(name))) {
     throw pickupError(422, "unexpected_archive_file", { quarantine: true });
   }
-  const expectedFileCount = REQUIRED_FILES.length + 1 + (manifest.schema_version === 3 ? SCHEMA_V3_FILES.length : 0);
+  const expectedFileCount = REQUIRED_FILES.length + 1 +
+    (manifest.schema_version >= 3 ? SCHEMA_V3_FILES.length : 0) +
+    (manifest.schema_version === 4 ? SCHEMA_V4_FILES.length : 0);
   if (extractor.files.size !== expectedFileCount) {
     throw pickupError(422, "unexpected_archive_file", { quarantine: true });
   }
 
   let renderModels = new Map();
-  if (manifest.schema_version === 3) {
+  if (manifest.schema_version >= 3) {
     const allowlistedModels = await loadModelCatalog(modelCatalog);
     const renderFile = extractor.files.get(RENDER_MODELS_FILE);
     if (manifest.bytes[RENDER_MODELS_FILE] !== renderFile.size) {
@@ -541,7 +564,7 @@ async function validateArchive({
     manifest.schema_version === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS,
     (row, headers) => {
       validateNumericRow(row, headers);
-      if (manifest.schema_version === 3) {
+      if (manifest.schema_version >= 3) {
         for (const [column, kind] of [["player_model_id", "player"], ["weapon_model_id", "weapon"]]) {
           const id = requiredInteger(row[column], "invalid_render_model_reference", { min: 0 });
           if (id === 0) continue;
@@ -565,10 +588,10 @@ async function validateArchive({
     "projectile"
   );
   validateNumericColumns(projectileDefs, new Set(["classname", manifest.schema_version === 2 ? "model" : "model_id"]));
-  if (manifest.schema_version === 3) {
+  if (manifest.schema_version >= 3) {
     for (const row of projectileDefs.rows) requiredInteger(row.model_id, "invalid_render_model_reference", { min: 0 });
   }
-  if (manifest.schema_version === 3) validateModelReferences(projectileDefs, "model_id", "projectile", renderModels);
+  if (manifest.schema_version >= 3) validateModelReferences(projectileDefs, "model_id", "projectile", renderModels);
 
   const objectiveDefs = parseCsvDocument(
     await fsp.readFile(extractor.files.get("objective_defs.csv").path, "utf8"),
@@ -581,10 +604,10 @@ async function validateArchive({
     "objective"
   );
   validateNumericColumns(objectiveDefs, new Set(["classname", "targetname", manifest.schema_version === 2 ? "model" : "model_id"]));
-  if (manifest.schema_version === 3) {
+  if (manifest.schema_version >= 3) {
     for (const row of objectiveDefs.rows) requiredInteger(row.model_id, "invalid_render_model_reference", { min: 0 });
   }
-  if (manifest.schema_version === 3) validateModelReferences(objectiveDefs, "model_id", "objective", renderModels);
+  if (manifest.schema_version >= 3) validateModelReferences(objectiveDefs, "model_id", "objective", renderModels);
 
   const validateProjectileTimeline = timelineRowValidator("projectile_id");
   await validateCsvStream(
@@ -607,7 +630,7 @@ async function validateArchive({
     }
   );
 
-  if (manifest.schema_version === 3) {
+  if (manifest.schema_version >= 3) {
     const buildableDefsFile = extractor.files.get(BUILDABLE_DEFS_FILE);
     const buildablesFile = extractor.files.get(BUILDABLES_FILE);
     if (manifest.bytes[BUILDABLE_DEFS_FILE] !== buildableDefsFile.size ||
@@ -648,6 +671,40 @@ async function validateArchive({
     }
   }
 
+  if (manifest.schema_version === 4) {
+    const brushDefsFile = extractor.files.get(BRUSH_DEFS_FILE);
+    const brushesFile = extractor.files.get(BRUSHES_FILE);
+    if (manifest.bytes[BRUSH_DEFS_FILE] !== brushDefsFile.size ||
+        manifest.bytes[BRUSHES_FILE] !== brushesFile.size) {
+      throw pickupError(422, "brush_manifest_mismatch", { quarantine: true });
+    }
+    const brushDefs = parseCsvDocument(await fsp.readFile(brushDefsFile.path, "utf8"), "brush_definitions");
+    const definitionIds = validateUniqueIds(brushDefs, BRUSH_DEFS_COLUMNS, "brush_id", "brush");
+    for (const row of brushDefs.rows) {
+      if (!BRUSH_CLASSES.has(row.classname) || !/^\*[1-9]\d*$/.test(row.model) ||
+          row.targetname.length > 128 || row.target.length > 128 ||
+          /[\0-\x1f\x7f]/.test(row.targetname) || /[\0-\x1f\x7f]/.test(row.target)) {
+        throw pickupError(422, "invalid_brush_definition", { quarantine: true });
+      }
+    }
+    validateNumericColumns(brushDefs, new Set(["classname", "model", "targetname", "target"]));
+    const validateBrushTimeline = timelineRowValidator("brush_id", { terminalActive: true });
+    const brushRows = await validateCsvStream(
+      brushesFile.path,
+      "brushes",
+      BRUSHES_COLUMNS,
+      (row, headers) => {
+        validateNumericRow(row, headers);
+        const id = requiredInteger(row.brush_id, "invalid_brush_id", { min: 1 });
+        if (!definitionIds.has(id)) throw pickupError(422, "undefined_brush_id", { quarantine: true });
+        validateBrushTimeline(row);
+      }
+    );
+    if (manifest.rows.brush_definitions !== brushDefs.rows.length || manifest.rows.brushes !== brushRows) {
+      throw pickupError(422, "brush_manifest_mismatch", { quarantine: true });
+    }
+  }
+
   const rosterText = await fsp.readFile(extractor.files.get("roster.csv").path, "utf8");
   const roster = normalizeRoster(parseCsv(rosterText, "roster"));
   return { manifest, roster, complete, extractedBytes: extractor.totalBytes };
@@ -658,11 +715,15 @@ module.exports = {
   RENDER_MODELS_FILE,
   BUILDABLE_DEFS_FILE,
   BUILDABLES_FILE,
+  BRUSH_DEFS_FILE,
+  BRUSHES_FILE,
   PLAYERS_V2_COLUMNS,
   PLAYERS_V3_COLUMNS,
   RENDER_MODEL_COLUMNS,
   BUILDABLE_DEFS_COLUMNS,
   BUILDABLES_COLUMNS,
+  BRUSH_DEFS_COLUMNS,
+  BRUSHES_COLUMNS,
   safeTfcModelPath,
   SafeTarExtractor,
   openZstdStream,

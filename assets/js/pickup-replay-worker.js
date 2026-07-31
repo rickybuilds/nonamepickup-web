@@ -178,7 +178,7 @@ async function loadPlayers(url, schemaVersion, renderModels) {
       number(cols[i.weapon]), number(cols[i.buttons]),
       number(cols[i.health]), number(cols[i.armor])
     ];
-    if (schemaVersion === 3) {
+    if (schemaVersion >= 3) {
       const playerModelId = number(cols[i.player_model_id]);
       const weaponModelId = number(cols[i.weapon_model_id]);
       for (const [id, kind] of [[playerModelId, "player"], [weaponModelId, "weapon"]]) {
@@ -201,7 +201,7 @@ async function loadPlayers(url, schemaVersion, renderModels) {
   return [...tracks].map(([sessionId, values]) => ({
     sessionId,
     schemaVersion,
-    stride: schemaVersion === 3 ? 37 : 17,
+    stride: schemaVersion >= 3 ? 37 : 17,
     frames: values.finish()
   }));
 }
@@ -236,13 +236,13 @@ async function loadProjectileDefinitions(url, schemaVersion, renderModels) {
     ? ["projectile_id", "entity", "owner_session", "classname", "model", "spawned_ms"]
     : ["projectile_id", "entity", "owner_session", "classname", "model_id", "spawned_ms"];
   await rows(url, (cols, i) => {
-    const modelId = schemaVersion === 3 ? number(cols[i.model_id]) : 0;
+    const modelId = schemaVersion >= 3 ? number(cols[i.model_id]) : 0;
     definitions.push({
       projectileId: number(cols[i.projectile_id]),
       ownerSession: number(cols[i.owner_session]),
       classname: cols[i.classname] || "",
       modelId,
-      model: schemaVersion === 3 ? (models.get(modelId)?.path || "") : (cols[i.model] || ""),
+      model: schemaVersion >= 3 ? (models.get(modelId)?.path || "") : (cols[i.model] || ""),
       spawnedMs: number(cols[i.spawned_ms])
     });
   }, expected);
@@ -276,12 +276,12 @@ async function loadObjectiveDefinitions(url, schemaVersion, renderModels) {
     ? ["objective_id", "entity", "classname", "model", "targetname", "base_x", "base_y", "base_z", "base_yaw", "first_seen_ms"]
     : ["objective_id", "entity", "classname", "model_id", "targetname", "base_x", "base_y", "base_z", "base_yaw", "first_seen_ms"];
   await rows(url, (cols, i) => {
-    const modelId = schemaVersion === 3 ? number(cols[i.model_id]) : 0;
+    const modelId = schemaVersion >= 3 ? number(cols[i.model_id]) : 0;
     definitions.push({
       objectiveId: number(cols[i.objective_id]),
       classname: cols[i.classname] || "",
       modelId,
-      model: schemaVersion === 3 ? (models.get(modelId)?.path || "") : (cols[i.model] || ""),
+      model: schemaVersion >= 3 ? (models.get(modelId)?.path || "") : (cols[i.model] || ""),
       targetname: cols[i.targetname] || "",
       baseX: number(cols[i.base_x]),
       baseY: number(cols[i.base_y]),
@@ -379,6 +379,66 @@ async function loadBuildables(url, definitions, renderModels) {
   }));
 }
 
+const BRUSH_DEFS_COLUMNS = [
+  "brush_id", "entity", "classname", "model", "targetname", "target", "spawnflags", "first_seen_ms"
+];
+const BRUSHES_COLUMNS = [
+  "snapshot", "time_ms", "brush_id", "active", "x", "y", "z", "vx", "vy", "vz",
+  "pitch", "yaw", "roll", "avel_pitch", "avel_yaw", "avel_roll", "effects", "solid",
+  "movetype", "rendermode", "renderamt", "renderfx", "render_r", "render_g", "render_b"
+];
+const BRUSH_CLASSES = new Set([
+  "func_door", "func_door_rotating", "func_button", "func_rot_button", "func_plat",
+  "func_platrot", "func_train", "func_tracktrain"
+]);
+
+async function loadBrushDefinitions(url) {
+  const definitions = [];
+  const seen = new Set();
+  await rows(url, (cols, i) => {
+    const brushId = number(cols[i.brush_id]);
+    const classname = cols[i.classname] || "";
+    const model = cols[i.model] || "";
+    if (!Number.isSafeInteger(brushId) || brushId < 1 || seen.has(brushId) ||
+        !BRUSH_CLASSES.has(classname) || !/^\*[1-9]\d*$/.test(model)) {
+      throw new Error("Invalid brush definition.");
+    }
+    seen.add(brushId);
+    definitions.push({
+      brushId,
+      entity: number(cols[i.entity]),
+      classname,
+      model,
+      targetname: cols[i.targetname] || "",
+      target: cols[i.target] || "",
+      spawnflags: number(cols[i.spawnflags]),
+      firstSeenMs: number(cols[i.first_seen_ms])
+    });
+  }, BRUSH_DEFS_COLUMNS);
+  return definitions;
+}
+
+async function loadBrushes(url, definitions) {
+  const tracks = new Map();
+  const ids = new Set(definitions.map(definition => definition.brushId));
+  await rows(url, (cols, i) => {
+    const brushId = number(cols[i.brush_id]);
+    if (!ids.has(brushId)) throw new Error("Brush state references an invalid definition.");
+    if (!tracks.has(brushId)) tracks.set(brushId, new Float32Builder());
+    tracks.get(brushId).push(
+      number(cols[i.time_ms]) / 1000, number(cols[i.active]),
+      number(cols[i.x]), number(cols[i.y]), number(cols[i.z]),
+      number(cols[i.vx]), number(cols[i.vy]), number(cols[i.vz]),
+      number(cols[i.pitch]), number(cols[i.yaw]), number(cols[i.roll]),
+      number(cols[i.avel_pitch]), number(cols[i.avel_yaw]), number(cols[i.avel_roll]),
+      number(cols[i.effects]), number(cols[i.solid]), number(cols[i.movetype]),
+      number(cols[i.rendermode]), number(cols[i.renderamt]), number(cols[i.renderfx]),
+      number(cols[i.render_r]), number(cols[i.render_g]), number(cols[i.render_b])
+    );
+  }, BRUSHES_COLUMNS);
+  return [...tracks].map(([brushId, values]) => ({ brushId, stride: 23, frames: values.finish() }));
+}
+
 async function loadEvents(url) {
   const output = [];
   await rows(url, (cols, i) => {
@@ -402,10 +462,10 @@ self.onmessage = async event => {
   try {
     const files = event.data.files;
     const schemaVersion = Number(event.data.schemaVersion);
-    if (schemaVersion !== 2 && schemaVersion !== 3) throw new Error("Unsupported replay schema version.");
+    if (![2, 3, 4].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
     self.postMessage({ type: "progress", label: "Loading roster…" });
     const roster = await loadRoster(files.roster);
-    const renderModels = schemaVersion === 3 ? await loadRenderModels(files.renderModels) : [];
+    const renderModels = schemaVersion >= 3 ? await loadRenderModels(files.renderModels) : [];
     self.postMessage({ type: "progress", label: "Loading player snapshots…" });
     const players = await loadPlayers(files.players, schemaVersion, renderModels);
     self.postMessage({ type: "progress", label: "Loading projectile telemetry…" });
@@ -421,16 +481,19 @@ self.onmessage = async event => {
     self.postMessage({ type: "progress", label: "Loading objectives and events…" });
     const objectiveDefinitions = await loadObjectiveDefinitions(files.objectiveDefs, schemaVersion, renderModels);
     const objectives = await loadObjectives(files.objectives);
-    const buildableDefinitions = schemaVersion === 3
+    const buildableDefinitions = schemaVersion >= 3
       ? await loadBuildableDefinitions(files.buildableDefs) : [];
-    const buildables = schemaVersion === 3
+    const buildables = schemaVersion >= 3
       ? await loadBuildables(files.buildables, buildableDefinitions, renderModels) : [];
+    const brushDefinitions = schemaVersion === 4 ? await loadBrushDefinitions(files.brushDefs) : [];
+    const brushes = schemaVersion === 4 ? await loadBrushes(files.brushes, brushDefinitions) : [];
     const events = await loadEvents(files.events);
     const transfer = [
       ...players.map(track => track.frames.buffer),
       ...projectiles.map(track => track.frames.buffer),
       ...objectives.map(track => track.frames.buffer),
-      ...buildables.map(track => track.frames.buffer)
+      ...buildables.map(track => track.frames.buffer),
+      ...brushes.map(track => track.frames.buffer)
     ];
     self.postMessage({
       type: "complete",
@@ -444,6 +507,8 @@ self.onmessage = async event => {
         objectives,
         buildableDefinitions,
         buildables,
+        brushDefinitions,
+        brushes,
         events
       }
     }, transfer);

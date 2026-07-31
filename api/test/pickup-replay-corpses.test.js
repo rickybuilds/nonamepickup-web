@@ -30,16 +30,16 @@ test("pickup replay grounds corpses against the nearest BSP surface below", () =
   assert.match(source, /world\.add\(mapModel\);\s+settleCorpses\(\);/);
 });
 
-test("pickup replay keeps explicit schema-v2 fallback and schema-v3 render state", () => {
+test("pickup replay keeps explicit schema-v2 fallback and schema-v3+ render state", () => {
   const worker = fs.readFileSync(
     path.resolve(__dirname, "..", "..", "assets", "js", "pickup-replay-worker.js"),
     "utf8"
   );
-  assert.match(worker, /stride: schemaVersion === 3 \? 37 : 17/);
+  assert.match(worker, /stride: schemaVersion >= 3 \? 37 : 17/);
   assert.match(worker, /schemaVersion === 2 \? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS/);
   assert.match(worker, /id !== 0 && models\.get\(id\)\?\.kind !== kind/);
-  assert.match(source, /frame\.schemaVersion === 3 \? frame\.ducking/);
-  assert.match(source, /frame\.schemaVersion === 3 \? frame\.bodyYaw : frame\.yaw/);
+  assert.match(source, /frame\.schemaVersion >= 3 \? frame\.ducking/);
+  assert.match(source, /frame\.schemaVersion >= 3 \? frame\.bodyYaw : frame\.yaw/);
   assert.match(source, /setWeaponModel\(track, frame\.weaponModelId, frame\.classId\)/);
   assert.match(source, /\^p_\[A-Za-z0-9_\.-\]\+\\\.mdl\$/i);
   assert.doesNotMatch(source, /w_\*\.mdl/);
@@ -52,12 +52,12 @@ test("schema-v3 player visuals are persistent across weapons, crouch, death, and
   assert.match(source, /track\.weaponModel = null/);
   assert.match(source, /track\.weaponMuzzleLocal = null/);
   assert.match(source, /if \(!modelId\) return/);
-  assert.match(source, /boundaryIndexes = track\.schemaVersion === 3[\s\S]*\[10, 11, 12, 19, 20\]/);
+  assert.match(source, /boundaryIndexes = track\.schemaVersion >= 3[\s\S]*\[10, 11, 12, 19, 20\]/);
   assert.match(source, /if \(frame\.schemaVersion === 2\) track\.mesh\.position\.y -=/);
   assert.doesNotMatch(source, /if \(frame\.schemaVersion === 3\) track\.mesh\.position\.y -=/);
   assert.match(source, /clonedPlayerModel\(asset, track\.schemaVersion === 2, targetHeight\)/);
   assert.match(source, /if \(alignFeetToOrigin\) model\.position\.y = -bounds\.min\.y \* scale/);
-  assert.match(source, /fallbackPlayerMesh\(team, track\.schemaVersion === 3\)/);
+  assert.match(source, /fallbackPlayerMesh\(team, track\.schemaVersion >= 3\)/);
   assert.match(source, /catalog\?\.heldVariants\?\.\[classKey\]/);
   assert.doesNotMatch(source, /playerVisualScaleY/);
   assert.doesNotMatch(source, /track\.playerVisual\.scale/);

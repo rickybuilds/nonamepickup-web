@@ -1,6 +1,6 @@
 # Pickup replay ingestion
 
-`POST /api/pickup-replays` accepts one schema-version-2 or schema-version-3 TFC 4v4 round replay package. The
+`POST /api/pickup-replays` accepts one schema-version-2, schema-version-3, or schema-version-4 TFC 4v4 round replay package. The
 route is upload-only. Replay storage is private and is not registered as an
 Express static directory.
 
@@ -86,9 +86,11 @@ projectiles.csv
 objective_defs.csv
 objectives.csv
 events.csv
-render_models.csv    # schema version 3 only
-buildable_defs.csv   # schema version 3 only
-buildables.csv       # schema version 3 only
+render_models.csv    # schema version 3+
+buildable_defs.csv   # schema version 3+
+buildables.csv       # schema version 3+
+brush_defs.csv       # schema version 4 only
+brushes.csv          # schema version 4 only
 manifest.json
 complete.ready       # exactly one ready marker
 ```
@@ -108,7 +110,11 @@ Schema versions 2 and 3 require `schema_version`, `match_id`, `round`, `map`,
 `render_models.csv`, `buildable_defs.csv`, and `buildables.csv`, and all three
 files. Header identifiers must
 equal manifest identifiers, and the ready marker must agree with `complete`.
-Versions other than 2 and 3 are rejected with `unsupported_schema_version`;
+Version 4 additionally requires `rows.brush_definitions`, `rows.brushes`, the
+matching byte entries, and exact `brush_defs.csv` and `brushes.csv` streams.
+Brush definitions accept only the supported mover classnames and literal `*N`
+BSP submodel names; brush timelines are ordered by stable `brush_id` and may
+terminate with `active=0`. Versions other than 2, 3, and 4 are rejected with `unsupported_schema_version`;
 future versions are never reinterpreted.
 
 The schema-2 `players.csv` header is the original 21-column contract. Schema 3
@@ -361,9 +367,11 @@ projectiles.csv
 objective_defs.csv
 objectives.csv
 events.csv
-render_models.csv    # v3
-buildable_defs.csv   # v3
-buildables.csv       # v3
+render_models.csv    # v3+
+buildable_defs.csv   # v3+
+buildables.csv       # v3+
+brush_defs.csv       # v4
+brushes.csv          # v4
 ```
 
 Archive members are read with a fixed `tar` argument array. Match IDs and round
