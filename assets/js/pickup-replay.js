@@ -26,6 +26,10 @@ const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const CORPSE_LIFETIME_SECONDS = 15;
 const PLAYER_STANDING_VISUAL_HEIGHT = 72;
 const PLAYER_CROUCH_VISUAL_HEIGHT = 40;
+const ASSAULT_CANNON_WEAPON_ID = 13;
+const IN_ATTACK = 1;
+const AC_ROUNDS_PER_SECOND = 12;
+const AC_TRACER_RANGE = 900;
 const TFC_MODEL_ASSET_VERSION = "20260731schema3fix5";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
@@ -84,11 +88,14 @@ const projectileRoot = new THREE.Group();
 const objectiveRoot = new THREE.Group();
 const buildableRoot = new THREE.Group();
 const impactRoot = new THREE.Group();
-world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot);
+const hitscanRoot = new THREE.Group();
+world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot);
 let grid = null;
 let mapModel = null;
 const corpseGroundRay = new THREE.Raycaster();
 const corpseDown = new THREE.Vector3(0, -1, 0);
+const acRaycaster = new THREE.Raycaster();
+const segmentUp = new THREE.Vector3(0, 1, 0);
 
 function queryIdentity() {
   const query = new URLSearchParams(location.search);
@@ -201,6 +208,89 @@ function playerSnapshot(track, time) {
 
 function isDucking(frame) {
   return frame.schemaVersion === 3 ? frame.ducking : Boolean(frame.buttons & 4);
+}
+
+function assaultCannonActive(frame) {
+  return Boolean(frame?.alive && frame.weapon === ASSAULT_CANNON_WEAPON_ID && (frame.buttons & IN_ATTACK));
+}
+
+function deterministicSpread(index, salt) {
+  const value = Math.sin((index + 1) * (12.9898 + salt * 17.31)) * 43758.5453;
+  return (value - Math.floor(value)) * 2 - 1;
+}
+
+function createAssaultCannonVisual() {
+  const group = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xffd166,
+    transparent: true,
+    opacity: 0.92,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  const tracers = Array.from({ length: 3 }, () => {
+    const tracer = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1, 6, 1, true), material);
+    tracer.frustumCulled = false;
+    group.add(tracer);
+    return tracer;
+  });
+  const flash = new THREE.Mesh(
+    new THREE.SphereGeometry(3.2, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.9, depthWrite: false,
+      blending: THREE.AdditiveBlending })
+  );
+  group.add(flash);
+  group.visible = false;
+  return { group, tracers, flash };
+}
+
+function positionTracer(tracer, start, end) {
+  const delta = end.clone().sub(start);
+  const length = delta.length();
+  tracer.visible = length > 0.01;
+  if (!tracer.visible) return;
+  tracer.position.copy(start).add(end).multiplyScalar(0.5);
+  tracer.quaternion.setFromUnitVectors(segmentUp, delta.normalize());
+  tracer.scale.set(1, length, 1);
+}
+
+function updateAssaultCannonVisual(track, frame, time) {
+  const visual = track.acFireVisual;
+  if (!visual) return;
+  visual.group.visible = state.showProjectiles && assaultCannonActive(frame);
+  if (!visual.group.visible) return;
+
+  const forward = viewDirection(frame);
+  const right = new THREE.Vector3(-forward.z, 0, forward.x).normalize();
+  const crouched = frame.schemaVersion === 3 && isDucking(frame);
+  const muzzle = sourcePoint(frame.x, frame.y, frame.z)
+    .add(new THREE.Vector3(0, crouched ? 4 : 6, 0))
+    .addScaledVector(forward, 27)
+    .addScaledVector(right, 14);
+  const baseShot = Math.floor(time * AC_ROUNDS_PER_SECOND);
+
+  visual.tracers.forEach((tracer, offset) => {
+    const shot = baseShot - offset;
+    const direction = forward.clone()
+      .addScaledVector(right, deterministicSpread(shot, 1) * 0.018)
+      .addScaledVector(segmentUp, deterministicSpread(shot, 2) * 0.014)
+      .normalize();
+    acRaycaster.set(muzzle, direction);
+    acRaycaster.far = AC_TRACER_RANGE;
+    const hit = mapModel ? acRaycaster.intersectObject(mapModel, true)[0] : null;
+    const range = Math.max(1, Math.min(AC_TRACER_RANGE, hit?.distance || AC_TRACER_RANGE));
+    const phase = ((time * AC_ROUNDS_PER_SECOND + offset / visual.tracers.length) % 1 + 1) % 1;
+    const startDistance = Math.min(range, phase * range);
+    const endDistance = Math.min(range, startDistance + 72);
+    positionTracer(
+      tracer,
+      muzzle.clone().addScaledVector(direction, startDistance),
+      muzzle.clone().addScaledVector(direction, endDistance)
+    );
+  });
+  visual.flash.position.copy(muzzle);
+  const flashPulse = 1 + (1 - ((time * AC_ROUNDS_PER_SECOND) % 1)) * 0.65;
+  visual.flash.scale.setScalar(flashPulse);
 }
 
 function projectileSnapshot(track, time) {
@@ -547,6 +637,8 @@ function buildVisuals() {
     track.mesh.visible = false;
     track.mesh.userData.sessionId = track.sessionId;
     playerRoot.add(track.mesh);
+    track.acFireVisual = createAssaultCannonVisual();
+    hitscanRoot.add(track.acFireVisual.group);
 
     for (const corpse of corpseRecords(track)) {
       corpse.mesh = new THREE.Group();
@@ -696,7 +788,10 @@ function updatePlayers() {
     const frame = playerSnapshot(track, state.playbackTime);
     const joined = state.roster.find(row => row.sessionId === track.sessionId)?.joinedMs / 1000 || 0;
     track.mesh.visible = Boolean(frame && state.playbackTime >= joined);
-    if (!frame) continue;
+    if (!frame || state.playbackTime < joined) {
+      if (track.acFireVisual) track.acFireVisual.group.visible = false;
+      continue;
+    }
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     // Schema 3 records the authoritative entity origin, including crouch transitions.
     // Keep the legacy visual offset only for schema 2's basic fallback.
@@ -721,6 +816,7 @@ function updatePlayers() {
         animtime: frame.animtime, controller: frame.controller, blending: frame.blending
       });
     }
+    updateAssaultCannonVisual(track, frame, state.playbackTime);
 
     const button = document.querySelector(`.pickup-player[data-session-id="${track.sessionId}"]`);
     if (button) {
@@ -799,6 +895,7 @@ function updateCorpses() {
 function updateProjectiles() {
   projectileRoot.visible = state.showProjectiles;
   impactRoot.visible = state.showProjectiles;
+  hitscanRoot.visible = state.showProjectiles;
   if (!state.showProjectiles) return;
   for (const track of state.projectiles) {
     if (!track.mesh) continue;
@@ -1074,7 +1171,7 @@ async function loadTfcModelCatalog() {
 }
 
 function cleanupReplayObjects() {
-  for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot]) {
+  for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot]) {
     root.clear();
   }
   state.playerBySession.clear();
