@@ -5,9 +5,7 @@ const { PickupError } = require("../pickup/errors");
 
 function closeAfterResponse(req, res) {
   res.set("Connection", "close");
-  res.once("finish", () => {
-    if (!req.complete) req.destroy();
-  });
+  req.resume();
 }
 
 function createPickupReplaysRouter({ ingestion, logger = console }) {

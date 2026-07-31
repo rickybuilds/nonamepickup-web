@@ -261,15 +261,15 @@ test("missing and invalid token requests return 401 without retaining bodies", a
   t.after(() => server.close());
   const body = archiveBuffer();
 
-  const missingHeaders = uploadHeaders(body);
-  delete missingHeaders.Authorization;
-  const missing = await post(server, body, missingHeaders);
+  const missing = await post(server, Buffer.alloc(0), {});
   const invalid = await post(server, body, {
     ...uploadHeaders(body),
     Authorization: "Bearer wrong"
   });
   assert.equal(missing.status, 401);
+  assert.deepEqual(missing.body, { ok: false, error: "unauthorized" });
   assert.equal(invalid.status, 401);
+  assert.deepEqual(invalid.body, { ok: false, error: "unauthorized" });
   assert.deepEqual(await fsp.readdir(path.join(root, "incoming")), []);
 });
 
