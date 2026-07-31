@@ -19,7 +19,7 @@ from convert_goldsrc_player_models import convert
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "assets" / "tfc" / "models"
-PIPELINE_VERSION = 1
+PIPELINE_VERSION = 2
 PROJECTILES = {
     "bomblet.mdl", "caltrop.mdl", "conc_grenade.mdl", "emp_grenade.mdl",
     "mirv_grenade.mdl", "nail.mdl", "napalm.mdl", "ngrenade.mdl",
@@ -29,6 +29,12 @@ OBJECTIVES = {"ball.mdl", "flag.mdl", "keycard.mdl"}
 BUILDABLES = {
     "base.mdl", "detpack.mdl", "dispenser.mdl", "sentry1.mdl",
     "sentry2.mdl", "sentry3.mdl", "teleporter.mdl",
+}
+TEAM_COLORS = {
+    "blue": (77, 163, 255),
+    "red": (255, 93, 108),
+    "yellow": (250, 204, 21),
+    "green": (74, 222, 128),
 }
 
 
@@ -105,6 +111,16 @@ def main() -> int:
     if not source_root.is_dir():
         parser.error(f"source directory does not exist: {source_root}")
     output_root.mkdir(parents=True, exist_ok=True)
+    player_drivers: dict[str, Path] = {}
+    player_root = source_root / "player"
+    if player_root.is_dir():
+        for class_dir in sorted(path for path in player_root.iterdir() if path.is_dir()):
+            class_name = class_dir.name.lower()
+            preferred = class_dir / f"{class_name}2.mdl"
+            fallback = class_dir / f"{class_name}.mdl"
+            driver = preferred if preferred.is_file() else fallback
+            if driver.is_file():
+                player_drivers[class_name] = driver
     previous_models: dict[str, dict] = {}
     previous_manifest = output_root / "manifest.json"
     if previous_manifest.is_file():
@@ -142,7 +158,7 @@ def main() -> int:
                     filter_player_team_meshes=kind == "player",
                     generator=f"NoName TFC replay static converter v{PIPELINE_VERSION}",
                 )
-            models[key] = {
+            entry = {
                 "url": "/assets/tfc/models/" + target_relative.as_posix().lower(),
                 "kind": kind,
                 **metadata,
@@ -155,6 +171,57 @@ def main() -> int:
                     "attachments": False,
                 },
             }
+            if kind == "weapon":
+                held_variants = {}
+                held_variant_sources = {}
+                for class_name, driver in player_drivers.items():
+                    driver_sha = hashlib.sha256(driver.read_bytes()).hexdigest()
+                    variant_source = f"{metadata['sourceSha256']}:{driver_sha}"
+                    variant_relative = Path("held") / class_name / relative.name
+                    variant_target = (output_root / variant_relative).with_suffix(".glb")
+                    variant_target.parent.mkdir(parents=True, exist_ok=True)
+                    previous_variant_source = previous.get("heldVariantSources", {}).get(class_name)
+                    if variant_target.is_file() and previous_variant_source == variant_source:
+                        cached += 1
+                    else:
+                        convert(
+                            source,
+                            target=variant_target,
+                            skin_family=0,
+                            filter_player_team_meshes=False,
+                            generator=f"NoName TFC held-weapon converter v{PIPELINE_VERSION}",
+                            driver_source=driver,
+                        )
+                    held_variants[class_name] = "/assets/tfc/models/" + variant_relative.with_suffix(".glb").as_posix().lower()
+                    held_variant_sources[class_name] = variant_source
+                entry["heldVariants"] = held_variants
+                entry["heldVariantSources"] = held_variant_sources
+            if kind == "buildable":
+                team_variants = {}
+                team_variant_sources = {}
+                for team_name, team_color in TEAM_COLORS.items():
+                    variant_source = f"{metadata['sourceSha256']}:{team_name}:{team_color}:warm-v1"
+                    variant_relative = Path("teams") / team_name / relative.name
+                    variant_target = (output_root / variant_relative).with_suffix(".glb")
+                    variant_target.parent.mkdir(parents=True, exist_ok=True)
+                    previous_variant_source = previous.get("teamVariantSources", {}).get(team_name)
+                    if variant_target.is_file() and previous_variant_source == variant_source:
+                        cached += 1
+                    else:
+                        convert(
+                            source,
+                            target=variant_target,
+                            skin_family=0,
+                            filter_player_team_meshes=False,
+                            generator=f"NoName TFC buildable team converter v{PIPELINE_VERSION}",
+                            team_color=team_color,
+                            force_team_recolor=True,
+                        )
+                    team_variants[team_name] = "/assets/tfc/models/" + variant_relative.with_suffix(".glb").as_posix().lower()
+                    team_variant_sources[team_name] = variant_source
+                entry["teamVariants"] = team_variants
+                entry["teamVariantSources"] = team_variant_sources
+            models[key] = entry
         except Exception as error:  # report every source; do not hide partial catalogs
             failures.append({"path": key, "kind": kind, "error": str(error)})
 

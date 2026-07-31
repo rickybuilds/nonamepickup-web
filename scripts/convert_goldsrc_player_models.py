@@ -67,7 +67,7 @@ def animation_value(data: bytes, anim_offset: int, channel: int, frame: int, bas
         cursor += (valid + 1) * 2
 
 
-def bone_transforms(data: bytes) -> list[np.ndarray]:
+def bone_transforms(data: bytes, driver_data: bytes | None = None) -> list[np.ndarray]:
     bone_count = i32(data, 140)
     bone_index = i32(data, 144)
     seq_count = i32(data, 164)
@@ -82,9 +82,14 @@ def bone_transforms(data: bytes) -> list[np.ndarray]:
             break
 
     bones = []
+    names = []
+    parents = []
+    locals_ = []
     for bone_number in range(bone_count):
         offset = bone_index + bone_number * 112
         parent = i32(data, offset + 32)
+        names.append(cstring(data[offset:offset + 32]))
+        parents.append(parent)
         values = np.array(unpack(data, "6f", offset + 64), dtype=np.float64)
         scales = np.array(unpack(data, "6f", offset + 88), dtype=np.float64)
         if idle_anim_index is not None:
@@ -98,8 +103,34 @@ def bone_transforms(data: bytes) -> list[np.ndarray]:
         local = np.eye(4, dtype=np.float64)
         local[:3, :3] = quaternion_matrix(pose[3:6])
         local[:3, 3] = pose[:3]
-        world = local if parent < 0 else bones[parent] @ local
-        bones.append(world)
+        locals_.append(local)
+
+    driver_bones = {}
+    if driver_data is not None:
+        driver_transforms = bone_transforms(driver_data)
+        driver_count = i32(driver_data, 140)
+        driver_index = i32(driver_data, 144)
+        for driver_number in range(driver_count):
+            driver_offset = driver_index + driver_number * 112
+            driver_bones[cstring(driver_data[driver_offset:driver_offset + 32]).lower()] = driver_transforms[driver_number]
+    aliases = {
+        "bip01 r clavicle": "bip01 r arm",
+        "bip01 r upperarm": "bip01 r arm1",
+        "bip01 r forearm": "bip01 r arm2",
+        "bip01 l clavicle": "bip01 l arm",
+        "bip01 l upperarm": "bip01 l arm1",
+        "bip01 l forearm": "bip01 l arm2",
+    }
+    for bone_number, local in enumerate(locals_):
+        name = names[bone_number].lower()
+        driver = driver_bones.get(name)
+        if driver is None:
+            driver = driver_bones.get(aliases.get(name, ""))
+        if driver is not None:
+            bones.append(driver.copy())
+        else:
+            parent = parents[bone_number]
+            bones.append(local if parent < 0 else bones[parent] @ local)
     return bones
 
 
@@ -125,6 +156,7 @@ def texture_png(
     data: bytes,
     texture: dict,
     team_color: tuple[int, int, int] | None = None,
+    force_team_recolor: bool = False,
 ) -> bytes:
     width, height = texture["width"], texture["height"]
     offset = texture["offset"]
@@ -136,13 +168,16 @@ def texture_png(
         count=256 * 3,
         offset=palette_offset,
     ).reshape((256, 3)).copy()
-    if team_color is not None and texture["flags"] & 0x20:
+    if team_color is not None and (texture["flags"] & 0x20 or force_team_recolor):
         target_hue, target_saturation, _ = colorsys.rgb_to_hsv(
             *(channel / 255.0 for channel in team_color)
         )
-        for palette_index in range(160, min(224, len(palette))):
+        palette_indexes = range(160, min(224, len(palette))) if texture["flags"] & 0x20 else range(len(palette))
+        for palette_index in palette_indexes:
             original = palette[palette_index].astype(np.float64) / 255.0
-            _, saturation, value = colorsys.rgb_to_hsv(*original)
+            original_hue, saturation, value = colorsys.rgb_to_hsv(*original)
+            if force_team_recolor and not (saturation >= 0.42 and (original_hue <= 0.18 or original_hue >= 0.96)):
+                continue
             recolored = colorsys.hsv_to_rgb(
                 target_hue,
                 max(saturation, target_saturation * 0.72),
@@ -324,12 +359,15 @@ def convert(
     filter_player_team_meshes: bool = True,
     generator: str = "NoName GoldSrc player converter",
     team_color: tuple[int, int, int] | None = None,
+    driver_source: Path | None = None,
+    force_team_recolor: bool = False,
 ) -> Path:
     data = source.read_bytes()
     if data[:4] != b"IDST" or i32(data, 4) != 10:
         raise ValueError(f"Unsupported MDL: {source}")
     textures = texture_records(data)
-    bones = bone_transforms(data)
+    driver_data = driver_source.read_bytes() if driver_source is not None else None
+    bones = bone_transforms(data, driver_data)
     primitives = mesh_primitives(
         data,
         bones,
@@ -343,7 +381,7 @@ def convert(
 
     images, gltf_textures, materials = [], [], []
     for texture in textures:
-        png = texture_png(data, texture, team_color)
+        png = texture_png(data, texture, team_color, force_team_recolor)
         view = builder.add_bytes(png)
         images.append({"bufferView": view, "mimeType": "image/png", "name": texture["name"]})
         gltf_textures.append({"source": len(images) - 1})

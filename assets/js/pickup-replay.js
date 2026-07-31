@@ -351,36 +351,45 @@ async function setPlayerModel(track, classId, team, modelId = 0) {
   track.modelVisual.add(model);
 }
 
-function thirdPersonModelUrl(model) {
+function thirdPersonModelUrl(model, classId) {
   if (!model || model.kind !== "weapon") return null;
   const name = model.path.split("/").pop();
   if (!/^p_[A-Za-z0-9_.-]+\.mdl$/i.test(name)) return null;
-  return state.modelCatalog.get(model.path)?.url || null;
+  const catalog = state.modelCatalog.get(model.path);
+  const classKey = CLASS_MODELS[classId]?.[0];
+  return catalog?.heldVariants?.[classKey] || catalog?.url || null;
 }
 
-async function setWeaponModel(track, modelId) {
-  if (track.mesh.userData.weaponModelId === modelId) return;
+async function setWeaponModel(track, modelId, classId) {
+  const weaponKey = `${modelId}:${classId}`;
+  if (track.mesh.userData.weaponModelKey === weaponKey) return;
+  track.mesh.userData.weaponModelKey = weaponKey;
   track.mesh.userData.weaponModelId = modelId;
   track.weaponVisual.clear();
   if (!modelId) return;
-  const url = thirdPersonModelUrl(state.renderModels.get(modelId));
+  const url = thirdPersonModelUrl(state.renderModels.get(modelId), classId);
   if (!url) return;
   const asset = await loadModelAsset(url);
-  if (!asset || track.mesh.userData.weaponModelId !== modelId) return;
+  if (!asset || track.mesh.userData.weaponModelKey !== weaponKey) return;
   const model = asset.clone(true);
   model.traverse(child => { if (child.isMesh) child.frustumCulled = false; });
   track.weaponVisual.add(model);
 }
 
-async function setBuildableModel(track, modelId) {
-  if (track.mesh.userData.modelId === modelId) return;
+async function setBuildableModel(track, modelId, team) {
+  const modelKey = `${modelId}:${team}`;
+  if (track.mesh.userData.modelKey === modelKey) return;
+  track.mesh.userData.modelKey = modelKey;
   track.mesh.userData.modelId = modelId;
   track.visual.clear();
   if (!modelId) return;
-  const url = catalogUrl(modelId, "buildable");
+  const recorded = state.renderModels.get(Number(modelId));
+  const catalog = recorded?.kind === "buildable" ? state.modelCatalog.get(recorded.path) : null;
+  const teamKey = teamInfo(team).name.toLowerCase();
+  const url = catalog?.teamVariants?.[teamKey] || catalog?.url || null;
   if (!url) return;
   const asset = await loadModelAsset(url);
-  if (!asset || track.mesh.userData.modelId !== modelId) return;
+  if (!asset || track.mesh.userData.modelKey !== modelKey) return;
   const model = asset.clone(true);
   model.traverse(child => {
     if (!child.isMesh) return;
@@ -670,7 +679,7 @@ function updatePlayers() {
     track.mesh.visible = frame.alive && !isSelectedPov;
     void setPlayerModel(track, frame.classId, frame.team, frame.playerModelId || 0);
     if (frame.schemaVersion === 3) {
-      void setWeaponModel(track, frame.weaponModelId);
+      void setWeaponModel(track, frame.weaponModelId, frame.classId);
       Object.assign(track.playerVisual.userData, {
         recordedPlayerModel: state.renderModels.get(frame.playerModelId)?.path || null,
         recordedPlayerAsset: catalogUrl(frame.playerModelId, "player"),
@@ -701,7 +710,7 @@ function updateBuildables() {
       THREE.MathUtils.degToRad(frame.roll)
     );
     track.mesh.scale.setScalar(frame.scale > 0 ? frame.scale : 1);
-    void setBuildableModel(track, frame.modelId);
+    void setBuildableModel(track, frame.modelId, frame.team);
     const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
     if (track.mesh.userData.renderSignature !== signature) {
       track.mesh.userData.renderSignature = signature;
@@ -999,7 +1008,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix1");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix2");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -1020,7 +1029,7 @@ function loadTelemetry(files) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix1", { cache: "force-cache" });
+  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix2", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));

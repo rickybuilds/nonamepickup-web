@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pipelineVersion": 1,
+  "pipelineVersion": 2,
   "converter": "scripts/convert_goldsrc_player_models.py (static idle-pose GLB)",
   "models": {
     "models/ball.mdl": {
@@ -74,6 +74,18 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "teamVariants": {
+        "blue": "/assets/tfc/models/teams/blue/base.glb",
+        "red": "/assets/tfc/models/teams/red/base.glb",
+        "yellow": "/assets/tfc/models/teams/yellow/base.glb",
+        "green": "/assets/tfc/models/teams/green/base.glb"
+      },
+      "teamVariantSources": {
+        "blue": "3287831ec5f4cef3e9e19ad41e4601d86efbb9454caa01f5b681c7bc5ddce965:blue:(77, 163, 255):warm-v1",
+        "red": "3287831ec5f4cef3e9e19ad41e4601d86efbb9454caa01f5b681c7bc5ddce965:red:(255, 93, 108):warm-v1",
+        "yellow": "3287831ec5f4cef3e9e19ad41e4601d86efbb9454caa01f5b681c7bc5ddce965:yellow:(250, 204, 21):warm-v1",
+        "green": "3287831ec5f4cef3e9e19ad41e4601d86efbb9454caa01f5b681c7bc5ddce965:green:(74, 222, 128):warm-v1"
       }
     },
     "models/bomblet.mdl": {
@@ -206,6 +218,18 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "teamVariants": {
+        "blue": "/assets/tfc/models/teams/blue/detpack.glb",
+        "red": "/assets/tfc/models/teams/red/detpack.glb",
+        "yellow": "/assets/tfc/models/teams/yellow/detpack.glb",
+        "green": "/assets/tfc/models/teams/green/detpack.glb"
+      },
+      "teamVariantSources": {
+        "blue": "7dbeb5d9f73d27258e3182db63202e3d60d162d265a69176ed87ab5c04caf1f0:blue:(77, 163, 255):warm-v1",
+        "red": "7dbeb5d9f73d27258e3182db63202e3d60d162d265a69176ed87ab5c04caf1f0:red:(255, 93, 108):warm-v1",
+        "yellow": "7dbeb5d9f73d27258e3182db63202e3d60d162d265a69176ed87ab5c04caf1f0:yellow:(250, 204, 21):warm-v1",
+        "green": "7dbeb5d9f73d27258e3182db63202e3d60d162d265a69176ed87ab5c04caf1f0:green:(74, 222, 128):warm-v1"
       }
     },
     "models/dispenser.mdl": {
@@ -239,6 +263,18 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "teamVariants": {
+        "blue": "/assets/tfc/models/teams/blue/dispenser.glb",
+        "red": "/assets/tfc/models/teams/red/dispenser.glb",
+        "yellow": "/assets/tfc/models/teams/yellow/dispenser.glb",
+        "green": "/assets/tfc/models/teams/green/dispenser.glb"
+      },
+      "teamVariantSources": {
+        "blue": "0e13f00b69cab0c5e3520d1c4deb54bedf3eed253c22685af7d615acd3dc1bc5:blue:(77, 163, 255):warm-v1",
+        "red": "0e13f00b69cab0c5e3520d1c4deb54bedf3eed253c22685af7d615acd3dc1bc5:red:(255, 93, 108):warm-v1",
+        "yellow": "0e13f00b69cab0c5e3520d1c4deb54bedf3eed253c22685af7d615acd3dc1bc5:yellow:(250, 204, 21):warm-v1",
+        "green": "0e13f00b69cab0c5e3520d1c4deb54bedf3eed253c22685af7d615acd3dc1bc5:green:(74, 222, 128):warm-v1"
       }
     },
     "models/emp_grenade.mdl": {
@@ -538,6 +574,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_9mmhandgun.glb",
+        "demo": "/assets/tfc/models/held/demo/p_9mmhandgun.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_9mmhandgun.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_9mmhandgun.glb",
+        "medic": "/assets/tfc/models/held/medic/p_9mmhandgun.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_9mmhandgun.glb",
+        "scout": "/assets/tfc/models/held/scout/p_9mmhandgun.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_9mmhandgun.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_9mmhandgun.glb",
+        "spy": "/assets/tfc/models/held/spy/p_9mmhandgun.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "c45ec572f1c2aff7da517a20f438441325d33d939ed038afb0a2c5ea33ca4668:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_9mmhandgun2.mdl": {
@@ -571,6 +631,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_9mmhandgun2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_9mmhandgun2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_9mmhandgun2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_9mmhandgun2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_9mmhandgun2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_9mmhandgun2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_9mmhandgun2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_9mmhandgun2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_9mmhandgun2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_9mmhandgun2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "ac2af6aa3f53dcda6f84394c3b619f91174e53734a92cc2ed1bec312667cfb0a:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_crowbar.mdl": {
@@ -604,6 +688,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_crowbar.glb",
+        "demo": "/assets/tfc/models/held/demo/p_crowbar.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_crowbar.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_crowbar.glb",
+        "medic": "/assets/tfc/models/held/medic/p_crowbar.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_crowbar.glb",
+        "scout": "/assets/tfc/models/held/scout/p_crowbar.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_crowbar.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_crowbar.glb",
+        "spy": "/assets/tfc/models/held/spy/p_crowbar.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "b855861b2de3ec3c8080fdf268fbc99f46a62e855cd6bd143df5432f6fd8bdb3:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_crowbar2.mdl": {
@@ -637,6 +745,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_crowbar2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_crowbar2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_crowbar2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_crowbar2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_crowbar2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_crowbar2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_crowbar2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_crowbar2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_crowbar2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_crowbar2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "e43f5eb1768fa13cf8730e526c03f5d22322c759c4cb4f5d8a2dd9275176b297:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_egon.mdl": {
@@ -670,6 +802,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_egon.glb",
+        "demo": "/assets/tfc/models/held/demo/p_egon.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_egon.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_egon.glb",
+        "medic": "/assets/tfc/models/held/medic/p_egon.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_egon.glb",
+        "scout": "/assets/tfc/models/held/scout/p_egon.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_egon.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_egon.glb",
+        "spy": "/assets/tfc/models/held/spy/p_egon.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "77c2ea6a59809f52bd8692f57259c55951dde4d7817c9fdc3dd4befd1b3ee74f:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_egon2.mdl": {
@@ -703,6 +859,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_egon2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_egon2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_egon2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_egon2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_egon2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_egon2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_egon2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_egon2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_egon2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_egon2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "db3a6a27617aeba758f1a2e7270d1e50aa4b5380d5cc27d7675e4a6483e6daf8:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_glauncher.mdl": {
@@ -736,6 +916,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_glauncher.glb",
+        "demo": "/assets/tfc/models/held/demo/p_glauncher.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_glauncher.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_glauncher.glb",
+        "medic": "/assets/tfc/models/held/medic/p_glauncher.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_glauncher.glb",
+        "scout": "/assets/tfc/models/held/scout/p_glauncher.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_glauncher.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_glauncher.glb",
+        "spy": "/assets/tfc/models/held/spy/p_glauncher.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "43ff2eb0ae0b288837808145d9bb6f580d3c8f34ee285ab9e93deccdd5c649b5:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_glauncher2.mdl": {
@@ -769,6 +973,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_glauncher2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_glauncher2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_glauncher2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_glauncher2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_glauncher2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_glauncher2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_glauncher2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_glauncher2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_glauncher2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_glauncher2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "6e254eab40eab877bdec23a82fc3ea17f83d971b5c9de8f8036ba6c05b671e4f:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_grenade.mdl": {
@@ -802,6 +1030,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_grenade.glb",
+        "demo": "/assets/tfc/models/held/demo/p_grenade.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_grenade.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_grenade.glb",
+        "medic": "/assets/tfc/models/held/medic/p_grenade.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_grenade.glb",
+        "scout": "/assets/tfc/models/held/scout/p_grenade.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_grenade.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_grenade.glb",
+        "spy": "/assets/tfc/models/held/spy/p_grenade.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_grenade2.mdl": {
@@ -835,6 +1087,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_grenade2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_grenade2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_grenade2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_grenade2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_grenade2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_grenade2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_grenade2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_grenade2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_grenade2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_grenade2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "78b5161121d8738bf9131a1d7aa8c8fe37a06360e9708c02d79208081e421198:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_knife.mdl": {
@@ -868,6 +1144,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_knife.glb",
+        "demo": "/assets/tfc/models/held/demo/p_knife.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_knife.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_knife.glb",
+        "medic": "/assets/tfc/models/held/medic/p_knife.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_knife.glb",
+        "scout": "/assets/tfc/models/held/scout/p_knife.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_knife.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_knife.glb",
+        "spy": "/assets/tfc/models/held/spy/p_knife.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "87777d4151da7222482fff1b1a62ae1281a8f0b0e0b43815c9333afeb19e6953:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_knife2.mdl": {
@@ -901,6 +1201,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_knife2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_knife2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_knife2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_knife2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_knife2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_knife2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_knife2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_knife2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_knife2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_knife2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "99df33a01526c9652e97f26130dcd95187c90554854b817f2720ed1851fa25bb:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_medkit.mdl": {
@@ -934,6 +1258,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_medkit.glb",
+        "demo": "/assets/tfc/models/held/demo/p_medkit.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_medkit.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_medkit.glb",
+        "medic": "/assets/tfc/models/held/medic/p_medkit.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_medkit.glb",
+        "scout": "/assets/tfc/models/held/scout/p_medkit.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_medkit.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_medkit.glb",
+        "spy": "/assets/tfc/models/held/spy/p_medkit.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "c1be20600f852e821000b67ed24c7179eb26f9ff9493d97f93e7c5c309ef9f46:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_medkit2.mdl": {
@@ -967,6 +1315,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_medkit2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_medkit2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_medkit2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_medkit2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_medkit2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_medkit2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_medkit2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_medkit2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_medkit2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_medkit2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "dbd60ef9c77a3848a15883327fcc1cd18b9196f035c1081bc69e20fed8b94124:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_mini.mdl": {
@@ -1021,6 +1393,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_mini.glb",
+        "demo": "/assets/tfc/models/held/demo/p_mini.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_mini.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_mini.glb",
+        "medic": "/assets/tfc/models/held/medic/p_mini.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_mini.glb",
+        "scout": "/assets/tfc/models/held/scout/p_mini.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_mini.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_mini.glb",
+        "spy": "/assets/tfc/models/held/spy/p_mini.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "2805e92d466b9c48fe6559b2d99c710b665ecf1b203322dd5c540bbc986de932:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_mini2.mdl": {
@@ -1054,6 +1450,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_mini2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_mini2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_mini2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_mini2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_mini2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_mini2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_mini2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_mini2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_mini2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_mini2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "d51df1f5ad4a4f5950ff94c6fe1479d40f85868ad1f049cd1c12f14321a79402:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_nailgun.mdl": {
@@ -1087,6 +1507,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_nailgun.glb",
+        "demo": "/assets/tfc/models/held/demo/p_nailgun.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_nailgun.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_nailgun.glb",
+        "medic": "/assets/tfc/models/held/medic/p_nailgun.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_nailgun.glb",
+        "scout": "/assets/tfc/models/held/scout/p_nailgun.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_nailgun.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_nailgun.glb",
+        "spy": "/assets/tfc/models/held/spy/p_nailgun.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "40b0122838fb9d8a36c9f50ef782777581fd6e2f32b4865daa7d0ecff5619603:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_nailgun2.mdl": {
@@ -1120,6 +1564,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_nailgun2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_nailgun2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_nailgun2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_nailgun2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_nailgun2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_nailgun2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_nailgun2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_nailgun2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_nailgun2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_nailgun2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "b07601d43f27613f8e0d382cca8b6449cf52e58189cc2eea6716c94ff6cb9a2d:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_rpg.mdl": {
@@ -1153,6 +1621,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_rpg.glb",
+        "demo": "/assets/tfc/models/held/demo/p_rpg.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_rpg.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_rpg.glb",
+        "medic": "/assets/tfc/models/held/medic/p_rpg.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_rpg.glb",
+        "scout": "/assets/tfc/models/held/scout/p_rpg.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_rpg.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_rpg.glb",
+        "spy": "/assets/tfc/models/held/spy/p_rpg.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "281b2a617cf3a92049a13545abc6554588910e53b5b1316ec5aa8280ed0882ef:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_rpg2.mdl": {
@@ -1186,6 +1678,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_rpg2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_rpg2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_rpg2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_rpg2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_rpg2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_rpg2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_rpg2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_rpg2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_rpg2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_rpg2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "39bcf4f02c2cbf1a06583828d0a894239188a907ae61424d439683e4c997a4fc:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_shotgun.mdl": {
@@ -1219,6 +1735,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_shotgun.glb",
+        "demo": "/assets/tfc/models/held/demo/p_shotgun.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_shotgun.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_shotgun.glb",
+        "medic": "/assets/tfc/models/held/medic/p_shotgun.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_shotgun.glb",
+        "scout": "/assets/tfc/models/held/scout/p_shotgun.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_shotgun.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_shotgun.glb",
+        "spy": "/assets/tfc/models/held/spy/p_shotgun.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "33f216e592c9d09eb7020f19aa557815fe0b9d4f191bb239ab8fb6f5ffa82541:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_shotgun2.mdl": {
@@ -1252,6 +1792,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_shotgun2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_shotgun2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_shotgun2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_shotgun2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_shotgun2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_shotgun2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_shotgun2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_shotgun2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_shotgun2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_shotgun2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "0462d6b8a8e96edbd8150a1fc89a7929a8f4e51c95076757abcadbfc81243fc1:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_smallshotgun.mdl": {
@@ -1285,6 +1849,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_smallshotgun.glb",
+        "demo": "/assets/tfc/models/held/demo/p_smallshotgun.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_smallshotgun.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_smallshotgun.glb",
+        "medic": "/assets/tfc/models/held/medic/p_smallshotgun.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_smallshotgun.glb",
+        "scout": "/assets/tfc/models/held/scout/p_smallshotgun.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_smallshotgun.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_smallshotgun.glb",
+        "spy": "/assets/tfc/models/held/spy/p_smallshotgun.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "fd25ea3751faa1e7c608e0c19344eb087fff06de39012fd6e3b35a361379e249:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_snailgun.mdl": {
@@ -1318,6 +1906,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_snailgun.glb",
+        "demo": "/assets/tfc/models/held/demo/p_snailgun.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_snailgun.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_snailgun.glb",
+        "medic": "/assets/tfc/models/held/medic/p_snailgun.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_snailgun.glb",
+        "scout": "/assets/tfc/models/held/scout/p_snailgun.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_snailgun.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_snailgun.glb",
+        "spy": "/assets/tfc/models/held/spy/p_snailgun.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "478a923e7825a8490102f0439535b13384921c6ec09eb0aa76acedfc501b18c7:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_snailgun2.mdl": {
@@ -1351,6 +1963,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_snailgun2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_snailgun2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_snailgun2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_snailgun2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_snailgun2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_snailgun2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_snailgun2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_snailgun2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_snailgun2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_snailgun2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "9eebd9b3dfe83da503f8803601a69c119cb041f542b3d0e94b1ebef984092bf6:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_sniper.mdl": {
@@ -1384,6 +2020,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_sniper.glb",
+        "demo": "/assets/tfc/models/held/demo/p_sniper.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_sniper.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_sniper.glb",
+        "medic": "/assets/tfc/models/held/medic/p_sniper.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_sniper.glb",
+        "scout": "/assets/tfc/models/held/scout/p_sniper.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_sniper.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_sniper.glb",
+        "spy": "/assets/tfc/models/held/spy/p_sniper.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "1245c941a632698d35adb22f386a461dad4df3e521b022a015448e0e615f8d0c:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_sniper2.mdl": {
@@ -1417,6 +2077,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_sniper2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_sniper2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_sniper2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_sniper2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_sniper2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_sniper2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_sniper2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_sniper2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_sniper2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_sniper2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "ef4adb9e51bf0c1a5b1596ae3476e36182abe4aa3aa51802713a5979a407ade5:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_spanner.mdl": {
@@ -1450,6 +2134,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_spanner.glb",
+        "demo": "/assets/tfc/models/held/demo/p_spanner.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_spanner.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_spanner.glb",
+        "medic": "/assets/tfc/models/held/medic/p_spanner.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_spanner.glb",
+        "scout": "/assets/tfc/models/held/scout/p_spanner.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_spanner.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_spanner.glb",
+        "spy": "/assets/tfc/models/held/spy/p_spanner.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "9ccccb20b5c9f2bd5f3db225abfe08783ce5133a86ecfd2a8375f8216873c404:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_spanner2.mdl": {
@@ -1483,6 +2191,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_spanner2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_spanner2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_spanner2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_spanner2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_spanner2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_spanner2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_spanner2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_spanner2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_spanner2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_spanner2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "7557f138c5e21c8b250bcc9f8b3bd312ef31bd4359996786319e4530d5677f33:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_spygun.mdl": {
@@ -1516,6 +2248,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_spygun.glb",
+        "demo": "/assets/tfc/models/held/demo/p_spygun.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_spygun.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_spygun.glb",
+        "medic": "/assets/tfc/models/held/medic/p_spygun.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_spygun.glb",
+        "scout": "/assets/tfc/models/held/scout/p_spygun.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_spygun.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_spygun.glb",
+        "spy": "/assets/tfc/models/held/spy/p_spygun.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "b66985edfac7485ab0f1d293f5931f5bc252ed40dd54ee657074a8700746b862:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_srpg.mdl": {
@@ -1549,6 +2305,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_srpg.glb",
+        "demo": "/assets/tfc/models/held/demo/p_srpg.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_srpg.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_srpg.glb",
+        "medic": "/assets/tfc/models/held/medic/p_srpg.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_srpg.glb",
+        "scout": "/assets/tfc/models/held/scout/p_srpg.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_srpg.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_srpg.glb",
+        "spy": "/assets/tfc/models/held/spy/p_srpg.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "91d8c2f2b4d7f22f16fb24b5940ec15b111448381f84771dada0bea951d41fb5:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_umbrella.mdl": {
@@ -1582,6 +2362,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_umbrella.glb",
+        "demo": "/assets/tfc/models/held/demo/p_umbrella.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_umbrella.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_umbrella.glb",
+        "medic": "/assets/tfc/models/held/medic/p_umbrella.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_umbrella.glb",
+        "scout": "/assets/tfc/models/held/scout/p_umbrella.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_umbrella.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_umbrella.glb",
+        "spy": "/assets/tfc/models/held/spy/p_umbrella.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/p_umbrella2.mdl": {
@@ -1615,6 +2419,30 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "heldVariants": {
+        "civilian": "/assets/tfc/models/held/civilian/p_umbrella2.glb",
+        "demo": "/assets/tfc/models/held/demo/p_umbrella2.glb",
+        "engineer": "/assets/tfc/models/held/engineer/p_umbrella2.glb",
+        "hvyweapon": "/assets/tfc/models/held/hvyweapon/p_umbrella2.glb",
+        "medic": "/assets/tfc/models/held/medic/p_umbrella2.glb",
+        "pyro": "/assets/tfc/models/held/pyro/p_umbrella2.glb",
+        "scout": "/assets/tfc/models/held/scout/p_umbrella2.glb",
+        "sniper": "/assets/tfc/models/held/sniper/p_umbrella2.glb",
+        "soldier": "/assets/tfc/models/held/soldier/p_umbrella2.glb",
+        "spy": "/assets/tfc/models/held/spy/p_umbrella2.glb"
+      },
+      "heldVariantSources": {
+        "civilian": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:c3844f8c2863ce8f5fee1102c6a2ce88bd67e266118c5f8ca8a5f5bcca1248ad",
+        "demo": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:3c60455f33e46984dd3658b2808d28fed3cc57e8e3d0512265b41c48560359e6",
+        "engineer": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:05f6337ce01b0a5f5b879749797dd3c8c9dbc50cedcb3b948d549fc6b20429db",
+        "hvyweapon": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:b5738e4f2cea2c6948a653824d75e3d34c19b6d5e42bc09c79156c08cd1d9c1f",
+        "medic": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:96081beb136be8179e0a46b1e37ee56b43d4293e00bef7d616306b0a270b9d2d",
+        "pyro": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:92c44d5360ec41ed95e1c6f682891ff6c428d192d7cc231943c7bbfd4f516282",
+        "scout": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:0f0d8066fa807c244f5a205a88e5a06b75d10ffad900e81fe4d0ae3e471150e3",
+        "sniper": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
+        "soldier": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
+        "spy": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
       }
     },
     "models/pipebomb.mdl": {
@@ -12430,6 +13258,18 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "teamVariants": {
+        "blue": "/assets/tfc/models/teams/blue/sentry1.glb",
+        "red": "/assets/tfc/models/teams/red/sentry1.glb",
+        "yellow": "/assets/tfc/models/teams/yellow/sentry1.glb",
+        "green": "/assets/tfc/models/teams/green/sentry1.glb"
+      },
+      "teamVariantSources": {
+        "blue": "92afb57ad69f57237f9e296503d9cdba4e44173701908ea04c4f07ef0a92fae7:blue:(77, 163, 255):warm-v1",
+        "red": "92afb57ad69f57237f9e296503d9cdba4e44173701908ea04c4f07ef0a92fae7:red:(255, 93, 108):warm-v1",
+        "yellow": "92afb57ad69f57237f9e296503d9cdba4e44173701908ea04c4f07ef0a92fae7:yellow:(250, 204, 21):warm-v1",
+        "green": "92afb57ad69f57237f9e296503d9cdba4e44173701908ea04c4f07ef0a92fae7:green:(74, 222, 128):warm-v1"
       }
     },
     "models/sentry2.mdl": {
@@ -12477,6 +13317,18 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "teamVariants": {
+        "blue": "/assets/tfc/models/teams/blue/sentry2.glb",
+        "red": "/assets/tfc/models/teams/red/sentry2.glb",
+        "yellow": "/assets/tfc/models/teams/yellow/sentry2.glb",
+        "green": "/assets/tfc/models/teams/green/sentry2.glb"
+      },
+      "teamVariantSources": {
+        "blue": "cf2bc69f660939bbda279e98f1a06fa7671bccc5f1a2eb37acfff31cd49d9626:blue:(77, 163, 255):warm-v1",
+        "red": "cf2bc69f660939bbda279e98f1a06fa7671bccc5f1a2eb37acfff31cd49d9626:red:(255, 93, 108):warm-v1",
+        "yellow": "cf2bc69f660939bbda279e98f1a06fa7671bccc5f1a2eb37acfff31cd49d9626:yellow:(250, 204, 21):warm-v1",
+        "green": "cf2bc69f660939bbda279e98f1a06fa7671bccc5f1a2eb37acfff31cd49d9626:green:(74, 222, 128):warm-v1"
       }
     },
     "models/sentry3.mdl": {
@@ -12524,6 +13376,18 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "teamVariants": {
+        "blue": "/assets/tfc/models/teams/blue/sentry3.glb",
+        "red": "/assets/tfc/models/teams/red/sentry3.glb",
+        "yellow": "/assets/tfc/models/teams/yellow/sentry3.glb",
+        "green": "/assets/tfc/models/teams/green/sentry3.glb"
+      },
+      "teamVariantSources": {
+        "blue": "8381ad7b242f865b83659ca6c7b167acb9086cc475041fe260035f75f8870f69:blue:(77, 163, 255):warm-v1",
+        "red": "8381ad7b242f865b83659ca6c7b167acb9086cc475041fe260035f75f8870f69:red:(255, 93, 108):warm-v1",
+        "yellow": "8381ad7b242f865b83659ca6c7b167acb9086cc475041fe260035f75f8870f69:yellow:(250, 204, 21):warm-v1",
+        "green": "8381ad7b242f865b83659ca6c7b167acb9086cc475041fe260035f75f8870f69:green:(74, 222, 128):warm-v1"
       }
     },
     "models/spy_grenade.mdl": {
@@ -12590,6 +13454,18 @@
         "boneControllers": false,
         "sequenceBlending": false,
         "attachments": false
+      },
+      "teamVariants": {
+        "blue": "/assets/tfc/models/teams/blue/teleporter.glb",
+        "red": "/assets/tfc/models/teams/red/teleporter.glb",
+        "yellow": "/assets/tfc/models/teams/yellow/teleporter.glb",
+        "green": "/assets/tfc/models/teams/green/teleporter.glb"
+      },
+      "teamVariantSources": {
+        "blue": "1076e576adc6568c1e1aaa522c6f858650faf85819474bd9dfb3bd2198165fa9:blue:(77, 163, 255):warm-v1",
+        "red": "1076e576adc6568c1e1aaa522c6f858650faf85819474bd9dfb3bd2198165fa9:red:(255, 93, 108):warm-v1",
+        "yellow": "1076e576adc6568c1e1aaa522c6f858650faf85819474bd9dfb3bd2198165fa9:yellow:(250, 204, 21):warm-v1",
+        "green": "1076e576adc6568c1e1aaa522c6f858650faf85819474bd9dfb3bd2198165fa9:green:(74, 222, 128):warm-v1"
       }
     }
   },

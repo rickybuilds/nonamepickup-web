@@ -34,6 +34,11 @@ native sequences, gait sequences, bodygroup switching, runtime skin-family
 switching, bone controllers, sequence blending, or attachments. Native source
 capabilities remain in catalog metadata for diagnostics. The viewer retains
 recorded values in object metadata and labels them unsupported. Class/team GLBs
-remain the primary player visual. Held `p_*.mdl` weapons are persistent child
-objects in player space, but native GoldSrc skeleton merging is not reproduced
-exactly. No `w_*.mdl` pickup is substituted for a held weapon.
+remain the primary player visual. For each held `p_*.mdl`, preprocessing bakes
+class-specific variants by merging its partial bone hierarchy onto the idle
+skeleton of the displayed class model; unmatched weapon bones retain their
+local transform below the nearest matched parent. This fixes hand placement but
+does not provide runtime skeletal animation. Buildables also receive four
+selective palette variants so recorded team numbers recolor saturated team
+accents without tinting black metal or green displays. No `w_*.mdl` pickup is
+substituted for a held weapon.
