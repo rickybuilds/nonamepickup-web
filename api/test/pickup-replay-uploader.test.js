@@ -51,6 +51,8 @@ test("systemd timer serializes recurring scans with a hardened one-shot", () => 
   assert.match(timer, /Persistent=true/);
   assert.match(service, /Type=oneshot/);
   assert.match(service, /UMask=0077/);
+  assert.match(service, /StateDirectory=tfc-pickup-uploader/);
+  assert.match(service, /StateDirectoryMode=0700/);
   assert.match(service, /NoNewPrivileges=true/);
   assert.match(uploader, /flock -n 9/);
 });

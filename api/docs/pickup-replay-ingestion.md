@@ -268,6 +268,10 @@ journalctl -u tfc-pickup-replay-upload.service -n 100 --no-pager
 systemctl list-timers tfc-pickup-replay-upload.timer
 ```
 
+The service uses `StateDirectory=tfc-pickup-uploader` to create the private
+spool before systemd applies its filesystem sandbox. This prevents a first-run
+`226/NAMESPACE` failure when `/var/lib/tfc-pickup-uploader` does not yet exist.
+
 For the east-server field test, a finalized
 `pickup_replays/test3/round-02` is discovered on the next scan. A verified HTTP
 200 or 201 response produces this durable, sanitized receipt:
