@@ -36,6 +36,58 @@ TEAM_COLORS = {
     "yellow": (250, 204, 21),
     "green": (74, 222, 128),
 }
+LEGACY_PROJECTILE_ASSETS = {
+    "models/rpgrocket.mdl": "/assets/models/rocket.glb",
+    "models/w_grenade.mdl": "/assets/models/grenade.glb",
+}
+
+
+def legacy_projectile_entry(url: str) -> dict:
+    return {
+        "url": url,
+        "kind": "projectile",
+        "animations": [],
+        "bodygroups": [],
+        "skins": 1,
+        "boneControllers": 0,
+        "attachments": 0,
+        "sourceSha256": None,
+        "glb": {
+            "animations": False,
+            "bodygroups": False,
+            "skins": "baked-family-0",
+            "boneControllers": False,
+            "sequenceBlending": False,
+            "attachments": False,
+        },
+        "fallback": "legacy-replay-asset",
+    }
+LEGACY_PROJECTILE_ASSETS = {
+    "models/rpgrocket.mdl": "/assets/models/rocket.glb",
+    "models/w_grenade.mdl": "/assets/models/grenade.glb",
+}
+
+
+def legacy_projectile_entry(url: str) -> dict:
+    return {
+        "url": url,
+        "kind": "projectile",
+        "animations": [],
+        "bodygroups": [],
+        "skins": 1,
+        "boneControllers": 0,
+        "attachments": 0,
+        "sourceSha256": None,
+        "glb": {
+            "animations": False,
+            "bodygroups": False,
+            "skins": "baked-family-0",
+            "boneControllers": False,
+            "sequenceBlending": False,
+            "attachments": False,
+        },
+        "fallback": "legacy-replay-asset",
+    }
 
 
 def i32(data: bytes, offset: int) -> int:
@@ -224,6 +276,16 @@ def main() -> int:
             models[key] = entry
         except Exception as error:  # report every source; do not hide partial catalogs
             failures.append({"path": key, "kind": kind, "error": str(error)})
+
+    for key, url in LEGACY_PROJECTILE_ASSETS.items():
+        asset = ROOT / url.removeprefix("/")
+        if key not in models and asset.is_file():
+            models[key] = legacy_projectile_entry(url)
+
+    for key, url in LEGACY_PROJECTILE_ASSETS.items():
+        asset = ROOT / url.removeprefix("/")
+        if key not in models and asset.is_file():
+            models[key] = legacy_projectile_entry(url)
 
     expected = sorted(
         [f"models/{name}" for name in PROJECTILES | OBJECTIVES | BUILDABLES]

@@ -13467,11 +13467,46 @@
         "yellow": "1076e576adc6568c1e1aaa522c6f858650faf85819474bd9dfb3bd2198165fa9:yellow:(250, 204, 21):warm-v1",
         "green": "1076e576adc6568c1e1aaa522c6f858650faf85819474bd9dfb3bd2198165fa9:green:(74, 222, 128):warm-v1"
       }
+    },
+    "models/rpgrocket.mdl": {
+      "url": "/assets/models/rocket.glb",
+      "kind": "projectile",
+      "animations": [],
+      "bodygroups": [],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": null,
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      },
+      "fallback": "legacy-replay-asset"
+    },
+    "models/w_grenade.mdl": {
+      "url": "/assets/models/grenade.glb",
+      "kind": "projectile",
+      "animations": [],
+      "bodygroups": [],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": null,
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      },
+      "fallback": "legacy-replay-asset"
     }
   },
-  "missing": [
-    "models/rpgrocket.mdl",
-    "models/w_grenade.mdl"
-  ],
+  "missing": [],
   "failures": []
 }

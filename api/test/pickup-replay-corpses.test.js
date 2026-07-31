@@ -164,3 +164,14 @@ test("catalog provides class-held weapons and distinct buildable team palettes",
   assert.match(source, /url\?\.includes\("\/assets\/tfc\/models\/"\)/);
   assert.match(source, /loader\.load\(assetUrl/);
 });
+
+test("catalog allowlists standard rocket and hand-grenade replay fallbacks", () => {
+  const root = path.resolve(__dirname, "..", "..");
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "assets", "tfc", "models", "manifest.json"), "utf8"));
+  assert.equal(manifest.models["models/rpgrocket.mdl"].url, "/assets/models/rocket.glb");
+  assert.equal(manifest.models["models/w_grenade.mdl"].url, "/assets/models/grenade.glb");
+  assert.equal(manifest.models["models/rpgrocket.mdl"].kind, "projectile");
+  assert.equal(manifest.models["models/w_grenade.mdl"].kind, "projectile");
+  assert.ok(!manifest.missing.includes("models/rpgrocket.mdl"));
+  assert.ok(!manifest.missing.includes("models/w_grenade.mdl"));
+});

@@ -604,6 +604,20 @@ test("valid schema-v3 artifact retains and validates render_models.csv", async t
   assert.equal(validated.manifest.rows.render_models, 5);
 });
 
+test("schema-v3 accepts standard rocket and hand-grenade projectile models", async t => {
+  const renderModels = `${RENDER_MODELS.trim()}\n6,projectile,models/rpgrocket.mdl,0\n7,projectile,models/w_grenade.mdl,0\n`;
+  const projectileDefs =
+    "projectile_id,entity,owner_session,classname,model_id,spawned_ms\n" +
+    "1,10,1,tf_rpg_rocket,6,0\n" +
+    "2,11,1,tf_weapon_normalgrenade,7,0\n";
+  const validated = await validateBuffer(t, archiveBuffer({
+    manifest: validV3Manifest(renderModels),
+    renderModels,
+    projectileDefs
+  }));
+  assert.equal(validated.manifest.rows.render_models, 7);
+});
+
 test("schema-v3 accepts model ID zero as unavailable", async t => {
   const players = `${PLAYERS_V3_HEADER}\n${PLAYERS_V3_ROW.replace(",1,2,0,0,4,", ",0,0,0,0,4,")}\n`;
   await validateBuffer(t, archiveBuffer({ manifest: validV3Manifest(), players }));
