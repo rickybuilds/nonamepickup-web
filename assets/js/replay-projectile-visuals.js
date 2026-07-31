@@ -200,7 +200,7 @@ export class ReplayProjectileVisuals {
     if (!path) return null;
     if (!this.models.has(key)) {
       this.models.set(key, new Promise(resolve => {
-        this.loader.load(`${path}?v=20260708projectilemodels1`, gltf => {
+        this.loader.load(`${path}?v=20260730projectilemodels2`, gltf => {
           const asset = gltf.scene || null;
           asset?.traverse(child => {
             if (child.isMesh) child.frustumCulled = false;
