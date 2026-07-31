@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260730pickup1";
+} from "./replay-projectile-visuals.js?v=20260730pickup2";
 
 const $ = id => document.getElementById(id);
 const TEAM = {
@@ -676,7 +676,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260730pickup1");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260730pickup2");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {

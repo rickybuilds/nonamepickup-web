@@ -92,6 +92,29 @@ async function loadPlayers(url) {
   }));
 }
 
+function playerWeaponAt(players, sessionId, timeSeconds) {
+  const track = players.find(candidate => candidate.sessionId === sessionId);
+  if (!track?.frames?.length) return 0;
+  const { frames, stride } = track;
+  const count = Math.floor(frames.length / stride);
+  let low = 0;
+  let high = count - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (frames[middle * stride] <= timeSeconds) low = middle;
+    else high = middle - 1;
+  }
+  let offset = low * stride;
+  const nextOffset = Math.min(count - 1, low + 1) * stride;
+  if (
+    nextOffset !== offset &&
+    Math.abs(frames[nextOffset] - timeSeconds) < Math.abs(frames[offset] - timeSeconds)
+  ) {
+    offset = nextOffset;
+  }
+  return Math.round(frames[offset + 13] || 0);
+}
+
 async function loadProjectileDefinitions(url) {
   const definitions = [];
   rows(await text(url), (cols, i) => {
@@ -191,6 +214,13 @@ self.onmessage = async event => {
     const players = await loadPlayers(files.players);
     self.postMessage({ type: "progress", label: "Loading projectile telemetry…" });
     const projectileDefinitions = await loadProjectileDefinitions(files.projectileDefs);
+    for (const definition of projectileDefinitions) {
+      definition.ownerWeapon = playerWeaponAt(
+        players,
+        definition.ownerSession,
+        definition.spawnedMs / 1000
+      );
+    }
     const projectiles = await loadProjectiles(files.projectiles);
     self.postMessage({ type: "progress", label: "Loading objectives and events…" });
     const objectiveDefinitions = await loadObjectiveDefinitions(files.objectiveDefs);

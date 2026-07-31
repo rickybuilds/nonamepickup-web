@@ -4,6 +4,8 @@ const MODEL_PATHS = new Map([
   ["models/conc_grenade.mdl", "/assets/models/conc_grenade.glb"],
   ["models/w_grenade.mdl", "/assets/models/grenade.glb"],
   ["models/rpgrocket.mdl", "/assets/models/rocket.glb"],
+  ["models/pipebomb_yellow_variant", "/assets/models/pipebomb_yellow.glb"],
+  ["models/pipebomb_blue_variant", "/assets/models/pipebomb_blue.glb"],
   ["models/mirv_grenade.mdl", "/assets/models/mirv.glb"],
   ["models/bomblet.mdl", "/assets/models/bomblet.glb"],
   ["models/ngrenade.mdl", "/assets/models/nailgrenade.glb"],
@@ -21,8 +23,8 @@ const DEFINITIONS = [
   { key: "conc", classnames: ["tf_weapon_concussiongrenade"], models: ["models/conc_grenade.mdl"], color: 0x22c55e, radius: 18, impact: "conc", effect: "shockwave" },
   { key: "grenade", classnames: ["tf_weapon_normalgrenade"], models: ["models/w_grenade.mdl"], color: 0xfacc15, radius: 18, impact: "generic", effect: "explode01" },
   { key: "rocket", classnames: ["tf_rpg_rocket"], models: ["models/rpgrocket.mdl"], color: 0xf97316, radius: 16, impact: "generic", effect: "explode01", yawOffset: 180, flare: true },
-  { key: "pipe-yellow", classnames: ["tf_gl_pipebomb"], models: ["models/pipebomb.mdl"], color: 0xfacc15, radius: 17, impact: "generic", effect: "explode01", fallback: "pipe" },
-  { key: "pipe-blue", classnames: ["tf_gl_grenade"], models: ["models/pipebomb.mdl"], color: 0x3b82f6, radius: 17, impact: "generic", effect: "explode01", fallback: "pipe" },
+  { key: "pipe-yellow", classnames: ["tf_gl_pipebomb"], models: ["models/pipebomb.mdl"], assetModel: "models/pipebomb_yellow_variant", color: 0xfacc15, radius: 17, impact: "generic", effect: "explode01" },
+  { key: "pipe-blue", classnames: ["tf_gl_grenade"], models: ["models/pipebomb.mdl"], assetModel: "models/pipebomb_blue_variant", color: 0x3b82f6, radius: 17, impact: "generic", effect: "explode01" },
   { key: "mirv", classnames: ["tf_weapon_mirvgrenade"], models: ["models/mirv_grenade.mdl"], color: 0xef4444, radius: 19, impact: "mirv", effect: "explode02", rotation: [-75, 180, 58], spinAxis: "z", spinSpeed: 2.5 },
   { key: "mirv-bomblet", classnames: ["tf_weapon_mirvbomblet"], models: ["models/bomblet.mdl"], color: 0xfb923c, radius: 12, impact: "mirvlet", effect: "explode01" },
   { key: "nail", classnames: ["tf_weapon_nailgrenade"], models: ["models/ngrenade.mdl"], color: 0x22d3ee, radius: 18, impact: "generic", effect: "explode01" },
@@ -44,6 +46,11 @@ const normalized = value => String(value || "").trim().toLowerCase();
 export function replayProjectileDefinition(recorded = {}) {
   const classname = normalized(recorded.classname);
   const model = normalized(recorded.model);
+  const ownerWeapon = Number(recorded.ownerWeapon);
+  const launcherProjectile =
+    classname.includes("tf_gl_") || model.includes("pipebomb");
+  if (launcherProjectile && ownerWeapon === 19) return DEFINITIONS[3];
+  if (launcherProjectile && ownerWeapon === 18) return DEFINITIONS[4];
   for (const definition of DEFINITIONS) {
     if (definition.classnames.includes(classname) || definition.models.includes(model)) {
       return definition;
@@ -168,7 +175,9 @@ export class ReplayProjectileVisuals {
 
   async preload(recordedDefinitions) {
     const definitions = recordedDefinitions.map(replayProjectileDefinition);
-    const models = new Set(definitions.flatMap(definition => definition.models));
+    const models = new Set(definitions.map(
+      definition => definition.assetModel || definition.models[0]
+    ).filter(Boolean));
     const sprites = new Set([
       ...definitions.map(definition => definition.effect),
       ...(definitions.some(definition => definition.flare) ? ["animglow01"] : [])
@@ -213,7 +222,7 @@ export class ReplayProjectileVisuals {
   }
 
   projectile(definition) {
-    const modelKey = normalized(definition.models[0]);
+    const modelKey = normalized(definition.assetModel || definition.models[0]);
     const asset = this.models.get(modelKey);
     const visual = asset && typeof asset.then !== "function"
       ? asset.clone(true)
