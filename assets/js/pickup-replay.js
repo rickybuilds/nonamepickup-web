@@ -195,13 +195,45 @@ function modelUrl(classId) {
 }
 
 async function modelAsset(classId) {
-  const url = modelUrl(classId);
+  return loadModelAsset(modelUrl(classId));
+}
+
+async function loadModelAsset(url) {
   if (!modelCache.has(url)) {
     modelCache.set(url, new Promise(resolve => {
       loader.load(url, gltf => resolve(gltf.scene || null), undefined, () => resolve(null));
     }));
   }
   return modelCache.get(url);
+}
+
+function objectiveTeam(definition, objectiveId) {
+  const identity = [
+    definition?.targetname,
+    definition?.classname,
+    definition?.model
+  ].filter(Boolean).join(" ").toLowerCase();
+  for (const [number, info] of Object.entries(TEAM)) {
+    if (identity.includes(info.name.toLowerCase())) return Number(number);
+  }
+  return ((Math.max(1, Number(objectiveId) || 1) - 1) % 4) + 1;
+}
+
+function objectiveModelUrl(team) {
+  const name = teamInfo(team).name.toLowerCase();
+  return `/assets/models/objectives/flag_${name}.glb?v=20260730pickup1`;
+}
+
+async function setObjectiveModel(track) {
+  const asset = await loadModelAsset(objectiveModelUrl(track.team));
+  if (!asset || track.mesh.userData.hasObjectiveModel) return;
+  const model = asset.clone(true);
+  model.traverse(child => {
+    if (child.isMesh) child.frustumCulled = false;
+  });
+  track.mesh.clear();
+  track.mesh.add(model);
+  track.mesh.userData.hasObjectiveModel = true;
 }
 
 async function setPlayerModel(track, classId, team) {
@@ -265,13 +297,17 @@ function buildVisuals() {
   }
   for (const track of state.objectives) {
     const definition = state.objectiveDefinitions.get(track.objectiveId);
-    const color = /blue/i.test(`${definition?.model} ${definition?.targetname}`) ? 0x4da3ff : 0xff5d6c;
-    track.mesh = new THREE.Mesh(
+    track.team = objectiveTeam(definition, track.objectiveId);
+    const color = teamInfo(track.team).color;
+    const placeholder = new THREE.Mesh(
       new THREE.BoxGeometry(14, 30, 8),
       new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.18 })
     );
+    track.mesh = new THREE.Group();
+    track.mesh.add(placeholder);
     track.mesh.visible = false;
     objectiveRoot.add(track.mesh);
+    void setObjectiveModel(track);
   }
 }
 

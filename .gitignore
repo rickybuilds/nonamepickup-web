@@ -56,6 +56,17 @@ EOFcat >> .gitignore << 'EOF'
 /assets/models
 /assets/sprites
 
+# Version the reusable GoldSrc converters and lightweight pickup objective GLBs.
+!/scripts/
+/scripts/*
+!/scripts/convert_goldsrc_player_models.py
+!/scripts/convert_goldsrc_objective_models.py
+!/assets/models/
+/assets/models/*
+!/assets/models/objectives/
+/assets/models/objectives/*
+!/assets/models/objectives/flag_*.glb
+
 api/test/kicked.test.js
 api/test/projectile-usage.test.js
 api/test/replay.test.js
