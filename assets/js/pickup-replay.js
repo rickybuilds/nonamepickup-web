@@ -244,6 +244,15 @@ function buildableSnapshot(track, time) {
   };
 }
 
+function buildableVisualTeam(frame, time) {
+  const ownerSession = Math.round(frame.ownerSession);
+  const ownerTrack = state.playerBySession.get(ownerSession);
+  const ownerFrame = ownerTrack ? playerSnapshot(ownerTrack, time) : null;
+  if (ownerFrame?.team) return ownerFrame.team;
+  const rosterTeam = state.roster.find(row => row.sessionId === ownerSession)?.team;
+  return rosterTeam || Math.round(frame.team);
+}
+
 function fallbackPlayerMesh(team, preserveNativeOrigin = false) {
   const group = new THREE.Group();
   const material = new THREE.MeshStandardMaterial({
@@ -710,7 +719,10 @@ function updateBuildables() {
       THREE.MathUtils.degToRad(frame.roll)
     );
     track.mesh.scale.setScalar(frame.scale > 0 ? frame.scale : 1);
-    void setBuildableModel(track, frame.modelId, frame.team);
+    // A few recorder builds emitted the engine entity's stale team field for
+    // sentries. The owner snapshot is authoritative for the buildable palette.
+    const visualTeam = buildableVisualTeam(frame, state.playbackTime);
+    void setBuildableModel(track, frame.modelId, visualTeam);
     const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
     if (track.mesh.userData.renderSignature !== signature) {
       track.mesh.userData.renderSignature = signature;
@@ -731,7 +743,9 @@ function updateBuildables() {
           if (!material) continue;
           if (material.color && material.userData.replayBaseColor) {
             material.color.copy(material.userData.replayBaseColor);
-            if (frame.color.some(channel => channel > 0)) material.color.multiply(tint);
+            if (frame.rendermode !== 0 && frame.color.some(channel => channel > 0)) {
+              material.color.multiply(tint);
+            }
           }
           material.opacity = opacity;
           material.transparent = opacity < 1 || frame.rendermode !== 0;
@@ -740,7 +754,7 @@ function updateBuildables() {
       });
     }
     Object.assign(track.mesh.userData, {
-      ownerSession: frame.ownerSession, team: frame.team, health: frame.health,
+      ownerSession: frame.ownerSession, team: frame.team, visualTeam, health: frame.health,
       body: frame.body, skin: frame.skin, sequence: frame.sequence,
       gaitsequence: frame.gaitsequence, animationFrame: frame.frame,
       framerate: frame.framerate, animtime: frame.animtime,
@@ -1008,7 +1022,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix2");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix3");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -1029,7 +1043,7 @@ function loadTelemetry(files) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix2", { cache: "force-cache" });
+  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix3", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));

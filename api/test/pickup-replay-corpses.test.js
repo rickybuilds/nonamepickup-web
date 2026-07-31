@@ -68,6 +68,10 @@ test("schema-v3 buildables use stable IDs, model replacement, components, and te
   assert.match(source, /frame\.rendermode === 0\s+\? 1/);
   assert.match(source, /frame\.effects & 128/);
   assert.match(source, /catalog\?\.teamVariants\?\.\[teamKey\]/);
+  assert.match(source, /const visualTeam = buildableVisualTeam\(frame, state\.playbackTime\)/);
+  assert.match(source, /ownerFrame\?\.team/);
+  assert.match(source, /team: frame\.team, visualTeam/);
+  assert.match(source, /frame\.rendermode !== 0 && frame\.color\.some/);
 });
 
 test("worker streams large CSVs and branches projectile/objective definitions by schema", () => {
