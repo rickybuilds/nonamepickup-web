@@ -90,8 +90,9 @@ manifest.json
 complete.ready       # exactly one ready marker
 ```
 
-Use `aborted.ready` instead of `complete.ready` for an aborted round. Ready
-markers must be empty. Directories, nested paths, absolute paths, traversal,
+Use `aborted.ready` instead of `complete.ready` for an aborted round. A ready
+marker may contain up to 4 KiB of recorder diagnostic text; its content is not
+treated as authoritative. Directories, nested paths, absolute paths, traversal,
 duplicate names, symlinks, hard links, devices, and other tar entry types are
 rejected. The manifest is limited to 1 MiB and `roster.csv` to 16 MiB in
 addition to the global extracted-byte and file-count limits.

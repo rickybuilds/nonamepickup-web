@@ -245,7 +245,7 @@ async function validateArchive({
   if (extractor.files.size !== REQUIRED_FILES.length + 1) {
     throw pickupError(422, "unexpected_archive_file", { quarantine: true });
   }
-  if (extractor.files.get(markers[0]).size !== 0) {
+  if (extractor.files.get(markers[0]).size > 4096) {
     throw pickupError(422, "invalid_ready_marker", { quarantine: true });
   }
   if (extractor.files.get("manifest.json").size > 1024 * 1024 ||

@@ -71,6 +71,7 @@ function validManifest(overrides = {}) {
 function archiveBuffer({
   manifest = validManifest(),
   marker = "complete.ready",
+  markerContent = "",
   omit = [],
   extraEntries = []
 } = {}) {
@@ -87,7 +88,7 @@ function archiveBuffer({
   const entries = REQUIRED_FILES
     .filter(name => !omit.includes(name))
     .map(name => tarEntry(name, content[name]));
-  if (marker) entries.push(tarEntry(marker));
+  if (marker) entries.push(tarEntry(marker, markerContent));
   entries.push(...extraEntries);
   return Buffer.concat([...entries, Buffer.alloc(1024)]);
 }
@@ -370,7 +371,8 @@ test("field-tested schema-2 manifest accepts precise recorder sampling", async t
   });
   const validated = await validateBuffer(t, archiveBuffer({
     manifest,
-    marker: "aborted.ready"
+    marker: "aborted.ready",
+    markerContent: "status=aborted\nreason=map_change\n"
   }), {
     matchId: "test"
   });
