@@ -1,5 +1,9 @@
 import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
+import {
+  ReplayProjectileVisuals,
+  replayProjectileDefinition
+} from "./replay-projectile-visuals.js?v=20260730pickup1";
 
 const $ = id => document.getElementById(id);
 const TEAM = {
@@ -17,6 +21,7 @@ const CLASS_MODELS = [
 const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const freeKeys = new Set();
 const loader = new GLTFLoader();
+const projectileVisuals = new ReplayProjectileVisuals(loader);
 const modelCache = new Map();
 
 const state = {
@@ -29,6 +34,7 @@ const state = {
   objectiveDefinitions: new Map(),
   objectives: [],
   events: [],
+  impacts: [],
   selectedSession: null,
   origin: { x: 0, y: 0, z: 0 },
   playbackTime: 0,
@@ -62,7 +68,8 @@ scene.add(world);
 const playerRoot = new THREE.Group();
 const projectileRoot = new THREE.Group();
 const objectiveRoot = new THREE.Group();
-world.add(playerRoot, projectileRoot, objectiveRoot);
+const impactRoot = new THREE.Group();
+world.add(playerRoot, projectileRoot, objectiveRoot, impactRoot);
 let grid = null;
 let mapModel = null;
 
@@ -263,14 +270,18 @@ async function setPlayerModel(track, classId, team) {
   track.mesh.add(model);
 }
 
-function projectileColor(definition) {
-  const key = `${definition?.classname || ""} ${definition?.model || ""}`.toLowerCase();
-  if (key.includes("rocket")) return 0xf97316;
-  if (key.includes("pipe")) return 0xfacc15;
-  if (key.includes("conc")) return 0x34d399;
-  if (key.includes("mirv")) return 0xef4444;
-  if (key.includes("nail")) return 0x22d3ee;
-  return 0xe2e8f0;
+function projectileRemoval(track) {
+  const { frames, stride } = track;
+  for (let offset = 0; offset < frames.length; offset += stride) {
+    if (frames[offset + 1] !== 0) continue;
+    return {
+      time: frames[offset],
+      x: frames[offset + 2],
+      y: frames[offset + 3],
+      z: frames[offset + 4]
+    };
+  }
+  return null;
 }
 
 function buildVisuals() {
@@ -283,17 +294,21 @@ function buildVisuals() {
     playerRoot.add(track.mesh);
   }
   for (const track of state.projectiles) {
-    const definition = state.projectileDefinitions.get(track.projectileId);
-    track.mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(7, 10, 8),
-      new THREE.MeshStandardMaterial({
-        color: projectileColor(definition),
-        emissive: projectileColor(definition),
-        emissiveIntensity: 0.3
-      })
-    );
+    const recorded = state.projectileDefinitions.get(track.projectileId);
+    track.definition = replayProjectileDefinition(recorded);
+    track.mesh = projectileVisuals.projectile(track.definition);
     track.mesh.visible = false;
     projectileRoot.add(track.mesh);
+    const removal = projectileRemoval(track);
+    if (removal) {
+      const impact = projectileVisuals.impact(
+        track.definition,
+        sourcePoint(removal.x, removal.y, removal.z),
+        removal.time
+      );
+      state.impacts.push(impact);
+      impactRoot.add(impact.group);
+    }
   }
   for (const track of state.objectives) {
     const definition = state.objectiveDefinitions.get(track.objectiveId);
@@ -414,13 +429,17 @@ function updatePlayers() {
 
 function updateProjectiles() {
   projectileRoot.visible = state.showProjectiles;
+  impactRoot.visible = state.showProjectiles;
   if (!state.showProjectiles) return;
   for (const track of state.projectiles) {
     const frame = projectileSnapshot(track, state.playbackTime);
     track.mesh.visible = Boolean(frame);
     if (!frame) continue;
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
-    track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
+    projectileVisuals.rotate(track.mesh, track.definition, frame.yaw, state.playbackTime);
+  }
+  for (const impact of state.impacts) {
+    projectileVisuals.updateImpact(impact, state.playbackTime);
   }
 }
 
@@ -705,6 +724,8 @@ async function init() {
     state.objectiveDefinitions = new Map(telemetry.objectiveDefinitions.map(def => [def.objectiveId, def]));
     state.objectives = telemetry.objectives;
     state.events = telemetry.events;
+    setStatus("Loading projectile models and effects…");
+    await projectileVisuals.preload(telemetry.projectileDefinitions);
     buildRoster();
     selectPlayer(state.roster[0]?.sessionId);
     setupWorld();
