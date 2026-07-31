@@ -75,7 +75,7 @@ function archiveBuffer({
   extraEntries = []
 } = {}) {
   const content = {
-    "roster.csv": "session_id,steamid,name,initial_slot,team_number,primary_class_id,is_bot,joined_ms,left_ms,kills,deaths\n1,STEAM_0:1:1,Alice,1,1,3,0,0,900000,10,5\n",
+    "roster.csv": "session_id,slot,userid,steamid,name,initial_team,is_bot,joined_ms\n1,2,51,STEAM_0:1:1,Alice,2,0,0\n",
     "players.csv": "tick\n1\n",
     "projectile_defs.csv": "id\n1\n",
     "projectiles.csv": "tick\n1\n",
@@ -313,6 +313,27 @@ test("valid streaming upload returns 201 and promotes a private artifact", async
   assert.match(response.body.storageKey, /^\d{4}\/\d{2}\/pug-20260730-1842\/round-01-[a-f0-9]{64}\.tar\.zst$/);
   assert.equal(fs.existsSync(storage.artifactPath(response.body.storageKey)), true);
   assert.equal(fs.existsSync(path.join(root, "artifacts")), true);
+});
+
+test("field-tested recorder roster columns map to round sessions", async t => {
+  const validated = await validateBuffer(t, archiveBuffer());
+  assert.deepEqual({
+    sessionIndex: validated.roster[0].sessionIndex,
+    steamId: validated.roster[0].steamId,
+    playerName: validated.roster[0].playerName,
+    initialSlot: validated.roster[0].initialSlot,
+    teamNumber: validated.roster[0].teamNumber,
+    teamName: validated.roster[0].teamName,
+    joinedMs: validated.roster[0].joinedMs
+  }, {
+    sessionIndex: 1,
+    steamId: "STEAM_0:1:1",
+    playerName: "Alice",
+    initialSlot: 2,
+    teamNumber: 2,
+    teamName: "Red",
+    joinedMs: 0
+  });
 });
 
 function onceListening(server) {

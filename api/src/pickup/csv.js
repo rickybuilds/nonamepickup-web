@@ -113,7 +113,7 @@ function normalizeRoster(rows) {
       throw pickupError(422, "invalid_roster_player", { quarantine: true });
     }
     const teamNumber = boundedInteger(
-      firstValue(row, ["team_number", "team"]),
+      firstValue(row, ["team_number", "initial_team", "team"]),
       "invalid_roster_team",
       { max: 4 }
     );

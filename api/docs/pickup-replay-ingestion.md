@@ -106,17 +106,17 @@ with `unsupported_schema_version`; future versions are never reinterpreted.
 `roster.csv` uses these canonical columns:
 
 ```text
-session_id,steamid,name,initial_slot,team_number,primary_class_id,is_bot,
-joined_ms,left_ms,kills,deaths,assists,suicides,damage_dealt,damage_taken,
-flag_pickups,flag_drops,flag_captures,flag_returns
+session_id,slot,userid,steamid,name,initial_team,is_bot,joined_ms
 ```
 
-`session_index`/`session`, `steam_id`/`authid`, `player_name`, `slot`, `team`,
-`class_id`, `bot`, `connected_ms`, and `disconnected_ms` are accepted recorder
-aliases. Missing aggregate statistics default to zero. Each `session_id` must
-be unique within the round. Each row is a distinct round session, so reconnects
-remain separate while `steamid` upserts the shared player. Team numbers map to
-Blue (1), Red (2), Yellow (3), and Green (4).
+This is the field-tested recorder header. `userid` is accepted but intentionally
+not persisted because it is a transient server identifier. The aliases
+`session_index`/`session`, `steam_id`/`authid`, `player_name`, `initial_slot`,
+`team_number`/`team`, `class_id`, `bot`, `connected_ms`, and `disconnected_ms`
+are also accepted. Missing aggregate statistics default to zero. Each
+`session_id` must be unique within the round. Each row is a distinct round
+session, so reconnects remain separate while `steamid` upserts the shared
+player. Team numbers map to Blue (1), Red (2), Yellow (3), and Green (4).
 
 ## Storage and MariaDB lifecycle
 
