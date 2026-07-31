@@ -75,6 +75,8 @@ const impactRoot = new THREE.Group();
 world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, impactRoot);
 let grid = null;
 let mapModel = null;
+const corpseGroundRay = new THREE.Raycaster();
+const corpseDown = new THREE.Vector3(0, -1, 0);
 
 function queryIdentity() {
   const query = new URLSearchParams(location.search);
@@ -287,6 +289,26 @@ async function setCorpseModel(corpse) {
   corpse.mesh.clear();
   corpse.mesh.add(model);
   corpse.mesh.userData.hasCorpseModel = true;
+}
+
+function settleCorpse(corpse) {
+  if (!mapModel || !corpse?.mesh) return false;
+  scene.updateMatrixWorld(true);
+  const origin = world.localToWorld(sourcePoint(corpse.x, corpse.y, corpse.z));
+  origin.y += 8;
+  corpseGroundRay.set(origin, corpseDown);
+  corpseGroundRay.near = 0;
+  corpseGroundRay.far = 8192;
+  const hit = corpseGroundRay.intersectObject(mapModel, true)[0];
+  if (!hit) return false;
+  const ground = corpseRoot.worldToLocal(hit.point.clone());
+  corpse.mesh.position.y = ground.y + 1;
+  corpse.grounded = true;
+  return true;
+}
+
+function settleCorpses() {
+  for (const corpse of state.corpses) settleCorpse(corpse);
 }
 
 function projectileRemoval(track) {
@@ -610,6 +632,7 @@ function loadMap() {
       }
     });
     world.add(mapModel);
+    settleCorpses();
     if (grid) grid.visible = false;
   }, undefined, () => {
     if (grid) grid.visible = true;
