@@ -8,17 +8,22 @@ const root = path.resolve(__dirname, "..", "..");
 const source = fs.readFileSync(path.join(root, "assets", "js", "pickup-replay.js"), "utf8");
 const html = fs.readFileSync(path.join(root, "pickup-replay.html"), "utf8");
 
-test("assault cannon fire requires weapon 13, +attack, and a living player", () => {
+test("assault cannon fire requires the recorded AC model, +attack, and a living player", () => {
   const body = source.match(/function assaultCannonActive\(frame\) \{[\s\S]*?\n\}/)?.[0];
   assert.ok(body, "assaultCannonActive source is present");
   const active = vm.runInNewContext(`(${body})`, {
-    ASSAULT_CANNON_WEAPON_ID: 13,
-    IN_ATTACK: 1
+    IN_ATTACK: 1,
+    state: { renderModels: new Map([
+      [41, { path: "models/p_mini.mdl" }],
+      [42, { path: "models/p_mini2.mdl" }],
+      [43, { path: "models/p_rpg.mdl" }]
+    ]) }
   });
-  assert.equal(active({ alive: true, weapon: 13, buttons: 1 }), true);
-  assert.equal(active({ alive: true, weapon: 13, buttons: 0 }), false);
-  assert.equal(active({ alive: true, weapon: 12, buttons: 1 }), false);
-  assert.equal(active({ alive: false, weapon: 13, buttons: 1 }), false);
+  assert.equal(active({ alive: true, weaponModelId: 41, buttons: 1 }), true);
+  assert.equal(active({ alive: true, weaponModelId: 42, buttons: 1 }), true);
+  assert.equal(active({ alive: true, weaponModelId: 41, buttons: 0 }), false);
+  assert.equal(active({ alive: true, weaponModelId: 43, buttons: 1 }), false);
+  assert.equal(active({ alive: false, weaponModelId: 41, buttons: 1 }), false);
 });
 
 test("assault cannon tracers are deterministic, seekable, and map-clipped", () => {
@@ -40,5 +45,5 @@ test("assault cannon effects originate at the player muzzle and honor the projec
   assert.match(source, /updateAssaultCannonVisual\(track, frame, state\.playbackTime\)/);
   assert.match(source, /hitscanRoot\.visible = state\.showProjectiles/);
   assert.match(source, /if \(track\.acFireVisual\) track\.acFireVisual\.group\.visible = false/);
-  assert.match(html, /pickup-replay\.js\?v=20260731schema3fix9/);
+  assert.match(html, /pickup-replay\.js\?v=20260731schema3fix10/);
 });

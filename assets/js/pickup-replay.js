@@ -26,7 +26,6 @@ const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const CORPSE_LIFETIME_SECONDS = 15;
 const PLAYER_STANDING_VISUAL_HEIGHT = 72;
 const PLAYER_CROUCH_VISUAL_HEIGHT = 40;
-const ASSAULT_CANNON_WEAPON_ID = 13;
 const IN_ATTACK = 1;
 const AC_ROUNDS_PER_SECOND = 12;
 const AC_TRACER_RANGE = 900;
@@ -211,7 +210,9 @@ function isDucking(frame) {
 }
 
 function assaultCannonActive(frame) {
-  return Boolean(frame?.alive && frame.weapon === ASSAULT_CANNON_WEAPON_ID && (frame.buttons & IN_ATTACK));
+  const modelPath = state.renderModels.get(Number(frame?.weaponModelId))?.path || "";
+  const isAssaultCannon = /(?:^|\/)p_mini2?\.mdl$/i.test(modelPath);
+  return Boolean(frame?.alive && isAssaultCannon && (frame.buttons & IN_ATTACK));
 }
 
 function deterministicSpread(index, salt) {
