@@ -1,0 +1,13 @@
+[Unit]
+Description=Scan for finalized TFC pickup replay rounds
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+RandomizedDelaySec=15s
+Persistent=true
+Unit=tfc-pickup-replay-upload.service
+
+[Install]
+WantedBy=timers.target
+

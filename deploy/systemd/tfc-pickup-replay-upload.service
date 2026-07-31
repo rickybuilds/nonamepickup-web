@@ -1,0 +1,17 @@
+[Unit]
+Description=Package and upload finalized TFC pickup replay rounds
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+EnvironmentFile=/etc/tfc/pickup-replay-uploader.env
+ExecStart=/usr/local/sbin/upload-pickup-replays
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/root/steamcmd/tfc/tfc/addons/amxmodx/data/pickup_replays /var/lib/tfc-pickup-uploader
+

@@ -212,6 +212,156 @@ HTTP 200 or 201 success response **and** completing the separately configured
 local retention window. A timeout, disconnect, or error response is not
 permission to delete the local artifact.
 
+## Automated game-server uploader
+
+The repository includes `scripts/upload-pickup-replays.sh` and matching
+systemd service/timer units under `deploy/systemd`. The timer scans finalized
+directories shaped like:
+
+```text
+<PICKUP_REPLAY_ROOT>/<match_id>/round-XX/
+```
+
+Only rounds containing exactly one of `complete.ready` or `aborted.ready` are
+eligible. The script validates the manifest identity against the directory,
+creates a fixed-member `.tar.zst` under its private spool, and uploads it over
+HTTPS. It does not construct archive members from filenames found on disk.
+
+Authentication comes from the existing mode-0600 curl configuration, so the
+token is absent from the repository, environment file, process arguments, and
+logs:
+
+```text
+/root/.config/tfc/pickup-upload.curl
+```
+
+Install once on each game server from a checkout of this repository:
+
+```bash
+install -D -m 755 scripts/upload-pickup-replays.sh \
+  /usr/local/sbin/upload-pickup-replays
+install -D -m 644 deploy/systemd/tfc-pickup-replay-upload.service \
+  /etc/systemd/system/tfc-pickup-replay-upload.service
+install -D -m 644 deploy/systemd/tfc-pickup-replay-upload.timer \
+  /etc/systemd/system/tfc-pickup-replay-upload.timer
+install -D -m 600 deploy/systemd/pickup-replay-uploader.env.example \
+  /etc/tfc/pickup-replay-uploader.env
+```
+
+Edit `/etc/tfc/pickup-replay-uploader.env` and set the real HTTPS URL and a
+stable server ID such as `east`. The default replay root matches the deployed
+AMXX recorder path:
+
+```text
+/root/steamcmd/tfc/tfc/addons/amxmodx/data/pickup_replays
+```
+
+If a server uses another replay or spool path, update both the environment
+file and the service unit's `ReadWritePaths` sandbox. Then enable the timer:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now tfc-pickup-replay-upload.timer
+systemctl start tfc-pickup-replay-upload.service
+systemctl status tfc-pickup-replay-upload.service --no-pager
+journalctl -u tfc-pickup-replay-upload.service -n 100 --no-pager
+systemctl list-timers tfc-pickup-replay-upload.timer
+```
+
+For the east-server field test, a finalized
+`pickup_replays/test3/round-02` is discovered on the next scan. A verified HTTP
+200 or 201 response produces this durable, sanitized receipt:
+
+```text
+/var/lib/tfc-pickup-uploader/receipts/test3/round-02.json
+```
+
+The receipt is written only after `ok`, `matchId`, `round`, `sha256`, and
+`byteSize` all match the submitted archive. Existing receipts suppress
+duplicate work, while a crash or error before the receipt causes a safe retry;
+the API's idempotency handles an upload whose response was lost.
+
+`PICKUP_DELETE_AFTER_DAYS=0` disables deletion and is the production-safe
+default. After choosing a retention window, set it to a positive whole number.
+Only a round with a verified receipt can then have its raw directory and local
+spooled archive removed, and only after that receipt reaches the configured
+age. Receipts remain as the durable local audit trail.
+
+## Automated game-server uploader
+
+The repository includes `scripts/upload-pickup-replays.sh` and matching
+systemd service/timer units under `deploy/systemd`. The timer scans finalized
+directories shaped like:
+
+```text
+<PICKUP_REPLAY_ROOT>/<match_id>/round-XX/
+```
+
+Only rounds containing exactly one of `complete.ready` or `aborted.ready` are
+eligible. The script validates the manifest identity against the directory,
+creates a fixed-member `.tar.zst` under its private spool, and uploads it over
+HTTPS. It does not construct archive members from filenames found on disk.
+
+Authentication comes from the existing mode-0600 curl configuration, so the
+token is absent from the repository, environment file, process arguments, and
+logs:
+
+```text
+/root/.config/tfc/pickup-upload.curl
+```
+
+Install once on each game server from a checkout of this repository:
+
+```bash
+install -D -m 755 scripts/upload-pickup-replays.sh \
+  /usr/local/sbin/upload-pickup-replays
+install -D -m 644 deploy/systemd/tfc-pickup-replay-upload.service \
+  /etc/systemd/system/tfc-pickup-replay-upload.service
+install -D -m 644 deploy/systemd/tfc-pickup-replay-upload.timer \
+  /etc/systemd/system/tfc-pickup-replay-upload.timer
+install -D -m 600 deploy/systemd/pickup-replay-uploader.env.example \
+  /etc/tfc/pickup-replay-uploader.env
+```
+
+Edit `/etc/tfc/pickup-replay-uploader.env` and set the real HTTPS URL and a
+stable server ID such as `east`. The default replay root matches the deployed
+AMXX recorder path:
+
+```text
+/root/steamcmd/tfc/tfc/addons/amxmodx/data/pickup_replays
+```
+
+If a server uses another replay or spool path, update both the environment
+file and the service unit's `ReadWritePaths` sandbox. Then enable the timer:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now tfc-pickup-replay-upload.timer
+systemctl start tfc-pickup-replay-upload.service
+systemctl status tfc-pickup-replay-upload.service --no-pager
+journalctl -u tfc-pickup-replay-upload.service -n 100 --no-pager
+systemctl list-timers tfc-pickup-replay-upload.timer
+```
+
+For the east-server field test, a finalized
+`pickup_replays/test3/round-02` is discovered on the next scan. A verified HTTP
+200 or 201 response produces this durable, sanitized receipt:
+
+```text
+/var/lib/tfc-pickup-uploader/receipts/test3/round-02.json
+```
+
+The receipt is written only after `ok`, `matchId`, `round`, `sha256`, and
+`byteSize` all match the submitted archive. Existing receipts suppress
+duplicate work, while a crash or error before the receipt causes a safe retry;
+the API's idempotency handles an upload whose response was lost.
+
+`PICKUP_DELETE_AFTER_DAYS=0` disables deletion and is the production-safe
+default. After choosing a retention window, set it to a positive whole number.
+Only a round with a verified receipt can then have its raw directory and local
+spooled archive removed, and only after that receipt reaches the configured
+age. Receipts remain as the durable local audit trail.
+
 ## Web replay viewer
 
 The first 4v4 viewer reuses the speedrun replay renderer, map GLBs, classic TFC
