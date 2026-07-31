@@ -62,8 +62,7 @@ function validateManifest(value, expected) {
   if (typeof value.sample_interval_seconds !== "number" ||
       !Number.isFinite(value.sample_interval_seconds) ||
       value.sample_interval_seconds <= 0 ||
-      value.sample_interval_seconds > 65.535 ||
-      !Number.isInteger(value.sample_interval_seconds * 1000)) {
+      value.sample_interval_seconds > 65.535) {
     throw pickupError(422, "invalid_manifest", { quarantine: true });
   }
   requireInteger(value, "snapshots");

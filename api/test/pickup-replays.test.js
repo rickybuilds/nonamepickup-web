@@ -58,7 +58,7 @@ function validManifest(overrides = {}) {
     started_at_epoch: 1785440000,
     ended_at_epoch: 1785440900,
     duration_ms: 900000,
-    sample_interval_seconds: 0.25,
+    sample_interval_seconds: 0.0199,
     snapshots: 3600,
     dropped_snapshots: 0,
     write_error: false,
@@ -227,6 +227,8 @@ test("MariaDB repository targets the deployed pickup table contract", async () =
   assert.match(sql, /pickup_artifacts \(round_pk, artifact_kind, status/);
   assert.match(sql, /manifest_json/);
   assert.doesNotMatch(sql, /\bround_id\b|\bplayer_id\b|\bserver_id\b|\bmap_name\b/);
+  const roundInsert = statements.find(entry => entry.sql.startsWith("INSERT INTO pickup_rounds"));
+  assert.equal(roundInsert.params[9], 20);
 });
 
 function createIngestion(storage, repository, overrides = {}) {
@@ -334,6 +336,47 @@ test("field-tested recorder roster columns map to round sessions", async t => {
     teamName: "Red",
     joinedMs: 0
   });
+});
+
+test("field-tested schema-2 manifest accepts precise recorder sampling", async t => {
+  const manifest = validManifest({
+    match_id: "test",
+    map: "cranked",
+    complete: false,
+    reason: "map_change",
+    duration_ms: 943587,
+    sample_interval_seconds: 0.0199,
+    snapshots: 45194,
+    dropped_snapshots: 9,
+    flushes: 188,
+    rows: {
+      roster: 9,
+      players: 360034,
+      projectile_definitions: 6522,
+      projectiles: 295376,
+      objective_definitions: 2,
+      objectives: 90390,
+      events: 4660
+    },
+    bytes: {
+      "roster.csv": 525,
+      "players.csv": 32747084,
+      "projectile_defs.csv": 434419,
+      "projectiles.csv": 19307278,
+      "objective_defs.csv": 229,
+      "objectives.csv": 4760886,
+      "events.csv": 207131
+    }
+  });
+  const validated = await validateBuffer(t, archiveBuffer({
+    manifest,
+    marker: "aborted.ready"
+  }), {
+    matchId: "test"
+  });
+  assert.equal(validated.complete, false);
+  assert.equal(validated.manifest.flushes, 188);
+  assert.equal(validated.manifest.sample_interval_seconds, 0.0199);
 });
 
 function onceListening(server) {

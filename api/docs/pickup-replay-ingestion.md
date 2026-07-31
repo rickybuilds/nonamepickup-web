@@ -165,6 +165,11 @@ The repository expects these existing column/index contracts:
 Confirm the deployed table definitions match this contract before restarting
 PM2. No migration is run by the application.
 
+The recorder's precise `sample_interval_seconds` value is preserved in
+`pickup_artifacts.manifest_json`. Because the existing round column stores
+whole milliseconds, `pickup_rounds.sample_interval_ms` contains the nearest
+millisecond (for example, `0.0199` seconds is stored as `20` milliseconds).
+
 The round row is locked during artifact selection. An identical
 match/round/SHA-256 is a successful idempotent retry; a different primary
 artifact for the round returns `409 round_artifact_conflict`. The staging link
