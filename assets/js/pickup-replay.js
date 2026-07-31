@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260730pickup2";
+} from "./replay-projectile-visuals.js?v=20260730pickup3";
 
 const $ = id => document.getElementById(id);
 const TEAM = {
@@ -195,14 +195,15 @@ function fallbackPlayerMesh(team) {
   return group;
 }
 
-function modelUrl(classId) {
+function modelUrl(classId, team) {
   const info = CLASS_MODELS[classId] || CLASS_MODELS[0];
   const classic = info[0] === "civilian" ? info[1] : `${info[1]}2`;
-  return `assets/models/player/${info[0]}/${classic}.glb?v=20260730pickup1`;
+  const teamSuffix = `_${teamInfo(team).name.toLowerCase()}`;
+  return `assets/models/player/${info[0]}/${classic}${teamSuffix}.glb?v=20260730pickup1`;
 }
 
-async function modelAsset(classId) {
-  return loadModelAsset(modelUrl(classId));
+async function modelAsset(classId, team) {
+  return loadModelAsset(modelUrl(classId, team));
 }
 
 async function loadModelAsset(url) {
@@ -247,19 +248,12 @@ async function setPlayerModel(track, classId, team) {
   if (track.mesh.userData.modelClass === classId && track.mesh.userData.modelTeam === team) return;
   track.mesh.userData.modelClass = classId;
   track.mesh.userData.modelTeam = team;
-  const asset = await modelAsset(classId);
+  const asset = await modelAsset(classId, team);
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team) return;
   const model = asset.clone(true);
-  const tint = new THREE.Color(teamInfo(team).color);
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
-    const materials = (Array.isArray(child.material) ? child.material : [child.material]).map(source => {
-      const material = source.clone();
-      material.color?.lerp(tint, 0.28);
-      return material;
-    });
-    child.material = Array.isArray(child.material) ? materials : materials[0];
   });
   const bounds = new THREE.Box3().setFromObject(model);
   const size = bounds.getSize(new THREE.Vector3());

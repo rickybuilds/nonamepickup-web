@@ -6,6 +6,7 @@ import io
 import json
 import math
 import struct
+import colorsys
 from pathlib import Path
 
 import numpy as np
@@ -120,12 +121,38 @@ def texture_records(data: bytes):
     return records
 
 
-def texture_png(data: bytes, texture: dict) -> bytes:
+def texture_png(
+    data: bytes,
+    texture: dict,
+    team_color: tuple[int, int, int] | None = None,
+) -> bytes:
     width, height = texture["width"], texture["height"]
     offset = texture["offset"]
     indices = np.frombuffer(data, dtype=np.uint8, count=width * height, offset=offset).reshape((height, width))
     palette_offset = offset + width * height
-    palette = np.frombuffer(data, dtype=np.uint8, count=256 * 3, offset=palette_offset).reshape((256, 3))
+    palette = np.frombuffer(
+        data,
+        dtype=np.uint8,
+        count=256 * 3,
+        offset=palette_offset,
+    ).reshape((256, 3)).copy()
+    if team_color is not None and texture["flags"] & 0x20:
+        target_hue, target_saturation, _ = colorsys.rgb_to_hsv(
+            *(channel / 255.0 for channel in team_color)
+        )
+        for palette_index in range(160, min(224, len(palette))):
+            original = palette[palette_index].astype(np.float64) / 255.0
+            _, saturation, value = colorsys.rgb_to_hsv(*original)
+            recolored = colorsys.hsv_to_rgb(
+                target_hue,
+                max(saturation, target_saturation * 0.72),
+                value,
+            )
+            palette[palette_index] = np.clip(
+                np.rint(np.asarray(recolored) * 255),
+                0,
+                255,
+            ).astype(np.uint8)
     rgb = palette[indices]
     alpha = np.full((height, width, 1), 255, dtype=np.uint8)
     if texture["flags"] & 0x40:
@@ -296,6 +323,7 @@ def convert(
     skin_family: int = 1,
     filter_player_team_meshes: bool = True,
     generator: str = "NoName GoldSrc player converter",
+    team_color: tuple[int, int, int] | None = None,
 ) -> Path:
     data = source.read_bytes()
     if data[:4] != b"IDST" or i32(data, 4) != 10:
@@ -315,7 +343,7 @@ def convert(
 
     images, gltf_textures, materials = [], [], []
     for texture in textures:
-        png = texture_png(data, texture)
+        png = texture_png(data, texture, team_color)
         view = builder.add_bytes(png)
         images.append({"bufferView": view, "mimeType": "image/png", "name": texture["name"]})
         gltf_textures.append({"source": len(images) - 1})
