@@ -47,14 +47,20 @@ export function replayProjectileDefinition(recorded = {}) {
   const classname = normalized(recorded.classname);
   const model = normalized(recorded.model);
   const ownerWeapon = Number(recorded.ownerWeapon);
+
+  // Both launcher projectiles report models/pipebomb.mdl, so the entity
+  // classname must win before weapon or model fallbacks are considered.
+  for (const definition of DEFINITIONS) {
+    if (definition.classnames.includes(classname)) return definition;
+  }
+
   const launcherProjectile =
     classname.includes("tf_gl_") || model.includes("pipebomb");
   if (launcherProjectile && ownerWeapon === 19) return DEFINITIONS[3];
   if (launcherProjectile && ownerWeapon === 18) return DEFINITIONS[4];
+
   for (const definition of DEFINITIONS) {
-    if (definition.classnames.includes(classname) || definition.models.includes(model)) {
-      return definition;
-    }
+    if (model !== "models/pipebomb.mdl" && definition.models.includes(model)) return definition;
   }
   if (classname.includes("bomblet") || model.includes("bomblet")) return DEFINITIONS[6];
   if (classname.includes("mirv")) return DEFINITIONS[5];

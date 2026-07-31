@@ -22,7 +22,21 @@ test("pickup and speedrun replays use the same launcher projectile colors", () =
   }
 });
 
-test("pickup replay cache key exposes the latest projectile mapping", () => {
+test("pickup replay cache key exposes the latest projectile classifier", () => {
   const module = read("assets/js/pickup-replay.js");
-  assert.match(module, /replay-projectile-visuals\.js\?v=20260730pickup4/);
+  assert.match(module, /replay-projectile-visuals\.js\?v=20260730pickup5/);
+});
+
+test("shared pipebomb model cannot override launcher entity class", () => {
+  const pickup = read("assets/js/replay-projectile-visuals.js");
+  const speedrun = read("assets/js/speedrun-replay.js");
+
+  assert.match(
+    pickup,
+    /definition\.classnames\.includes\(classname\)[\s\S]+model !== "models\/pipebomb\.mdl"/
+  );
+  assert.match(
+    speedrun,
+    /def\.classnames\.some\([\s\S]+model === "models\/pipebomb\.mdl"\) continue/
+  );
 });

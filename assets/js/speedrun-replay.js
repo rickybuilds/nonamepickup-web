@@ -1534,9 +1534,15 @@ function projectileDefinitionForFrame(frame) {
   const classname = normalizeKey(frame.classname);
   const model = normalizeKey(frame.model);
 
+  // Both launcher projectiles share models/pipebomb.mdl. Resolve their
+  // authoritative entity class before attempting any model-based fallback.
   for (const def of PROJECTILE_DEFS) {
     if (def === DEFAULT_PROJECTILE_DEF) continue;
     if (def.classnames.some(value => normalizeKey(value) === classname)) return def;
+  }
+
+  for (const def of PROJECTILE_DEFS) {
+    if (def === DEFAULT_PROJECTILE_DEF || model === "models/pipebomb.mdl") continue;
     if (def.models.some(value => normalizeKey(value) === model)) {
       debugReplay("projectile registry matched recorded model", {
         recordedModel: frame.model,
