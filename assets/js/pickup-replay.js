@@ -24,6 +24,8 @@ const CLASS_MODELS = [
 ];
 const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const CORPSE_LIFETIME_SECONDS = 15;
+const PLAYER_STANDING_VISUAL_HEIGHT = 72;
+const PLAYER_CROUCH_VISUAL_HEIGHT = 40;
 const TFC_MODEL_ASSET_VERSION = "20260731schema3fix5";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
@@ -341,7 +343,7 @@ async function setObjectiveModel(track) {
   track.mesh.userData.hasObjectiveModel = true;
 }
 
-function clonedPlayerModel(asset, alignFeetToOrigin = false) {
+function clonedPlayerModel(asset, alignFeetToOrigin = false, targetHeight = PLAYER_STANDING_VISUAL_HEIGHT) {
   const model = asset.clone(true);
   model.traverse(child => {
     if (!child.isMesh) return;
@@ -349,7 +351,7 @@ function clonedPlayerModel(asset, alignFeetToOrigin = false) {
   });
   const bounds = new THREE.Box3().setFromObject(model);
   const size = bounds.getSize(new THREE.Vector3());
-  const scale = size.y > 0 ? 72 / size.y : 1;
+  const scale = size.y > 0 ? targetHeight / size.y : 1;
   model.scale.setScalar(scale);
   // Studio models are authored around the GoldSrc entity origin. Schema 3
   // records that origin directly, so moving bounds.min.y to zero lifts the
@@ -373,7 +375,8 @@ async function setPlayerModel(track, classId, team, modelId = 0, ducking = false
     : recordedUrl ? await loadModelAsset(recordedUrl) : await modelAsset(0, team, ducking);
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team ||
       track.mesh.userData.playerModelId !== modelId || track.mesh.userData.modelPose !== pose) return;
-  const model = clonedPlayerModel(asset, track.schemaVersion === 2);
+  const targetHeight = ducking ? PLAYER_CROUCH_VISUAL_HEIGHT : PLAYER_STANDING_VISUAL_HEIGHT;
+  const model = clonedPlayerModel(asset, track.schemaVersion === 2, targetHeight);
   track.modelVisual.clear();
   track.modelVisual.add(model);
 }

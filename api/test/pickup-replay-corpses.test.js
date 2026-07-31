@@ -52,7 +52,7 @@ test("schema-v3 player visuals are persistent across weapons, crouch, death, and
   assert.match(source, /boundaryIndexes = track\.schemaVersion === 3[\s\S]*\[10, 11, 12, 19, 20\]/);
   assert.match(source, /if \(frame\.schemaVersion === 2\) track\.mesh\.position\.y -=/);
   assert.doesNotMatch(source, /if \(frame\.schemaVersion === 3\) track\.mesh\.position\.y -=/);
-  assert.match(source, /clonedPlayerModel\(asset, track\.schemaVersion === 2\)/);
+  assert.match(source, /clonedPlayerModel\(asset, track\.schemaVersion === 2, targetHeight\)/);
   assert.match(source, /if \(alignFeetToOrigin\) model\.position\.y = -bounds\.min\.y \* scale/);
   assert.match(source, /fallbackPlayerMesh\(team, track\.schemaVersion === 3\)/);
   assert.match(source, /catalog\?\.heldVariants\?\.\[classKey\]/);
@@ -81,8 +81,15 @@ test("schema-v3 crouch uses baked crouch_idle player geometry instead of scaling
   };
   const standing = path.join(playerRoot, "engineer", "engineer2_blue.glb");
   const crouch = path.join(playerRoot, "engineer", "engineer2_blue_crouch.glb");
-  assert.ok(glbHeight(crouch) > 40, "crouch remains a full articulated model");
-  assert.ok(glbHeight(crouch) < glbHeight(standing) * 0.65, "crouch pose fits the crouched hull");
+  const standingHeight = glbHeight(standing);
+  const crouchHeight = glbHeight(crouch);
+  assert.ok(crouchHeight > 40, "crouch remains a full articulated model");
+  assert.ok(crouchHeight < standingHeight * 0.65, "crouch pose fits the crouched hull");
+  assert.ok(Math.abs(72 / standingHeight - 40 / crouchHeight) < 0.01,
+    "standing and crouching use the same underlying model scale");
+  assert.match(source, /const PLAYER_STANDING_VISUAL_HEIGHT = 72/);
+  assert.match(source, /const PLAYER_CROUCH_VISUAL_HEIGHT = 40/);
+  assert.match(source, /const scale = size\.y > 0 \? targetHeight \/ size\.y : 1/);
 
   const converter = fs.readFileSync(path.join(root, "scripts", "convert_goldsrc_player_models.py"), "utf8");
   const teamConverter = fs.readFileSync(path.join(root, "scripts", "convert_goldsrc_team_player_models.py"), "utf8");
