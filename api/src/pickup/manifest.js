@@ -69,7 +69,11 @@ function validateManifest(value, expected) {
   requireCountObject(value, "bytes");
   if (value.schema_version === 3 &&
       (!Number.isSafeInteger(value.rows.render_models) ||
-       !Number.isSafeInteger(value.bytes["render_models.csv"]))) {
+       !Number.isSafeInteger(value.rows.buildable_definitions) ||
+       !Number.isSafeInteger(value.rows.buildables) ||
+       !Number.isSafeInteger(value.bytes["render_models.csv"]) ||
+       !Number.isSafeInteger(value.bytes["buildable_defs.csv"]) ||
+       !Number.isSafeInteger(value.bytes["buildables.csv"]))) {
     throw pickupError(422, "invalid_manifest", { quarantine: true });
   }
   if (value.ended_at_epoch < value.started_at_epoch) {

@@ -15,6 +15,8 @@ readonly REQUIRED_FILES=(
 )
 readonly SCHEMA_V3_FILES=(
   render_models.csv
+  buildable_defs.csv
+  buildables.csv
 )
 
 log() {
@@ -132,10 +134,13 @@ process_round() {
     return 1
   }
   if (( schema_version == 3 )); then
-    [[ -f "$round_dir/render_models.csv" ]] || {
-      log "skipping schema-v3 round missing render_models.csv: $(basename "$round_dir")"
-      return 1
-    }
+    local schema_file
+    for schema_file in "${SCHEMA_V3_FILES[@]}"; do
+      [[ -f "$round_dir/$schema_file" ]] || {
+        log "skipping schema-v3 round missing $schema_file: $(basename "$round_dir")"
+        return 1
+      }
+    done
   elif (( schema_version != 2 )); then
     log "unsupported replay schema version: $schema_version"
     return 1

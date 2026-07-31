@@ -28,21 +28,49 @@ function csvFields(line) {
   return fields;
 }
 
-function rows(text, callback, expectedHeaders = null) {
-  const firstBreak = text.indexOf("\n");
-  if (firstBreak < 0) return;
-  const headers = csvFields(text.slice(0, firstBreak).replace(/\r$/, ""));
+async function rows(url, callback, expectedHeaders = null) {
+  const response = await fetch(url, { cache: "force-cache" });
+  if (!response.ok) throw new Error(`Telemetry request failed (${response.status})`);
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("Streaming telemetry is unavailable.");
+  const decoder = new TextDecoder();
+  let pending = "";
+  let headers = null;
+  let index = null;
+  let rowNumber = 0;
+  const consume = line => {
+    const fields = csvFields(line.replace(/\r$/, ""));
+    if (!headers) {
+      headers = fields;
+      if (expectedHeaders &&
+          (headers.length !== expectedHeaders.length || headers.some((name, position) => name !== expectedHeaders[position]))) {
+        throw new Error("Telemetry CSV header does not match its replay schema.");
+      }
+      index = Object.fromEntries(headers.map((name, position) => [name, position]));
+      return;
+    }
+    if (fields.length !== headers.length) throw new Error(`Telemetry CSV row ${rowNumber + 1} has the wrong width.`);
+    if (line.length) callback(fields, index);
+    rowNumber += 1;
+  };
+  while (true) {
+    const { value, done } = await reader.read();
+    pending += decoder.decode(value || new Uint8Array(), { stream: !done });
+    let boundary;
+    while ((boundary = pending.indexOf("\n")) >= 0) {
+      consume(pending.slice(0, boundary));
+      pending = pending.slice(boundary + 1);
+    }
+    if (done) break;
+  }
+  if (pending) consume(pending);
+  if (!headers) throw new Error("Telemetry CSV is empty.");
+}
+
+function validateHeaders(headers, expectedHeaders) {
   if (expectedHeaders &&
       (headers.length !== expectedHeaders.length || headers.some((name, index) => name !== expectedHeaders[index]))) {
     throw new Error("Telemetry CSV header does not match its replay schema.");
-  }
-  const index = Object.fromEntries(headers.map((name, position) => [name, position]));
-  let start = firstBreak + 1;
-  while (start < text.length) {
-    let end = text.indexOf("\n", start);
-    if (end < 0) end = text.length;
-    if (end > start) callback(csvFields(text.slice(start, end).replace(/\r$/, "")), index);
-    start = end + 1;
   }
 }
 
@@ -63,15 +91,44 @@ const number = value => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-async function text(url) {
-  const response = await fetch(url, { cache: "force-cache" });
-  if (!response.ok) throw new Error(`Telemetry request failed (${response.status})`);
-  return response.text();
+class Float32Builder {
+  constructor(chunkSize = 65536) {
+    this.chunkSize = chunkSize;
+    this.chunks = [];
+    this.current = new Float32Array(chunkSize);
+    this.offset = 0;
+    this.length = 0;
+  }
+
+  push(...values) {
+    for (const value of values) {
+      if (this.offset === this.current.length) {
+        this.chunks.push(this.current);
+        this.current = new Float32Array(this.chunkSize);
+        this.offset = 0;
+      }
+      this.current[this.offset++] = value;
+      this.length += 1;
+    }
+  }
+
+  finish() {
+    const output = new Float32Array(this.length);
+    let target = 0;
+    for (const chunk of this.chunks) {
+      output.set(chunk, target);
+      target += chunk.length;
+    }
+    output.set(this.current.subarray(0, this.offset), target);
+    this.chunks = [];
+    this.current = new Float32Array(0);
+    return output;
+  }
 }
 
 async function loadRoster(url) {
   const output = [];
-  rows(await text(url), (cols, i) => {
+  await rows(url, (cols, i) => {
     output.push({
       sessionId: number(cols[i.session_id]),
       slot: number(cols[i.slot]),
@@ -88,16 +145,20 @@ async function loadRoster(url) {
 
 async function loadRenderModels(url) {
   const models = [];
-  rows(await text(url), (cols, i) => {
+  const seen = new Set();
+  await rows(url, (cols, i) => {
     const modelId = number(cols[i.model_id]);
     const kind = cols[i.kind];
     const modelPath = cols[i.path] || "";
-    if (!Number.isSafeInteger(modelId) || modelId < 1 || (kind !== "player" && kind !== "weapon") ||
-        modelPath.includes("\\") || modelPath.split("/").some(part => !part || part === "." || part === "..") ||
-        !/^models\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.mdl$/i.test(modelPath)) {
+    if (!Number.isSafeInteger(modelId) || modelId < 1 || seen.has(modelId) ||
+        !["player", "weapon", "projectile", "objective", "buildable"].includes(kind) ||
+        modelPath.includes("\0") || /^[a-z][a-z0-9+.-]*:\/\//i.test(modelPath) || /^[a-z]:/i.test(modelPath) ||
+        modelPath.replace(/\\/g, "/").split("/").some(part => !part || part === "." || part === "..") ||
+        !/^models\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.mdl$/i.test(modelPath.replace(/\\/g, "/"))) {
       throw new Error("Invalid render model dictionary.");
     }
-    models.push({ modelId, kind, path: modelPath, firstSeenMs: number(cols[i.first_seen_ms]) });
+    seen.add(modelId);
+    models.push({ modelId, kind, path: modelPath.replace(/\\/g, "/").toLowerCase(), firstSeenMs: number(cols[i.first_seen_ms]) });
   }, ["model_id", "kind", "path", "first_seen_ms"]);
   return models;
 }
@@ -105,9 +166,9 @@ async function loadRenderModels(url) {
 async function loadPlayers(url, schemaVersion, renderModels) {
   const tracks = new Map();
   const models = new Map(renderModels.map(model => [model.modelId, model]));
-  rows(await text(url), (cols, i) => {
+  await rows(url, (cols, i) => {
     const sessionId = number(cols[i.session_id]);
-    if (!tracks.has(sessionId)) tracks.set(sessionId, []);
+    if (!tracks.has(sessionId)) tracks.set(sessionId, new Float32Builder());
     const values = [
       number(cols[i.time_ms]) / 1000,
       number(cols[i.x]), number(cols[i.y]), number(cols[i.z]),
@@ -141,7 +202,7 @@ async function loadPlayers(url, schemaVersion, renderModels) {
     sessionId,
     schemaVersion,
     stride: schemaVersion === 3 ? 37 : 17,
-    frames: new Float32Array(values)
+    frames: values.finish()
   }));
 }
 
@@ -168,25 +229,31 @@ function playerWeaponAt(players, sessionId, timeSeconds) {
   return Math.round(frames[offset + 13] || 0);
 }
 
-async function loadProjectileDefinitions(url) {
+async function loadProjectileDefinitions(url, schemaVersion, renderModels) {
   const definitions = [];
-  rows(await text(url), (cols, i) => {
+  const models = new Map(renderModels.map(model => [model.modelId, model]));
+  const expected = schemaVersion === 2
+    ? ["projectile_id", "entity", "owner_session", "classname", "model", "spawned_ms"]
+    : ["projectile_id", "entity", "owner_session", "classname", "model_id", "spawned_ms"];
+  await rows(url, (cols, i) => {
+    const modelId = schemaVersion === 3 ? number(cols[i.model_id]) : 0;
     definitions.push({
       projectileId: number(cols[i.projectile_id]),
       ownerSession: number(cols[i.owner_session]),
       classname: cols[i.classname] || "",
-      model: cols[i.model] || "",
+      modelId,
+      model: schemaVersion === 3 ? (models.get(modelId)?.path || "") : (cols[i.model] || ""),
       spawnedMs: number(cols[i.spawned_ms])
     });
-  });
+  }, expected);
   return definitions;
 }
 
 async function loadProjectiles(url) {
   const tracks = new Map();
-  rows(await text(url), (cols, i) => {
+  await rows(url, (cols, i) => {
     const projectileId = number(cols[i.projectile_id]);
-    if (!tracks.has(projectileId)) tracks.set(projectileId, []);
+    if (!tracks.has(projectileId)) tracks.set(projectileId, new Float32Builder());
     tracks.get(projectileId).push(
       number(cols[i.time_ms]) / 1000,
       number(cols[i.state]),
@@ -198,17 +265,23 @@ async function loadProjectiles(url) {
   return [...tracks].map(([projectileId, values]) => ({
     projectileId,
     stride: 11,
-    frames: new Float32Array(values)
+    frames: values.finish()
   }));
 }
 
-async function loadObjectiveDefinitions(url) {
+async function loadObjectiveDefinitions(url, schemaVersion, renderModels) {
   const definitions = [];
-  rows(await text(url), (cols, i) => {
+  const models = new Map(renderModels.map(model => [model.modelId, model]));
+  const expected = schemaVersion === 2
+    ? ["objective_id", "entity", "classname", "model", "targetname", "base_x", "base_y", "base_z", "base_yaw", "first_seen_ms"]
+    : ["objective_id", "entity", "classname", "model_id", "targetname", "base_x", "base_y", "base_z", "base_yaw", "first_seen_ms"];
+  await rows(url, (cols, i) => {
+    const modelId = schemaVersion === 3 ? number(cols[i.model_id]) : 0;
     definitions.push({
       objectiveId: number(cols[i.objective_id]),
       classname: cols[i.classname] || "",
-      model: cols[i.model] || "",
+      modelId,
+      model: schemaVersion === 3 ? (models.get(modelId)?.path || "") : (cols[i.model] || ""),
       targetname: cols[i.targetname] || "",
       baseX: number(cols[i.base_x]),
       baseY: number(cols[i.base_y]),
@@ -216,15 +289,15 @@ async function loadObjectiveDefinitions(url) {
       baseYaw: number(cols[i.base_yaw]),
       firstSeenMs: number(cols[i.first_seen_ms])
     });
-  });
+  }, expected);
   return definitions;
 }
 
 async function loadObjectives(url) {
   const tracks = new Map();
-  rows(await text(url), (cols, i) => {
+  await rows(url, (cols, i) => {
     const objectiveId = number(cols[i.objective_id]);
-    if (!tracks.has(objectiveId)) tracks.set(objectiveId, []);
+    if (!tracks.has(objectiveId)) tracks.set(objectiveId, new Float32Builder());
     tracks.get(objectiveId).push(
       number(cols[i.time_ms]) / 1000,
       number(cols[i.state]), number(cols[i.carrier_session]),
@@ -235,13 +308,80 @@ async function loadObjectives(url) {
   return [...tracks].map(([objectiveId, values]) => ({
     objectiveId,
     stride: 9,
-    frames: new Float32Array(values)
+    frames: values.finish()
+  }));
+}
+
+const BUILDABLE_DEFS_COLUMNS = [
+  "buildable_id", "entity", "kind", "classname", "initial_owner_session", "first_seen_ms"
+];
+const BUILDABLES_COLUMNS = [
+  "snapshot", "time_ms", "buildable_id", "entity", "active", "owner_session", "owner_entity", "team",
+  "model_id", "colormap", "movetype", "solid", "effects", "health", "x", "y", "z", "vx", "vy", "vz",
+  "pitch", "yaw", "roll", "body", "skin", "sequence", "gaitsequence", "frame", "framerate", "animtime",
+  "scale", "rendermode", "renderamt", "renderfx", "render_r", "render_g", "render_b", "controller0",
+  "controller1", "controller2", "controller3", "blending0", "blending1", "aiment"
+];
+
+async function loadBuildableDefinitions(url) {
+  const definitions = [];
+  const seen = new Set();
+  await rows(url, (cols, i) => {
+    const buildableId = number(cols[i.buildable_id]);
+    const kind = cols[i.kind] || "";
+    if (!Number.isSafeInteger(buildableId) || buildableId < 1 || seen.has(buildableId) ||
+        !["sentry", "dispenser", "building"].includes(kind)) {
+      throw new Error("Invalid buildable definition.");
+    }
+    seen.add(buildableId);
+    definitions.push({
+      buildableId,
+      entity: number(cols[i.entity]),
+      kind,
+      classname: cols[i.classname] || "",
+      initialOwnerSession: number(cols[i.initial_owner_session]),
+      firstSeenMs: number(cols[i.first_seen_ms])
+    });
+  }, BUILDABLE_DEFS_COLUMNS);
+  return definitions;
+}
+
+async function loadBuildables(url, definitions, renderModels) {
+  const tracks = new Map();
+  const ids = new Set(definitions.map(definition => definition.buildableId));
+  const models = new Map(renderModels.map(model => [model.modelId, model]));
+  await rows(url, (cols, i) => {
+    const buildableId = number(cols[i.buildable_id]);
+    const modelId = number(cols[i.model_id]);
+    if (!ids.has(buildableId) || !Number.isSafeInteger(modelId) || modelId < 0 ||
+        (modelId !== 0 && models.get(modelId)?.kind !== "buildable")) {
+      throw new Error("Buildable state references an invalid definition or model.");
+    }
+    if (!tracks.has(buildableId)) tracks.set(buildableId, new Float32Builder());
+    tracks.get(buildableId).push(
+      number(cols[i.time_ms]) / 1000,
+      number(cols[i.active]), number(cols[i.entity]), number(cols[i.owner_session]), number(cols[i.owner_entity]),
+      number(cols[i.team]), modelId, number(cols[i.colormap]), number(cols[i.movetype]), number(cols[i.solid]),
+      number(cols[i.effects]), number(cols[i.health]), number(cols[i.x]), number(cols[i.y]), number(cols[i.z]),
+      number(cols[i.vx]), number(cols[i.vy]), number(cols[i.vz]), number(cols[i.pitch]), number(cols[i.yaw]),
+      number(cols[i.roll]), number(cols[i.body]), number(cols[i.skin]), number(cols[i.sequence]),
+      number(cols[i.gaitsequence]), number(cols[i.frame]), number(cols[i.framerate]), number(cols[i.animtime]),
+      number(cols[i.scale]), number(cols[i.rendermode]), number(cols[i.renderamt]), number(cols[i.renderfx]),
+      number(cols[i.render_r]), number(cols[i.render_g]), number(cols[i.render_b]), number(cols[i.controller0]),
+      number(cols[i.controller1]), number(cols[i.controller2]), number(cols[i.controller3]),
+      number(cols[i.blending0]), number(cols[i.blending1]), number(cols[i.aiment])
+    );
+  }, BUILDABLES_COLUMNS);
+  return [...tracks].map(([buildableId, values]) => ({
+    buildableId,
+    stride: 42,
+    frames: values.finish()
   }));
 }
 
 async function loadEvents(url) {
   const output = [];
-  rows(await text(url), (cols, i) => {
+  await rows(url, (cols, i) => {
     output.push({
       time: number(cols[i.time_ms]) / 1000,
       event: cols[i.event] || "event",
@@ -269,7 +409,7 @@ self.onmessage = async event => {
     self.postMessage({ type: "progress", label: "Loading player snapshots…" });
     const players = await loadPlayers(files.players, schemaVersion, renderModels);
     self.postMessage({ type: "progress", label: "Loading projectile telemetry…" });
-    const projectileDefinitions = await loadProjectileDefinitions(files.projectileDefs);
+    const projectileDefinitions = await loadProjectileDefinitions(files.projectileDefs, schemaVersion, renderModels);
     for (const definition of projectileDefinitions) {
       definition.ownerWeapon = playerWeaponAt(
         players,
@@ -279,13 +419,18 @@ self.onmessage = async event => {
     }
     const projectiles = await loadProjectiles(files.projectiles);
     self.postMessage({ type: "progress", label: "Loading objectives and events…" });
-    const objectiveDefinitions = await loadObjectiveDefinitions(files.objectiveDefs);
+    const objectiveDefinitions = await loadObjectiveDefinitions(files.objectiveDefs, schemaVersion, renderModels);
     const objectives = await loadObjectives(files.objectives);
+    const buildableDefinitions = schemaVersion === 3
+      ? await loadBuildableDefinitions(files.buildableDefs) : [];
+    const buildables = schemaVersion === 3
+      ? await loadBuildables(files.buildables, buildableDefinitions, renderModels) : [];
     const events = await loadEvents(files.events);
     const transfer = [
       ...players.map(track => track.frames.buffer),
       ...projectiles.map(track => track.frames.buffer),
-      ...objectives.map(track => track.frames.buffer)
+      ...objectives.map(track => track.frames.buffer),
+      ...buildables.map(track => track.frames.buffer)
     ];
     self.postMessage({
       type: "complete",
@@ -297,6 +442,8 @@ self.onmessage = async event => {
         projectiles,
         objectiveDefinitions,
         objectives,
+        buildableDefinitions,
+        buildables,
         events
       }
     }, transfer);

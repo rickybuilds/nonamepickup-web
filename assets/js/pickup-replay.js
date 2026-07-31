@@ -39,6 +39,9 @@ const state = {
   projectiles: [],
   objectiveDefinitions: new Map(),
   objectives: [],
+  modelCatalog: new Map(),
+  buildableDefinitions: new Map(),
+  buildables: [],
   events: [],
   impacts: [],
   corpses: [],
@@ -76,8 +79,9 @@ const playerRoot = new THREE.Group();
 const corpseRoot = new THREE.Group();
 const projectileRoot = new THREE.Group();
 const objectiveRoot = new THREE.Group();
+const buildableRoot = new THREE.Group();
 const impactRoot = new THREE.Group();
-world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, impactRoot);
+world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot);
 let grid = null;
 let mapModel = null;
 const corpseGroundRay = new THREE.Raycaster();
@@ -156,6 +160,13 @@ function angle(frame, index) {
 function playerSnapshot(track, time) {
   const frame = trackFrame(track, time);
   if (!frame) return null;
+  const boundaryIndexes = track.schemaVersion === 3
+    ? [10, 11, 12, 19, 20]
+    : [10, 11, 12];
+  if (frame.nextOffset !== frame.offset && (
+    frame.data[frame.nextOffset] - frame.data[frame.offset] > 0.25 ||
+    boundaryIndexes.some(index => frame.data[frame.offset + index] !== frame.data[frame.nextOffset + index])
+  )) frame.mix = 0;
   const snapshot = {
     time: value(frame, 0),
     x: value(frame, 1), y: value(frame, 2), z: value(frame, 3),
@@ -210,6 +221,29 @@ function objectiveSnapshot(track, time) {
   };
 }
 
+function buildableSnapshot(track, time) {
+  const frame = trackFrame(track, time);
+  if (!frame || value(frame, 1, false) !== 1) return null;
+  if (frame.nextOffset !== frame.offset && value(frame, 6, false) !== value({ ...frame, offset: frame.nextOffset }, 6, false)) {
+    frame.mix = 0;
+  }
+  return {
+    active: true,
+    entity: value(frame, 2, false), ownerSession: value(frame, 3, false), ownerEntity: value(frame, 4, false),
+    team: value(frame, 5, false), modelId: value(frame, 6, false), colormap: value(frame, 7, false),
+    movetype: value(frame, 8, false), solid: value(frame, 9, false), effects: value(frame, 10, false),
+    health: value(frame, 11, false), x: value(frame, 12), y: value(frame, 13), z: value(frame, 14),
+    vx: value(frame, 15), vy: value(frame, 16), vz: value(frame, 17), pitch: angle(frame, 18),
+    yaw: angle(frame, 19), roll: angle(frame, 20), body: value(frame, 21, false), skin: value(frame, 22, false),
+    sequence: value(frame, 23, false), gaitsequence: value(frame, 24, false), frame: value(frame, 25),
+    framerate: value(frame, 26), animtime: value(frame, 27), scale: value(frame, 28, false),
+    rendermode: value(frame, 29, false), renderamt: value(frame, 30, false), renderfx: value(frame, 31, false),
+    color: [32, 33, 34].map(index => value(frame, index, false)),
+    controller: [35, 36, 37, 38].map(index => value(frame, index, false)),
+    blending: [39, 40].map(index => value(frame, index, false)), aiment: value(frame, 41, false)
+  };
+}
+
 function fallbackPlayerMesh(team) {
   const group = new THREE.Group();
   const material = new THREE.MeshStandardMaterial({
@@ -243,6 +277,14 @@ async function loadModelAsset(url) {
   return modelCache.get(url);
 }
 
+function catalogUrl(modelId, expectedKind) {
+  if (!modelId) return null;
+  const recorded = state.renderModels.get(Number(modelId));
+  if (!recorded || recorded.kind !== expectedKind) return null;
+  const catalog = state.modelCatalog.get(recorded.path);
+  return catalog?.kind === expectedKind ? catalog.url : null;
+}
+
 function objectiveTeam(definition, objectiveId) {
   const identity = [
     definition?.targetname,
@@ -261,7 +303,9 @@ function objectiveModelUrl(team) {
 }
 
 async function setObjectiveModel(track) {
-  const asset = await loadModelAsset(objectiveModelUrl(track.team));
+  const asset = await loadModelAsset(
+    catalogUrl(track.definition?.modelId, "objective") || objectiveModelUrl(track.team)
+  );
   if (!asset || track.mesh.userData.hasObjectiveModel) return;
   const model = asset.clone(true);
   model.traverse(child => {
@@ -286,22 +330,28 @@ function clonedPlayerModel(asset) {
   return model;
 }
 
-async function setPlayerModel(track, classId, team) {
-  if (track.mesh.userData.modelClass === classId && track.mesh.userData.modelTeam === team) return;
+async function setPlayerModel(track, classId, team, modelId = 0) {
+  if (track.mesh.userData.modelClass === classId && track.mesh.userData.modelTeam === team &&
+      track.mesh.userData.playerModelId === modelId) return;
   track.mesh.userData.modelClass = classId;
   track.mesh.userData.modelTeam = team;
-  const asset = await modelAsset(classId, team);
-  if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team) return;
+  track.mesh.userData.playerModelId = modelId;
+  const recordedUrl = catalogUrl(modelId, "player");
+  const asset = CLASS_MODELS[classId]
+    ? await modelAsset(classId, team)
+    : recordedUrl ? await loadModelAsset(recordedUrl) : await modelAsset(0, team);
+  if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team ||
+      track.mesh.userData.playerModelId !== modelId) return;
   const model = clonedPlayerModel(asset);
-  track.playerVisual.clear();
-  track.playerVisual.add(model);
+  track.modelVisual.clear();
+  track.modelVisual.add(model);
 }
 
 function thirdPersonModelUrl(model) {
   if (!model || model.kind !== "weapon") return null;
   const name = model.path.split("/").pop();
   if (!/^p_[A-Za-z0-9_.-]+\.mdl$/i.test(name)) return null;
-  return `/assets/${model.path.replace(/\.mdl$/i, ".glb")}`;
+  return state.modelCatalog.get(model.path)?.url || null;
 }
 
 async function setWeaponModel(track, modelId) {
@@ -316,6 +366,41 @@ async function setWeaponModel(track, modelId) {
   const model = asset.clone(true);
   model.traverse(child => { if (child.isMesh) child.frustumCulled = false; });
   track.weaponVisual.add(model);
+}
+
+async function setBuildableModel(track, modelId) {
+  if (track.mesh.userData.modelId === modelId) return;
+  track.mesh.userData.modelId = modelId;
+  track.visual.clear();
+  if (!modelId) return;
+  const url = catalogUrl(modelId, "buildable");
+  if (!url) return;
+  const asset = await loadModelAsset(url);
+  if (!asset || track.mesh.userData.modelId !== modelId) return;
+  const model = asset.clone(true);
+  model.traverse(child => {
+    if (!child.isMesh) return;
+    child.frustumCulled = false;
+    if (Array.isArray(child.material)) child.material = child.material.map(material => material.clone());
+    else if (child.material) child.material = child.material.clone();
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      if (material?.color) material.userData.replayBaseColor = material.color.clone();
+    }
+  });
+  track.visual.add(model);
+  delete track.mesh.userData.renderSignature;
+}
+
+async function setProjectileCatalogModel(track) {
+  const url = catalogUrl(track.recordedDefinition?.modelId, "projectile");
+  if (!url) return;
+  const asset = await loadModelAsset(url);
+  if (!asset || !track.mesh) return;
+  const model = asset.clone(true);
+  model.traverse(child => { if (child.isMesh) child.frustumCulled = false; });
+  track.mesh.clear?.();
+  track.mesh.add?.(model);
 }
 
 function layCorpseModel(model, side) {
@@ -411,9 +496,11 @@ function buildVisuals() {
     const team = roster?.team || 0;
     track.mesh = new THREE.Group();
     track.playerVisual = new THREE.Group();
+    track.modelVisual = new THREE.Group();
     track.weaponVisual = new THREE.Group();
-    track.playerVisual.add(fallbackPlayerMesh(team));
-    track.mesh.add(track.playerVisual, track.weaponVisual);
+    track.modelVisual.add(fallbackPlayerMesh(team));
+    track.playerVisual.add(track.modelVisual, track.weaponVisual);
+    track.mesh.add(track.playerVisual);
     track.mesh.visible = false;
     track.mesh.userData.sessionId = track.sessionId;
     playerRoot.add(track.mesh);
@@ -432,10 +519,13 @@ function buildVisuals() {
   }
   for (const track of state.projectiles) {
     const recorded = state.projectileDefinitions.get(track.projectileId);
+    track.recordedDefinition = recorded;
     track.definition = replayProjectileDefinition(recorded);
-    track.mesh = projectileVisuals.projectile(track.definition);
+    track.mesh = new THREE.Group();
+    track.mesh.add(projectileVisuals.projectile(track.definition));
     track.mesh.visible = false;
     projectileRoot.add(track.mesh);
+    void setProjectileCatalogModel(track);
     const removal = projectileRemoval(track);
     if (removal) {
       const impact = projectileVisuals.impact(
@@ -449,6 +539,7 @@ function buildVisuals() {
   }
   for (const track of state.objectives) {
     const definition = state.objectiveDefinitions.get(track.objectiveId);
+    track.definition = definition;
     track.team = objectiveTeam(definition, track.objectiveId);
     const color = teamInfo(track.team).color;
     const placeholder = new THREE.Mesh(
@@ -460,6 +551,20 @@ function buildVisuals() {
     track.mesh.visible = false;
     objectiveRoot.add(track.mesh);
     void setObjectiveModel(track);
+  }
+  for (const track of state.buildables) {
+    track.definition = state.buildableDefinitions.get(track.buildableId);
+    track.mesh = new THREE.Group();
+    track.visual = new THREE.Group();
+    const color = teamInfo(0).color;
+    track.visual.add(new THREE.Mesh(
+      new THREE.BoxGeometry(28, 42, 28),
+      new THREE.MeshStandardMaterial({ color, wireframe: true })
+    ));
+    track.mesh.add(track.visual);
+    track.mesh.visible = false;
+    track.mesh.userData.buildableId = track.buildableId;
+    buildableRoot.add(track.mesh);
   }
 }
 
@@ -550,18 +655,21 @@ function updatePlayers() {
     track.mesh.visible = Boolean(frame && state.playbackTime >= joined);
     if (!frame) continue;
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
-    track.mesh.position.y -= isDucking(frame) ? 18 : 36;
+    // Schema 3 records the authoritative entity origin, including crouch transitions.
+    // Keep the legacy visual offset only for schema 2's basic fallback.
+    if (frame.schemaVersion === 2) track.mesh.position.y -= isDucking(frame) ? 18 : 36;
     track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyYaw : frame.yaw);
     track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyPitch : 0);
     track.playerVisual.rotation.z = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyRoll : 0);
     const isSelectedPov =
       state.cameraMode === "pov" && track.sessionId === state.selectedSession;
     track.mesh.visible = frame.alive && !isSelectedPov;
-    void setPlayerModel(track, frame.classId, frame.team);
+    void setPlayerModel(track, frame.classId, frame.team, frame.playerModelId || 0);
     if (frame.schemaVersion === 3) {
       void setWeaponModel(track, frame.weaponModelId);
       Object.assign(track.playerVisual.userData, {
         recordedPlayerModel: state.renderModels.get(frame.playerModelId)?.path || null,
+        recordedPlayerAsset: catalogUrl(frame.playerModelId, "player"),
         body: frame.body, skin: frame.skin, sequence: frame.sequence,
         gaitsequence: frame.gaitsequence, frame: frame.frame, framerate: frame.framerate,
         animtime: frame.animtime, controller: frame.controller, blending: frame.blending
@@ -573,6 +681,55 @@ function updatePlayers() {
       button.classList.toggle("dead", !frame.alive);
       button.querySelector(".pickup-player-state").textContent = frame.alive ? `${frame.health} HP` : "DEAD";
     }
+  }
+}
+
+function updateBuildables() {
+  for (const track of state.buildables) {
+    if (!track.mesh) continue;
+    const frame = buildableSnapshot(track, state.playbackTime);
+    track.mesh.visible = Boolean(frame);
+    if (!frame) continue;
+    track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
+    track.mesh.rotation.set(
+      THREE.MathUtils.degToRad(frame.pitch),
+      THREE.MathUtils.degToRad(frame.yaw),
+      THREE.MathUtils.degToRad(frame.roll)
+    );
+    track.mesh.scale.setScalar(frame.scale > 0 ? frame.scale : 1);
+    void setBuildableModel(track, frame.modelId);
+    const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
+    if (track.mesh.userData.renderSignature !== signature) {
+      track.mesh.userData.renderSignature = signature;
+      const opacity = THREE.MathUtils.clamp(frame.renderamt / 255, 0, 1);
+      const tint = new THREE.Color(
+        THREE.MathUtils.clamp(frame.color[0] / 255, 0, 1),
+        THREE.MathUtils.clamp(frame.color[1] / 255, 0, 1),
+        THREE.MathUtils.clamp(frame.color[2] / 255, 0, 1)
+      );
+      track.visual.traverse(child => {
+        if (!child.isMesh) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of materials) {
+          if (!material) continue;
+          if (material.color && material.userData.replayBaseColor) {
+            material.color.copy(material.userData.replayBaseColor);
+            if (frame.color.some(channel => channel > 0)) material.color.multiply(tint);
+          }
+          material.opacity = opacity;
+          material.transparent = opacity < 1 || frame.rendermode !== 0;
+          material.depthWrite = opacity >= 1;
+        }
+      });
+    }
+    Object.assign(track.mesh.userData, {
+      ownerSession: frame.ownerSession, team: frame.team, health: frame.health,
+      body: frame.body, skin: frame.skin, sequence: frame.sequence,
+      gaitsequence: frame.gaitsequence, animationFrame: frame.frame,
+      framerate: frame.framerate, animtime: frame.animtime,
+      controller: frame.controller, blending: frame.blending, aiment: frame.aiment,
+      unsupportedGoldSrcState: ["body", "skin", "sequence", "gaitsequence", "controller", "blending", "aiment"]
+    });
   }
 }
 
@@ -669,6 +826,7 @@ function updateScene() {
   updateCorpses();
   updateProjectiles();
   updateObjectives();
+  updateBuildables();
   updateCamera();
   updateSelectedStats();
   renderEvents();
@@ -853,6 +1011,23 @@ function loadTelemetry(files) {
   });
 }
 
+async function loadTfcModelCatalog() {
+  const response = await fetch("/assets/tfc/models/manifest.json", { cache: "force-cache" });
+  if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
+  const catalog = await response.json();
+  return new Map(Object.entries(catalog.models || {}));
+}
+
+function cleanupReplayObjects() {
+  for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot]) {
+    root.clear();
+  }
+  state.playerBySession.clear();
+  state.projectileDefinitions.clear();
+  state.objectiveDefinitions.clear();
+  state.buildableDefinitions.clear();
+}
+
 async function init() {
   wireControls();
   resize();
@@ -875,17 +1050,25 @@ async function init() {
     $("replay-slider").max = String(Math.max(1, metadata.durationMs));
     document.title = `NoName TFC | ${metadata.map} 4v4 Replay`;
 
-    const telemetry = await loadTelemetry(metadata.files);
+    const [telemetry, modelCatalog] = await Promise.all([
+      loadTelemetry(metadata.files),
+      loadTfcModelCatalog()
+    ]);
     setStatus("Loading projectile models and effects…");
     await projectileVisuals.preload(telemetry.projectileDefinitions);
     state.roster = telemetry.roster;
     state.renderModels = new Map(telemetry.renderModels.map(model => [model.modelId, model]));
+    state.modelCatalog = modelCatalog;
     state.players = telemetry.players;
     state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
     state.projectileDefinitions = new Map(telemetry.projectileDefinitions.map(def => [def.projectileId, def]));
     state.projectiles = telemetry.projectiles;
     state.objectiveDefinitions = new Map(telemetry.objectiveDefinitions.map(def => [def.objectiveId, def]));
     state.objectives = telemetry.objectives;
+    state.buildableDefinitions = new Map(
+      telemetry.buildableDefinitions.map(definition => [definition.buildableId, definition])
+    );
+    state.buildables = telemetry.buildables;
     state.events = telemetry.events;
     buildRoster();
     selectPlayer(state.roster[0]?.sessionId);
@@ -900,4 +1083,5 @@ async function init() {
   }
 }
 
+window.addEventListener("beforeunload", cleanupReplayObjects, { once: true });
 init();

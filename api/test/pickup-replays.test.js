@@ -28,7 +28,10 @@ const PLAYERS_V2_HEADER = "snapshot,time_ms,session_id,slot,alive,team,class,goa
 const PLAYERS_V2_ROW = "1,0,1,2,1,2,3,0,7,0,100,50,10,20,30,0,0,0,5,90,0";
 const PLAYERS_V3_HEADER = `${PLAYERS_V2_HEADER},ducking,oldbuttons,player_model_id,weapon_model_id,body,skin,sequence,gaitsequence,frame,framerate,animtime,body_pitch,body_yaw,body_roll,controller0,controller1,controller2,controller3,blending0,blending1`;
 const PLAYERS_V3_ROW = `${PLAYERS_V2_ROW},0,0,1,2,0,0,4,1,12.5,1,0,5,90,0,0,0,0,0,0,0`;
-const RENDER_MODELS = "model_id,kind,path,first_seen_ms\n1,player,models/player/soldier/soldier.mdl,0\n2,weapon,models/p_rpg.mdl,0\n";
+const RENDER_MODELS = "model_id,kind,path,first_seen_ms\n1,player,models/player/soldier/soldier.mdl,0\n2,weapon,models/p_rpg.mdl,0\n3,projectile,models/pipebomb.mdl,0\n4,objective,models/flag.mdl,0\n5,buildable,models/sentry1.mdl,0\n";
+const BUILDABLE_DEFS = "buildable_id,entity,kind,classname,initial_owner_session,first_seen_ms\n1,100,sentry,building_sentrygun,1,0\n";
+const BUILDABLES_HEADER = "snapshot,time_ms,buildable_id,entity,active,owner_session,owner_entity,team,model_id,colormap,movetype,solid,effects,health,x,y,z,vx,vy,vz,pitch,yaw,roll,body,skin,sequence,gaitsequence,frame,framerate,animtime,scale,rendermode,renderamt,renderfx,render_r,render_g,render_b,controller0,controller1,controller2,controller3,blending0,blending1,aiment";
+const BUILDABLES = `${BUILDABLES_HEADER}\n1,0,1,100,1,1,1,2,0,0,0,1,0,100,10,20,30,0,0,0,0,90,0,0,0,0,0,0,1,0,1,0,255,0,255,255,255,0,0,0,0,0,0,0\n`;
 
 function octal(value, length) {
   return `${value.toString(8).padStart(length - 2, "0")}\0 `;
@@ -77,10 +80,16 @@ function validManifest(overrides = {}) {
 }
 
 function validV3Manifest(renderModels = RENDER_MODELS, overrides = {}) {
+  const renderModelRows = Math.max(0, renderModels.trim().split(/\r?\n/).length - 1);
   return validManifest({
     schema_version: 3,
-    rows: { roster: 8, players: 1, render_models: 2 },
-    bytes: { roster: 100, players: 1000, "render_models.csv": Buffer.byteLength(renderModels) },
+    rows: { roster: 8, players: 1, render_models: renderModelRows, buildable_definitions: 1, buildables: 1 },
+    bytes: {
+      roster: 100, players: 1000,
+      "render_models.csv": Buffer.byteLength(renderModels),
+      "buildable_defs.csv": Buffer.byteLength(BUILDABLE_DEFS),
+      "buildables.csv": Buffer.byteLength(BUILDABLES)
+    },
     ...overrides
   });
 }
@@ -91,6 +100,10 @@ function archiveBuffer({
   markerContent = "",
   omit = [],
   renderModels = manifest.schema_version === 3 ? RENDER_MODELS : null,
+  buildableDefs = BUILDABLE_DEFS,
+  buildables = BUILDABLES,
+  projectileDefs = null,
+  objectiveDefs = null,
   players = manifest.schema_version === 3
     ? `${PLAYERS_V3_HEADER}\n${PLAYERS_V3_ROW}\n`
     : `${PLAYERS_V2_HEADER}\n${PLAYERS_V2_ROW}\n`,
@@ -99,20 +112,53 @@ function archiveBuffer({
   const content = {
     "roster.csv": "session_id,slot,userid,steamid,name,initial_team,is_bot,joined_ms\n1,2,51,STEAM_0:1:1,Alice,2,0,0\n",
     "players.csv": players,
-    "projectile_defs.csv": "id\n1\n",
-    "projectiles.csv": "tick\n1\n",
-    "objective_defs.csv": "id\n1\n",
-    "objectives.csv": "tick\n1\n",
+    "projectile_defs.csv": projectileDefs || (manifest.schema_version === 3
+      ? "projectile_id,entity,owner_session,classname,model_id,spawned_ms\n1,10,1,tf_gl_pipebomb,0,0\n"
+      : "projectile_id,entity,owner_session,classname,model,spawned_ms\n1,10,1,tf_gl_pipebomb,models/pipebomb.mdl,0\n"),
+    "projectiles.csv": "snapshot,time_ms,projectile_id,state,x,y,z,vx,vy,vz,pitch,yaw,roll\n1,0,1,1,10,20,30,0,0,0,0,90,0\n",
+    "objective_defs.csv": objectiveDefs || (manifest.schema_version === 3
+      ? "objective_id,entity,classname,model_id,targetname,base_x,base_y,base_z,base_yaw,first_seen_ms\n1,20,item_tfgoal,0,blue_flag,0,0,0,0,0\n"
+      : "objective_id,entity,classname,model,targetname,base_x,base_y,base_z,base_yaw,first_seen_ms\n1,20,item_tfgoal,models/flag.mdl,blue_flag,0,0,0,0,0\n"),
+    "objectives.csv": "snapshot,time_ms,objective_id,state,carrier_session,solid,effects,x,y,z,yaw\n1,0,1,1,0,1,0,0,0,0,0\n",
     "events.csv": "tick\n1\n",
     "manifest.json": JSON.stringify(manifest)
   };
-  if (renderModels != null) content["render_models.csv"] = renderModels;
-  const entries = [...REQUIRED_FILES, ...(renderModels == null ? [] : ["render_models.csv"])]
+  if (renderModels != null) {
+    content["render_models.csv"] = renderModels;
+    content["buildable_defs.csv"] = buildableDefs;
+    content["buildables.csv"] = buildables;
+  }
+  const entries = [...REQUIRED_FILES, ...(renderModels == null ? [] : ["render_models.csv", "buildable_defs.csv", "buildables.csv"])]
     .filter(name => !omit.includes(name))
     .map(name => tarEntry(name, content[name]));
   if (marker) entries.push(tarEntry(marker, markerContent));
   entries.push(...extraEntries);
   return Buffer.concat([...entries, Buffer.alloc(1024)]);
+}
+
+function v3Archive(options = {}) {
+  const renderModels = options.renderModels || RENDER_MODELS;
+  const buildableDefs = options.buildableDefs || BUILDABLE_DEFS;
+  const buildables = options.buildables || BUILDABLES;
+  const rowCount = csv => Math.max(0, csv.trim().split(/\r?\n/).length - 1);
+  const manifest = validV3Manifest(renderModels, {
+    rows: {
+      roster: 8,
+      players: 1,
+      render_models: rowCount(renderModels),
+      buildable_definitions: rowCount(buildableDefs),
+      buildables: rowCount(buildables)
+    },
+    bytes: {
+      roster: 100,
+      players: 1000,
+      "render_models.csv": Buffer.byteLength(renderModels),
+      "buildable_defs.csv": Buffer.byteLength(buildableDefs),
+      "buildables.csv": Buffer.byteLength(buildables)
+    },
+    ...(options.manifestOverrides || {})
+  });
+  return archiveBuffer({ ...options, manifest, renderModels, buildableDefs, buildables });
 }
 
 function passthroughArchive(buffer) {
@@ -555,7 +601,7 @@ test("valid schema-v2 artifact keeps the exact original 21-column player contrac
 test("valid schema-v3 artifact retains and validates render_models.csv", async t => {
   const validated = await validateBuffer(t, archiveBuffer({ manifest: validV3Manifest() }));
   assert.equal(validated.manifest.schema_version, 3);
-  assert.equal(validated.manifest.rows.render_models, 2);
+  assert.equal(validated.manifest.rows.render_models, 5);
 });
 
 test("schema-v3 accepts model ID zero as unavailable", async t => {
@@ -584,6 +630,79 @@ test("schema-v3 rejects traversal in render model paths", async t => {
     validateBuffer(t, archiveBuffer({ manifest: validV3Manifest(renderModels), renderModels })),
     error => error.code === "unsafe_render_model_path"
   );
+});
+
+test("schema-v3 requires both buildable streams", async t => {
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ manifest: validV3Manifest(), omit: ["buildables.csv"] })),
+    error => error.code === "missing_buildable_streams"
+  );
+});
+
+test("schema-v3 rejects duplicate dictionary and buildable IDs", async t => {
+  const duplicateModels = `${RENDER_MODELS}2,weapon,models/p_rpg.mdl,1\n`;
+  await assert.rejects(
+    validateBuffer(t, v3Archive({ renderModels: duplicateModels })),
+    error => error.code === "duplicate_render_model_id"
+  );
+  const duplicateDefs = `${BUILDABLE_DEFS}1,101,sentry,building_sentrygun,1,10\n`;
+  await assert.rejects(
+    validateBuffer(t, v3Archive({ buildableDefs: duplicateDefs })),
+    error => error.code === "duplicate_buildable_id"
+  );
+});
+
+test("schema-v3 rejects absolute, URL, drive-letter, null, and unallowlisted model paths", async t => {
+  const unsafe = [
+    "/models/p_rpg.mdl",
+    "https://example.invalid/p_rpg.mdl",
+    "C:\\tfc\\models\\p_rpg.mdl",
+    "models/p_rpg.mdl\0ignored"
+  ];
+  for (const modelPath of unsafe) {
+    const models = RENDER_MODELS.replace("models/p_rpg.mdl", modelPath);
+    await assert.rejects(
+      validateBuffer(t, v3Archive({ renderModels: models })),
+      error => error.code === "unsafe_render_model_path" || (modelPath.includes("\0") && error.code === "invalid_csv")
+    );
+  }
+  const custom = RENDER_MODELS.replace("models/p_rpg.mdl", "models/custom_server_weapon.mdl");
+  await assert.rejects(
+    validateBuffer(t, v3Archive({ renderModels: custom })),
+    error => error.code === "render_model_not_allowlisted"
+  );
+});
+
+test("schema-v3 resolves projectile and objective model IDs while v2 retains model strings", async t => {
+  await validateBuffer(t, v3Archive({
+    projectileDefs: "projectile_id,entity,owner_session,classname,model_id,spawned_ms\n1,10,1,tf_gl_pipebomb,3,0\n",
+    objectiveDefs: "objective_id,entity,classname,model_id,targetname,base_x,base_y,base_z,base_yaw,first_seen_ms\n1,20,item_tfgoal,4,blue_flag,0,0,0,0,0\n"
+  }));
+  await validateBuffer(t, archiveBuffer());
+});
+
+test("schema-v3 accepts sentry upgrade, terminal destruction, rebuild IDs, components, and dispenser removal", async t => {
+  const renderModels = `${RENDER_MODELS}6,buildable,models/sentry2.mdl,100\n7,buildable,models/base.mdl,0\n8,buildable,models/dispenser.mdl,0\n`;
+  const defs = [
+    "buildable_id,entity,kind,classname,initial_owner_session,first_seen_ms",
+    "1,100,sentry,building_sentrygun,1,0",
+    "2,101,sentry,building_sentrygun_base,1,0",
+    "3,100,sentry,building_sentrygun,1,300",
+    "4,200,dispenser,building_dispenser,1,0",
+    ""
+  ].join("\n");
+  const row = (snapshot, time, id, entity, active, model) =>
+    `${snapshot},${time},${id},${entity},${active},1,1,2,${model},0,0,1,0,100,10,20,30,0,0,0,0,90,0,0,0,0,0,0,1,0,1,0,255,0,255,255,255,0,0,0,0,0,0,0`;
+  const buildables = `${BUILDABLES_HEADER}\n${[
+    row(1, 0, 1, 100, 1, 5),
+    row(2, 100, 1, 100, 1, 6),
+    row(3, 200, 1, 100, 0, 6),
+    row(1, 0, 2, 101, 1, 7),
+    row(4, 300, 3, 100, 1, 5),
+    row(1, 0, 4, 200, 1, 8),
+    row(5, 400, 4, 200, 0, 8)
+  ].join("\n")}\n`;
+  await validateBuffer(t, v3Archive({ renderModels, buildableDefs: defs, buildables }));
 });
 
 test("duplicate upload is idempotent and conflicting second artifact is rejected", async t => {
@@ -725,6 +844,8 @@ test("schema-v3 viewer advertises render_models.csv", async () => {
   const viewer = new PickupReplayViewer({ pool, storage: {} });
   const metadata = await viewer.metadata("test", 1);
   assert.equal(metadata.files.renderModels, "/api/pickup-replays/viewer/test/1/files/render_models.csv");
+  assert.equal(metadata.files.buildableDefs, "/api/pickup-replays/viewer/test/1/files/buildable_defs.csv");
+  assert.equal(metadata.files.buildables, "/api/pickup-replays/viewer/test/1/files/buildables.csv");
 });
 
 test("viewer extracts only an allowlisted CSV with fixed tar arguments", async t => {

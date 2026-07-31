@@ -405,7 +405,11 @@ def convert(
     target.write_bytes(glb)
     bounds = np.concatenate([primitive["positions"] for primitive in primitives], axis=0)
     size = bounds.max(axis=0) - bounds.min(axis=0)
-    print(f"{source.relative_to(ROOT)} -> {target.name} ({len(glb):,} bytes, size {size.round(1).tolist()})")
+    try:
+        source_label = source.relative_to(ROOT)
+    except ValueError:
+        source_label = source
+    print(f"{source_label} -> {target.name} ({len(glb):,} bytes, size {size.round(1).tolist()})")
     return target
 
 

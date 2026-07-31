@@ -87,6 +87,8 @@ objective_defs.csv
 objectives.csv
 events.csv
 render_models.csv    # schema version 3 only
+buildable_defs.csv   # schema version 3 only
+buildables.csv       # schema version 3 only
 manifest.json
 complete.ready       # exactly one ready marker
 ```
@@ -102,7 +104,9 @@ Schema versions 2 and 3 require `schema_version`, `match_id`, `round`, `map`,
 `complete`, `reason`, `started_at_epoch`, `ended_at_epoch`, `duration_ms`,
 `sample_interval_seconds`, `snapshots`, `dropped_snapshots`, `write_error`,
 `rows`, and `bytes`. Version 3 additionally requires `rows.render_models`,
-`bytes["render_models.csv"]`, and `render_models.csv`. Header identifiers must
+`rows.buildable_definitions`, `rows.buildables`, the matching byte entries for
+`render_models.csv`, `buildable_defs.csv`, and `buildables.csv`, and all three
+files. Header identifiers must
 equal manifest identifiers, and the ready marker must agree with `complete`.
 Versions other than 2 and 3 are rejected with `unsupported_schema_version`;
 future versions are never reinterpreted.
@@ -110,11 +114,20 @@ future versions are never reinterpreted.
 The schema-2 `players.csv` header is the original 21-column contract. Schema 3
 appends recorder animation state and the `player_model_id` and
 `weapon_model_id` dictionary references. `render_models.csv` contains
-`model_id,kind,path,first_seen_ms`; IDs are positive and unique, while a player
-reference of zero means no model was available. Nonzero references must exist
-and match the expected `player` or `weapon` kind. Model paths must be safe,
-relative `models/.../*.mdl` paths with no backslashes, absolute paths, or dot
-segments.
+`model_id,kind,path,first_seen_ms`; IDs are positive, round-local, and unique,
+while any reference of zero means no model was available. Nonzero references
+must exist and match the expected `player`, `weapon`, `projectile`, `objective`,
+or `buildable` kind. Separators and casing are normalized before lookup. Model
+paths must be safe relative `models/.../*.mdl` paths with no URL, drive letter,
+absolute prefix, null byte, or dot segment, and must exist in the generated
+standard-TFC catalog. Uploaded paths never trigger a filesystem read or model
+conversion.
+
+Schema 3 changes `projectile_defs.csv` and `objective_defs.csv` from a `model`
+string to `model_id`. Schema 2 retains the string columns and 21-column player
+contract. Schema 3 also records stable buildable identities in
+`buildable_defs.csv` and their ordered timeline in `buildables.csv`; a terminal
+`active=0` row prevents later state for the same `buildable_id`.
 
 `roster.csv` uses these canonical columns:
 
@@ -331,8 +344,9 @@ The page requests public replay metadata from:
 GET /api/pickup-replays/viewer/<match_id>/<round_number>
 ```
 
-It then loads the seven recorded CSV streams in a Web Worker. The worker
-converts high-volume snapshot rows into transferable typed arrays so parsing
+It then loads the recorded CSV streams in a Web Worker. The worker incrementally
+decodes response bodies into chunked typed-array builders and transfers the
+finished arrays so parsing
 does not block the page's render thread.
 
 The API never publishes the storage directory or sends the original archive.
@@ -347,6 +361,9 @@ projectiles.csv
 objective_defs.csv
 objectives.csv
 events.csv
+render_models.csv    # v3
+buildable_defs.csv   # v3
+buildables.csv       # v3
 ```
 
 Archive members are read with a fixed `tar` argument array. Match IDs and round

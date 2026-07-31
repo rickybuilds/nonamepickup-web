@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test test/*.test.js",
+    "benchmark:pickup-replay": "node scripts/benchmarkPickupReplayWorker.js",
     "import:external-baselines": "node externalBaselineImport.js"
   },
   "keywords": [],

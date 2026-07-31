@@ -9,6 +9,8 @@ const VIEWER_FILES = new Set([
   "roster.csv",
   "players.csv",
   "render_models.csv",
+  "buildable_defs.csv",
+  "buildables.csv",
   "projectile_defs.csv",
   "projectiles.csv",
   "objective_defs.csv",
@@ -87,7 +89,8 @@ class PickupReplayViewer {
     const base = `/api/pickup-replays/viewer/${encodeURIComponent(matchId)}/${round}`;
     const manifest = parseManifest(row.manifest_json);
     const viewerFiles = [...VIEWER_FILES].filter(name =>
-      name !== "render_models.csv" || manifest.schema_version === 3
+      !["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(name) ||
+      manifest.schema_version === 3
     );
     return {
       artifactId: Number(row.artifact_id),
@@ -106,6 +109,8 @@ class PickupReplayViewer {
         projectiles: Number(row.projectile_row_count || 0),
         objectives: Number(row.objective_row_count || 0),
         events: Number(row.event_row_count || 0)
+        ,buildableDefinitions: Number(manifest.rows?.buildable_definitions || 0)
+        ,buildables: Number(manifest.rows?.buildables || 0)
       },
       sha256: row.sha256,
       byteSize: Number(row.byte_size || 0),
@@ -120,6 +125,11 @@ class PickupReplayViewer {
   async streamFile(matchId, round, fileName, response) {
     if (!VIEWER_FILES.has(fileName)) throw pickupError(404, "replay_file_not_found");
     const row = await this.artifact(matchId, round);
+    const manifest = parseManifest(row.manifest_json);
+    if (["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(fileName) &&
+        manifest.schema_version !== 3) {
+      throw pickupError(404, "replay_file_not_found");
+    }
     await this.storage.ensureReady();
     const archivePath = this.storage.artifactPath(row.storage_key);
     await fs.promises.access(archivePath, fs.constants.R_OK);

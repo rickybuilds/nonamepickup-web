@@ -43,3 +43,33 @@ test("pickup replay keeps explicit schema-v2 fallback and schema-v3 render state
   assert.match(source, /\^p_\[A-Za-z0-9_\.-\]\+\\\.mdl\$/i);
   assert.doesNotMatch(source, /w_\*\.mdl/);
 });
+
+test("schema-v3 player visuals are persistent across weapons, crouch, death, and respawn", () => {
+  assert.match(source, /for \(const track of state\.players\)[\s\S]*track\.weaponVisual = new THREE\.Group\(\)/);
+  assert.match(source, /if \(track\.mesh\.userData\.weaponModelId === modelId\) return/);
+  assert.match(source, /track\.weaponVisual\.clear\(\);\s+if \(!modelId\) return/);
+  assert.match(source, /boundaryIndexes = track\.schemaVersion === 3[\s\S]*\[10, 11, 12, 19, 20\]/);
+  assert.match(source, /if \(frame\.schemaVersion === 2\) track\.mesh\.position\.y -=/);
+  assert.doesNotMatch(source, /if \(frame\.schemaVersion === 3\) track\.mesh\.position\.y -=/);
+});
+
+test("schema-v3 buildables use stable IDs, model replacement, components, and terminal active state", () => {
+  assert.match(source, /state\.buildableDefinitions = new Map/);
+  assert.match(source, /track\.mesh\.userData\.buildableId = track\.buildableId/);
+  assert.match(source, /if \(track\.mesh\.userData\.modelId === modelId\) return/);
+  assert.match(source, /track\.visual\.clear\(\);/);
+  assert.match(source, /value\(frame, 1, false\) !== 1/);
+  assert.match(source, /ownerSession: frame\.ownerSession, team: frame\.team/);
+  assert.match(source, /unsupportedGoldSrcState/);
+});
+
+test("worker streams large CSVs and branches projectile/objective definitions by schema", () => {
+  const worker = fs.readFileSync(
+    path.resolve(__dirname, "..", "..", "assets", "js", "pickup-replay-worker.js"),
+    "utf8"
+  );
+  assert.match(worker, /response\.body\?\.getReader\(\)/);
+  assert.match(worker, /schemaVersion === 2[\s\S]*"model"[\s\S]*"model_id"/);
+  assert.match(worker, /stride: 42/);
+  assert.match(worker, /buildableDefinitions/);
+});
