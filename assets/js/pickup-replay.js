@@ -407,6 +407,7 @@ function selectPlayer(sessionId) {
 
 function updatePlayers() {
   for (const track of state.players) {
+    if (!track.mesh) continue;
     const frame = playerSnapshot(track, state.playbackTime);
     const joined = state.roster.find(row => row.sessionId === track.sessionId)?.joinedMs / 1000 || 0;
     track.mesh.visible = Boolean(frame && state.playbackTime >= joined);
@@ -432,6 +433,7 @@ function updateProjectiles() {
   impactRoot.visible = state.showProjectiles;
   if (!state.showProjectiles) return;
   for (const track of state.projectiles) {
+    if (!track.mesh) continue;
     const frame = projectileSnapshot(track, state.playbackTime);
     track.mesh.visible = Boolean(frame);
     if (!frame) continue;
@@ -447,6 +449,7 @@ function updateObjectives() {
   objectiveRoot.visible = state.showObjectives;
   if (!state.showObjectives) return;
   for (const track of state.objectives) {
+    if (!track.mesh) continue;
     const frame = objectiveSnapshot(track, state.playbackTime);
     track.mesh.visible = Boolean(frame);
     if (!frame) continue;
@@ -716,6 +719,8 @@ async function init() {
     document.title = `NoName TFC | ${metadata.map} 4v4 Replay`;
 
     const telemetry = await loadTelemetry(metadata.files);
+    setStatus("Loading projectile models and effects…");
+    await projectileVisuals.preload(telemetry.projectileDefinitions);
     state.roster = telemetry.roster;
     state.players = telemetry.players;
     state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
@@ -724,8 +729,6 @@ async function init() {
     state.objectiveDefinitions = new Map(telemetry.objectiveDefinitions.map(def => [def.objectiveId, def]));
     state.objectives = telemetry.objectives;
     state.events = telemetry.events;
-    setStatus("Loading projectile models and effects…");
-    await projectileVisuals.preload(telemetry.projectileDefinitions);
     buildRoster();
     selectPlayer(state.roster[0]?.sessionId);
     setupWorld();
