@@ -19,6 +19,7 @@ const CLASS_MODELS = [
   ["spy", "spy"], ["engineer", "engineer"], ["civilian", "civilian"]
 ];
 const CAMERA_MODES = ["pov", "chase", "overview", "free"];
+const CORPSE_LIFETIME_SECONDS = 15;
 const freeKeys = new Set();
 const loader = new GLTFLoader();
 const projectileVisuals = new ReplayProjectileVisuals(loader);
@@ -35,6 +36,7 @@ const state = {
   objectives: [],
   events: [],
   impacts: [],
+  corpses: [],
   selectedSession: null,
   origin: { x: 0, y: 0, z: 0 },
   playbackTime: 0,
@@ -66,10 +68,11 @@ scene.add(sun);
 const world = new THREE.Group();
 scene.add(world);
 const playerRoot = new THREE.Group();
+const corpseRoot = new THREE.Group();
 const projectileRoot = new THREE.Group();
 const objectiveRoot = new THREE.Group();
 const impactRoot = new THREE.Group();
-world.add(playerRoot, projectileRoot, objectiveRoot, impactRoot);
+world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, impactRoot);
 let grid = null;
 let mapModel = null;
 
@@ -244,12 +247,7 @@ async function setObjectiveModel(track) {
   track.mesh.userData.hasObjectiveModel = true;
 }
 
-async function setPlayerModel(track, classId, team) {
-  if (track.mesh.userData.modelClass === classId && track.mesh.userData.modelTeam === team) return;
-  track.mesh.userData.modelClass = classId;
-  track.mesh.userData.modelTeam = team;
-  const asset = await modelAsset(classId, team);
-  if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team) return;
+function clonedPlayerModel(asset) {
   const model = asset.clone(true);
   model.traverse(child => {
     if (!child.isMesh) return;
@@ -260,8 +258,35 @@ async function setPlayerModel(track, classId, team) {
   const scale = size.y > 0 ? 72 / size.y : 1;
   model.scale.setScalar(scale);
   model.position.y = -bounds.min.y * scale;
+  return model;
+}
+
+async function setPlayerModel(track, classId, team) {
+  if (track.mesh.userData.modelClass === classId && track.mesh.userData.modelTeam === team) return;
+  track.mesh.userData.modelClass = classId;
+  track.mesh.userData.modelTeam = team;
+  const asset = await modelAsset(classId, team);
+  if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team) return;
+  const model = clonedPlayerModel(asset);
   track.mesh.clear();
   track.mesh.add(model);
+}
+
+function layCorpseModel(model, side) {
+  model.rotation.z = side * Math.PI / 2;
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(model);
+  if (Number.isFinite(bounds.min.y)) model.position.y -= bounds.min.y;
+  return model;
+}
+
+async function setCorpseModel(corpse) {
+  const asset = await modelAsset(corpse.classId, corpse.team);
+  if (!asset || corpse.mesh.userData.hasCorpseModel) return;
+  const model = layCorpseModel(clonedPlayerModel(asset), corpse.side);
+  corpse.mesh.clear();
+  corpse.mesh.add(model);
+  corpse.mesh.userData.hasCorpseModel = true;
 }
 
 function projectileRemoval(track) {
@@ -278,6 +303,37 @@ function projectileRemoval(track) {
   return null;
 }
 
+function corpseRecords(track) {
+  const records = [];
+  const { frames, stride } = track;
+  let previousOffset = -1;
+  let previousAlive = false;
+  let deathIndex = 0;
+
+  for (let offset = 0; offset < frames.length; offset += stride) {
+    const alive = frames[offset + 10] === 1;
+    if (previousAlive && !alive && previousOffset >= 0) {
+      records.push({
+        sessionId: track.sessionId,
+        startsAt: frames[offset],
+        endsAt: frames[offset] + CORPSE_LIFETIME_SECONDS,
+        x: frames[previousOffset + 1],
+        y: frames[previousOffset + 2],
+        z: frames[previousOffset + 3],
+        yaw: frames[previousOffset + 8],
+        team: Math.round(frames[previousOffset + 11]),
+        classId: Math.round(frames[previousOffset + 12]),
+        buttons: Math.round(frames[previousOffset + 14]),
+        side: ((track.sessionId + deathIndex) % 2) ? 1 : -1
+      });
+      deathIndex += 1;
+    }
+    previousAlive = alive;
+    previousOffset = offset;
+  }
+  return records;
+}
+
 function buildVisuals() {
   for (const track of state.players) {
     const roster = state.roster.find(row => row.sessionId === track.sessionId);
@@ -286,6 +342,18 @@ function buildVisuals() {
     track.mesh.visible = false;
     track.mesh.userData.sessionId = track.sessionId;
     playerRoot.add(track.mesh);
+
+    for (const corpse of corpseRecords(track)) {
+      corpse.mesh = new THREE.Group();
+      corpse.mesh.visible = false;
+      corpse.mesh.position.copy(sourcePoint(corpse.x, corpse.y, corpse.z));
+      corpse.mesh.position.y -= (corpse.buttons & 4) ? 18 : 36;
+      corpse.mesh.rotation.y = THREE.MathUtils.degToRad(corpse.yaw);
+      corpse.mesh.add(layCorpseModel(fallbackPlayerMesh(corpse.team), corpse.side));
+      corpseRoot.add(corpse.mesh);
+      state.corpses.push(corpse);
+      void setCorpseModel(corpse);
+    }
   }
   for (const track of state.projectiles) {
     const recorded = state.projectileDefinitions.get(track.projectileId);
@@ -422,6 +490,14 @@ function updatePlayers() {
   }
 }
 
+function updateCorpses() {
+  for (const corpse of state.corpses) {
+    corpse.mesh.visible =
+      state.playbackTime >= corpse.startsAt &&
+      state.playbackTime < corpse.endsAt;
+  }
+}
+
 function updateProjectiles() {
   projectileRoot.visible = state.showProjectiles;
   impactRoot.visible = state.showProjectiles;
@@ -504,6 +580,7 @@ function updateSelectedStats() {
 
 function updateScene() {
   updatePlayers();
+  updateCorpses();
   updateProjectiles();
   updateObjectives();
   updateCamera();
