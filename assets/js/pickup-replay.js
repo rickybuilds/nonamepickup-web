@@ -230,13 +230,13 @@ function createAssaultCannonVisual() {
     blending: THREE.AdditiveBlending
   });
   const tracers = Array.from({ length: 3 }, () => {
-    const tracer = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1, 6, 1, true), material);
+    const tracer = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1, 6, 1, true), material);
     tracer.frustumCulled = false;
     group.add(tracer);
     return tracer;
   });
   const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(3.2, 8, 6),
+    new THREE.SphereGeometry(1.2, 8, 6),
     new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.9, depthWrite: false,
       blending: THREE.AdditiveBlending })
   );
@@ -289,8 +289,11 @@ function updateAssaultCannonVisual(track, frame, time) {
     const hit = mapModel ? acRaycaster.intersectObject(mapModel, true)[0] : null;
     const range = Math.max(1, Math.min(AC_TRACER_RANGE, hit?.distance || AC_TRACER_RANGE));
     const phase = ((time * AC_ROUNDS_PER_SECOND + offset / visual.tracers.length) % 1 + 1) % 1;
-    const startDistance = Math.min(range, phase * range);
-    const endDistance = Math.min(range, startDistance + 72);
+    // Keep one short streak connected to the barrel so continuous fire always
+    // reads as originating at the cannon; the other two rounds travel downrange.
+    const startDistance = offset === 0 ? 0 : Math.min(range, phase * range);
+    const tracerLength = offset === 0 ? 54 : 36;
+    const endDistance = Math.min(range, startDistance + tracerLength);
     positionTracer(
       tracer,
       muzzle.clone().addScaledVector(direction, startDistance),
@@ -298,7 +301,7 @@ function updateAssaultCannonVisual(track, frame, time) {
     );
   });
   visual.flash.position.copy(muzzle);
-  const flashPulse = 1 + (1 - ((time * AC_ROUNDS_PER_SECOND) % 1)) * 0.65;
+  const flashPulse = 1 + (1 - ((time * AC_ROUNDS_PER_SECOND) % 1)) * 0.25;
   visual.flash.scale.setScalar(flashPulse);
 }
 
