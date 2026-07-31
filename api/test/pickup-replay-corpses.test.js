@@ -51,6 +51,9 @@ test("schema-v3 player visuals are persistent across weapons, crouch, death, and
   assert.match(source, /boundaryIndexes = track\.schemaVersion === 3[\s\S]*\[10, 11, 12, 19, 20\]/);
   assert.match(source, /if \(frame\.schemaVersion === 2\) track\.mesh\.position\.y -=/);
   assert.doesNotMatch(source, /if \(frame\.schemaVersion === 3\) track\.mesh\.position\.y -=/);
+  assert.match(source, /clonedPlayerModel\(asset, track\.schemaVersion === 2\)/);
+  assert.match(source, /if \(alignFeetToOrigin\) model\.position\.y = -bounds\.min\.y \* scale/);
+  assert.match(source, /fallbackPlayerMesh\(team, track\.schemaVersion === 3\)/);
 });
 
 test("schema-v3 buildables use stable IDs, model replacement, components, and terminal active state", () => {
@@ -61,6 +64,8 @@ test("schema-v3 buildables use stable IDs, model replacement, components, and te
   assert.match(source, /value\(frame, 1, false\) !== 1/);
   assert.match(source, /ownerSession: frame\.ownerSession, team: frame\.team/);
   assert.match(source, /unsupportedGoldSrcState/);
+  assert.match(source, /frame\.rendermode === 0\s+\? 1/);
+  assert.match(source, /frame\.effects & 128/);
 });
 
 test("worker streams large CSVs and branches projectile/objective definitions by schema", () => {

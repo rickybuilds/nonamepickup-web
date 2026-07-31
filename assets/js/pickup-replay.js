@@ -244,7 +244,7 @@ function buildableSnapshot(track, time) {
   };
 }
 
-function fallbackPlayerMesh(team) {
+function fallbackPlayerMesh(team, preserveNativeOrigin = false) {
   const group = new THREE.Group();
   const material = new THREE.MeshStandardMaterial({
     color: teamInfo(team).color,
@@ -252,7 +252,7 @@ function fallbackPlayerMesh(team) {
     metalness: 0.05
   });
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(15, 42, 6, 10), material);
-  body.position.y = 36;
+  body.position.y = preserveNativeOrigin ? 0 : 36;
   group.add(body);
   return group;
 }
@@ -316,7 +316,7 @@ async function setObjectiveModel(track) {
   track.mesh.userData.hasObjectiveModel = true;
 }
 
-function clonedPlayerModel(asset) {
+function clonedPlayerModel(asset, alignFeetToOrigin = false) {
   const model = asset.clone(true);
   model.traverse(child => {
     if (!child.isMesh) return;
@@ -326,7 +326,11 @@ function clonedPlayerModel(asset) {
   const size = bounds.getSize(new THREE.Vector3());
   const scale = size.y > 0 ? 72 / size.y : 1;
   model.scale.setScalar(scale);
-  model.position.y = -bounds.min.y * scale;
+  // Studio models are authored around the GoldSrc entity origin. Schema 3
+  // records that origin directly, so moving bounds.min.y to zero lifts the
+  // player by about 36 units. Only the legacy schema-2 fallback expects a
+  // feet-at-origin visual because its render object keeps the old hull offset.
+  if (alignFeetToOrigin) model.position.y = -bounds.min.y * scale;
   return model;
 }
 
@@ -342,7 +346,7 @@ async function setPlayerModel(track, classId, team, modelId = 0) {
     : recordedUrl ? await loadModelAsset(recordedUrl) : await modelAsset(0, team);
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team ||
       track.mesh.userData.playerModelId !== modelId) return;
-  const model = clonedPlayerModel(asset);
+  const model = clonedPlayerModel(asset, track.schemaVersion === 2);
   track.modelVisual.clear();
   track.modelVisual.add(model);
 }
@@ -498,7 +502,7 @@ function buildVisuals() {
     track.playerVisual = new THREE.Group();
     track.modelVisual = new THREE.Group();
     track.weaponVisual = new THREE.Group();
-    track.modelVisual.add(fallbackPlayerMesh(team));
+    track.modelVisual.add(fallbackPlayerMesh(team, track.schemaVersion === 3));
     track.playerVisual.add(track.modelVisual, track.weaponVisual);
     track.mesh.add(track.playerVisual);
     track.mesh.visible = false;
@@ -688,8 +692,8 @@ function updateBuildables() {
   for (const track of state.buildables) {
     if (!track.mesh) continue;
     const frame = buildableSnapshot(track, state.playbackTime);
-    track.mesh.visible = Boolean(frame);
-    if (!frame) continue;
+    track.mesh.visible = Boolean(frame && !(frame.effects & 128));
+    if (!frame || !track.mesh.visible) continue;
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     track.mesh.rotation.set(
       THREE.MathUtils.degToRad(frame.pitch),
@@ -701,7 +705,11 @@ function updateBuildables() {
     const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
     if (track.mesh.userData.renderSignature !== signature) {
       track.mesh.userData.renderSignature = signature;
-      const opacity = THREE.MathUtils.clamp(frame.renderamt / 255, 0, 1);
+      // GoldSrc ignores renderamt for kRenderNormal. Recorder snapshots often
+      // contain renderamt=0 for ordinary opaque sentries and dispensers.
+      const opacity = frame.rendermode === 0
+        ? 1
+        : THREE.MathUtils.clamp(frame.renderamt / 255, 0, 1);
       const tint = new THREE.Color(
         THREE.MathUtils.clamp(frame.color[0] / 255, 0, 1),
         THREE.MathUtils.clamp(frame.color[1] / 255, 0, 1),
@@ -991,7 +999,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731schema3fix1");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -1012,7 +1020,7 @@ function loadTelemetry(files) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json", { cache: "force-cache" });
+  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix1", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));
