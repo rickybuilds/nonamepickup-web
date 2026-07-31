@@ -331,6 +331,7 @@ def texture_kind(name):
     if (
         re.search(r"(?:^|[_-])(laser|forcefield|force_field|energy)", animated_value)
         or re.match(r"^(?:(?:e7|tsi)?beam)\d", animated_value)
+        or re.match(r"^orc26[rb]$", animated_value)
     ):
         return "effect"
     if value.startswith(("+", "-")):
@@ -561,7 +562,7 @@ def write_glb(path, primitives_by_texture, textures, stats):
             return material_by_texture[texture_id]
 
         kind = texture_kind(texture.get("name") or "")
-        opacity = 0.22 if kind == "water" else 0.20 if kind == "effect" else 1.0
+        opacity = 0.45 if kind == "water" else 0.20 if kind == "effect" else 1.0
         material = {
             "name": texture.get("name") or f"texture_{texture_id}",
             "pbrMetallicRoughness": {

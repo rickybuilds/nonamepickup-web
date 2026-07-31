@@ -7,7 +7,7 @@ import {
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
-} from "./replay-map-materials.js?v=20260730mapmaterials1";
+} from "./replay-map-materials.js?v=20260730mapmaterials2";
 
 const $ = id => document.getElementById(id);
 const TEAM = {

@@ -26,14 +26,16 @@ const {
 } = context.module.exports;
 
 test("classifies GoldSrc water and effect textures without matching signs", () => {
-  assert.equal(replayMapMaterialOpacity("!water1"), 0.22);
-  assert.equal(replayMapMaterialOpacity("+0water4b"), 0.22);
-  assert.equal(replayMapMaterialOpacity("water4b"), 0.22);
+  assert.equal(replayMapMaterialOpacity("!water1"), 0.45);
+  assert.equal(replayMapMaterialOpacity("+0water4b"), 0.45);
+  assert.equal(replayMapMaterialOpacity("water4b"), 0.45);
   assert.equal(replayMapMaterialOpacity("sign_water1"), 1);
   assert.equal(replayMapMaterialOpacity("laser1"), 0.20);
   assert.equal(replayMapMaterialOpacity("red_laserbeam"), 0.20);
   assert.equal(replayMapMaterialOpacity("forcefield1"), 0.20);
   assert.equal(replayMapMaterialOpacity("e7beam02_red"), 0.20);
+  assert.equal(replayMapMaterialOpacity("orc26r"), 0.20);
+  assert.equal(replayMapMaterialOpacity("orc26b"), 0.20);
   assert.equal(replayMapMaterialOpacity("wood_beam"), 1);
 });
 
@@ -42,7 +44,7 @@ test("configures translucent map materials without depth-writing walls", () => {
   configureReplayMapMaterial(water, "double");
   assert.equal(water.side, "double");
   assert.equal(water.transparent, true);
-  assert.equal(water.opacity, 0.22);
+  assert.equal(water.opacity, 0.45);
   assert.equal(water.depthWrite, false);
   assert.equal(water.needsUpdate, true);
   assert.equal(isReplayMapGroundMaterial(water), false);

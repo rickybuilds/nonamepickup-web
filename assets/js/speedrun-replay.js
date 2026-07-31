@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
-import { configureReplayMapMaterial } from "./replay-map-materials.js?v=20260730mapmaterials1";
+import { configureReplayMapMaterial } from "./replay-map-materials.js?v=20260730mapmaterials2";
 
 // replay-format:start
 /**
