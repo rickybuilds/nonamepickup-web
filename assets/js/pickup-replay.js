@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260730pickup3";
+} from "./replay-projectile-visuals.js?v=20260730pickup4";
 
 const $ = id => document.getElementById(id);
 const TEAM = {
