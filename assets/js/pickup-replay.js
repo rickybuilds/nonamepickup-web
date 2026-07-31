@@ -363,7 +363,9 @@ function updatePlayers() {
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     track.mesh.position.y -= (frame.buttons & 4) ? 18 : 36;
     track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
-    track.mesh.visible = frame.alive;
+    const isSelectedPov =
+      state.cameraMode === "pov" && track.sessionId === state.selectedSession;
+    track.mesh.visible = frame.alive && !isSelectedPov;
     void setPlayerModel(track, frame.classId, frame.team);
 
     const button = document.querySelector(`.pickup-player[data-session-id="${track.sessionId}"]`);
