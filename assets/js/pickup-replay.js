@@ -201,6 +201,10 @@ function isDucking(frame) {
   return frame.schemaVersion === 3 ? frame.ducking : Boolean(frame.buttons & 4);
 }
 
+function playerVisualScaleY(frame) {
+  return frame.schemaVersion === 3 && isDucking(frame) ? 0.5 : 1;
+}
+
 function projectileSnapshot(track, time) {
   const frame = trackFrame(track, time);
   if (!frame || value(frame, 1, false) === 0) return null;
@@ -696,6 +700,7 @@ function updatePlayers() {
     // Keep the legacy visual offset only for schema 2's basic fallback.
     if (frame.schemaVersion === 2) track.mesh.position.y -= isDucking(frame) ? 18 : 36;
     track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyYaw : frame.yaw);
+    track.playerVisual.scale.set(1, playerVisualScaleY(frame), 1);
     track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyPitch : 0);
     track.playerVisual.rotation.z = THREE.MathUtils.degToRad(frame.schemaVersion === 3 ? frame.bodyRoll : 0);
     const isSelectedPov =

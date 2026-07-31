@@ -56,6 +56,18 @@ test("schema-v3 player visuals are persistent across weapons, crouch, death, and
   assert.match(source, /if \(alignFeetToOrigin\) model\.position\.y = -bounds\.min\.y \* scale/);
   assert.match(source, /fallbackPlayerMesh\(team, track\.schemaVersion === 3\)/);
   assert.match(source, /catalog\?\.heldVariants\?\.\[classKey\]/);
+  assert.match(source, /track\.playerVisual\.scale\.set\(1, playerVisualScaleY\(frame\), 1\)/);
+});
+
+test("schema-v3 crouch shortens the player visual without moving its recorded origin", () => {
+  const body = source.match(/function playerVisualScaleY\(frame\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(body, "playerVisualScaleY source is present");
+  const helper = vm.runInNewContext(`(${body})`, {
+    isDucking: frame => frame.ducking
+  });
+  assert.equal(helper({ schemaVersion: 3, ducking: true }), 0.5);
+  assert.equal(helper({ schemaVersion: 3, ducking: false }), 1);
+  assert.equal(helper({ schemaVersion: 2, ducking: true }), 1);
 });
 
 test("schema-v3 buildables use stable IDs, model replacement, components, and terminal active state", () => {
