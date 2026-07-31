@@ -6,6 +6,7 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { Writable } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
+const readline = require("node:readline");
 const { TextDecoder } = require("node:util");
 const { parseCsv, parseCsvDocument, normalizeRoster } = require("./csv");
 const { validateManifest } = require("./manifest");
@@ -171,10 +172,50 @@ function validateModelReferences(document, column, kind, renderModels) {
   }
 }
 
-function validateOrdered(document, idColumn, { terminalActive = false } = {}) {
+function parseCsvRecord(line) {
+  const fields = [];
+  let field = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (quoted) {
+      if (char === '"') {
+        if (line[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        field += char;
+      }
+    } else if (char === '"' && field.length === 0) {
+      quoted = true;
+    } else if (char === ",") {
+      fields.push(field);
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+  if (quoted) throw pickupError(422, "invalid_csv", { quarantine: true });
+  fields.push(field.replace(/\r$/, ""));
+  return fields;
+}
+
+function validateNumericRow(row, headers, excluded = new Set()) {
+  for (const header of headers) {
+    if (excluded.has(header)) continue;
+    if (row[header] === "" || !Number.isFinite(Number(row[header]))) {
+      throw pickupError(422, "invalid_csv_number", { quarantine: true });
+    }
+  }
+}
+
+function timelineRowValidator(idColumn, { terminalActive = false } = {}) {
   const last = new Map();
   const removed = new Set();
-  for (const row of document.rows) {
+  return row => {
     const id = requiredInteger(row[idColumn], "invalid_timeline_id", { min: 1 });
     const snapshot = requiredInteger(row.snapshot, "invalid_timeline_snapshot", { min: 0 });
     const time = requiredInteger(row.time_ms, "invalid_timeline_timestamp", { min: 0 });
@@ -187,26 +228,47 @@ function validateOrdered(document, idColumn, { terminalActive = false } = {}) {
       removed.add(id);
     }
     last.set(id, { snapshot, time });
-  }
+  };
 }
 
-function validatePlayers(document, schemaVersion, renderModels) {
-  exactHeaders(
-    document.headers,
-    schemaVersion === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS,
-    "invalid_players_headers"
-  );
-  validateNumericColumns(document);
-  if (schemaVersion === 2) return;
-  for (const row of document.rows) {
-    for (const [column, kind] of [["player_model_id", "player"], ["weapon_model_id", "weapon"]]) {
-      const id = requiredInteger(row[column], "invalid_render_model_reference", { min: 0 });
-      if (id === 0) continue;
-      const model = renderModels.get(id);
-      if (!model) throw pickupError(422, "undefined_render_model_id", { quarantine: true });
-      if (model.kind !== kind) throw pickupError(422, "render_model_kind_mismatch", { quarantine: true });
+async function validateCsvStream(filePath, label, expectedHeaders, validateRow) {
+  const input = fs.createReadStream(filePath, { encoding: "utf8", highWaterMark: 64 * 1024 });
+  const lines = readline.createInterface({ input, crlfDelay: Infinity });
+  let headers = null;
+  let rowCount = 0;
+  let trailingBlank = false;
+  try {
+    for await (const line of lines) {
+      if (!headers) {
+        headers = parseCsvRecord(line).map(value => value.trim().toLowerCase());
+        if (!headers.length || headers.some((value, index) => !value || headers.indexOf(value) !== index)) {
+          throw pickupError(422, "invalid_csv_headers", { quarantine: true });
+        }
+        exactHeaders(headers, expectedHeaders, `invalid_${label}_headers`);
+        continue;
+      }
+      if (line === "") {
+        trailingBlank = true;
+        continue;
+      }
+      if (trailingBlank) throw pickupError(422, "invalid_csv_row", { quarantine: true });
+      const values = parseCsvRecord(line);
+      if (values.length !== headers.length) {
+        throw pickupError(422, "invalid_csv_row", { quarantine: true });
+      }
+      const row = Object.fromEntries(headers.map((header, index) => [header, values[index]]));
+      validateRow(row, headers);
+      rowCount += 1;
     }
+  } catch (error) {
+    if (error?.status && error?.code) throw error;
+    throw pickupError(422, "invalid_csv", { quarantine: true, cause: error });
+  } finally {
+    lines.close();
+    input.destroy();
   }
+  if (!headers) throw pickupError(422, `empty_${label}`, { quarantine: true });
+  return rowCount;
 }
 
 function decodeTarString(buffer) {
@@ -472,10 +534,25 @@ async function validateArchive({
     }
     renderModels = validateRenderModels(renderDocument, allowlistedModels);
   }
-  const playersText = await fsp.readFile(extractor.files.get("players.csv").path, "utf8");
-  const playersDocument = parseCsvDocument(playersText, "players");
-  validatePlayers(playersDocument, manifest.schema_version, renderModels);
-  validateOrdered(playersDocument, "session_id");
+  const validatePlayerTimeline = timelineRowValidator("session_id");
+  await validateCsvStream(
+    extractor.files.get("players.csv").path,
+    "players",
+    manifest.schema_version === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS,
+    (row, headers) => {
+      validateNumericRow(row, headers);
+      if (manifest.schema_version === 3) {
+        for (const [column, kind] of [["player_model_id", "player"], ["weapon_model_id", "weapon"]]) {
+          const id = requiredInteger(row[column], "invalid_render_model_reference", { min: 0 });
+          if (id === 0) continue;
+          const model = renderModels.get(id);
+          if (!model) throw pickupError(422, "undefined_render_model_id", { quarantine: true });
+          if (model.kind !== kind) throw pickupError(422, "render_model_kind_mismatch", { quarantine: true });
+        }
+      }
+      validatePlayerTimeline(row);
+    }
+  );
 
   const projectileDefs = parseCsvDocument(
     await fsp.readFile(extractor.files.get("projectile_defs.csv").path, "utf8"),
@@ -509,18 +586,26 @@ async function validateArchive({
   }
   if (manifest.schema_version === 3) validateModelReferences(objectiveDefs, "model_id", "objective", renderModels);
 
-  const projectiles = parseCsvDocument(
-    await fsp.readFile(extractor.files.get("projectiles.csv").path, "utf8"), "projectiles"
+  const validateProjectileTimeline = timelineRowValidator("projectile_id");
+  await validateCsvStream(
+    extractor.files.get("projectiles.csv").path,
+    "projectiles",
+    PROJECTILES_COLUMNS,
+    (row, headers) => {
+      validateNumericRow(row, headers);
+      validateProjectileTimeline(row);
+    }
   );
-  exactHeaders(projectiles.headers, PROJECTILES_COLUMNS, "invalid_projectiles_headers");
-  validateNumericColumns(projectiles);
-  validateOrdered(projectiles, "projectile_id");
-  const objectives = parseCsvDocument(
-    await fsp.readFile(extractor.files.get("objectives.csv").path, "utf8"), "objectives"
+  const validateObjectiveTimeline = timelineRowValidator("objective_id");
+  await validateCsvStream(
+    extractor.files.get("objectives.csv").path,
+    "objectives",
+    OBJECTIVES_COLUMNS,
+    (row, headers) => {
+      validateNumericRow(row, headers);
+      validateObjectiveTimeline(row);
+    }
   );
-  exactHeaders(objectives.headers, OBJECTIVES_COLUMNS, "invalid_objectives_headers");
-  validateNumericColumns(objectives);
-  validateOrdered(objectives, "objective_id");
 
   if (manifest.schema_version === 3) {
     const buildableDefsFile = extractor.files.get(BUILDABLE_DEFS_FILE);
@@ -537,19 +622,30 @@ async function validateArchive({
       }
     }
     validateNumericColumns(buildableDefs, new Set(["kind", "classname"]));
-    const buildables = parseCsvDocument(await fsp.readFile(buildablesFile.path, "utf8"), "buildables");
-    exactHeaders(buildables.headers, BUILDABLES_COLUMNS, "invalid_buildables_headers");
-    validateNumericColumns(buildables);
+    const validateBuildableTimeline = timelineRowValidator("buildable_id", { terminalActive: true });
+    const buildableRows = await validateCsvStream(
+      buildablesFile.path,
+      "buildables",
+      BUILDABLES_COLUMNS,
+      (row, headers) => {
+        validateNumericRow(row, headers);
+        const id = requiredInteger(row.buildable_id, "invalid_buildable_id", { min: 1 });
+        if (!definitionIds.has(id)) throw pickupError(422, "undefined_buildable_id", { quarantine: true });
+        const modelId = requiredInteger(row.model_id, "invalid_render_model_reference", { min: 0 });
+        if (modelId !== 0) {
+          const model = renderModels.get(modelId);
+          if (!model) throw pickupError(422, "undefined_render_model_id", { quarantine: true });
+          if (model.kind !== "buildable") {
+            throw pickupError(422, "render_model_kind_mismatch", { quarantine: true });
+          }
+        }
+        validateBuildableTimeline(row);
+      }
+    );
     if (manifest.rows.buildable_definitions !== buildableDefs.rows.length ||
-        manifest.rows.buildables !== buildables.rows.length) {
+        manifest.rows.buildables !== buildableRows) {
       throw pickupError(422, "buildable_manifest_mismatch", { quarantine: true });
     }
-    for (const row of buildables.rows) {
-      const id = requiredInteger(row.buildable_id, "invalid_buildable_id", { min: 1 });
-      if (!definitionIds.has(id)) throw pickupError(422, "undefined_buildable_id", { quarantine: true });
-    }
-    validateModelReferences(buildables, "model_id", "buildable", renderModels);
-    validateOrdered(buildables, "buildable_id", { terminalActive: true });
   }
 
   const rosterText = await fsp.readFile(extractor.files.get("roster.csv").path, "utf8");

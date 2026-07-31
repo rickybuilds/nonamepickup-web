@@ -23,6 +23,7 @@ const { pickupError } = require("../src/pickup/errors");
 const { PickupRepository } = require("../src/pickup/repository");
 const { createPickupReplaysRouter } = require("../src/routes/pickupReplays");
 const { PickupReplayViewer, parseViewerIdentity } = require("../src/pickup/viewer");
+const archiveSource = fs.readFileSync(path.join(__dirname, "..", "src", "pickup", "archive.js"), "utf8");
 
 const PLAYERS_V2_HEADER = "snapshot,time_ms,session_id,slot,alive,team,class,goalitem_flags,weapon,buttons,health,armor,x,y,z,vx,vy,vz,pitch,yaw,roll";
 const PLAYERS_V2_ROW = "1,0,1,2,1,2,3,0,7,0,100,50,10,20,30,0,0,0,5,90,0";
@@ -32,6 +33,18 @@ const RENDER_MODELS = "model_id,kind,path,first_seen_ms\n1,player,models/player/
 const BUILDABLE_DEFS = "buildable_id,entity,kind,classname,initial_owner_session,first_seen_ms\n1,100,sentry,building_sentrygun,1,0\n";
 const BUILDABLES_HEADER = "snapshot,time_ms,buildable_id,entity,active,owner_session,owner_entity,team,model_id,colormap,movetype,solid,effects,health,x,y,z,vx,vy,vz,pitch,yaw,roll,body,skin,sequence,gaitsequence,frame,framerate,animtime,scale,rendermode,renderamt,renderfx,render_r,render_g,render_b,controller0,controller1,controller2,controller3,blending0,blending1,aiment";
 const BUILDABLES = `${BUILDABLES_HEADER}\n1,0,1,100,1,1,1,2,0,0,0,1,0,100,10,20,30,0,0,0,0,90,0,0,0,0,0,0,1,0,1,0,255,0,255,255,255,0,0,0,0,0,0,0\n`;
+
+test("large replay timelines are validated as bounded streams", () => {
+  assert.match(archiveSource, /fs\.createReadStream\(filePath, \{ encoding: "utf8", highWaterMark: 64 \* 1024 \}\)/);
+  assert.match(archiveSource, /for await \(const line of lines\)/);
+  for (const name of ["players.csv", "projectiles.csv", "objectives.csv"]) {
+    assert.doesNotMatch(
+      archiveSource,
+      new RegExp(`readFile\\(extractor\\.files\\.get\\("${name.replace(".", "\\.")}\\"\\)\\.path`)
+    );
+  }
+  assert.doesNotMatch(archiveSource, /readFile\(buildablesFile\.path/);
+});
 
 function octal(value, length) {
   return `${value.toString(8).padStart(length - 2, "0")}\0 `;
