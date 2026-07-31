@@ -1,0 +1,425 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const fsp = require("node:fs/promises");
+const http = require("node:http");
+const os = require("node:os");
+const path = require("node:path");
+const { PassThrough, Readable } = require("node:stream");
+const test = require("node:test");
+const express = require("express");
+const { validateArchive, REQUIRED_FILES } = require("../src/pickup/archive");
+const {
+  PickupIngestion,
+  parseMetadata,
+  streamRequestToFile,
+  tokenMatches
+} = require("../src/pickup/ingestion");
+const { PickupStorage } = require("../src/pickup/storage");
+const { pickupError } = require("../src/pickup/errors");
+const { createPickupReplaysRouter } = require("../src/routes/pickupReplays");
+
+function octal(value, length) {
+  return `${value.toString(8).padStart(length - 2, "0")}\0 `;
+}
+
+function tarEntry(name, content = "", type = "0", linkName = "") {
+  const body = Buffer.from(content);
+  const header = Buffer.alloc(512);
+  header.write(name, 0, 100, "utf8");
+  header.write(octal(0o600, 8), 100, 8, "ascii");
+  header.write(octal(0, 8), 108, 8, "ascii");
+  header.write(octal(0, 8), 116, 8, "ascii");
+  header.write(octal(body.length, 12), 124, 12, "ascii");
+  header.write(octal(0, 12), 136, 12, "ascii");
+  header.fill(32, 148, 156);
+  header[156] = type.charCodeAt(0);
+  header.write(linkName, 157, 100, "utf8");
+  header.write("ustar\0", 257, 6, "ascii");
+  header.write("00", 263, 2, "ascii");
+  let checksum = 0;
+  for (const byte of header) checksum += byte;
+  header.write(octal(checksum, 8), 148, 8, "ascii");
+  const padding = Buffer.alloc((512 - (body.length % 512)) % 512);
+  return Buffer.concat([header, body, padding]);
+}
+
+function validManifest(overrides = {}) {
+  return {
+    schema_version: 2,
+    match_id: "pug-20260730-1842",
+    round: 1,
+    map: "2fort",
+    complete: true,
+    reason: "round_end",
+    started_at_epoch: 1785440000,
+    ended_at_epoch: 1785440900,
+    duration_ms: 900000,
+    sample_interval_seconds: 0.25,
+    snapshots: 3600,
+    dropped_snapshots: 0,
+    write_error: false,
+    rows: { roster: 8, players: 100 },
+    bytes: { roster: 100, players: 1000 },
+    ...overrides
+  };
+}
+
+function archiveBuffer({
+  manifest = validManifest(),
+  marker = "complete.ready",
+  omit = [],
+  extraEntries = []
+} = {}) {
+  const content = {
+    "roster.csv": "session_index,steam_id,player_name,team_number,joined_at_epoch,left_at_epoch\n1,STEAM_0:1:1,Alice,1,1785440000,1785440900\n",
+    "players.csv": "tick\n1\n",
+    "projectile_defs.csv": "id\n1\n",
+    "projectiles.csv": "tick\n1\n",
+    "objective_defs.csv": "id\n1\n",
+    "objectives.csv": "tick\n1\n",
+    "events.csv": "tick\n1\n",
+    "manifest.json": JSON.stringify(manifest)
+  };
+  const entries = REQUIRED_FILES
+    .filter(name => !omit.includes(name))
+    .map(name => tarEntry(name, content[name]));
+  if (marker) entries.push(tarEntry(marker));
+  entries.push(...extraEntries);
+  return Buffer.concat([...entries, Buffer.alloc(1024)]);
+}
+
+function passthroughArchive(buffer) {
+  return {
+    stream: Readable.from(buffer),
+    completion: Promise.resolve(),
+    abort() {}
+  };
+}
+
+async function tempContext(t) {
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), "pickup-ingestion-"));
+  t.after(() => fsp.rm(root, { recursive: true, force: true }));
+  const storage = new PickupStorage(root);
+  await storage.ensureReady();
+  return { root, storage };
+}
+
+async function validateBuffer(t, buffer, overrides = {}) {
+  const { root } = await tempContext(t);
+  const extractionPath = await fsp.mkdtemp(path.join(root, "incoming", "extract-"));
+  return validateArchive({
+    archivePath: path.join(root, "unused.tar.zst"),
+    extractionPath,
+    matchId: "pug-20260730-1842",
+    round: 1,
+    maxFiles: 32,
+    maxBytes: 1024 * 1024,
+    openArchive: () => passthroughArchive(buffer),
+    ...overrides
+  });
+}
+
+class MemoryRepository {
+  constructor() {
+    this.current = null;
+    this.nextId = 123;
+    this.failAfterPromotion = false;
+  }
+
+  async persist(input, promote) {
+    if (this.current) {
+      if (this.current.sha256 !== input.sha256) throw pickupError(409, "round_artifact_conflict");
+      return { ...this.current, created: false };
+    }
+    const promotedPath = await promote();
+    if (this.failAfterPromotion) {
+      const error = new Error("database unavailable");
+      error.promotedPath = promotedPath;
+      error.createdStorage = true;
+      throw error;
+    }
+    this.current = {
+      artifactId: this.nextId,
+      sha256: input.sha256,
+      byteSize: input.byteSize,
+      storageKey: input.storageKey
+    };
+    return { ...this.current, created: true, promotedPath, createdStorage: true };
+  }
+}
+
+function createIngestion(storage, repository, overrides = {}) {
+  return new PickupIngestion({
+    config: {
+      uploadToken: "test-secret-token",
+      maxUploadBytes: 1024 * 1024,
+      maxExtractedBytes: 1024 * 1024,
+      maxArchiveFiles: 32,
+      zstdCommand: "unused",
+      ...overrides
+    },
+    storage,
+    repository,
+    openArchive: archivePath => passthroughArchive(fs.createReadStream(archivePath)),
+    logger: { error() {} }
+  });
+}
+
+function requestStream(buffer) {
+  const stream = new PassThrough();
+  process.nextTick(() => stream.end(buffer));
+  return stream;
+}
+
+async function post(server, body, headers = {}) {
+  const address = server.address();
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      host: "127.0.0.1",
+      port: address.port,
+      method: "POST",
+      path: "/api/pickup-replays",
+      headers
+    }, res => {
+      const chunks = [];
+      res.on("data", chunk => chunks.push(chunk));
+      res.on("end", () => resolve({
+        status: res.statusCode,
+        body: JSON.parse(Buffer.concat(chunks).toString("utf8"))
+      }));
+    });
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
+function uploadHeaders(body, overrides = {}) {
+  return {
+    Authorization: "Bearer test-secret-token",
+    "X-Pickup-Server-Id": "central-1",
+    "X-Pickup-Match-Id": "pug-20260730-1842",
+    "X-Pickup-Round": "1",
+    "X-Pickup-SHA256": crypto.createHash("sha256").update(body).digest("hex"),
+    "Content-Length": String(body.length),
+    "Content-Type": "application/zstd",
+    ...overrides
+  };
+}
+
+test("valid streaming upload returns 201 and promotes a private artifact", async t => {
+  const { root, storage } = await tempContext(t);
+  const repository = new MemoryRepository();
+  const ingestion = createIngestion(storage, repository);
+  const app = express();
+  app.use("/api", createPickupReplaysRouter({ ingestion, logger: { error() {} } }));
+  const server = app.listen(0, "127.0.0.1");
+  await onceListening(server);
+  t.after(() => server.close());
+
+  const body = archiveBuffer();
+  const response = await post(server, body, uploadHeaders(body));
+  assert.equal(response.status, 201);
+  assert.deepEqual(response.body, {
+    ok: true,
+    artifactId: 123,
+    matchId: "pug-20260730-1842",
+    round: 1,
+    status: "complete",
+    sha256: uploadHeaders(body)["X-Pickup-SHA256"],
+    byteSize: body.length,
+    storageKey: response.body.storageKey
+  });
+  assert.match(response.body.storageKey, /^\d{4}\/\d{2}\/pug-20260730-1842\/round-01-[a-f0-9]{64}\.tar\.zst$/);
+  assert.equal(fs.existsSync(storage.artifactPath(response.body.storageKey)), true);
+  assert.equal(fs.existsSync(path.join(root, "artifacts")), true);
+});
+
+function onceListening(server) {
+  return new Promise((resolve, reject) => {
+    if (server.listening) return resolve();
+    server.once("listening", resolve);
+    server.once("error", reject);
+  });
+}
+
+test("missing or invalid tokens fail fixed-length digest authentication", () => {
+  assert.equal(tokenMatches(undefined, "secret"), false);
+  assert.equal(tokenMatches("Bearer wrong", "secret"), false);
+  assert.equal(tokenMatches("Bearer secret", "secret"), true);
+});
+
+test("missing and invalid token requests return 401 without retaining bodies", async t => {
+  const { root, storage } = await tempContext(t);
+  const ingestion = createIngestion(storage, new MemoryRepository());
+  const app = express();
+  app.use("/api", createPickupReplaysRouter({ ingestion, logger: { error() {} } }));
+  const server = app.listen(0, "127.0.0.1");
+  await onceListening(server);
+  t.after(() => server.close());
+  const body = archiveBuffer();
+
+  const missingHeaders = uploadHeaders(body);
+  delete missingHeaders.Authorization;
+  const missing = await post(server, body, missingHeaders);
+  const invalid = await post(server, body, {
+    ...uploadHeaders(body),
+    Authorization: "Bearer wrong"
+  });
+  assert.equal(missing.status, 401);
+  assert.equal(invalid.status, 401);
+  assert.deepEqual(await fsp.readdir(path.join(root, "incoming")), []);
+});
+
+test("unsafe match IDs and invalid rounds are rejected before upload", () => {
+  const body = Buffer.from("x");
+  assert.throws(
+    () => parseMetadata(Object.fromEntries(
+      Object.entries(uploadHeaders(body, { "X-Pickup-Match-Id": "../escape" }))
+        .map(([key, value]) => [key.toLowerCase(), value])
+    ), { maxUploadBytes: 100 }),
+    error => error.code === "invalid_match_id"
+  );
+  assert.throws(
+    () => parseMetadata(Object.fromEntries(
+      Object.entries(uploadHeaders(body, { "X-Pickup-Round": "10000" }))
+        .map(([key, value]) => [key.toLowerCase(), value])
+    ), { maxUploadBytes: 100 }),
+    error => error.code === "invalid_round"
+  );
+});
+
+test("oversized request bodies are stopped and partial files are removable", async t => {
+  const { root } = await tempContext(t);
+  const destination = path.join(root, "incoming", "oversize.part");
+  const request = requestStream(Buffer.from("12345"));
+  await assert.rejects(
+    streamRequestToFile(request, destination, {
+      contentLength: 5,
+      sha256: crypto.createHash("sha256").update("12345").digest("hex")
+    }, 4),
+    error => error.code === "upload_too_large"
+  );
+  await fsp.rm(destination, { force: true });
+  assert.equal(fs.existsSync(destination), false);
+});
+
+test("client disconnect aborts and does not complete a staged upload", async t => {
+  const { root } = await tempContext(t);
+  const destination = path.join(root, "incoming", "aborted.part");
+  const request = new PassThrough();
+  const pending = streamRequestToFile(request, destination, {
+    contentLength: 10,
+    sha256: "0".repeat(64)
+  }, 100);
+  request.write("123");
+  request.emit("aborted");
+  await assert.rejects(pending, error => error.code === "upload_aborted");
+});
+
+test("SHA-256 and Content-Length mismatches are rejected", async t => {
+  const { root } = await tempContext(t);
+  const shaPath = path.join(root, "incoming", "sha.part");
+  await assert.rejects(
+    streamRequestToFile(requestStream(Buffer.from("abc")), shaPath, {
+      contentLength: 3,
+      sha256: "0".repeat(64)
+    }, 100),
+    error => error.code === "sha256_mismatch"
+  );
+  const lengthPath = path.join(root, "incoming", "length.part");
+  await assert.rejects(
+    streamRequestToFile(requestStream(Buffer.from("abc")), lengthPath, {
+      contentLength: 4,
+      sha256: crypto.createHash("sha256").update("abc").digest("hex")
+    }, 100),
+    error => error.code === "content_length_mismatch"
+  );
+});
+
+test("archive path traversal is rejected without writing outside extraction", async t => {
+  const buffer = archiveBuffer({ extraEntries: [tarEntry("../escape", "bad")] });
+  await assert.rejects(validateBuffer(t, buffer), error => error.code === "unsafe_archive_path");
+});
+
+test("archive symlink and hard-link entries are rejected", async t => {
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ extraEntries: [tarEntry("link", "", "2", "manifest.json")] })),
+    error => error.code === "unsupported_archive_entry_type"
+  );
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ extraEntries: [tarEntry("hard", "", "1", "manifest.json")] })),
+    error => error.code === "unsupported_archive_entry_type"
+  );
+});
+
+test("missing required files and multiple ready markers are rejected", async t => {
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ omit: ["events.csv"] })),
+    error => error.code === "missing_required_file"
+  );
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ extraEntries: [tarEntry("aborted.ready")] })),
+    error => error.code === "invalid_ready_markers"
+  );
+});
+
+test("manifest/header mismatch and unsupported schema versions are rejected", async t => {
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ manifest: validManifest({ round: 2 }) })),
+    error => error.code === "manifest_header_mismatch"
+  );
+  await assert.rejects(
+    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 3 }) })),
+    error => error.code === "unsupported_schema_version"
+  );
+});
+
+test("duplicate upload is idempotent and conflicting second artifact is rejected", async t => {
+  const { storage } = await tempContext(t);
+  const repository = new MemoryRepository();
+  const ingestion = createIngestion(storage, repository);
+  const firstBody = archiveBuffer();
+  const firstMetadata = ingestion.metadata(Object.fromEntries(
+    Object.entries(uploadHeaders(firstBody)).map(([key, value]) => [key.toLowerCase(), value])
+  ));
+  const first = await ingestion.ingest(requestStream(firstBody), firstMetadata);
+  const second = await ingestion.ingest(requestStream(firstBody), firstMetadata);
+  assert.equal(first.created, true);
+  assert.equal(second.created, false);
+  assert.equal(second.artifactId, first.artifactId);
+
+  const conflictBody = archiveBuffer({
+    manifest: validManifest({ reason: "different" })
+  });
+  const conflictMetadata = ingestion.metadata(Object.fromEntries(
+    Object.entries(uploadHeaders(conflictBody)).map(([key, value]) => [key.toLowerCase(), value])
+  ));
+  await assert.rejects(
+    ingestion.ingest(requestStream(conflictBody), conflictMetadata),
+    error => error.code === "round_artifact_conflict"
+  );
+});
+
+test("database failure removes the promoted link and quarantines the verified source", async t => {
+  const { root, storage } = await tempContext(t);
+  const repository = new MemoryRepository();
+  repository.failAfterPromotion = true;
+  const ingestion = createIngestion(storage, repository);
+  const body = archiveBuffer();
+  const metadata = ingestion.metadata(Object.fromEntries(
+    Object.entries(uploadHeaders(body)).map(([key, value]) => [key.toLowerCase(), value])
+  ));
+
+  await assert.rejects(
+    ingestion.ingest(requestStream(body), metadata),
+    error => error.code === "ingestion_failed"
+  );
+  const artifactFiles = await fsp.readdir(path.join(root, "artifacts"), { recursive: true });
+  assert.equal(artifactFiles.some(name => name.endsWith(".tar.zst")), false);
+  const quarantined = await fsp.readdir(path.join(root, "quarantine"));
+  assert.equal(quarantined.filter(name => name.endsWith(".tar.zst")).length, 1);
+  assert.equal(quarantined.filter(name => name.endsWith(".json")).length, 1);
+});

@@ -31,8 +31,29 @@ const CURRENT_RULESET = 2;
 const MIN_VALID_RUN_TIME_MS = positiveInt(process.env.MIN_VALID_RUN_TIME_MS, 2000, 1, 60 * 60 * 1000);
 // TODO(production): Set a dedicated random ANALYTICS_SALT; the fallback is predictable and ADMIN_KEY reuse couples secrets.
 const ANALYTICS_SALT = process.env.ANALYTICS_SALT || process.env.ADMIN_KEY || "tfcbot";
+const PICKUP_DB_HOST = process.env.PICKUP_DB_HOST || "127.0.0.1";
+const PICKUP_DB_PORT = positiveInt(process.env.PICKUP_DB_PORT, 3306, 1, 65535);
+const PICKUP_DB_NAME = process.env.PICKUP_DB_NAME || "pickup_4v4";
+const PICKUP_DB_USER = process.env.PICKUP_DB_USER || "";
+const PICKUP_DB_PASSWORD = process.env.PICKUP_DB_PASSWORD || "";
+const PICKUP_STORAGE_PATH = process.env.PICKUP_STORAGE_PATH || "";
+const PICKUP_UPLOAD_TOKEN = process.env.PICKUP_UPLOAD_TOKEN || "";
+const PICKUP_MAX_UPLOAD_BYTES = positiveInt(
+  process.env.PICKUP_MAX_UPLOAD_BYTES,
+  1024 * 1024 * 1024,
+  1,
+  Number.MAX_SAFE_INTEGER
+);
+const PICKUP_MAX_EXTRACTED_BYTES = positiveInt(
+  process.env.PICKUP_MAX_EXTRACTED_BYTES,
+  PICKUP_MAX_UPLOAD_BYTES * 4,
+  1,
+  Number.MAX_SAFE_INTEGER
+);
+const PICKUP_MAX_ARCHIVE_FILES = positiveInt(process.env.PICKUP_MAX_ARCHIVE_FILES, 32, 1, 1000);
+const PICKUP_ZSTD_COMMAND = process.env.PICKUP_ZSTD_COMMAND || "zstd";
 
-module.exports = {
+const config = {
   PORT,
   ROOT_DIR,
   PUBLIC_DIR,
@@ -51,5 +72,30 @@ module.exports = {
   STEAM_API_KEY,
   CURRENT_RULESET,
   MIN_VALID_RUN_TIME_MS,
-  ANALYTICS_SALT
+  ANALYTICS_SALT,
+  PICKUP_DB_HOST,
+  PICKUP_DB_PORT,
+  PICKUP_DB_NAME,
+  PICKUP_DB_USER,
+  PICKUP_DB_PASSWORD,
+  PICKUP_STORAGE_PATH,
+  PICKUP_UPLOAD_TOKEN,
+  PICKUP_MAX_UPLOAD_BYTES,
+  PICKUP_MAX_EXTRACTED_BYTES,
+  PICKUP_MAX_ARCHIVE_FILES,
+  PICKUP_ZSTD_COMMAND
 };
+
+function validatePickupConfiguration(value = config) {
+  const missing = [
+    ["PICKUP_DB_USER", value.PICKUP_DB_USER],
+    ["PICKUP_DB_PASSWORD", value.PICKUP_DB_PASSWORD],
+    ["PICKUP_STORAGE_PATH", value.PICKUP_STORAGE_PATH],
+    ["PICKUP_UPLOAD_TOKEN", value.PICKUP_UPLOAD_TOKEN]
+  ].filter(([, configured]) => !configured).map(([name]) => name);
+  if (missing.length) {
+    throw new Error(`Missing required pickup replay configuration: ${missing.join(", ")}`);
+  }
+}
+
+module.exports = { ...config, validatePickupConfiguration };

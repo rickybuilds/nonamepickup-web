@@ -18,12 +18,29 @@ const { createStatements } = require("./db/statements");
 const { createMatchPlayerLoader } = require("./db/matchPlayers");
 const { createDatabase } = require("./db");
 const { createApp } = require("./app");
+const { getPickupPool, closePickupPool } = require("./db/pickupMariadb");
+const { PickupRepository } = require("./pickup/repository");
+const { PickupStorage } = require("./pickup/storage");
+const { PickupIngestion } = require("./pickup/ingestion");
+
+config.validatePickupConfiguration();
 
 const db = createDatabase(config.ELO_DB, config.ANALYTICS_RETENTION_DAYS);
 
 const loadMatchPlayers = createMatchPlayerLoader(db);
 
 const statements = createStatements(db, matchColumns);
+const pickupIngestion = new PickupIngestion({
+  config: {
+    uploadToken: config.PICKUP_UPLOAD_TOKEN,
+    maxUploadBytes: config.PICKUP_MAX_UPLOAD_BYTES,
+    maxExtractedBytes: config.PICKUP_MAX_EXTRACTED_BYTES,
+    maxArchiveFiles: config.PICKUP_MAX_ARCHIVE_FILES,
+    zstdCommand: config.PICKUP_ZSTD_COMMAND
+  },
+  storage: new PickupStorage(config.PICKUP_STORAGE_PATH, { publicRoot: config.PUBLIC_DIR }),
+  repository: new PickupRepository(getPickupPool(config))
+});
 
 const app = createApp({
   db,
@@ -45,7 +62,8 @@ const app = createApp({
     serializeMatch
   },
   loadMatchPlayers,
-  statements
+  statements,
+  pickupIngestion
 });
 
 const server = app.listen(config.PORT, "0.0.0.0", () => {
@@ -113,9 +131,10 @@ function shutdown(signal) {
   const forceTimer = setTimeout(() => process.exit(1), 10_000);
   forceTimer.unref();
 
-  server.close(() => {
+  server.close(async () => {
     try {
       db.close();
+      await closePickupPool();
     } finally {
       clearTimeout(forceTimer);
       process.exit(0);

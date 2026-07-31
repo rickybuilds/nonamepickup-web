@@ -10,6 +10,7 @@ const { registerRateLimit } = require("./middleware/rateLimit");
 const { createAnalyticsMiddleware } = require("./middleware/analytics");
 const { registerErrorHandlers } = require("./middleware/errors");
 const { checkSpeedrunDatabase } = require("./db/mariadb");
+const { createPickupReplaysRouter } = require("./routes/pickupReplays");
 
 function createApp({
   db,
@@ -18,7 +19,8 @@ function createApp({
   helpers,
   serializers,
   loadMatchPlayers,
-  statements
+  statements,
+  pickupIngestion
 }) {
   const {
     PUBLIC_DIR,
@@ -55,8 +57,6 @@ function createApp({
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", TRUST_PROXY);
-  app.use(express.json({ limit: "32kb" }));
-  app.use(express.urlencoded({ extended: false, limit: "32kb" }));
   app.use("/api/speedruns/replay", compression({ threshold: 0 }));
 
   app.use(securityHeaders);
@@ -75,6 +75,13 @@ function createApp({
     analyticsSalt: ANALYTICS_SALT,
     cleanString
   }));
+
+  app.use("/api", createPickupReplaysRouter({
+    ingestion: pickupIngestion
+  }));
+
+  app.use(express.json({ limit: "32kb" }));
+  app.use(express.urlencoded({ extended: false, limit: "32kb" }));
 
   // static
   registerStaticFiles(app, PUBLIC_DIR);
