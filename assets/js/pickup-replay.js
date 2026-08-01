@@ -907,11 +907,16 @@ function buildRoster() {
   }
   for (const [team, rows] of [...grouped].sort((a, b) => a[0] - b[0])) {
     const info = teamInfo(team);
+    const group = document.createElement("section");
+    group.className = "pickup-team-group";
+    group.style.setProperty("--team-color", info.css);
     const heading = document.createElement("div");
     heading.className = "pickup-team-heading";
-    heading.style.setProperty("--team-color", info.css);
-    heading.textContent = info.name;
-    container.appendChild(heading);
+    heading.innerHTML = `<span></span><small>${rows.length} players</small>`;
+    heading.querySelector("span").textContent = info.name;
+    const players = document.createElement("div");
+    players.className = "pickup-team-players";
+    group.append(heading, players);
     for (const row of rows) {
       const button = document.createElement("button");
       button.type = "button";
@@ -925,8 +930,9 @@ function buildRoster() {
       button.querySelector("strong").textContent = row.name;
       button.querySelector("small").textContent = row.steamid;
       button.addEventListener("click", () => selectPlayer(row.sessionId));
-      container.appendChild(button);
+      players.appendChild(button);
     }
+    container.appendChild(group);
   }
   $("pickup-roster-count").textContent = `${state.roster.length} sessions`;
 }
@@ -1187,14 +1193,14 @@ function updateProjectiles() {
 }
 
 function carriedObjectivePose(frame) {
-  const yaw = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
+  const bodyYaw = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
   const position = sourcePoint(frame.x, frame.y, frame.z);
-  const forward = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const forward = new THREE.Vector3(Math.cos(bodyYaw), 0, -Math.sin(bodyYaw));
   position.addScaledVector(forward, -CARRIED_OBJECTIVE_BACK_OFFSET);
   position.y += isDucking(frame)
     ? CARRIED_OBJECTIVE_CROUCH_HEIGHT
     : CARRIED_OBJECTIVE_STAND_HEIGHT;
-  return { position, yaw };
+  return { position, yaw: bodyYaw + Math.PI / 2 };
 }
 
 function updateObjectives() {
@@ -1372,13 +1378,12 @@ function wireControls() {
     const index = CAMERA_MODES.indexOf(state.cameraMode);
     setCameraMode(CAMERA_MODES[(index + 1) % CAMERA_MODES.length]);
   });
-  $("replay-projectiles").addEventListener("click", event => {
-    state.showProjectiles = !state.showProjectiles;
-    event.currentTarget.classList.toggle("active", state.showProjectiles);
-  });
-  $("replay-objectives").addEventListener("click", event => {
-    state.showObjectives = !state.showObjectives;
-    event.currentTarget.classList.toggle("active", state.showObjectives);
+  $("replay-effects").addEventListener("click", event => {
+    const enabled = !(state.showProjectiles && state.showObjectives);
+    state.showProjectiles = enabled;
+    state.showObjectives = enabled;
+    event.currentTarget.classList.toggle("active", enabled);
+    event.currentTarget.textContent = `Effects: ${enabled ? "On" : "Off"}`;
   });
   document.querySelectorAll("[data-speed]").forEach(button => {
     button.addEventListener("click", () => {

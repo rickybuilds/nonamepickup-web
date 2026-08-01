@@ -19,6 +19,7 @@ test("carried objectives mount to the player's back instead of above their head"
 test("carried objectives follow authoritative carrier body yaw and crouch state", () => {
   assert.match(source, /frame\.schemaVersion >= 3 \? frame\.bodyYaw : frame\.yaw/);
   assert.match(source, /isDucking\(frame\)[\s\S]*CARRIED_OBJECTIVE_CROUCH_HEIGHT/);
+  assert.match(source, /yaw: bodyYaw \+ Math\.PI \/ 2/);
   assert.match(source, /const pose = carriedObjectivePose\(carrierFrame\)/);
   assert.match(source, /track\.mesh\.rotation\.y = pose\.yaw/);
 });
