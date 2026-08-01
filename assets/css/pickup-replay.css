@@ -51,7 +51,7 @@
   z-index: 6;
   top: 7rem;
   right: 1rem;
-  bottom: 12rem;
+  bottom: 8.25rem;
   width: 17rem;
   overflow: hidden;
   color: #e5edf7;
@@ -69,9 +69,9 @@
   bottom: 1rem;
   left: 1rem;
   display: grid;
-  grid-template-columns: minmax(22rem, 28rem) minmax(0, 1fr);
-  gap: .8rem;
-  padding: .75rem;
+  grid-template-columns: minmax(38rem, 46rem) minmax(0, 1fr);
+  gap: .6rem;
+  padding: .55rem;
   overflow: hidden;
   color: #e5edf7;
   border: 1px solid rgba(148, 163, 184, .18);
@@ -106,6 +106,10 @@
   scrollbar-width: thin;
 }
 
+.pickup-roster-panel > header {
+  padding: .42rem .62rem;
+}
+
 #pickup-roster {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -123,7 +127,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: .48rem .62rem .35rem;
+  padding: .35rem .55rem .26rem;
   color: var(--team-color);
   font: 800 .63rem/1 Orbitron, sans-serif;
   letter-spacing: .11em;
@@ -138,7 +142,7 @@
 
 .pickup-team-players {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .pickup-player {
@@ -148,8 +152,8 @@
   gap: .45rem;
   align-items: center;
   min-width: 0;
-  min-height: 2.65rem;
-  padding: .42rem .58rem;
+  min-height: 2.2rem;
+  padding: .3rem .48rem;
   border: 0;
   border-top: 1px solid rgba(148, 163, 184, .08);
   color: #e2e8f0;
@@ -250,8 +254,8 @@
 .pickup-controls {
   position: static;
   display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  gap: .75rem;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  gap: .65rem;
   padding: 0;
   border: 0;
   background: transparent;
@@ -261,14 +265,14 @@
 
 .pickup-control-stack {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: .35rem;
 }
 
 .pickup-control-stack .replay-button {
   width: 100%;
   min-width: 0;
-  min-height: 2rem;
+  min-height: 2.15rem;
   padding: 0 .6rem;
   font-size: .68rem;
 }
@@ -278,20 +282,46 @@
   grid-template-rows: 1fr auto;
   align-items: center;
   min-width: 0;
-  padding: .3rem 0;
+  padding: .15rem 0;
 }
 
 .pickup-timeline-controls .replay-scrubber {
-  grid-template-columns: 4.35rem minmax(5rem, 1fr) 4.35rem;
-  gap: .45rem;
-  font-size: .68rem;
+  grid-template-columns: 4.5rem minmax(12rem, 1fr) 4.5rem;
+  gap: .6rem;
+  font-size: .72rem;
+}
+
+.pickup-timeline-controls .replay-scrubber input {
+  height: 1.2rem;
+  cursor: pointer;
+}
+
+.pickup-timeline-controls .replay-scrubber input::-webkit-slider-runnable-track {
+  height: .42rem;
+  border-radius: 999px;
+}
+
+.pickup-timeline-controls .replay-scrubber input::-webkit-slider-thumb {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: -.36rem;
+}
+
+.pickup-timeline-controls .replay-scrubber input::-moz-range-track {
+  height: .42rem;
+  border-radius: 999px;
+}
+
+.pickup-timeline-controls .replay-scrubber input::-moz-range-thumb {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .pickup-timeline-controls .replay-speed {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: .35rem;
   width: min(14rem, 100%);
-  margin: .25rem auto 0;
+  margin: .1rem auto 0;
 }
 
 .pickup-timeline-controls .replay-speed button {
@@ -299,13 +329,13 @@
   font-size: .66rem;
 }
 
-.pickup-replay-stage .replay-free-roam-help { bottom: 12rem; }
+.pickup-replay-stage .replay-free-roam-help { bottom: 8.25rem; }
 
 @media (max-width: 1250px) {
   .pickup-event-panel { display: none; }
   .pickup-topbar { right: 1.25rem; }
   .pickup-selected-player { width: min(34rem, calc(100% - 2rem)); }
-  .pickup-bottom-hud { grid-template-columns: minmax(20rem, 25rem) minmax(0, 1fr); }
+  .pickup-bottom-hud { grid-template-columns: minmax(32rem, 38rem) minmax(0, 1fr); }
   .pickup-player-copy small { display: none; }
 }
 
@@ -315,7 +345,7 @@
     max-height: 19rem;
     overflow-y: auto;
   }
-  .pickup-controls { grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr); }
+  .pickup-controls { grid-template-columns: 17rem minmax(0, 1fr); }
   .pickup-selected-player { top: 8.4rem; }
   .pickup-replay-stage .replay-free-roam-help { bottom: 20rem; }
 }

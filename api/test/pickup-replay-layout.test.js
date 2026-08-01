@@ -11,16 +11,17 @@ const source = fs.readFileSync(path.join(root, "assets", "js", "pickup-replay.js
 test("pickup replay uses one bottom dock for playback and team rosters", () => {
   assert.match(html, /class="pickup-bottom-hud"[\s\S]*class="replay-controls pickup-controls"[\s\S]*class="pickup-roster-panel"/);
   assert.match(css, /\.pickup-bottom-hud \{[\s\S]*grid-template-columns:/);
-  assert.match(css, /\.pickup-team-players \{[\s\S]*grid-template-columns: repeat\(2/);
+  assert.match(css, /\.pickup-team-players \{[\s\S]*grid-template-columns: repeat\(4/);
   assert.match(source, /group\.className = "pickup-team-group"/);
   assert.match(source, /players\.className = "pickup-team-players"/);
 });
 
-test("playback buttons stack beside a timeline with three speeds below", () => {
+test("playback buttons form a compact grid beside a wide timeline with three speeds below", () => {
   assert.match(html, /class="pickup-control-stack"[\s\S]*replay-play[\s\S]*replay-restart[\s\S]*replay-camera[\s\S]*replay-effects/);
   assert.deepEqual([...html.matchAll(/data-speed="([^"]+)"/g)].map(match => match[1]), ["0.5", "1", "4"]);
-  assert.match(css, /\.pickup-control-stack \{[\s\S]*grid-template-columns: 1fr/);
+  assert.match(css, /\.pickup-control-stack \{[\s\S]*grid-template-columns: repeat\(2/);
   assert.match(css, /\.pickup-timeline-controls \{[\s\S]*grid-template-rows: 1fr auto/);
+  assert.match(css, /\.pickup-timeline-controls \.replay-scrubber \{[\s\S]*minmax\(12rem, 1fr\)/);
 });
 
 test("one effects button controls projectiles and objectives together", () => {
