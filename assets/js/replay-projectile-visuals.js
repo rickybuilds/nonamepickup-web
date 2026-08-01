@@ -16,7 +16,8 @@ const SPRITE_PATHS = new Map([
   ["explode01", "/assets/sprites/explode01.spr"],
   ["explode02", "/assets/sprites/explode02.spr"],
   ["shockwave", "/assets/sprites/shockwave.spr"],
-  ["animglow01", "/assets/sprites/animglow01.spr"]
+  ["animglow01", "/assets/sprites/animglow01.spr"],
+  ["bloodspray", "/assets/sprites/bloodspray.spr"]
 ]);
 
 const DEFINITIONS = [
@@ -159,10 +160,17 @@ function fallbackEffectTexture(kind) {
     context.stroke();
   } else {
     const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gradient.addColorStop(0, "rgba(255,255,230,1)");
-    gradient.addColorStop(.2, "rgba(255,220,92,.95)");
-    gradient.addColorStop(.48, "rgba(251,113,36,.75)");
-    gradient.addColorStop(1, "rgba(60,20,12,0)");
+    if (kind === "blood") {
+      gradient.addColorStop(0, "rgba(210,24,28,.98)");
+      gradient.addColorStop(.32, "rgba(145,5,12,.88)");
+      gradient.addColorStop(.7, "rgba(70,0,5,.45)");
+      gradient.addColorStop(1, "rgba(30,0,2,0)");
+    } else {
+      gradient.addColorStop(0, "rgba(255,255,230,1)");
+      gradient.addColorStop(.2, "rgba(255,220,92,.95)");
+      gradient.addColorStop(.48, "rgba(251,113,36,.75)");
+      gradient.addColorStop(1, "rgba(60,20,12,0)");
+    }
     context.fillStyle = gradient;
     context.fillRect(0, 0, 128, 128);
   }
@@ -186,7 +194,8 @@ export class ReplayProjectileVisuals {
     ).filter(Boolean));
     const sprites = new Set([
       ...definitions.map(definition => definition.effect),
-      ...(definitions.some(definition => definition.flare) ? ["animglow01"] : [])
+      ...(definitions.some(definition => definition.flare) ? ["animglow01"] : []),
+      "bloodspray"
     ]);
     await Promise.all([
       ...[...models].map(model => this.loadModel(model)),
@@ -247,7 +256,8 @@ export class ReplayProjectileVisuals {
     const frames = this.sprites.get(key);
     const loaded = Array.isArray(frames) && frames.length ? frames : null;
     if (!this.fallbackTextures.has(key)) {
-      this.fallbackTextures.set(key, fallbackEffectTexture(key === "shockwave" ? "shockwave" : "explode"));
+      const fallbackKind = key === "shockwave" ? "shockwave" : key === "bloodspray" ? "blood" : "explode";
+      this.fallbackTextures.set(key, fallbackEffectTexture(fallbackKind));
     }
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
       map: loaded?.[0] || this.fallbackTextures.get(key),
@@ -255,7 +265,7 @@ export class ReplayProjectileVisuals {
       transparent: true,
       opacity: 0.95,
       depthWrite: false,
-      blending: THREE.AdditiveBlending
+      blending: key === "bloodspray" ? THREE.NormalBlending : THREE.AdditiveBlending
     }));
     sprite.userData.frames = loaded || [];
     return sprite;
@@ -304,6 +314,45 @@ export class ReplayProjectileVisuals {
       duration: definition.impact === "mirv" || definition.impact === "conc" ? 0.75 : 0.46,
       maxSize: definition.impact === "mirv" ? 250 : definition.impact === "conc" ? 170 : 150
     };
+  }
+
+  blood(position, start, damage = 1) {
+    const visual = this.sprite("bloodspray");
+    const group = new THREE.Group();
+    group.add(visual);
+    group.position.copy(position);
+    group.visible = false;
+    return {
+      group,
+      visual,
+      start,
+      duration: 0.34,
+      maxSize: THREE.MathUtils.clamp(34 + (Math.max(1, damage) * 0.7), 42, 92),
+      spin: (((Math.sin(start * 91.7) + 1) * 0.5) - 0.5) * 0.7
+    };
+  }
+
+  updateBlood(effect, playbackTime) {
+    const age = playbackTime - effect.start;
+    if (age < 0 || age > effect.duration) {
+      effect.group.visible = false;
+      return;
+    }
+    const progress = age / effect.duration;
+    const size = THREE.MathUtils.lerp(effect.maxSize * 0.55, effect.maxSize, 1 - ((1 - progress) ** 2));
+    effect.group.visible = true;
+    effect.visual.scale.set(size, size, 1);
+    effect.visual.position.y = progress * 8;
+    effect.visual.material.rotation = effect.spin * progress;
+    effect.visual.material.opacity = 1 - (progress ** 3);
+    const frames = effect.visual.userData.frames;
+    if (frames.length) {
+      const frame = frames[Math.min(frames.length - 1, Math.floor(progress * frames.length))];
+      if (effect.visual.material.map !== frame) {
+        effect.visual.material.map = frame;
+        effect.visual.material.needsUpdate = true;
+      }
+    }
   }
 
   updateImpact(impact, playbackTime) {

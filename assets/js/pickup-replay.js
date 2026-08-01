@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260730pickup7";
+} from "./replay-projectile-visuals.js?v=20260731blood1";
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
@@ -60,6 +60,7 @@ const state = {
   brushes: [],
   events: [],
   impacts: [],
+  bloodEffects: [],
   corpses: [],
   selectedSession: null,
   origin: { x: 0, y: 0, z: 0 },
@@ -98,7 +99,8 @@ const objectiveRoot = new THREE.Group();
 const buildableRoot = new THREE.Group();
 const impactRoot = new THREE.Group();
 const hitscanRoot = new THREE.Group();
-world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot);
+const bloodRoot = new THREE.Group();
+world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot);
 let grid = null;
 let mapModel = null;
 const corpseGroundRay = new THREE.Raycaster();
@@ -822,6 +824,34 @@ function buildVisuals() {
       state.corpses.push(corpse);
       void setCorpseModel(corpse);
     }
+
+    const { frames, stride } = track;
+    let previousOffset = -1;
+    for (let offset = 0; offset < frames.length; offset += stride) {
+      if (previousOffset >= 0) {
+        const previousAlive = frames[previousOffset + 10] === 1;
+        const alive = frames[offset + 10] === 1;
+        const previousHealth = Number(frames[previousOffset + 15]);
+        const health = Number(frames[offset + 15]);
+        const damage = previousHealth - health;
+        if (previousAlive && Number.isFinite(damage) && damage > 0 && (alive || health <= 0)) {
+          const positionOffset = alive ? offset : previousOffset;
+          const position = sourcePoint(
+            frames[positionOffset + 1],
+            frames[positionOffset + 2],
+            frames[positionOffset + 3]
+          );
+          const crouched = track.schemaVersion >= 3
+            ? frames[positionOffset + 17] === 1
+            : Boolean(Math.round(frames[positionOffset + 14]) & 4);
+          position.y += crouched ? 24 : 43;
+          const effect = projectileVisuals.blood(position, frames[offset], damage);
+          state.bloodEffects.push(effect);
+          bloodRoot.add(effect.group);
+        }
+      }
+      previousOffset = offset;
+    }
   }
   for (const track of state.projectiles) {
     const recorded = state.projectileDefinitions.get(track.projectileId);
@@ -1192,6 +1222,12 @@ function updateProjectiles() {
   }
 }
 
+function updateBloodEffects() {
+  for (const effect of state.bloodEffects) {
+    projectileVisuals.updateBlood(effect, state.playbackTime);
+  }
+}
+
 function carriedObjectivePose(frame) {
   const bodyYaw = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
   const position = sourcePoint(frame.x, frame.y, frame.z);
@@ -1273,6 +1309,7 @@ function updateScene() {
   updatePlayers();
   updateCorpses();
   updateProjectiles();
+  updateBloodEffects();
   updateObjectives();
   updateBuildables();
   updateBrushes();
@@ -1469,9 +1506,10 @@ async function loadTfcModelCatalog() {
 }
 
 function cleanupReplayObjects() {
-  for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot]) {
+  for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot]) {
     root.clear();
   }
+  state.bloodEffects = [];
   state.playerBySession.clear();
   state.projectileDefinitions.clear();
   state.objectiveDefinitions.clear();

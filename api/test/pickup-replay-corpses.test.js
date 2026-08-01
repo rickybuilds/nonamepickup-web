@@ -21,6 +21,23 @@ test("pickup replay corpse visibility is deterministic while seeking", () => {
   assert.match(source, /updatePlayers\(\);\s+updateCorpses\(\);/);
 });
 
+test("pickup replay blood uses real health drops and remains deterministic while seeking", () => {
+  const root = path.resolve(__dirname, "..", "..");
+  const visuals = fs.readFileSync(path.join(root, "assets", "js", "replay-projectile-visuals.js"), "utf8");
+  const sprite = fs.readFileSync(path.join(root, "assets", "sprites", "bloodspray.spr"));
+
+  assert.match(source, /const damage = previousHealth - health/);
+  assert.match(source, /previousAlive && Number\.isFinite\(damage\) && damage > 0/);
+  assert.match(source, /projectileVisuals\.blood\(position, frames\[offset\], damage\)/);
+  assert.match(source, /projectileVisuals\.updateBlood\(effect, state\.playbackTime\)/);
+  assert.match(visuals, /\["bloodspray", "\/assets\/sprites\/bloodspray\.spr"\]/);
+  assert.match(visuals, /blending: key === "bloodspray" \? THREE\.NormalBlending/);
+
+  assert.equal(sprite.toString("ascii", 0, 4), "IDSP");
+  assert.equal(sprite.readInt32LE(4), 2);
+  assert.equal(sprite.readInt32LE(28), 9);
+});
+
 test("pickup replay grounds corpses against the nearest BSP surface below", () => {
   assert.match(source, /new THREE\.Raycaster\(\)/);
   assert.match(source, /new THREE\.Vector3\(0, -1, 0\)/);
