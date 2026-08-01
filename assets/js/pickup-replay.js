@@ -31,6 +31,9 @@ const PLAYER_CROUCH_VISUAL_HEIGHT = 40;
 const PLAYER_STRIDE_LENGTH = 240;
 const PLAYER_MOTION_RESPONSE = 12;
 const PLAYER_AIR_HOLD_SECONDS = 0.18;
+const CARRIED_OBJECTIVE_BACK_OFFSET = 10;
+const CARRIED_OBJECTIVE_STAND_HEIGHT = -18;
+const CARRIED_OBJECTIVE_CROUCH_HEIGHT = -8;
 const IN_ATTACK = 1;
 const AC_ROUNDS_PER_SECOND = 12;
 const AC_TRACER_RANGE = 900;
@@ -1183,6 +1186,17 @@ function updateProjectiles() {
   }
 }
 
+function carriedObjectivePose(frame) {
+  const yaw = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
+  const position = sourcePoint(frame.x, frame.y, frame.z);
+  const forward = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  position.addScaledVector(forward, -CARRIED_OBJECTIVE_BACK_OFFSET);
+  position.y += isDucking(frame)
+    ? CARRIED_OBJECTIVE_CROUCH_HEIGHT
+    : CARRIED_OBJECTIVE_STAND_HEIGHT;
+  return { position, yaw };
+}
+
 function updateObjectives() {
   objectiveRoot.visible = state.showObjectives;
   if (!state.showObjectives) return;
@@ -1193,11 +1207,14 @@ function updateObjectives() {
     if (!frame) continue;
     const carrier = frame.carrierSession ? state.playerBySession.get(frame.carrierSession) : null;
     const carrierFrame = carrier ? playerSnapshot(carrier, state.playbackTime) : null;
-    const point = carrierFrame
-      ? sourcePoint(carrierFrame.x, carrierFrame.y, carrierFrame.z + 48)
-      : sourcePoint(frame.x, frame.y, frame.z);
-    track.mesh.position.copy(point);
-    track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
+    if (carrierFrame) {
+      const pose = carriedObjectivePose(carrierFrame);
+      track.mesh.position.copy(pose.position);
+      track.mesh.rotation.y = pose.yaw;
+    } else {
+      track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
+      track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
+    }
   }
 }
 
