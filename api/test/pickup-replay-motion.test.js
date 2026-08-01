@@ -9,6 +9,7 @@ const source = fs.readFileSync(
 );
 
 test("pickup replay drives a continuous lower-body shader from traveled distance", () => {
+  assert.match(source, /const PLAYER_STRIDE_LENGTH = 240/);
   assert.match(source, /function installPlayerMotionShader\(material, motion\)/);
   assert.match(source, /replaySidePhase = replayPhase/);
   assert.match(source, /replayHipAngle = replayStride/);

@@ -26,7 +26,9 @@ const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const CORPSE_LIFETIME_SECONDS = 15;
 const PLAYER_STANDING_VISUAL_HEIGHT = 72;
 const PLAYER_CROUCH_VISUAL_HEIGHT = 40;
-const PLAYER_STRIDE_LENGTH = 58;
+// One complete phase is a left + right step. TFC players cover roughly this
+// distance during a natural run cycle; a shorter value makes their feet churn.
+const PLAYER_STRIDE_LENGTH = 240;
 const PLAYER_MOTION_RESPONSE = 12;
 const PLAYER_AIR_HOLD_SECONDS = 0.18;
 const IN_ATTACK = 1;
