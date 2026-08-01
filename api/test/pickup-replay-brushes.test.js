@@ -34,4 +34,5 @@ test("renderer binds brush IDs to submodel nodes and seeks sparse tracks determi
   assert.match(renderer, /track\.node\.position\.set\(frame\.x, frame\.z, -frame\.y\)/);
   assert.match(renderer, /track\.node\.visible = Boolean\(frame\?\.active/);
   assert.match(renderer, /updateBuildables\(\);\s+updateBrushes\(\);/);
+  assert.match(renderer, /20260731brushes2/);
 });

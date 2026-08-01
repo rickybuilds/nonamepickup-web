@@ -1286,7 +1286,7 @@ function updateScene() {
 }
 
 function mapAssetUrl(map) {
-  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260731brushes1`;
+  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260731brushes2`;
 }
 
 function loadMap() {
