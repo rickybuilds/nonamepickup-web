@@ -26,6 +26,9 @@ const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const CORPSE_LIFETIME_SECONDS = 15;
 const PLAYER_STANDING_VISUAL_HEIGHT = 72;
 const PLAYER_CROUCH_VISUAL_HEIGHT = 40;
+const PLAYER_STRIDE_LENGTH = 58;
+const PLAYER_MOTION_RESPONSE = 12;
+const PLAYER_AIR_HOLD_SECONDS = 0.18;
 const IN_ATTACK = 1;
 const AC_ROUNDS_PER_SECOND = 12;
 const AC_TRACER_RANGE = 900;
@@ -471,15 +474,100 @@ async function setObjectiveModel(track) {
   track.mesh.userData.hasObjectiveModel = true;
 }
 
-function clonedPlayerModel(asset, alignFeetToOrigin = false, targetHeight = PLAYER_STANDING_VISUAL_HEIGHT) {
+function playerMotionUniforms() {
+  return {
+    walk: { value: 0 },
+    phase: { value: 0 },
+    air: { value: 0 },
+    tuck: { value: 0 },
+    minY: { value: -36 },
+    height: { value: PLAYER_STANDING_VISUAL_HEIGHT },
+    centerZ: { value: 0 }
+  };
+}
+
+function installPlayerMotionShader(material, motion) {
+  material.onBeforeCompile = shader => {
+    Object.assign(shader.uniforms, {
+      replayWalk: motion.walk,
+      replayPhase: motion.phase,
+      replayAir: motion.air,
+      replayTuck: motion.tuck,
+      replayMinY: motion.minY,
+      replayHeight: motion.height,
+      replayCenterZ: motion.centerZ
+    });
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>
+uniform float replayWalk;
+uniform float replayPhase;
+uniform float replayAir;
+uniform float replayTuck;
+uniform float replayMinY;
+uniform float replayHeight;
+uniform float replayCenterZ;
+mat2 replayRotate(float angle) {
+  float sine = sin(angle);
+  float cosine = cos(angle);
+  return mat2(cosine, sine, -sine, cosine);
+}`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>
+float replaySafeHeight = max(replayHeight, 1.0);
+float replayNormalizedY = (position.y - replayMinY) / replaySafeHeight;
+float replayLegMask = 1.0 - smoothstep(0.50, 0.55, replayNormalizedY);
+float replaySidePhase = replayPhase + (position.z < replayCenterZ ? 3.14159265 : 0.0);
+float replayStride = sin(replaySidePhase);
+float replayHipAngle = replayStride * 0.62 * replayWalk + 1.02 * replayTuck;
+float replayKneeAngle = -max(0.0, replayStride) * 0.72 * replayWalk - 1.28 * replayTuck;
+float replayHipY = replayMinY + replaySafeHeight * 0.51;
+float replayKneeY = replayMinY + replaySafeHeight * 0.255;
+vec2 replayHip = vec2(0.0, replayHipY);
+vec2 replayKnee = vec2(0.0, replayKneeY);
+vec2 replayUpper = replayHip + replayRotate(replayHipAngle) * (transformed.xy - replayHip);
+vec2 replayLower = replayHip + replayRotate(replayHipAngle) * (
+  (replayKnee - replayHip) + replayRotate(replayKneeAngle) * (transformed.xy - replayKnee)
+);
+float replayLowerMix = 1.0 - smoothstep(0.245, 0.285, replayNormalizedY);
+vec2 replayAnimated = mix(replayUpper, replayLower, replayLowerMix);
+transformed.xy = mix(transformed.xy, replayAnimated, replayLegMask);
+transformed.y += abs(sin(replayPhase)) * 0.75 * replayWalk * (1.0 - replayAir);
+`);
+  };
+  material.customProgramCacheKey = () => "pickup-player-motion-v1";
+  material.needsUpdate = true;
+}
+
+function clonedPlayerModel(
+  asset,
+  alignFeetToOrigin = false,
+  targetHeight = PLAYER_STANDING_VISUAL_HEIGHT,
+  motion = null
+) {
   const model = asset.clone(true);
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
+    if (motion) {
+      if (Array.isArray(child.material)) {
+        child.material = child.material.map(material => {
+          const copy = material.clone();
+          installPlayerMotionShader(copy, motion);
+          return copy;
+        });
+      } else if (child.material) {
+        child.material = child.material.clone();
+        installPlayerMotionShader(child.material, motion);
+      }
+    }
   });
   const bounds = new THREE.Box3().setFromObject(model);
   const size = bounds.getSize(new THREE.Vector3());
   const scale = size.y > 0 ? targetHeight / size.y : 1;
+  if (motion) {
+    motion.minY.value = bounds.min.y;
+    motion.height.value = size.y;
+    motion.centerZ.value = (bounds.min.z + bounds.max.z) * 0.5;
+  }
   model.scale.setScalar(scale);
   model.userData.replayScale = scale;
   // Studio models are authored around the GoldSrc entity origin. Schema 3
@@ -505,7 +593,12 @@ async function setPlayerModel(track, classId, team, modelId = 0, ducking = false
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team ||
       track.mesh.userData.playerModelId !== modelId || track.mesh.userData.modelPose !== pose) return;
   const targetHeight = ducking ? PLAYER_CROUCH_VISUAL_HEIGHT : PLAYER_STANDING_VISUAL_HEIGHT;
-  const model = clonedPlayerModel(asset, track.schemaVersion === 2, targetHeight);
+  const model = clonedPlayerModel(
+    asset,
+    track.schemaVersion === 2,
+    targetHeight,
+    track.motionUniforms
+  );
   track.modelVisual.clear();
   track.modelVisual.add(model);
   track.weaponVisual.scale.setScalar(model.userData.replayScale || 1);
@@ -695,6 +788,15 @@ function buildVisuals() {
     track.playerVisual = new THREE.Group();
     track.modelVisual = new THREE.Group();
     track.weaponVisual = new THREE.Group();
+    track.motionUniforms = playerMotionUniforms();
+    track.motionPhase = 0;
+    track.motionWalk = 0;
+    track.motionAir = 0;
+    track.motionTuck = 0;
+    track.motionLastTime = null;
+    track.motionLastX = null;
+    track.motionLastY = null;
+    track.motionAirUntil = -Infinity;
     track.modelVisual.add(fallbackPlayerMesh(team, track.schemaVersion >= 3));
     track.playerVisual.add(track.modelVisual, track.weaponVisual);
     track.mesh.add(track.playerVisual);
@@ -869,6 +971,48 @@ function selectPlayer(sessionId) {
   }
 }
 
+function updatePlayerMotion(track, frame, crouched) {
+  const previousTime = track.motionLastTime;
+  const elapsed = previousTime == null ? 0 : state.playbackTime - previousTime;
+  const continuous = elapsed >= 0 && elapsed <= 0.25;
+  const horizontalSpeed = Math.hypot(frame.vx, frame.vy);
+  const recordedAir = frame.schemaVersion >= 3 && (
+    frame.sequence === 8 || frame.sequence === 9 ||
+    frame.gaitsequence === 8 || frame.gaitsequence === 9
+  );
+  if (recordedAir || Math.abs(frame.vz) > 32) {
+    track.motionAirUntil = state.playbackTime + PLAYER_AIR_HOLD_SECONDS;
+  }
+  const airborne = state.playbackTime < track.motionAirUntil;
+  const walkTarget = !airborne && !crouched
+    ? THREE.MathUtils.clamp((horizontalSpeed - 10) / 190, 0, 1)
+    : 0;
+  const airTarget = airborne ? 1 : 0;
+  const tuckTarget = airborne ? (crouched ? 0.38 : 1) : 0;
+
+  if (continuous && track.motionLastX != null && track.motionLastY != null) {
+    const distance = Math.hypot(frame.x - track.motionLastX, frame.y - track.motionLastY);
+    if (distance < 96) track.motionPhase += (distance / PLAYER_STRIDE_LENGTH) * Math.PI * 2;
+    const blend = 1 - Math.exp(-elapsed * PLAYER_MOTION_RESPONSE);
+    track.motionWalk = THREE.MathUtils.lerp(track.motionWalk, walkTarget, blend);
+    track.motionAir = THREE.MathUtils.lerp(track.motionAir, airTarget, blend);
+    track.motionTuck = THREE.MathUtils.lerp(track.motionTuck, tuckTarget, blend);
+  } else {
+    track.motionPhase = (state.playbackTime * Math.max(horizontalSpeed, 80) / PLAYER_STRIDE_LENGTH) * Math.PI * 2;
+    track.motionWalk = walkTarget;
+    track.motionAir = airTarget;
+    track.motionTuck = tuckTarget;
+  }
+
+  track.motionUniforms.phase.value = track.motionPhase;
+  track.motionUniforms.walk.value = track.motionWalk;
+  track.motionUniforms.air.value = track.motionAir;
+  track.motionUniforms.tuck.value = track.motionTuck;
+  track.motionLastTime = state.playbackTime;
+  track.motionLastX = frame.x;
+  track.motionLastY = frame.y;
+}
+
 function updatePlayers() {
   for (const track of state.players) {
     if (!track.mesh) continue;
@@ -885,6 +1029,7 @@ function updatePlayers() {
     if (frame.schemaVersion === 2) track.mesh.position.y -= isDucking(frame) ? 18 : 36;
     track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
     const crouched = frame.schemaVersion >= 3 && isDucking(frame);
+    updatePlayerMotion(track, frame, crouched);
     track.playerVisual.position.y = crouched ? 2.5 : 0;
     track.weaponVisual.position.y = crouched ? -18 : 0;
     track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyPitch : 0);

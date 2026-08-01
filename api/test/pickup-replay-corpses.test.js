@@ -55,7 +55,7 @@ test("schema-v3 player visuals are persistent across weapons, crouch, death, and
   assert.match(source, /boundaryIndexes = track\.schemaVersion >= 3[\s\S]*\[10, 11, 12, 19, 20\]/);
   assert.match(source, /if \(frame\.schemaVersion === 2\) track\.mesh\.position\.y -=/);
   assert.doesNotMatch(source, /if \(frame\.schemaVersion === 3\) track\.mesh\.position\.y -=/);
-  assert.match(source, /clonedPlayerModel\(asset, track\.schemaVersion === 2, targetHeight\)/);
+  assert.match(source, /clonedPlayerModel\([\s\S]*asset,[\s\S]*track\.schemaVersion === 2,[\s\S]*targetHeight,[\s\S]*track\.motionUniforms/);
   assert.match(source, /if \(alignFeetToOrigin\) model\.position\.y = -bounds\.min\.y \* scale/);
   assert.match(source, /fallbackPlayerMesh\(team, track\.schemaVersion >= 3\)/);
   assert.match(source, /catalog\?\.heldVariants\?\.\[classKey\]/);
