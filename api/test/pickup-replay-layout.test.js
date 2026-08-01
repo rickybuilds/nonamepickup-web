@@ -8,6 +8,11 @@ const html = fs.readFileSync(path.join(root, "pickup-replay.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "assets", "css", "pickup-replay.css"), "utf8");
 const source = fs.readFileSync(path.join(root, "assets", "js", "pickup-replay.js"), "utf8");
 
+test("pickup replay uses the complete site-wide navigation", () => {
+  assert.match(html, /class="site-nav"[\s\S]*href="index\.html"[\s\S]*href="speedruns\.html"[\s\S]*href="live\.html" class="nav-live"[\s\S]*href="matches\.html" aria-current="page"[\s\S]*href="leaderboard\.html"[\s\S]*href="analytics\.html"[\s\S]*href="compare\.html"/);
+  assert.match(html, /id="global-search"[^>]*autocomplete="off"[^>]*autocorrect="off"[^>]*autocapitalize="off"[^>]*spellcheck="false"/);
+});
+
 test("pickup replay uses one bottom dock for playback and team rosters", () => {
   assert.match(html, /class="pickup-bottom-hud"[\s\S]*class="replay-controls pickup-controls"[\s\S]*class="pickup-roster-panel"/);
   assert.match(css, /\.pickup-bottom-hud \{[\s\S]*grid-template-columns:/);
