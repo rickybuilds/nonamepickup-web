@@ -13,10 +13,26 @@
   right: 22rem;
 }
 
+.pickup-round-summary {
+  display: grid;
+  min-width: min(30rem, 42vw);
+  gap: .48rem;
+  justify-items: end;
+}
+
 .pickup-round-badges {
   display: flex;
   gap: .5rem;
   align-items: flex-start;
+}
+
+.pickup-round-summary #replay-subtitle {
+  max-width: 100%;
+  color: #7f8da3;
+  font-size: .68rem;
+  font-weight: 750;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .pickup-badge {
@@ -306,7 +322,7 @@
 
 @media (max-width: 620px) {
   .pickup-topbar { left: 1rem; right: 1rem; }
-  .pickup-round-badges { display: none; }
+  .pickup-round-summary { display: none; }
   .pickup-selected-player { display: none; }
   .pickup-bottom-hud { right: .5rem; bottom: .5rem; left: .5rem; padding: .5rem; }
   .pickup-controls { grid-template-columns: 7rem minmax(0, 1fr); }

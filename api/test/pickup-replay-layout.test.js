@@ -33,3 +33,9 @@ test("selected player is centered near the top and event feed stays compact", ()
   assert.match(css, /\.pickup-selected-player \{[\s\S]*left: 50%;[\s\S]*top: 8\.4rem/);
   assert.match(css, /\.pickup-event-panel \{[\s\S]*width: 17rem/);
 });
+
+test("telemetry counts sit beneath the round and camera badges", () => {
+  assert.match(html, /class="pickup-round-summary"[\s\S]*class="pickup-round-badges"[\s\S]*id="replay-subtitle"/);
+  assert.match(css, /\.pickup-round-summary \{[\s\S]*justify-items: end/);
+  assert.match(css, /\.pickup-round-summary #replay-subtitle \{[\s\S]*text-align: right/);
+});

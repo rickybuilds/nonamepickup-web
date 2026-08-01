@@ -9,9 +9,9 @@ const source = fs.readFileSync(
 );
 
 test("carried objectives mount to the player's back instead of above their head", () => {
-  assert.match(source, /const CARRIED_OBJECTIVE_BACK_OFFSET = 10/);
-  assert.match(source, /const CARRIED_OBJECTIVE_STAND_HEIGHT = -18/);
-  assert.match(source, /const CARRIED_OBJECTIVE_CROUCH_HEIGHT = -8/);
+  assert.match(source, /const CARRIED_OBJECTIVE_BACK_OFFSET = 2/);
+  assert.match(source, /const CARRIED_OBJECTIVE_STAND_HEIGHT = -28/);
+  assert.match(source, /const CARRIED_OBJECTIVE_CROUCH_HEIGHT = -28/);
   assert.match(source, /position\.addScaledVector\(forward, -CARRIED_OBJECTIVE_BACK_OFFSET\)/);
   assert.doesNotMatch(source, /carrierFrame\.z \+ 48/);
 });

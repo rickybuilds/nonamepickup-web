@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260713freeroam5">
-  <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260731hud2">
+  <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260731hud3">
   <script src="assets/js/main.js?v=20260618i" defer></script>
   <script type="importmap">
     {
@@ -18,7 +18,7 @@
       }
     }
   </script>
-  <script type="module" src="assets/js/pickup-replay.js?v=20260731hud1"></script>
+  <script type="module" src="assets/js/pickup-replay.js?v=20260731hud3"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body class="bg-[#0a0c10] replay-page pickup-replay-page replay-playing">
@@ -47,11 +47,13 @@
         <div>
           <p class="speedrun-kicker">4V4 REPLAY VIEWER</p>
           <h1 id="replay-title">Pickup Replay</h1>
-          <p id="replay-subtitle">Preparing telemetry…</p>
         </div>
-        <div class="pickup-round-badges">
-          <span id="replay-round-status" class="pickup-badge">—</span>
-          <span id="replay-camera-label" class="pickup-badge">POV</span>
+        <div class="pickup-round-summary">
+          <div class="pickup-round-badges">
+            <span id="replay-round-status" class="pickup-badge">—</span>
+            <span id="replay-camera-label" class="pickup-badge">POV</span>
+          </div>
+          <p id="replay-subtitle">Preparing telemetry…</p>
         </div>
       </section>
 
