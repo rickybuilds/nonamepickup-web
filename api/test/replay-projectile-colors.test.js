@@ -45,7 +45,7 @@ test("pickup and speedrun replays use the same launcher projectile colors", () =
 
 test("pickup replay cache key exposes the latest projectile classifier", () => {
   const module = read("assets/js/pickup-replay.js");
-  assert.match(module, /replay-projectile-visuals\.js\?v=20260731blood1/);
+  assert.match(module, /replay-projectile-visuals\.js\?v=20260731blood2/);
 });
 
 test("shared pipebomb model cannot override launcher entity class", () => {

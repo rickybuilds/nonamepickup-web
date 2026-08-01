@@ -32,6 +32,7 @@ test("pickup replay blood uses real health drops and remains deterministic while
   assert.match(source, /projectileVisuals\.updateBlood\(effect, state\.playbackTime\)/);
   assert.match(visuals, /\["bloodspray", "\/assets\/sprites\/bloodspray\.spr"\]/);
   assert.match(visuals, /blending: key === "bloodspray" \? THREE\.NormalBlending/);
+  assert.match(visuals, /this\.sprite\("bloodspray", 0xb31217\)/);
 
   assert.equal(sprite.toString("ascii", 0, 4), "IDSP");
   assert.equal(sprite.readInt32LE(4), 2);

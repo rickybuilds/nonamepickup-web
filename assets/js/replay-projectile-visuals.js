@@ -317,7 +317,9 @@ export class ReplayProjectileVisuals {
   }
 
   blood(position, start, damage = 1) {
-    const visual = this.sprite("bloodspray");
+    // GoldSrc blood sprites are authored as tintable grayscale frames. The
+    // engine supplies the blood color at render time, so mirror that here.
+    const visual = this.sprite("bloodspray", 0xb31217);
     const group = new THREE.Group();
     group.add(visual);
     group.position.copy(position);
