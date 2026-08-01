@@ -11,7 +11,8 @@ const source = fs.readFileSync(path.join(root, "assets", "js", "pickup-replay.js
 test("pickup replay uses one bottom dock for playback and team rosters", () => {
   assert.match(html, /class="pickup-bottom-hud"[\s\S]*class="replay-controls pickup-controls"[\s\S]*class="pickup-roster-panel"/);
   assert.match(css, /\.pickup-bottom-hud \{[\s\S]*grid-template-columns:/);
-  assert.match(css, /\.pickup-team-players \{[\s\S]*grid-template-columns: repeat\(4/);
+  assert.match(css, /\.pickup-team-players \{[\s\S]*grid-template-columns: repeat\(2/);
+  assert.match(css, /\.pickup-bottom-hud \{[\s\S]*right: 22rem/);
   assert.match(source, /group\.className = "pickup-team-group"/);
   assert.match(source, /players\.className = "pickup-team-players"/);
 });

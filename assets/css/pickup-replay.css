@@ -51,7 +51,7 @@
   z-index: 6;
   top: 7rem;
   right: 1rem;
-  bottom: 8.25rem;
+  bottom: 9.5rem;
   width: 17rem;
   overflow: hidden;
   color: #e5edf7;
@@ -65,7 +65,7 @@
 .pickup-bottom-hud {
   position: absolute;
   z-index: 8;
-  right: 1rem;
+  right: 22rem;
   bottom: 1rem;
   left: 1rem;
   display: grid;
@@ -142,7 +142,7 @@
 
 .pickup-team-players {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .pickup-player {
@@ -329,11 +329,12 @@
   font-size: .66rem;
 }
 
-.pickup-replay-stage .replay-free-roam-help { bottom: 8.25rem; }
+.pickup-replay-stage .replay-free-roam-help { bottom: 9.5rem; }
 
 @media (max-width: 1250px) {
   .pickup-event-panel { display: none; }
   .pickup-topbar { right: 1.25rem; }
+  .pickup-bottom-hud { right: 1rem; }
   .pickup-selected-player { width: min(34rem, calc(100% - 2rem)); }
   .pickup-bottom-hud { grid-template-columns: minmax(32rem, 38rem) minmax(0, 1fr); }
   .pickup-player-copy small { display: none; }
