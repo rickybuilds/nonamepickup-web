@@ -124,6 +124,7 @@ let grid = null;
 let mapModel = null;
 let mapBeamGroup = null;
 let mapLightDefinitions = [];
+let mapRotators = [];
 const corpseGroundRay = new THREE.Raycaster();
 const corpseDown = new THREE.Vector3(0, -1, 0);
 const acRaycaster = new THREE.Raycaster();
@@ -1222,6 +1223,50 @@ function updateBrushes() {
   }
 }
 
+function buildMapEntityBrushes(gltf) {
+  mapRotators = [];
+  if (!mapModel) return;
+  const nodes = new Map();
+  mapModel.traverse(child => {
+    if (/^\*[1-9]\d*$/.test(child.name) && !nodes.has(child.name)) nodes.set(child.name, child);
+  });
+  const entities = Array.isArray(gltf?.userData?.goldsrcEntities)
+    ? gltf.userData.goldsrcEntities : [];
+  for (const entity of entities) {
+    const node = nodes.get(entity?.model);
+    const position = entityPoint(entity?.origin);
+    if (!node || !position) continue;
+    node.position.copy(position);
+    const angles = entityNumbers(entity.angles);
+    node.rotation.set(
+      THREE.MathUtils.degToRad(angles[0] || 0),
+      THREE.MathUtils.degToRad(angles[1] || 0),
+      THREE.MathUtils.degToRad(angles[2] || 0)
+    );
+    if (entity.classname !== "func_rotating") continue;
+    const spawnflags = Math.round(Number(entity.spawnflags) || 0);
+    if (!(spawnflags & 1)) continue;
+    const axis = spawnflags & 4
+      ? new THREE.Vector3(1, 0, 0)
+      : spawnflags & 8 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
+    mapRotators.push({
+      node,
+      axis,
+      baseQuaternion: node.quaternion.clone(),
+      radiansPerSecond: THREE.MathUtils.degToRad(Number(entity.speed) || 0) * (spawnflags & 2 ? -1 : 1)
+    });
+  }
+}
+
+function updateMapRotators() {
+  for (const rotator of mapRotators) {
+    if (rotator.node.userData.brushId) continue;
+    rotator.node.quaternion.copy(rotator.baseQuaternion).multiply(
+      new THREE.Quaternion().setFromAxisAngle(rotator.axis, state.playbackTime * rotator.radiansPerSecond)
+    );
+  }
+}
+
 function brushBaseTransform(track) {
   const { frames, stride } = track;
   for (let offset = 0; offset < frames.length; offset += stride) {
@@ -1747,6 +1792,7 @@ function updateScene() {
   updateObjectives();
   updateBuildables();
   updateBrushes();
+  updateMapRotators();
   updateMapBeams();
   updateCamera();
   updateMapLights();
@@ -1914,6 +1960,7 @@ function loadMap() {
         configureReplayMapMaterial(material, THREE.DoubleSide);
       }
     });
+    buildMapEntityBrushes(gltf);
     world.add(mapModel);
     settleCorpses();
     bindBrushNodes();
