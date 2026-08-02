@@ -24,6 +24,13 @@ hltv/
 # Private Speedrun Viewer
 /assets/maps/
 
+# Replay effect sprites are intentional source assets
+!/assets/sprites/
+!/assets/sprites/blood.spr
+!/assets/sprites/blooddrop.spr
+!/assets/sprites/bloodrop.spr
+!/assets/sprites/bloodspray.spr
+
 # Generated analysis outputs
 /analysis/soldier/data/
 /analysis/soldier/index.html

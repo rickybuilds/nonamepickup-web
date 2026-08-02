@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260713freeroam5">
-  <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260730pickup1">
+  <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260731hud5">
   <script src="assets/js/main.js?v=20260618i" defer></script>
   <script type="importmap">
     {
@@ -19,6 +19,7 @@
     }
   </script>
   <script type="module" src="assets/js/pickup-replay.js?v=20260801beams1"></script>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body class="bg-[#0a0c10] replay-page pickup-replay-page replay-playing">
@@ -29,12 +30,14 @@
       </div>
       <nav class="site-nav" aria-label="Primary navigation">
         <a href="index.html">Home</a>
-        <a href="live.html">LIVE</a>
+        <a href="speedruns.html">Speedruns</a>
+        <a href="live.html" class="nav-live">LIVE</a>
         <a href="matches.html" aria-current="page">Matches</a>
         <a href="leaderboard.html">Leaderboard</a>
         <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
       </nav>
-      <input id="global-search" type="text" autocomplete="off" placeholder="Search players..." aria-label="Search players" class="site-search">
+      <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
     </div>
   </header>
 
@@ -47,21 +50,15 @@
         <div>
           <p class="speedrun-kicker">4V4 REPLAY VIEWER</p>
           <h1 id="replay-title">Pickup Replay</h1>
+        </div>
+        <div class="pickup-round-summary">
+          <div class="pickup-round-badges">
+            <span id="replay-round-status" class="pickup-badge">—</span>
+            <span id="replay-camera-label" class="pickup-badge">POV</span>
+          </div>
           <p id="replay-subtitle">Preparing telemetry…</p>
         </div>
-        <div class="pickup-round-badges">
-          <span id="replay-round-status" class="pickup-badge">—</span>
-          <span id="replay-camera-label" class="pickup-badge">POV</span>
-        </div>
       </section>
-
-      <aside class="pickup-roster-panel" aria-label="Round roster">
-        <header>
-          <span>PLAYERS</span>
-          <strong id="pickup-roster-count">0 sessions</strong>
-        </header>
-        <div id="pickup-roster"></div>
-      </aside>
 
       <aside class="pickup-event-panel" aria-label="Round events">
         <header><span>EVENT FEED</span><strong id="pickup-event-count">0</strong></header>
@@ -82,24 +79,35 @@
         </dl>
       </section>
 
-      <section class="replay-controls pickup-controls" aria-label="Playback controls">
-        <button id="replay-play" type="button" class="replay-button">Pause</button>
-        <button id="replay-restart" type="button" class="replay-button secondary">Restart</button>
-        <button id="replay-camera" type="button" class="replay-button secondary">Camera: POV</button>
-        <button id="replay-projectiles" type="button" class="replay-button secondary active">Projectiles</button>
-        <button id="replay-objectives" type="button" class="replay-button secondary active">Objectives</button>
-        <div class="replay-speed" role="group" aria-label="Playback speed">
-          <button type="button" data-speed="0.25">0.25x</button>
-          <button type="button" data-speed="0.5">0.5x</button>
-          <button type="button" data-speed="1" class="active">1x</button>
-          <button type="button" data-speed="2">2x</button>
-          <button type="button" data-speed="4">4x</button>
-        </div>
-        <label class="replay-scrubber">
-          <span id="replay-clock">0:00.000</span>
-          <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
-          <span id="replay-duration">0:00.000</span>
-        </label>
+      <section class="pickup-bottom-hud" aria-label="Replay controls and players">
+        <section class="replay-controls pickup-controls" aria-label="Playback controls">
+          <div class="pickup-control-stack">
+            <button id="replay-play" type="button" class="replay-button">Pause</button>
+            <button id="replay-restart" type="button" class="replay-button secondary">Restart</button>
+            <button id="replay-camera" type="button" class="replay-button secondary">Camera: POV</button>
+            <button id="replay-effects" type="button" class="replay-button secondary active">Effects: On</button>
+          </div>
+          <div class="pickup-timeline-controls">
+            <label class="replay-scrubber">
+              <span id="replay-clock">0:00.000</span>
+              <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
+              <span id="replay-duration">0:00.000</span>
+            </label>
+            <div class="replay-speed" role="group" aria-label="Playback speed">
+              <button type="button" data-speed="0.5">0.5x</button>
+              <button type="button" data-speed="1" class="active">1x</button>
+              <button type="button" data-speed="4">4x</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="pickup-roster-panel" aria-label="Round roster">
+          <header>
+            <span>PLAYERS</span>
+            <strong id="pickup-roster-count">0 sessions</strong>
+          </header>
+          <div id="pickup-roster"></div>
+        </aside>
       </section>
 
       <div id="pickup-free-help" class="replay-free-roam-help" hidden>

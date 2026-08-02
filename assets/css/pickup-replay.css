@@ -13,10 +13,26 @@
   right: 22rem;
 }
 
+.pickup-round-summary {
+  display: grid;
+  min-width: min(30rem, 42vw);
+  gap: .48rem;
+  justify-items: end;
+}
+
 .pickup-round-badges {
   display: flex;
   gap: .5rem;
   align-items: flex-start;
+}
+
+.pickup-round-summary #replay-subtitle {
+  max-width: 100%;
+  color: #7f8da3;
+  font-size: .68rem;
+  font-weight: 750;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .pickup-badge {
@@ -30,58 +46,114 @@
   text-transform: uppercase;
 }
 
-.pickup-roster-panel,
 .pickup-event-panel {
   position: absolute;
   z-index: 6;
   top: 7rem;
-  width: 19rem;
-  max-height: calc(100% - 15rem);
+  right: 1rem;
+  bottom: 9.5rem;
+  width: 17rem;
   overflow: hidden;
   color: #e5edf7;
   border: 1px solid rgba(148, 163, 184, .18);
-  border-radius: 14px;
-  background: rgba(7, 11, 18, .86);
+  border-radius: 12px;
+  background: rgba(7, 11, 18, .84);
   backdrop-filter: blur(14px);
   box-shadow: 0 18px 55px rgba(0, 0, 0, .28);
 }
 
-.pickup-roster-panel { left: 1.25rem; }
-.pickup-event-panel { right: 1.25rem; }
+.pickup-bottom-hud {
+  position: absolute;
+  z-index: 8;
+  right: 22rem;
+  bottom: 1rem;
+  left: 1rem;
+  display: grid;
+  grid-template-columns: minmax(38rem, 46rem) minmax(0, 1fr);
+  gap: .6rem;
+  padding: .55rem;
+  overflow: hidden;
+  color: #e5edf7;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(7, 11, 18, .95), rgba(7, 11, 18, .88));
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .34);
+  backdrop-filter: blur(16px);
+}
+
+.pickup-roster-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .13);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, .34);
+}
 
 .pickup-roster-panel > header,
 .pickup-event-panel > header {
   display: flex;
   justify-content: space-between;
-  padding: .8rem .9rem;
+  padding: .58rem .72rem;
   border-bottom: 1px solid rgba(148, 163, 184, .14);
   color: #94a3b8;
   font: 700 .65rem/1 Orbitron, sans-serif;
   letter-spacing: .1em;
 }
 
-#pickup-roster,
 #pickup-events {
-  max-height: calc(100vh - 17rem);
-  overflow: auto;
+  height: calc(100% - 2rem);
+  overflow-y: auto;
   scrollbar-width: thin;
 }
 
+.pickup-roster-panel > header {
+  padding: .42rem .62rem;
+}
+
+#pickup-roster {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.pickup-team-group {
+  min-width: 0;
+  border-right: 1px solid rgba(148, 163, 184, .11);
+}
+
+.pickup-team-group:last-child { border-right: 0; }
+
 .pickup-team-heading {
-  padding: .62rem .8rem .35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .35rem .55rem .26rem;
   color: var(--team-color);
   font: 800 .63rem/1 Orbitron, sans-serif;
   letter-spacing: .11em;
   text-transform: uppercase;
 }
 
+.pickup-team-heading small {
+  color: #64748b;
+  font: 700 .5rem/1 Orbitron, sans-serif;
+  letter-spacing: .04em;
+}
+
+.pickup-team-players {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .pickup-player {
   width: 100%;
   display: grid;
   grid-template-columns: .55rem minmax(0, 1fr) auto;
-  gap: .58rem;
+  gap: .45rem;
   align-items: center;
-  padding: .58rem .8rem;
+  min-width: 0;
+  min-height: 2.2rem;
+  padding: .3rem .48rem;
   border: 0;
   border-top: 1px solid rgba(148, 163, 184, .08);
   color: #e2e8f0;
@@ -120,9 +192,9 @@
   white-space: nowrap;
 }
 
-.pickup-player-copy strong { font-size: .78rem; }
-.pickup-player-copy small { margin-top: .2rem; color: #718096; font-size: .62rem; }
-.pickup-player-state { color: #94a3b8; font: 700 .58rem/1 Orbitron, sans-serif; }
+.pickup-player-copy strong { font-size: .72rem; }
+.pickup-player-copy small { margin-top: .14rem; color: #64748b; font-size: .52rem; }
+.pickup-player-state { color: #94a3b8; font: 700 .52rem/1 Orbitron, sans-serif; }
 .pickup-player.dead { opacity: .48; }
 
 .pickup-event {
@@ -150,14 +222,14 @@
   position: absolute;
   z-index: 7;
   left: 50%;
-  bottom: 7.1rem;
-  width: min(36rem, calc(100% - 42rem));
+  top: 8.4rem;
+  width: min(34rem, calc(100% - 42rem));
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: .75rem 1rem;
+  padding: .62rem .85rem;
   border: 1px solid rgba(148, 163, 184, .18);
   border-radius: 13px;
   color: #e5edf7;
@@ -179,26 +251,114 @@
 .pickup-selected-player dt { color: #64748b; font: 700 .55rem/1 Orbitron, sans-serif; text-transform: uppercase; }
 .pickup-selected-player dd { margin: .25rem 0 0; font: 800 .75rem/1 Orbitron, sans-serif; }
 
-.pickup-controls { padding-left: 1.25rem; padding-right: 1.25rem; }
-
-@media (max-width: 1050px) {
-  .pickup-event-panel { display: none; }
-  .pickup-topbar { right: 1.25rem; }
-  .pickup-selected-player { width: min(38rem, calc(100% - 22rem)); left: calc(50% + 9rem); }
+.pickup-controls {
+  position: static;
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  gap: .65rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
-@media (max-width: 720px) {
-  .pickup-roster-panel {
-    top: auto;
-    bottom: 10.4rem;
-    width: calc(100% - 2rem);
-    max-height: 8.5rem;
+.pickup-control-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .35rem;
+}
+
+.pickup-control-stack .replay-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.15rem;
+  padding: 0 .6rem;
+  font-size: .68rem;
+}
+
+.pickup-timeline-controls {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  min-width: 0;
+  padding: .15rem 0;
+}
+
+.pickup-timeline-controls .replay-scrubber {
+  grid-template-columns: 4.5rem minmax(12rem, 1fr) 4.5rem;
+  gap: .6rem;
+  font-size: .72rem;
+}
+
+.pickup-timeline-controls .replay-scrubber input {
+  height: 1.2rem;
+  cursor: pointer;
+}
+
+.pickup-timeline-controls .replay-scrubber input::-webkit-slider-runnable-track {
+  height: .42rem;
+  border-radius: 999px;
+}
+
+.pickup-timeline-controls .replay-scrubber input::-webkit-slider-thumb {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: -.36rem;
+}
+
+.pickup-timeline-controls .replay-scrubber input::-moz-range-track {
+  height: .42rem;
+  border-radius: 999px;
+}
+
+.pickup-timeline-controls .replay-scrubber input::-moz-range-thumb {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.pickup-timeline-controls .replay-speed {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .35rem;
+  width: min(14rem, 100%);
+  margin: .1rem auto 0;
+}
+
+.pickup-timeline-controls .replay-speed button {
+  min-height: 1.9rem;
+  font-size: .66rem;
+}
+
+.pickup-replay-stage .replay-free-roam-help { bottom: 9.5rem; }
+
+@media (max-width: 1250px) {
+  .pickup-event-panel { display: none; }
+  .pickup-topbar { right: 1.25rem; }
+  .pickup-bottom-hud { right: 1rem; }
+  .pickup-selected-player { width: min(34rem, calc(100% - 2rem)); }
+  .pickup-bottom-hud { grid-template-columns: minmax(32rem, 38rem) minmax(0, 1fr); }
+  .pickup-player-copy small { display: none; }
+}
+
+@media (max-width: 900px) {
+  .pickup-bottom-hud {
+    grid-template-columns: 1fr;
+    max-height: 19rem;
+    overflow-y: auto;
   }
-  #pickup-roster { max-height: 6rem; display: flex; overflow-x: auto; }
-  .pickup-team-heading { display: none; }
-  .pickup-player { min-width: 10rem; border-top: 0; border-right: 1px solid rgba(148, 163, 184, .08); }
-  .pickup-selected-player { display: none; }
+  .pickup-controls { grid-template-columns: 17rem minmax(0, 1fr); }
+  .pickup-selected-player { top: 8.4rem; }
+  .pickup-replay-stage .replay-free-roam-help { bottom: 20rem; }
+}
+
+@media (max-width: 620px) {
   .pickup-topbar { left: 1rem; right: 1rem; }
-  .pickup-round-badges { display: none; }
-  .pickup-controls { flex-wrap: wrap; }
+  .pickup-round-summary { display: none; }
+  .pickup-selected-player { display: none; }
+  .pickup-bottom-hud { right: .5rem; bottom: .5rem; left: .5rem; padding: .5rem; }
+  .pickup-controls { grid-template-columns: 7rem minmax(0, 1fr); }
+  #pickup-roster { grid-template-columns: 1fr; }
+  .pickup-team-group { border-right: 0; border-bottom: 1px solid rgba(148, 163, 184, .11); }
+  .pickup-team-group:last-child { border-bottom: 0; }
+  .pickup-player-state { display: none; }
 }

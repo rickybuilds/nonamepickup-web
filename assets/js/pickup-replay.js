@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260730pickup7";
+} from "./replay-projectile-visuals.js?v=20260731blood2";
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
@@ -26,6 +26,14 @@ const CAMERA_MODES = ["pov", "chase", "overview", "free"];
 const CORPSE_LIFETIME_SECONDS = 15;
 const PLAYER_STANDING_VISUAL_HEIGHT = 72;
 const PLAYER_CROUCH_VISUAL_HEIGHT = 40;
+// One complete phase is a left + right step. TFC players cover roughly this
+// distance during a natural run cycle; a shorter value makes their feet churn.
+const PLAYER_STRIDE_LENGTH = 240;
+const PLAYER_MOTION_RESPONSE = 12;
+const PLAYER_AIR_HOLD_SECONDS = 0.18;
+const CARRIED_OBJECTIVE_BACK_OFFSET = 2;
+const CARRIED_OBJECTIVE_STAND_HEIGHT = -28;
+const CARRIED_OBJECTIVE_CROUCH_HEIGHT = -28;
 const IN_ATTACK = 1;
 const AC_ROUNDS_PER_SECOND = 12;
 const AC_TRACER_RANGE = 900;
@@ -52,6 +60,7 @@ const state = {
   brushes: [],
   events: [],
   impacts: [],
+  bloodEffects: [],
   corpses: [],
   selectedSession: null,
   origin: { x: 0, y: 0, z: 0 },
@@ -90,7 +99,8 @@ const objectiveRoot = new THREE.Group();
 const buildableRoot = new THREE.Group();
 const impactRoot = new THREE.Group();
 const hitscanRoot = new THREE.Group();
-world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot);
+const bloodRoot = new THREE.Group();
+world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot);
 let grid = null;
 let mapModel = null;
 let mapBeamGroup = null;
@@ -472,15 +482,100 @@ async function setObjectiveModel(track) {
   track.mesh.userData.hasObjectiveModel = true;
 }
 
-function clonedPlayerModel(asset, alignFeetToOrigin = false, targetHeight = PLAYER_STANDING_VISUAL_HEIGHT) {
+function playerMotionUniforms() {
+  return {
+    walk: { value: 0 },
+    phase: { value: 0 },
+    air: { value: 0 },
+    tuck: { value: 0 },
+    minY: { value: -36 },
+    height: { value: PLAYER_STANDING_VISUAL_HEIGHT },
+    centerZ: { value: 0 }
+  };
+}
+
+function installPlayerMotionShader(material, motion) {
+  material.onBeforeCompile = shader => {
+    Object.assign(shader.uniforms, {
+      replayWalk: motion.walk,
+      replayPhase: motion.phase,
+      replayAir: motion.air,
+      replayTuck: motion.tuck,
+      replayMinY: motion.minY,
+      replayHeight: motion.height,
+      replayCenterZ: motion.centerZ
+    });
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>
+uniform float replayWalk;
+uniform float replayPhase;
+uniform float replayAir;
+uniform float replayTuck;
+uniform float replayMinY;
+uniform float replayHeight;
+uniform float replayCenterZ;
+mat2 replayRotate(float angle) {
+  float sine = sin(angle);
+  float cosine = cos(angle);
+  return mat2(cosine, sine, -sine, cosine);
+}`)
+      .replace("#include <begin_vertex>", `#include <begin_vertex>
+float replaySafeHeight = max(replayHeight, 1.0);
+float replayNormalizedY = (position.y - replayMinY) / replaySafeHeight;
+float replayLegMask = 1.0 - smoothstep(0.50, 0.55, replayNormalizedY);
+float replaySidePhase = replayPhase + (position.z < replayCenterZ ? 3.14159265 : 0.0);
+float replayStride = sin(replaySidePhase);
+float replayHipAngle = replayStride * 0.62 * replayWalk + 1.02 * replayTuck;
+float replayKneeAngle = -max(0.0, replayStride) * 0.72 * replayWalk - 1.28 * replayTuck;
+float replayHipY = replayMinY + replaySafeHeight * 0.51;
+float replayKneeY = replayMinY + replaySafeHeight * 0.255;
+vec2 replayHip = vec2(0.0, replayHipY);
+vec2 replayKnee = vec2(0.0, replayKneeY);
+vec2 replayUpper = replayHip + replayRotate(replayHipAngle) * (transformed.xy - replayHip);
+vec2 replayLower = replayHip + replayRotate(replayHipAngle) * (
+  (replayKnee - replayHip) + replayRotate(replayKneeAngle) * (transformed.xy - replayKnee)
+);
+float replayLowerMix = 1.0 - smoothstep(0.245, 0.285, replayNormalizedY);
+vec2 replayAnimated = mix(replayUpper, replayLower, replayLowerMix);
+transformed.xy = mix(transformed.xy, replayAnimated, replayLegMask);
+transformed.y += abs(sin(replayPhase)) * 0.75 * replayWalk * (1.0 - replayAir);
+`);
+  };
+  material.customProgramCacheKey = () => "pickup-player-motion-v1";
+  material.needsUpdate = true;
+}
+
+function clonedPlayerModel(
+  asset,
+  alignFeetToOrigin = false,
+  targetHeight = PLAYER_STANDING_VISUAL_HEIGHT,
+  motion = null
+) {
   const model = asset.clone(true);
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
+    if (motion) {
+      if (Array.isArray(child.material)) {
+        child.material = child.material.map(material => {
+          const copy = material.clone();
+          installPlayerMotionShader(copy, motion);
+          return copy;
+        });
+      } else if (child.material) {
+        child.material = child.material.clone();
+        installPlayerMotionShader(child.material, motion);
+      }
+    }
   });
   const bounds = new THREE.Box3().setFromObject(model);
   const size = bounds.getSize(new THREE.Vector3());
   const scale = size.y > 0 ? targetHeight / size.y : 1;
+  if (motion) {
+    motion.minY.value = bounds.min.y;
+    motion.height.value = size.y;
+    motion.centerZ.value = (bounds.min.z + bounds.max.z) * 0.5;
+  }
   model.scale.setScalar(scale);
   model.userData.replayScale = scale;
   // Studio models are authored around the GoldSrc entity origin. Schema 3
@@ -506,7 +601,12 @@ async function setPlayerModel(track, classId, team, modelId = 0, ducking = false
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team ||
       track.mesh.userData.playerModelId !== modelId || track.mesh.userData.modelPose !== pose) return;
   const targetHeight = ducking ? PLAYER_CROUCH_VISUAL_HEIGHT : PLAYER_STANDING_VISUAL_HEIGHT;
-  const model = clonedPlayerModel(asset, track.schemaVersion === 2, targetHeight);
+  const model = clonedPlayerModel(
+    asset,
+    track.schemaVersion === 2,
+    targetHeight,
+    track.motionUniforms
+  );
   track.modelVisual.clear();
   track.modelVisual.add(model);
   track.weaponVisual.scale.setScalar(model.userData.replayScale || 1);
@@ -696,6 +796,15 @@ function buildVisuals() {
     track.playerVisual = new THREE.Group();
     track.modelVisual = new THREE.Group();
     track.weaponVisual = new THREE.Group();
+    track.motionUniforms = playerMotionUniforms();
+    track.motionPhase = 0;
+    track.motionWalk = 0;
+    track.motionAir = 0;
+    track.motionTuck = 0;
+    track.motionLastTime = null;
+    track.motionLastX = null;
+    track.motionLastY = null;
+    track.motionAirUntil = -Infinity;
     track.modelVisual.add(fallbackPlayerMesh(team, track.schemaVersion >= 3));
     track.playerVisual.add(track.modelVisual, track.weaponVisual);
     track.mesh.add(track.playerVisual);
@@ -715,6 +824,34 @@ function buildVisuals() {
       corpseRoot.add(corpse.mesh);
       state.corpses.push(corpse);
       void setCorpseModel(corpse);
+    }
+
+    const { frames, stride } = track;
+    let previousOffset = -1;
+    for (let offset = 0; offset < frames.length; offset += stride) {
+      if (previousOffset >= 0) {
+        const previousAlive = frames[previousOffset + 10] === 1;
+        const alive = frames[offset + 10] === 1;
+        const previousHealth = Number(frames[previousOffset + 15]);
+        const health = Number(frames[offset + 15]);
+        const damage = previousHealth - health;
+        if (previousAlive && Number.isFinite(damage) && damage > 0 && (alive || health <= 0)) {
+          const positionOffset = alive ? offset : previousOffset;
+          const position = sourcePoint(
+            frames[positionOffset + 1],
+            frames[positionOffset + 2],
+            frames[positionOffset + 3]
+          );
+          const crouched = track.schemaVersion >= 3
+            ? frames[positionOffset + 17] === 1
+            : Boolean(Math.round(frames[positionOffset + 14]) & 4);
+          position.y += crouched ? 24 : 43;
+          const effect = projectileVisuals.blood(position, frames[offset], damage);
+          state.bloodEffects.push(effect);
+          bloodRoot.add(effect.group);
+        }
+      }
+      previousOffset = offset;
     }
   }
   for (const track of state.projectiles) {
@@ -801,11 +938,16 @@ function buildRoster() {
   }
   for (const [team, rows] of [...grouped].sort((a, b) => a[0] - b[0])) {
     const info = teamInfo(team);
+    const group = document.createElement("section");
+    group.className = "pickup-team-group";
+    group.style.setProperty("--team-color", info.css);
     const heading = document.createElement("div");
     heading.className = "pickup-team-heading";
-    heading.style.setProperty("--team-color", info.css);
-    heading.textContent = info.name;
-    container.appendChild(heading);
+    heading.innerHTML = `<span></span><small>${rows.length} players</small>`;
+    heading.querySelector("span").textContent = info.name;
+    const players = document.createElement("div");
+    players.className = "pickup-team-players";
+    group.append(heading, players);
     for (const row of rows) {
       const button = document.createElement("button");
       button.type = "button";
@@ -819,8 +961,9 @@ function buildRoster() {
       button.querySelector("strong").textContent = row.name;
       button.querySelector("small").textContent = row.steamid;
       button.addEventListener("click", () => selectPlayer(row.sessionId));
-      container.appendChild(button);
+      players.appendChild(button);
     }
+    container.appendChild(group);
   }
   $("pickup-roster-count").textContent = `${state.roster.length} sessions`;
 }
@@ -870,6 +1013,48 @@ function selectPlayer(sessionId) {
   }
 }
 
+function updatePlayerMotion(track, frame, crouched) {
+  const previousTime = track.motionLastTime;
+  const elapsed = previousTime == null ? 0 : state.playbackTime - previousTime;
+  const continuous = elapsed >= 0 && elapsed <= 0.25;
+  const horizontalSpeed = Math.hypot(frame.vx, frame.vy);
+  const recordedAir = frame.schemaVersion >= 3 && (
+    frame.sequence === 8 || frame.sequence === 9 ||
+    frame.gaitsequence === 8 || frame.gaitsequence === 9
+  );
+  if (recordedAir || Math.abs(frame.vz) > 32) {
+    track.motionAirUntil = state.playbackTime + PLAYER_AIR_HOLD_SECONDS;
+  }
+  const airborne = state.playbackTime < track.motionAirUntil;
+  const walkTarget = !airborne && !crouched
+    ? THREE.MathUtils.clamp((horizontalSpeed - 10) / 190, 0, 1)
+    : 0;
+  const airTarget = airborne ? 1 : 0;
+  const tuckTarget = airborne ? (crouched ? 0.38 : 1) : 0;
+
+  if (continuous && track.motionLastX != null && track.motionLastY != null) {
+    const distance = Math.hypot(frame.x - track.motionLastX, frame.y - track.motionLastY);
+    if (distance < 96) track.motionPhase += (distance / PLAYER_STRIDE_LENGTH) * Math.PI * 2;
+    const blend = 1 - Math.exp(-elapsed * PLAYER_MOTION_RESPONSE);
+    track.motionWalk = THREE.MathUtils.lerp(track.motionWalk, walkTarget, blend);
+    track.motionAir = THREE.MathUtils.lerp(track.motionAir, airTarget, blend);
+    track.motionTuck = THREE.MathUtils.lerp(track.motionTuck, tuckTarget, blend);
+  } else {
+    track.motionPhase = (state.playbackTime * Math.max(horizontalSpeed, 80) / PLAYER_STRIDE_LENGTH) * Math.PI * 2;
+    track.motionWalk = walkTarget;
+    track.motionAir = airTarget;
+    track.motionTuck = tuckTarget;
+  }
+
+  track.motionUniforms.phase.value = track.motionPhase;
+  track.motionUniforms.walk.value = track.motionWalk;
+  track.motionUniforms.air.value = track.motionAir;
+  track.motionUniforms.tuck.value = track.motionTuck;
+  track.motionLastTime = state.playbackTime;
+  track.motionLastX = frame.x;
+  track.motionLastY = frame.y;
+}
+
 function updatePlayers() {
   for (const track of state.players) {
     if (!track.mesh) continue;
@@ -886,6 +1071,7 @@ function updatePlayers() {
     if (frame.schemaVersion === 2) track.mesh.position.y -= isDucking(frame) ? 18 : 36;
     track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
     const crouched = frame.schemaVersion >= 3 && isDucking(frame);
+    updatePlayerMotion(track, frame, crouched);
     track.playerVisual.position.y = crouched ? 2.5 : 0;
     track.weaponVisual.position.y = crouched ? -18 : 0;
     track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyPitch : 0);
@@ -1037,6 +1223,23 @@ function updateProjectiles() {
   }
 }
 
+function updateBloodEffects() {
+  for (const effect of state.bloodEffects) {
+    projectileVisuals.updateBlood(effect, state.playbackTime);
+  }
+}
+
+function carriedObjectivePose(frame) {
+  const bodyYaw = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
+  const position = sourcePoint(frame.x, frame.y, frame.z);
+  const forward = new THREE.Vector3(Math.cos(bodyYaw), 0, -Math.sin(bodyYaw));
+  position.addScaledVector(forward, -CARRIED_OBJECTIVE_BACK_OFFSET);
+  position.y += isDucking(frame)
+    ? CARRIED_OBJECTIVE_CROUCH_HEIGHT
+    : CARRIED_OBJECTIVE_STAND_HEIGHT;
+  return { position, yaw: bodyYaw + Math.PI / 2 };
+}
+
 function updateObjectives() {
   objectiveRoot.visible = state.showObjectives;
   if (!state.showObjectives) return;
@@ -1047,11 +1250,14 @@ function updateObjectives() {
     if (!frame) continue;
     const carrier = frame.carrierSession ? state.playerBySession.get(frame.carrierSession) : null;
     const carrierFrame = carrier ? playerSnapshot(carrier, state.playbackTime) : null;
-    const point = carrierFrame
-      ? sourcePoint(carrierFrame.x, carrierFrame.y, carrierFrame.z + 48)
-      : sourcePoint(frame.x, frame.y, frame.z);
-    track.mesh.position.copy(point);
-    track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
+    if (carrierFrame) {
+      const pose = carriedObjectivePose(carrierFrame);
+      track.mesh.position.copy(pose.position);
+      track.mesh.rotation.y = pose.yaw;
+    } else {
+      track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
+      track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
+    }
   }
 }
 
@@ -1104,6 +1310,7 @@ function updateScene() {
   updatePlayers();
   updateCorpses();
   updateProjectiles();
+  updateBloodEffects();
   updateObjectives();
   updateBuildables();
   updateBrushes();
@@ -1175,6 +1382,7 @@ function buildMapBeams(gltf) {
     addBeamLayer(radius * 2.4, opacity * 0.2);
     addBeamLayer(radius, opacity);
   }
+
 }
 
 function loadMap() {
@@ -1267,13 +1475,12 @@ function wireControls() {
     const index = CAMERA_MODES.indexOf(state.cameraMode);
     setCameraMode(CAMERA_MODES[(index + 1) % CAMERA_MODES.length]);
   });
-  $("replay-projectiles").addEventListener("click", event => {
-    state.showProjectiles = !state.showProjectiles;
-    event.currentTarget.classList.toggle("active", state.showProjectiles);
-  });
-  $("replay-objectives").addEventListener("click", event => {
-    state.showObjectives = !state.showObjectives;
-    event.currentTarget.classList.toggle("active", state.showObjectives);
+  $("replay-effects").addEventListener("click", event => {
+    const enabled = !(state.showProjectiles && state.showObjectives);
+    state.showProjectiles = enabled;
+    state.showObjectives = enabled;
+    event.currentTarget.classList.toggle("active", enabled);
+    event.currentTarget.textContent = `Effects: ${enabled ? "On" : "Off"}`;
   });
   document.querySelectorAll("[data-speed]").forEach(button => {
     button.addEventListener("click", () => {
@@ -1359,9 +1566,10 @@ async function loadTfcModelCatalog() {
 }
 
 function cleanupReplayObjects() {
-  for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot]) {
+  for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot]) {
     root.clear();
   }
+  state.bloodEffects = [];
   state.playerBySession.clear();
   state.projectileDefinitions.clear();
   state.objectiveDefinitions.clear();
