@@ -1434,9 +1434,9 @@ function buildMapLights(gltf) {
     mapLightRoot.add(light);
 
     let glow = null;
-    if (isGlow || isSwitchLight) {
+    if (isGlow) {
       glow = new THREE.Mesh(
-        new THREE.SphereGeometry(isGlow ? 4.5 : 3, 8, 6),
+        new THREE.SphereGeometry(4.5, 8, 6),
         new THREE.MeshBasicMaterial({
           color, transparent: true,
           opacity: THREE.MathUtils.clamp((Number(entity.renderamt) || 150) / 255, 0.15, 1),
