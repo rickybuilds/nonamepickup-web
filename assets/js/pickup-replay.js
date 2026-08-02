@@ -1305,6 +1305,28 @@ function entitySyncTargets(entity, activationGroups) {
   return targets;
 }
 
+function beamControllerTracks(syncTargets) {
+  const exact = state.brushes.filter(track => {
+    const brush = state.brushDefinitions.get(track.brushId);
+    return BEAM_CONTROLLER_CLASSES.has(brush?.classname) && syncTargets.has(brush?.targetname);
+  });
+  if (exact.length) return exact;
+
+  // Some GoldSrc maps (including schtop) toggle a security system through a
+  // multi_manager without directly naming its moving func_train. Associate
+  // red_*/blue_* outputs with the matching red_door/blue_door recorded train.
+  const families = new Set([...syncTargets].map(target => {
+    const match = String(target).toLowerCase().match(/^([^_]+)_/);
+    return match?.[1] || "";
+  }).filter(Boolean));
+  return state.brushes.filter(track => {
+    const brush = state.brushDefinitions.get(track.brushId);
+    const targetname = String(brush?.targetname || "").toLowerCase();
+    const family = targetname.match(/^([^_]+)_/)?.[1];
+    return brush?.classname === "func_train" && family && families.has(family);
+  });
+}
+
 function entityControllers(entity, activationGroups) {
   const syncTargets = entitySyncTargets(entity, activationGroups);
   return state.brushes.filter(track => {
@@ -1648,10 +1670,7 @@ function buildMapBeams(gltf) {
     const visual = new THREE.Group();
     visual.userData.startsOn = definition.startsOn !== false;
     visual.userData.syncTargets = syncTargets;
-    visual.userData.controllerTracks = state.brushes.filter(track => {
-      const brush = state.brushDefinitions.get(track.brushId);
-      return BEAM_CONTROLLER_CLASSES.has(brush?.classname) && syncTargets.has(brush?.targetname);
-    });
+    visual.userData.controllerTracks = beamControllerTracks(syncTargets);
     mapBeamGroup.add(visual);
 
     const addBeamLayer = (layerRadius, layerOpacity) => {
