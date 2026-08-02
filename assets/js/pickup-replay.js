@@ -729,11 +729,11 @@ async function setBuildableModel(track, modelId, team) {
   delete track.mesh.userData.renderSignature;
 }
 
-async function setProjectileCatalogModel(track) {
+async function setProjectileCatalogModel(track, definitionSignature) {
   const url = catalogUrl(track.recordedDefinition?.modelId, "projectile");
   if (!url) return;
   const asset = await loadModelAsset(url);
-  if (!asset || !track.mesh) return;
+  if (!asset || !track.mesh || track.definitionSignature !== definitionSignature) return;
   const model = asset.clone(true);
   model.traverse(child => { if (child.isMesh) child.frustumCulled = false; });
   track.mesh.clear?.();
@@ -900,17 +900,29 @@ function buildVisuals() {
     }
   }
   for (const track of state.projectiles) {
-    if (track.mesh) continue;
     const recorded = state.projectileDefinitions.get(track.projectileId);
+    const definitionSignature = recorded
+      ? `${recorded.modelId || 0}:${recorded.classname || ""}:${recorded.model || ""}:${recorded.ownerWeapon || 0}`
+      : "pending";
+    if (track.mesh && track.definitionSignature === definitionSignature) continue;
     track.recordedDefinition = recorded;
     track.definition = replayProjectileDefinition(recorded);
-    track.mesh = new THREE.Group();
-    track.mesh.add(projectileVisuals.projectile(track.definition));
+    if (!track.mesh) {
+      track.mesh = new THREE.Group();
+      projectileRoot.add(track.mesh);
+    }
+    track.definitionSignature = definitionSignature;
+    track.mesh.clear();
+    // A white sphere is useful in completed-replay diagnostics, but confusing
+    // in a live feed while its dictionary/model row is only milliseconds late.
+    // Known projectile types retain their intentional fallback geometry.
+    if (recorded && track.definition.key !== "unknown") {
+      track.mesh.add(projectileVisuals.projectile(track.definition));
+    }
     track.mesh.visible = false;
-    projectileRoot.add(track.mesh);
-    void setProjectileCatalogModel(track);
-    const removal = projectileRemoval(track);
-    if (removal) {
+    void setProjectileCatalogModel(track, definitionSignature);
+    const removal = track.impactCreated ? null : projectileRemoval(track);
+    if (removal && recorded) {
       const impact = projectileVisuals.impact(
         track.definition,
         sourcePoint(removal.x, removal.y, removal.z),
@@ -918,6 +930,7 @@ function buildVisuals() {
       );
       state.impacts.push(impact);
       impactRoot.add(impact.group);
+      track.impactCreated = true;
     }
   }
   for (const track of state.objectives) {
@@ -2219,7 +2232,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802live2");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802live3");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -2364,7 +2377,7 @@ let liveWorkerPending = null;
 
 function ensureLiveWorker() {
   if (liveWorker) return;
-  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802live2");
+  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802live3");
   liveWorker.onmessage = event => {
     if (event.data.type === "progress") return setStatus(event.data.label);
     if (!liveWorkerPending) return;
