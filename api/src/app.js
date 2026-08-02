@@ -11,6 +11,7 @@ const { createAnalyticsMiddleware } = require("./middleware/analytics");
 const { registerErrorHandlers } = require("./middleware/errors");
 const { checkSpeedrunDatabase } = require("./db/mariadb");
 const { createPickupReplaysRouter, createPickupReplayViewerRouter } = require("./routes/pickupReplays");
+const { createPickupLiveIngestRouter, createPickupLiveViewerRouter } = require("./routes/pickupLive");
 
 function createApp({
   db,
@@ -21,7 +22,8 @@ function createApp({
   loadMatchPlayers,
   statements,
   pickupIngestion,
-  pickupReplayViewer
+  pickupReplayViewer,
+  pickupLive
 }) {
   const {
     PUBLIC_DIR,
@@ -62,6 +64,11 @@ function createApp({
 
   app.use(securityHeaders);
 
+  // Authenticated game-server traffic is validated by the live service before
+  // its bounded JSON parser runs. Mount it ahead of public per-IP rate limits
+  // so multiple live matches behind one server address cannot starve each other.
+  if (pickupLive) app.use("/api", createPickupLiveIngestRouter({ live: pickupLive }));
+
   registerRateLimit(app, {
     apiRateLimit: API_RATE_LIMIT,
     sendError
@@ -84,6 +91,13 @@ function createApp({
   app.use("/api", createPickupReplayViewerRouter({
     viewer: pickupReplayViewer
   }));
+  if (pickupLive) {
+    app.use("/api/pickup-live/viewer", compression({
+      threshold: 1024,
+      filter: (req, res) => !req.path.endsWith("/events") && compression.filter(req, res)
+    }));
+    app.use("/api", createPickupLiveViewerRouter({ live: pickupLive }));
+  }
 
   app.use(express.json({ limit: "32kb" }));
   app.use(express.urlencoded({ extended: false, limit: "32kb" }));

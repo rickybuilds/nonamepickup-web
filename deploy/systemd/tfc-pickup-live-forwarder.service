@@ -1,0 +1,22 @@
+[Unit]
+Description=Forward active TFC pickup telemetry to the browser live API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+EnvironmentFile=/etc/tfc/pickup-live-forwarder.env
+ExecStart=/usr/local/sbin/stream-pickup-live
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/root/steamcmd/tfc/tfc/addons/amxmodx/data/pickup_replays /root/.config/tfc/pickup-upload.curl
+
+[Install]
+WantedBy=multi-user.target

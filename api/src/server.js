@@ -23,6 +23,7 @@ const { PickupRepository } = require("./pickup/repository");
 const { PickupStorage } = require("./pickup/storage");
 const { PickupIngestion } = require("./pickup/ingestion");
 const { PickupReplayViewer } = require("./pickup/viewer");
+const { PickupLiveService } = require("./pickup/live");
 
 config.validatePickupConfiguration();
 
@@ -45,6 +46,14 @@ const pickupIngestion = new PickupIngestion({
 const pickupReplayViewer = new PickupReplayViewer({
   pool: getPickupPool(config),
   storage: new PickupStorage(config.PICKUP_STORAGE_PATH, { publicRoot: config.PUBLIC_DIR })
+});
+const pickupLive = new PickupLiveService({
+  uploadToken: config.PICKUP_UPLOAD_TOKEN,
+  dataDir: config.DATA_DIR,
+  fsPromises: fs.promises,
+  bufferSeconds: config.PICKUP_LIVE_BUFFER_SECONDS,
+  staleSeconds: config.PICKUP_LIVE_STALE_SECONDS,
+  maxBatchBytes: config.PICKUP_LIVE_MAX_BATCH_BYTES
 });
 
 const app = createApp({
@@ -69,7 +78,8 @@ const app = createApp({
   loadMatchPlayers,
   statements,
   pickupIngestion,
-  pickupReplayViewer
+  pickupReplayViewer,
+  pickupLive
 });
 
 const server = app.listen(config.PORT, "0.0.0.0", () => {
@@ -139,6 +149,7 @@ function shutdown(signal) {
 
   server.close(async () => {
     try {
+      pickupLive.close();
       db.close();
       await closePickupPool();
     } finally {

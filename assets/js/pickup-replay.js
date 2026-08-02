@@ -10,9 +10,13 @@ import {
 } from "./replay-map-materials.js?v=20260730mapmaterials2";
 
 const $ = id => document.getElementById(id);
-const LIVE_SIMULATION = document.body?.dataset.replayMode === "live-simulated";
+const LIVE_PAGE = document.body?.classList.contains("pickup-live-viewer-page") || false;
+const LIVE_SERVER_ID = new URLSearchParams(location.search).get("server") || "";
+const LIVE_REAL = LIVE_PAGE && /^[A-Za-z0-9_.-]{1,64}$/.test(LIVE_SERVER_ID);
+const LIVE_SIMULATION = LIVE_PAGE && !LIVE_SERVER_ID;
+const LIVE_MODE = LIVE_REAL || LIVE_SIMULATION;
 const LIVE_BUFFER_SECONDS = 120;
-const LIVE_TARGET_LATENCY_SECONDS = 0.35;
+const LIVE_TARGET_LATENCY_SECONDS = LIVE_REAL ? 1.25 : 0.35;
 const TEAM = {
   1: { name: "Blue", css: "#4da3ff", color: 0x4da3ff },
   2: { name: "Red", css: "#ff5d6c", color: 0xff5d6c },
@@ -89,7 +93,9 @@ const state = {
   liveReady: false,
   liveEdge: 0,
   liveEnded: false,
-  followLive: LIVE_SIMULATION,
+  followLive: LIVE_MODE,
+  liveBufferSeconds: LIVE_BUFFER_SECONDS,
+  liveSequence: 0,
   feedSpeed: 1,
   cameraMode: "pov",
   showProjectiles: true,
@@ -133,6 +139,10 @@ let mapModel = null;
 let mapBeamGroup = null;
 let mapLightDefinitions = [];
 let mapRotators = [];
+let liveWorker = null;
+let liveEventSource = null;
+let liveBatchQueue = Promise.resolve();
+let liveQueuedSequence = 0;
 const corpseGroundRay = new THREE.Raycaster();
 const corpseDown = new THREE.Vector3(0, -1, 0);
 const acRaycaster = new THREE.Raycaster();
@@ -824,6 +834,7 @@ function corpseRecords(track) {
 
 function buildVisuals() {
   for (const track of state.players) {
+    if (track.mesh) continue;
     const roster = state.roster.find(row => row.sessionId === track.sessionId);
     const team = roster?.team || 0;
     track.mesh = new THREE.Group();
@@ -889,6 +900,7 @@ function buildVisuals() {
     }
   }
   for (const track of state.projectiles) {
+    if (track.mesh) continue;
     const recorded = state.projectileDefinitions.get(track.projectileId);
     track.recordedDefinition = recorded;
     track.definition = replayProjectileDefinition(recorded);
@@ -909,6 +921,7 @@ function buildVisuals() {
     }
   }
   for (const track of state.objectives) {
+    if (track.mesh) continue;
     const definition = state.objectiveDefinitions.get(track.objectiveId);
     track.definition = definition;
     track.team = objectiveTeam(definition, track.objectiveId);
@@ -924,6 +937,7 @@ function buildVisuals() {
     void setObjectiveModel(track);
   }
   for (const track of state.buildables) {
+    if (track.mesh) continue;
     track.definition = state.buildableDefinitions.get(track.buildableId);
     track.mesh = new THREE.Group();
     track.visual = new THREE.Group();
@@ -946,6 +960,7 @@ function bindBrushNodes() {
     if (/^\*[1-9]\d*$/.test(child.name) && !nodes.has(child.name)) nodes.set(child.name, child);
   });
   for (const track of state.brushes) {
+    if (track.node) continue;
     track.definition = state.brushDefinitions.get(track.brushId);
     track.node = nodes.get(track.definition?.model) || null;
     if (!track.node) continue;
@@ -1031,7 +1046,7 @@ function renderEvents(force = false) {
     item.append(time, copy);
     container.appendChild(item);
   }
-  const visibleEventCount = LIVE_SIMULATION
+  const visibleEventCount = LIVE_MODE
     ? state.events.filter(event => event.time <= state.liveEdge).length
     : state.events.length;
   $("pickup-event-count").textContent = visibleEventCount.toLocaleString();
@@ -1820,7 +1835,7 @@ function liveDelaySeconds() {
 }
 
 function setLiveChrome(mode) {
-  if (!LIVE_SIMULATION) return;
+  if (!LIVE_MODE) return;
   const signal = $("pickup-live-signal");
   const label = $("pickup-live-state");
   if (!signal || !label) return;
@@ -1836,15 +1851,15 @@ function setLiveChrome(mode) {
 }
 
 function updateLiveHud() {
-  if (!LIVE_SIMULATION) return;
+  if (!LIVE_MODE) return;
   const delay = liveDelaySeconds();
   const slider = $("replay-slider");
-  const minimum = Math.max(0, state.liveEdge - LIVE_BUFFER_SECONDS);
+  const minimum = Math.max(0, state.liveEdge - state.liveBufferSeconds);
   slider.min = String(Math.round(minimum * 1000));
   slider.max = String(Math.max(1, Math.round(state.liveEdge * 1000)));
   $("pickup-live-buffer-label").textContent = minimum > 0
     ? `${formatTime(minimum)}–${formatTime(state.liveEdge)}`
-    : `Rolling ${Math.round(LIVE_BUFFER_SECONDS / 60)}:00 buffer`;
+    : `Rolling ${Math.round(state.liveBufferSeconds / 60)}:00 buffer`;
 
   const atLiveEdge = !state.liveEnded && state.followLive && delay <= LIVE_TARGET_LATENCY_SECONDS + 0.2;
   $("pickup-live-delay").textContent = state.liveEnded
@@ -1858,7 +1873,7 @@ function updateLiveHud() {
 }
 
 function jumpToLive() {
-  if (!LIVE_SIMULATION || !state.liveReady || state.liveEnded) return;
+  if (!LIVE_MODE || !state.liveReady || state.liveEnded) return;
   state.followLive = true;
   state.playbackTime = Math.max(0, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
   setPlaying(true);
@@ -2054,7 +2069,7 @@ function setupWorld() {
 
 function setPlaying(value) {
   state.playing = Boolean(value);
-  if (LIVE_SIMULATION && !state.playing) state.followLive = false;
+  if (LIVE_MODE && !state.playing) state.followLive = false;
   $("replay-play").textContent = state.playing ? "Pause" : "Play";
   document.body.classList.toggle("replay-playing", state.playing);
 }
@@ -2097,7 +2112,7 @@ function updateFreeCamera(delta) {
 function wireControls() {
   $("replay-play").addEventListener("click", () => {
     const next = !state.playing;
-    if (LIVE_SIMULATION && next && liveDelaySeconds() <= LIVE_TARGET_LATENCY_SECONDS + 0.5 && !state.liveEnded) {
+    if (LIVE_MODE && next && liveDelaySeconds() <= LIVE_TARGET_LATENCY_SECONDS + 0.5 && !state.liveEnded) {
       state.followLive = true;
     }
     setPlaying(next);
@@ -2127,9 +2142,9 @@ function wireControls() {
     });
   });
   $("replay-slider").addEventListener("input", event => {
-    const limit = LIVE_SIMULATION ? state.liveEdge : state.duration;
+    const limit = LIVE_MODE ? state.liveEdge : state.duration;
     state.playbackTime = Math.min(limit, Number(event.target.value) / 1000);
-    if (LIVE_SIMULATION) state.followLive = false;
+    if (LIVE_MODE) state.followLive = false;
     updateScene();
   });
   canvas.addEventListener("click", () => {
@@ -2163,18 +2178,21 @@ function resize() {
 function tick(now) {
   const delta = Math.min(0.1, (now - state.lastTick) / 1000);
   state.lastTick = now;
-  if (LIVE_SIMULATION) {
+  if (LIVE_MODE) {
     if (state.liveReady) {
-      if (!state.liveEnded) {
+      if (LIVE_SIMULATION && !state.liveEnded) {
         state.liveEdge = Math.min(state.duration, state.liveEdge + delta * state.feedSpeed);
         if (state.liveEdge >= state.duration) {
           state.liveEnded = true;
           state.followLive = false;
         }
       }
-      const minimum = Math.max(0, state.liveEdge - LIVE_BUFFER_SECONDS);
+      const minimum = Math.max(0, state.liveEdge - state.liveBufferSeconds);
       if (state.followLive && !state.liveEnded) {
-        state.playbackTime = Math.max(minimum, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
+        const target = Math.max(minimum, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
+        state.playbackTime = LIVE_SIMULATION || target - state.playbackTime > 2
+          ? target
+          : Math.min(target, state.playbackTime + delta * 1.05);
       } else if (state.playing) {
         state.playbackTime = Math.min(state.liveEdge, state.playbackTime + delta * state.speed);
         if (!state.liveEnded && state.playbackTime >= state.liveEdge - LIVE_TARGET_LATENCY_SECONDS) {
@@ -2201,7 +2219,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731brushes2");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802live1");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -2221,6 +2239,218 @@ function loadTelemetry(files) {
   });
 }
 
+function latestTelemetryTime(payload) {
+  let latest = 0;
+  for (const collection of [payload.players, payload.projectiles, payload.objectives, payload.buildables, payload.brushes]) {
+    for (const track of collection || []) {
+      const count = Math.floor(track.frames.length / track.stride);
+      if (count) latest = Math.max(latest, track.frames[(count - 1) * track.stride]);
+    }
+  }
+  for (const event of payload.events || []) latest = Math.max(latest, event.time || 0);
+  return latest;
+}
+
+function appendFrames(existing, incoming) {
+  if (!existing.frames.length) {
+    existing.frames = incoming.frames;
+    return;
+  }
+  const combined = new Float32Array(existing.frames.length + incoming.frames.length);
+  combined.set(existing.frames);
+  combined.set(incoming.frames, existing.frames.length);
+  existing.frames = combined;
+}
+
+function mergeTracks(target, incoming, idKey) {
+  const byId = new Map(target.map(track => [track[idKey], track]));
+  for (const delta of incoming || []) {
+    const existing = byId.get(delta[idKey]);
+    if (existing) appendFrames(existing, delta);
+    else {
+      target.push(delta);
+      byId.set(delta[idKey], delta);
+    }
+  }
+}
+
+function trimTrack(track, cutoff) {
+  const count = Math.floor(track.frames.length / track.stride);
+  let first = 0;
+  while (first < count && track.frames[first * track.stride] < cutoff) first += 1;
+  const keepFrom = Math.max(0, first - 1);
+  if (keepFrom) track.frames = track.frames.slice(keepFrom * track.stride);
+}
+
+function trimLiveTelemetry() {
+  const cutoff = Math.max(0, state.liveEdge - state.liveBufferSeconds - 2);
+  for (const collection of [state.players, state.projectiles, state.objectives, state.buildables, state.brushes]) {
+    for (const track of collection) trimTrack(track, cutoff);
+  }
+  state.events = state.events.filter(event => event.time >= cutoff);
+}
+
+function installTelemetry(telemetry) {
+  state.roster = telemetry.roster;
+  state.renderModels = new Map(telemetry.renderModels.map(model => [model.modelId, model]));
+  state.players = telemetry.players;
+  state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
+  state.projectileDefinitions = new Map(telemetry.projectileDefinitions.map(def => [def.projectileId, def]));
+  state.projectiles = telemetry.projectiles;
+  state.objectiveDefinitions = new Map(telemetry.objectiveDefinitions.map(def => [def.objectiveId, def]));
+  state.objectives = telemetry.objectives;
+  state.buildableDefinitions = new Map(
+    telemetry.buildableDefinitions.map(definition => [definition.buildableId, definition])
+  );
+  state.buildables = telemetry.buildables;
+  state.brushDefinitions = new Map(
+    telemetry.brushDefinitions.map(definition => [definition.brushId, definition])
+  );
+  state.brushes = telemetry.brushes;
+  state.events = telemetry.events;
+  buildRoster();
+  selectPlayer(state.roster[0]?.sessionId);
+  setupWorld();
+  renderEvents(true);
+}
+
+async function applyLiveDelta(telemetry) {
+  let rosterChanged = false;
+  const rosterIds = new Set(state.roster.map(row => row.sessionId));
+  for (const row of telemetry.roster) {
+    if (rosterIds.has(row.sessionId)) continue;
+    state.roster.push(row);
+    rosterIds.add(row.sessionId);
+    rosterChanged = true;
+  }
+  for (const model of telemetry.renderModels) state.renderModels.set(model.modelId, model);
+  for (const definition of telemetry.projectileDefinitions) {
+    state.projectileDefinitions.set(definition.projectileId, definition);
+  }
+  for (const definition of telemetry.objectiveDefinitions) {
+    state.objectiveDefinitions.set(definition.objectiveId, definition);
+  }
+  for (const definition of telemetry.buildableDefinitions) {
+    state.buildableDefinitions.set(definition.buildableId, definition);
+  }
+  for (const definition of telemetry.brushDefinitions) {
+    state.brushDefinitions.set(definition.brushId, definition);
+  }
+  await projectileVisuals.preload(telemetry.projectileDefinitions);
+  mergeTracks(state.players, telemetry.players, "sessionId");
+  mergeTracks(state.projectiles, telemetry.projectiles, "projectileId");
+  mergeTracks(state.objectives, telemetry.objectives, "objectiveId");
+  mergeTracks(state.buildables, telemetry.buildables, "buildableId");
+  mergeTracks(state.brushes, telemetry.brushes, "brushId");
+  state.events.push(...telemetry.events);
+  state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
+  state.liveEdge = Math.max(state.liveEdge, latestTelemetryTime(telemetry));
+  state.duration = state.liveEdge;
+  trimLiveTelemetry();
+  if (rosterChanged) {
+    buildRoster();
+    if (state.selectedSession != null) selectPlayer(state.selectedSession);
+  }
+  if (state.selectedSession == null) {
+    const selectable = state.roster.find(row => state.playerBySession.has(row.sessionId));
+    selectPlayer(selectable?.sessionId);
+  }
+  buildVisuals();
+  bindBrushNodes();
+  renderEvents(true);
+}
+
+let liveWorkerPending = null;
+
+function ensureLiveWorker() {
+  if (liveWorker) return;
+  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802live1");
+  liveWorker.onmessage = event => {
+    if (event.data.type === "progress") return setStatus(event.data.label);
+    if (!liveWorkerPending) return;
+    if (event.data.type === "error") {
+      const pending = liveWorkerPending;
+      liveWorkerPending = null;
+      pending.reject(new Error(event.data.error));
+      return;
+    }
+    if (event.data.type === liveWorkerPending.expectedType) {
+      const pending = liveWorkerPending;
+      liveWorkerPending = null;
+      pending.resolve(event.data);
+    }
+  };
+  liveWorker.onerror = event => {
+    if (!liveWorkerPending) return;
+    const pending = liveWorkerPending;
+    liveWorkerPending = null;
+    pending.reject(new Error(event.message || "Live replay worker failed."));
+  };
+}
+
+function requestLiveWorker(message, expectedType) {
+  ensureLiveWorker();
+  if (liveWorkerPending) return Promise.reject(new Error("Live telemetry parser is already busy."));
+  return new Promise((resolve, reject) => {
+    liveWorkerPending = { expectedType, resolve, reject };
+    liveWorker.postMessage(message);
+  });
+}
+
+function queueLiveBatch(batch) {
+  const sequence = Number(batch?.sequence);
+  if (!Number.isSafeInteger(sequence) || sequence <= liveQueuedSequence) return;
+  if (sequence !== liveQueuedSequence + 1) {
+    location.reload();
+    return;
+  }
+  liveQueuedSequence = sequence;
+  liveBatchQueue = liveBatchQueue.then(async () => {
+    const parsed = await requestLiveWorker({ type: "live-append", batch }, "live-delta");
+    await applyLiveDelta(parsed.payload);
+    state.liveSequence = sequence;
+    if (batch.final) {
+      state.liveEnded = true;
+      state.followLive = false;
+    }
+    updateLiveHud();
+    setStatus("");
+  }).catch(error => {
+    console.error("[pickup-live]", error);
+    liveEventSource?.close();
+    setLiveChrome("connecting");
+    setStatus(error.message || "Live telemetry update failed.");
+  });
+}
+
+function connectLiveEvents(metadata, sequence) {
+  liveQueuedSequence = sequence;
+  liveEventSource = new EventSource(`${metadata.events}?after=${encodeURIComponent(sequence)}`);
+  liveEventSource.addEventListener("open", () => {
+    if (state.liveReady) setStatus("");
+  });
+  liveEventSource.addEventListener("batch", event => {
+    try {
+      queueLiveBatch(JSON.parse(event.data));
+    } catch {
+      setStatus("The live feed sent an invalid update.");
+      liveEventSource.close();
+    }
+  });
+  liveEventSource.addEventListener("final", () => {
+    state.liveEnded = true;
+    state.followLive = false;
+    updateLiveHud();
+  });
+  liveEventSource.addEventListener("reset", () => location.reload());
+  liveEventSource.addEventListener("error", () => {
+    if (!state.liveEnded) {
+      setLiveChrome("connecting");
+      setStatus("Live feed interrupted; reconnecting…");
+    }
+  });
+}
+
 async function loadTfcModelCatalog() {
   const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix5", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
@@ -2229,6 +2459,10 @@ async function loadTfcModelCatalog() {
 }
 
 function cleanupReplayObjects() {
+  liveEventSource?.close();
+  liveEventSource = null;
+  liveWorker?.terminate();
+  liveWorker = null;
   for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot]) {
     root.clear();
   }
@@ -2240,11 +2474,72 @@ function cleanupReplayObjects() {
   state.brushDefinitions.clear();
 }
 
+async function initRealLive() {
+  const identity = { ...queryIdentity(), serverId: LIVE_SERVER_ID.toLowerCase() };
+  setLiveChrome("connecting");
+  setStatus(`Connecting to ${identity.serverId.toUpperCase()}…`);
+  const metadataResponse = await fetch(
+    `/api/pickup-live/viewer/${encodeURIComponent(identity.serverId)}/${encodeURIComponent(identity.matchId)}/${identity.round}`,
+    { cache: "no-store" }
+  );
+  const metadata = await metadataResponse.json();
+  if (!metadataResponse.ok) {
+    throw new Error(metadata.error === "live_stream_not_found"
+      ? `No live feed is running for ${identity.serverId.toUpperCase()} ${identity.matchId}, round ${identity.round}.`
+      : metadata.error || `Live feed request failed (${metadataResponse.status})`);
+  }
+  const queryMap = new URLSearchParams(location.search).get("map") || "";
+  if (!metadata.map && /^[A-Za-z0-9_-]{1,64}$/.test(queryMap)) metadata.map = queryMap;
+  if (!metadata.map) throw new Error("The live feed is connected, but its map is not available yet.");
+  state.metadata = { ...metadata, manifest: { schema_version: metadata.schemaVersion } };
+  state.liveBufferSeconds = Number(metadata.bufferSeconds) || LIVE_BUFFER_SECONDS;
+  $("replay-title").textContent = `${metadata.map} · ${metadata.matchId} / Round ${metadata.round}`;
+  $("replay-subtitle").textContent = `${metadata.serverId.toUpperCase()} · direct server telemetry`;
+  $("replay-round-status").textContent = metadata.active ? "LIVE TELEMETRY" : "FEED STALE";
+  $("replay-duration").textContent = "LIVE";
+  $("replay-slider").max = "1";
+  document.title = `NoName TFC | ${metadata.map} Pickup Live`;
+
+  const [snapshotResponse, modelCatalog] = await Promise.all([
+    fetch(metadata.snapshot, { cache: "no-store" }),
+    loadTfcModelCatalog()
+  ]);
+  const snapshot = await snapshotResponse.json();
+  if (!snapshotResponse.ok) throw new Error(snapshot.error || `Live snapshot failed (${snapshotResponse.status})`);
+  const parsed = await requestLiveWorker({
+    type: "live-reset",
+    files: snapshot.files,
+    schemaVersion: snapshot.schemaVersion,
+    sequence: snapshot.sequence
+  }, "live-complete");
+  state.modelCatalog = modelCatalog;
+  setStatus("Loading projectile models and effects…");
+  await projectileVisuals.preload(parsed.payload.projectileDefinitions);
+  installTelemetry(parsed.payload);
+  state.liveEdge = latestTelemetryTime(parsed.payload);
+  state.duration = state.liveEdge;
+  state.liveSequence = snapshot.sequence;
+  state.liveEnded = Boolean(snapshot.final);
+  state.liveReady = true;
+  state.followLive = !state.liveEnded;
+  state.playbackTime = Math.max(0, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
+  setPlaying(true);
+  updateLiveHud();
+  updateScene();
+  setStatus("");
+  if (!state.liveEnded) connectLiveEvents(metadata, snapshot.sequence);
+}
+
 async function init() {
   wireControls();
   resize();
   requestAnimationFrame(tick);
   try {
+    if (LIVE_PAGE && LIVE_SERVER_ID && !LIVE_REAL) throw new Error("Missing or invalid live server ID.");
+    if (LIVE_REAL) {
+      await initRealLive();
+      return;
+    }
     const identity = queryIdentity();
     const response = await fetch(
       `/api/pickup-replays/viewer/${encodeURIComponent(identity.matchId)}/${identity.round}`,
@@ -2273,28 +2568,8 @@ async function init() {
     ]);
     setStatus("Loading projectile models and effects…");
     await projectileVisuals.preload(telemetry.projectileDefinitions);
-    state.roster = telemetry.roster;
-    state.renderModels = new Map(telemetry.renderModels.map(model => [model.modelId, model]));
     state.modelCatalog = modelCatalog;
-    state.players = telemetry.players;
-    state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
-    state.projectileDefinitions = new Map(telemetry.projectileDefinitions.map(def => [def.projectileId, def]));
-    state.projectiles = telemetry.projectiles;
-    state.objectiveDefinitions = new Map(telemetry.objectiveDefinitions.map(def => [def.objectiveId, def]));
-    state.objectives = telemetry.objectives;
-    state.buildableDefinitions = new Map(
-      telemetry.buildableDefinitions.map(definition => [definition.buildableId, definition])
-    );
-    state.buildables = telemetry.buildables;
-    state.brushDefinitions = new Map(
-      telemetry.brushDefinitions.map(definition => [definition.brushId, definition])
-    );
-    state.brushes = telemetry.brushes;
-    state.events = telemetry.events;
-    buildRoster();
-    selectPlayer(state.roster[0]?.sessionId);
-    setupWorld();
-    renderEvents(true);
+    installTelemetry(telemetry);
     if (LIVE_SIMULATION) {
       const requestedFeedSpeed = Number(new URLSearchParams(location.search).get("feedSpeed"));
       state.feedSpeed = Number.isFinite(requestedFeedSpeed)

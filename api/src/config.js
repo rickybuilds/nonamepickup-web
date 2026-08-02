@@ -52,6 +52,14 @@ const PICKUP_MAX_EXTRACTED_BYTES = positiveInt(
 );
 const PICKUP_MAX_ARCHIVE_FILES = positiveInt(process.env.PICKUP_MAX_ARCHIVE_FILES, 32, 1, 1000);
 const PICKUP_ZSTD_COMMAND = process.env.PICKUP_ZSTD_COMMAND || "zstd";
+const PICKUP_LIVE_BUFFER_SECONDS = positiveInt(process.env.PICKUP_LIVE_BUFFER_SECONDS, 120, 30, 900);
+const PICKUP_LIVE_STALE_SECONDS = positiveInt(process.env.PICKUP_LIVE_STALE_SECONDS, 30, 5, 300);
+const PICKUP_LIVE_MAX_BATCH_BYTES = positiveInt(
+  process.env.PICKUP_LIVE_MAX_BATCH_BYTES,
+  1024 * 1024,
+  64 * 1024,
+  8 * 1024 * 1024
+);
 
 const config = {
   PORT,
@@ -83,7 +91,10 @@ const config = {
   PICKUP_MAX_UPLOAD_BYTES,
   PICKUP_MAX_EXTRACTED_BYTES,
   PICKUP_MAX_ARCHIVE_FILES,
-  PICKUP_ZSTD_COMMAND
+  PICKUP_ZSTD_COMMAND,
+  PICKUP_LIVE_BUFFER_SECONDS,
+  PICKUP_LIVE_STALE_SECONDS,
+  PICKUP_LIVE_MAX_BATCH_BYTES
 };
 
 function validatePickupConfiguration(value = config) {

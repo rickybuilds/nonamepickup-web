@@ -28,12 +28,7 @@ function csvFields(line) {
   return fields;
 }
 
-async function rows(url, callback, expectedHeaders = null) {
-  const response = await fetch(url, { cache: "force-cache" });
-  if (!response.ok) throw new Error(`Telemetry request failed (${response.status})`);
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error("Streaming telemetry is unavailable.");
-  const decoder = new TextDecoder();
+async function rows(source, callback, expectedHeaders = null) {
   let pending = "";
   let headers = null;
   let index = null;
@@ -53,15 +48,28 @@ async function rows(url, callback, expectedHeaders = null) {
     if (line.length) callback(fields, index);
     rowNumber += 1;
   };
-  while (true) {
-    const { value, done } = await reader.read();
-    pending += decoder.decode(value || new Uint8Array(), { stream: !done });
+  const consumePending = () => {
     let boundary;
     while ((boundary = pending.indexOf("\n")) >= 0) {
       consume(pending.slice(0, boundary));
       pending = pending.slice(boundary + 1);
     }
-    if (done) break;
+  };
+  if (source && typeof source === "object" && typeof source.text === "string") {
+    pending = source.text;
+    consumePending();
+  } else {
+    const response = await fetch(source, { cache: "force-cache" });
+    if (!response.ok) throw new Error(`Telemetry request failed (${response.status})`);
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Streaming telemetry is unavailable.");
+    const decoder = new TextDecoder();
+    while (true) {
+      const { value, done } = await reader.read();
+      pending += decoder.decode(value || new Uint8Array(), { stream: !done });
+      consumePending();
+      if (done) break;
+    }
   }
   if (pending) consume(pending);
   if (!headers) throw new Error("Telemetry CSV is empty.");
@@ -458,61 +466,192 @@ async function loadEvents(url) {
   return output;
 }
 
-self.onmessage = async event => {
-  try {
-    const files = event.data.files;
-    const schemaVersion = Number(event.data.schemaVersion);
-    if (![2, 3, 4].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
-    self.postMessage({ type: "progress", label: "Loading roster…" });
-    const roster = await loadRoster(files.roster);
-    const renderModels = schemaVersion >= 3 ? await loadRenderModels(files.renderModels) : [];
-    self.postMessage({ type: "progress", label: "Loading player snapshots…" });
-    const players = await loadPlayers(files.players, schemaVersion, renderModels);
-    self.postMessage({ type: "progress", label: "Loading projectile telemetry…" });
-    const projectileDefinitions = await loadProjectileDefinitions(files.projectileDefs, schemaVersion, renderModels);
-    for (const definition of projectileDefinitions) {
-      definition.ownerWeapon = playerWeaponAt(
-        players,
-        definition.ownerSession,
-        definition.spawnedMs / 1000
-      );
-    }
-    const projectiles = await loadProjectiles(files.projectiles);
-    self.postMessage({ type: "progress", label: "Loading objectives and events…" });
-    const objectiveDefinitions = await loadObjectiveDefinitions(files.objectiveDefs, schemaVersion, renderModels);
-    const objectives = await loadObjectives(files.objectives);
-    const buildableDefinitions = schemaVersion >= 3
-      ? await loadBuildableDefinitions(files.buildableDefs) : [];
-    const buildables = schemaVersion >= 3
-      ? await loadBuildables(files.buildables, buildableDefinitions, renderModels) : [];
-    const brushDefinitions = schemaVersion === 4 ? await loadBrushDefinitions(files.brushDefs) : [];
-    const brushes = schemaVersion === 4 ? await loadBrushes(files.brushes, brushDefinitions) : [];
-    const events = await loadEvents(files.events);
-    const transfer = [
-      ...players.map(track => track.frames.buffer),
-      ...projectiles.map(track => track.frames.buffer),
-      ...objectives.map(track => track.frames.buffer),
-      ...buildables.map(track => track.frames.buffer),
-      ...brushes.map(track => track.frames.buffer)
-    ];
-    self.postMessage({
-      type: "complete",
-      payload: {
-        roster,
-        renderModels,
-        players,
-        projectileDefinitions,
-        projectiles,
-        objectiveDefinitions,
-        objectives,
-        buildableDefinitions,
-        buildables,
-        brushDefinitions,
-        brushes,
-        events
-      }
-    }, transfer);
-  } catch (error) {
-    self.postMessage({ type: "error", error: error?.message || "Telemetry loading failed." });
+const LIVE_FILE_KEYS = {
+  roster: "roster.csv",
+  renderModels: "render_models.csv",
+  players: "players.csv",
+  projectileDefs: "projectile_defs.csv",
+  projectiles: "projectiles.csv",
+  objectiveDefs: "objective_defs.csv",
+  objectives: "objectives.csv",
+  buildableDefs: "buildable_defs.csv",
+  buildables: "buildables.csv",
+  brushDefs: "brush_defs.csv",
+  brushes: "brushes.csv",
+  events: "events.csv"
+};
+
+let liveContext = null;
+let liveQueue = Promise.resolve();
+
+function sourceFor(files, key) {
+  const value = files?.[key] ?? files?.[LIVE_FILE_KEYS[key]];
+  return typeof value === "string" && value.includes("\n") ? { text: value } : value;
+}
+
+function transferFor(payload) {
+  return [
+    ...payload.players.map(track => track.frames.buffer),
+    ...payload.projectiles.map(track => track.frames.buffer),
+    ...payload.objectives.map(track => track.frames.buffer),
+    ...payload.buildables.map(track => track.frames.buffer),
+    ...payload.brushes.map(track => track.frames.buffer)
+  ];
+}
+
+async function loadTelemetry(files, schemaVersion, progress = false) {
+  if (![2, 3, 4].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
+  if (progress) self.postMessage({ type: "progress", label: "Loading roster…" });
+  const roster = await loadRoster(sourceFor(files, "roster"));
+  const renderModels = schemaVersion >= 3 ? await loadRenderModels(sourceFor(files, "renderModels")) : [];
+  if (progress) self.postMessage({ type: "progress", label: "Loading player snapshots…" });
+  const players = await loadPlayers(sourceFor(files, "players"), schemaVersion, renderModels);
+  if (progress) self.postMessage({ type: "progress", label: "Loading projectile telemetry…" });
+  const projectileDefinitions = await loadProjectileDefinitions(
+    sourceFor(files, "projectileDefs"), schemaVersion, renderModels
+  );
+  for (const definition of projectileDefinitions) {
+    definition.ownerWeapon = playerWeaponAt(players, definition.ownerSession, definition.spawnedMs / 1000);
   }
+  const projectiles = await loadProjectiles(sourceFor(files, "projectiles"));
+  if (progress) self.postMessage({ type: "progress", label: "Loading objectives and events…" });
+  const objectiveDefinitions = await loadObjectiveDefinitions(
+    sourceFor(files, "objectiveDefs"), schemaVersion, renderModels
+  );
+  const objectives = await loadObjectives(sourceFor(files, "objectives"));
+  const buildableDefinitions = schemaVersion >= 3
+    ? await loadBuildableDefinitions(sourceFor(files, "buildableDefs")) : [];
+  const buildables = schemaVersion >= 3
+    ? await loadBuildables(sourceFor(files, "buildables"), buildableDefinitions, renderModels) : [];
+  const brushDefinitions = schemaVersion === 4
+    ? await loadBrushDefinitions(sourceFor(files, "brushDefs")) : [];
+  const brushes = schemaVersion === 4
+    ? await loadBrushes(sourceFor(files, "brushes"), brushDefinitions) : [];
+  const events = await loadEvents(sourceFor(files, "events"));
+  return {
+    roster, renderModels, players, projectileDefinitions, projectiles,
+    objectiveDefinitions, objectives, buildableDefinitions, buildables,
+    brushDefinitions, brushes, events
+  };
+}
+
+function rememberHeader(fileName, text) {
+  const boundary = text.indexOf("\n");
+  if (boundary < 0) throw new Error(`${fileName} is missing its CSV header.`);
+  liveContext.headers.set(fileName, text.slice(0, boundary + 1));
+}
+
+function rememberLatestWeapons(players) {
+  for (const track of players) {
+    const count = Math.floor(track.frames.length / track.stride);
+    if (count) liveContext.latestWeapons.set(track.sessionId, Math.round(track.frames[(count - 1) * track.stride + 13] || 0));
+  }
+}
+
+function mergeDefinitions(target, definitions, idKey) {
+  for (const definition of definitions) target.set(definition[idKey], definition);
+}
+
+async function loadLiveSnapshot(message) {
+  const schemaVersion = Number(message.schemaVersion);
+  liveContext = {
+    schemaVersion,
+    headers: new Map(),
+    renderModels: new Map(),
+    projectileDefinitions: new Map(),
+    objectiveDefinitions: new Map(),
+    buildableDefinitions: new Map(),
+    brushDefinitions: new Map(),
+    latestWeapons: new Map()
+  };
+  for (const [fileName, text] of Object.entries(message.files || {})) rememberHeader(fileName, text);
+  const payload = await loadTelemetry(message.files, schemaVersion, true);
+  mergeDefinitions(liveContext.renderModels, payload.renderModels, "modelId");
+  mergeDefinitions(liveContext.projectileDefinitions, payload.projectileDefinitions, "projectileId");
+  mergeDefinitions(liveContext.objectiveDefinitions, payload.objectiveDefinitions, "objectiveId");
+  mergeDefinitions(liveContext.buildableDefinitions, payload.buildableDefinitions, "buildableId");
+  mergeDefinitions(liveContext.brushDefinitions, payload.brushDefinitions, "brushId");
+  rememberLatestWeapons(payload.players);
+  self.postMessage({ type: "live-complete", sequence: message.sequence, payload }, transferFor(payload));
+}
+
+function liveSource(batch, fileName) {
+  const body = batch.files?.[fileName];
+  const incomingHeader = batch.headers?.[fileName];
+  if (incomingHeader) liveContext.headers.set(fileName, incomingHeader);
+  if (!body) return null;
+  const header = liveContext.headers.get(fileName);
+  if (!header) throw new Error(`${fileName} arrived before its CSV header.`);
+  return { text: header + body };
+}
+
+async function loadLiveAppend(message) {
+  if (!liveContext) throw new Error("Live telemetry arrived before its snapshot.");
+  const { batch } = message;
+  const schemaVersion = liveContext.schemaVersion;
+  const sources = new Map(Object.values(LIVE_FILE_KEYS).map(fileName => [fileName, liveSource(batch, fileName)]));
+  const source = fileName => sources.get(fileName);
+  const roster = source("roster.csv") ? await loadRoster(source("roster.csv")) : [];
+  const newRenderModels = source("render_models.csv") ? await loadRenderModels(source("render_models.csv")) : [];
+  mergeDefinitions(liveContext.renderModels, newRenderModels, "modelId");
+  const renderModels = [...liveContext.renderModels.values()];
+  const players = source("players.csv")
+    ? await loadPlayers(source("players.csv"), schemaVersion, renderModels) : [];
+  rememberLatestWeapons(players);
+  const projectileDefinitions = source("projectile_defs.csv")
+    ? await loadProjectileDefinitions(source("projectile_defs.csv"), schemaVersion, renderModels) : [];
+  for (const definition of projectileDefinitions) {
+    definition.ownerWeapon = liveContext.latestWeapons.get(definition.ownerSession) || 0;
+  }
+  mergeDefinitions(liveContext.projectileDefinitions, projectileDefinitions, "projectileId");
+  const projectiles = source("projectiles.csv") ? await loadProjectiles(source("projectiles.csv")) : [];
+  const objectiveDefinitions = source("objective_defs.csv")
+    ? await loadObjectiveDefinitions(source("objective_defs.csv"), schemaVersion, renderModels) : [];
+  mergeDefinitions(liveContext.objectiveDefinitions, objectiveDefinitions, "objectiveId");
+  const objectives = source("objectives.csv") ? await loadObjectives(source("objectives.csv")) : [];
+  const buildableDefinitions = schemaVersion >= 3 && source("buildable_defs.csv")
+    ? await loadBuildableDefinitions(source("buildable_defs.csv")) : [];
+  mergeDefinitions(liveContext.buildableDefinitions, buildableDefinitions, "buildableId");
+  const buildables = schemaVersion >= 3 && source("buildables.csv")
+    ? await loadBuildables(source("buildables.csv"), [...liveContext.buildableDefinitions.values()], renderModels) : [];
+  const brushDefinitions = schemaVersion === 4 && source("brush_defs.csv")
+    ? await loadBrushDefinitions(source("brush_defs.csv")) : [];
+  mergeDefinitions(liveContext.brushDefinitions, brushDefinitions, "brushId");
+  const brushes = schemaVersion === 4 && source("brushes.csv")
+    ? await loadBrushes(source("brushes.csv"), [...liveContext.brushDefinitions.values()]) : [];
+  const events = source("events.csv") ? await loadEvents(source("events.csv")) : [];
+  const payload = {
+    roster,
+    renderModels: newRenderModels,
+    players,
+    projectileDefinitions,
+    projectiles,
+    objectiveDefinitions,
+    objectives,
+    buildableDefinitions,
+    buildables,
+    brushDefinitions,
+    brushes,
+    events
+  };
+  self.postMessage({ type: "live-delta", sequence: batch.sequence, payload }, transferFor(payload));
+}
+
+async function handleMessage(message) {
+  try {
+    if (message.type === "live-reset") return await loadLiveSnapshot(message);
+    if (message.type === "live-append") return await loadLiveAppend(message);
+    const payload = await loadTelemetry(message.files, Number(message.schemaVersion), true);
+    self.postMessage({ type: "complete", payload }, transferFor(payload));
+  } catch (error) {
+    self.postMessage({
+      type: "error",
+      sequence: message.sequence || message.batch?.sequence || null,
+      error: error?.message || "Telemetry loading failed."
+    });
+  }
+}
+
+self.onmessage = event => {
+  liveQueue = liveQueue.then(() => handleMessage(event.data));
 };
