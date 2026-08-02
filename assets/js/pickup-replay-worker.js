@@ -354,7 +354,7 @@ async function loadBuildableDefinitions(url) {
   return definitions;
 }
 
-async function loadBuildables(url, definitions, renderModels) {
+async function loadBuildables(url, definitions, renderModels, allowUnresolved = false) {
   const tracks = new Map();
   const ids = new Set(definitions.map(definition => definition.buildableId));
   const models = new Map(renderModels.map(model => [model.modelId, model]));
@@ -363,6 +363,7 @@ async function loadBuildables(url, definitions, renderModels) {
     const modelId = number(cols[i.model_id]);
     if (!ids.has(buildableId) || !Number.isSafeInteger(modelId) || modelId < 0 ||
         (modelId !== 0 && models.get(modelId)?.kind !== "buildable")) {
+      if (allowUnresolved) return;
       throw new Error("Buildable state references an invalid definition or model.");
     }
     if (!tracks.has(buildableId)) tracks.set(buildableId, new Float32Builder());
@@ -613,7 +614,9 @@ async function loadLiveAppend(message) {
     ? await loadBuildableDefinitions(source("buildable_defs.csv")) : [];
   mergeDefinitions(liveContext.buildableDefinitions, buildableDefinitions, "buildableId");
   const buildables = schemaVersion >= 3 && source("buildables.csv")
-    ? await loadBuildables(source("buildables.csv"), [...liveContext.buildableDefinitions.values()], renderModels) : [];
+    ? await loadBuildables(
+      source("buildables.csv"), [...liveContext.buildableDefinitions.values()], renderModels, true
+    ) : [];
   const brushDefinitions = schemaVersion === 4 && source("brush_defs.csv")
     ? await loadBrushDefinitions(source("brush_defs.csv")) : [];
   mergeDefinitions(liveContext.brushDefinitions, brushDefinitions, "brushId");
