@@ -157,10 +157,14 @@ def parse_entity_wads(data, lump):
     return wad_names
 
 
+def entity_lump_text(data, lump):
+    offset, length = lump
+    return data[offset:offset + length].decode("latin-1", errors="ignore").rstrip("\0")
+
+
 def parse_entities(data, lump):
     """Parse the quoted key/value dictionaries stored in a BSP entity lump."""
-    offset, length = lump
-    text = data[offset:offset + length].decode("latin-1", errors="ignore")
+    text = entity_lump_text(data, lump)
     entities = []
     for block in re.findall(r"\{([^{}]*)\}", text, re.DOTALL):
         entity = {}
@@ -195,6 +199,19 @@ def parse_entity_color(value):
     return [max(0, min(255, round(channel))) for channel in point]
 
 
+def entity_activation_outputs(entity, known_targetnames):
+    outputs = set()
+    target = entity.get("target", "").strip()
+    if target:
+        outputs.add(target)
+    if entity.get("classname", "").lower() == "multi_manager":
+        for key in entity:
+            candidate = re.sub(r"#\d+$", "", key)
+            if candidate in known_targetnames:
+                outputs.add(candidate)
+    return outputs
+
+
 def extract_entity_beams(data, lump):
     """Resolve GoldSrc beam entities to world-space endpoints for replay clients."""
     entities = parse_entities(data, lump)
@@ -204,6 +221,15 @@ def extract_entity_beams(data, lump):
         origin = parse_entity_point(entity.get("origin"))
         if targetname and origin and targetname not in targets:
             targets[targetname] = origin
+    known_targetnames = {
+        entity.get("targetname", "").strip()
+        for entity in entities
+        if entity.get("targetname", "").strip()
+    }
+    activation_groups = [
+        entity_activation_outputs(entity, known_targetnames)
+        for entity in entities
+    ]
 
     beams = []
     for entity in entities:
@@ -226,6 +252,10 @@ def extract_entity_beams(data, lump):
 
         spawnflags = int(parse_entity_number(entity.get("spawnflags"), 0))
         targetname = entity.get("targetname", "").strip()
+        sync_targets = {targetname} if targetname else set()
+        for outputs in activation_groups:
+            if targetname and targetname in outputs:
+                sync_targets.update(outputs)
         beams.append({
             "classname": classname,
             "start": start,
@@ -236,6 +266,7 @@ def extract_entity_beams(data, lump):
             "noise": max(0, min(255, parse_entity_number(entity.get("noiseamplitude"), 0))),
             "texture": entity.get("texture", ""),
             "targetname": targetname,
+            "syncTargets": sorted(sync_targets),
             "startsOn": not targetname or bool(spawnflags & 1),
         })
     return beams
@@ -535,6 +566,8 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
     edges = parse_edges(data, lumps[LUMP_EDGES])
     surfedges = parse_surfedges(data, lumps[LUMP_SURFEDGES])
     models = parse_models(data, lumps[LUMP_MODELS])
+    entities = parse_entities(data, lumps[LUMP_ENTITIES])
+    raw_entity_lump = entity_lump_text(data, lumps[LUMP_ENTITIES])
     entity_beams = extract_entity_beams(data, lumps[LUMP_ENTITIES])
     face_models = {}
     for model_index, model in enumerate(models):
@@ -617,7 +650,11 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
         "triangles": total_vertices // 3,
         "vertices": total_vertices,
         "models": models,
+        "entityCount": len(entities),
+        "entityBeamCount": len(entity_beams),
         "entityBeams": entity_beams,
+        "_goldsrcEntities": entities,
+        "_goldsrcEntityLump": raw_entity_lump,
     }
 
 
@@ -634,6 +671,9 @@ def accessor_min_max(values, stride):
 
 
 def write_glb(path, primitives_by_texture, textures, stats):
+    entity_beams = stats.pop("entityBeams", [])
+    goldsrc_entities = stats.pop("_goldsrcEntities", [])
+    goldsrc_entity_lump = stats.pop("_goldsrcEntityLump", "")
     bin_chunks = []
     buffer_views = []
     accessors = []
@@ -755,7 +795,7 @@ def write_glb(path, primitives_by_texture, textures, stats):
 
     bin_blob = b"".join(bin_chunks)
 
-    source_stats = {key: value for key, value in stats.items() if key != "entityBeams"}
+    source_stats = dict(stats)
     gltf = {
         "asset": {
             "version": "2.0",
@@ -771,7 +811,10 @@ def write_glb(path, primitives_by_texture, textures, stats):
         "materials": materials,
         "extras": {
             "source": source_stats,
-            "goldsrcBeams": stats.get("entityBeams") or [],
+            "goldsrcEntityArchiveVersion": 1,
+            "goldsrcEntityLump": goldsrc_entity_lump,
+            "goldsrcEntities": goldsrc_entities,
+            "goldsrcBeams": entity_beams,
         },
     }
     if images:
