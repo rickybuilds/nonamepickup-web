@@ -765,13 +765,18 @@ function settleCorpses() {
 
 function projectileRemoval(track) {
   const { frames, stride } = track;
+  let lastActiveOffset = -1;
   for (let offset = 0; offset < frames.length; offset += stride) {
-    if (frames[offset + 1] !== 0) continue;
+    if (frames[offset + 1] === 1) {
+      lastActiveOffset = offset;
+      continue;
+    }
+    if (lastActiveOffset < 0 || frames[offset] - frames[lastActiveOffset] > 0.25) return null;
     return {
       time: frames[offset],
-      x: frames[offset + 2],
-      y: frames[offset + 3],
-      z: frames[offset + 4]
+      x: frames[lastActiveOffset + 2],
+      y: frames[lastActiveOffset + 3],
+      z: frames[lastActiveOffset + 4]
     };
   }
   return null;
