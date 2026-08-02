@@ -157,6 +157,90 @@ def parse_entity_wads(data, lump):
     return wad_names
 
 
+def parse_entities(data, lump):
+    """Parse the quoted key/value dictionaries stored in a BSP entity lump."""
+    offset, length = lump
+    text = data[offset:offset + length].decode("latin-1", errors="ignore")
+    entities = []
+    for block in re.findall(r"\{([^{}]*)\}", text, re.DOTALL):
+        entity = {}
+        pairs = re.findall(r'"([^"\\]*(?:\\.[^"\\]*)*)"\s*"([^"\\]*(?:\\.[^"\\]*)*)"', block)
+        for key, value in pairs:
+            entity[key.lower()] = value.replace(r'\"', '"')
+        if entity:
+            entities.append(entity)
+    return entities
+
+
+def parse_entity_point(value):
+    try:
+        parts = [float(part) for part in str(value or "").split()]
+    except ValueError:
+        return None
+    return parts if len(parts) == 3 and all(math.isfinite(part) for part in parts) else None
+
+
+def parse_entity_number(value, default=0.0):
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return default
+    return result if math.isfinite(result) else default
+
+
+def parse_entity_color(value):
+    point = parse_entity_point(value)
+    if not point:
+        return [255, 64, 48]
+    return [max(0, min(255, round(channel))) for channel in point]
+
+
+def extract_entity_beams(data, lump):
+    """Resolve GoldSrc beam entities to world-space endpoints for replay clients."""
+    entities = parse_entities(data, lump)
+    targets = {}
+    for entity in entities:
+        targetname = entity.get("targetname", "").strip()
+        origin = parse_entity_point(entity.get("origin"))
+        if targetname and origin and targetname not in targets:
+            targets[targetname] = origin
+
+    beams = []
+    for entity in entities:
+        classname = entity.get("classname", "").lower()
+        if classname not in ("env_beam", "env_laser", "env_lightning"):
+            continue
+
+        if classname == "env_laser":
+            start = parse_entity_point(entity.get("origin"))
+            end_name = entity.get("lasertarget") or entity.get("target") or ""
+            end = targets.get(end_name)
+        else:
+            start_name = entity.get("lightningstart") or ""
+            end_name = entity.get("lightningend") or ""
+            start = targets.get(start_name) or parse_entity_point(entity.get("origin"))
+            end = targets.get(end_name)
+
+        if not start or not end or start == end:
+            continue
+
+        spawnflags = int(parse_entity_number(entity.get("spawnflags"), 0))
+        targetname = entity.get("targetname", "").strip()
+        beams.append({
+            "classname": classname,
+            "start": start,
+            "end": end,
+            "color": parse_entity_color(entity.get("rendercolor")),
+            "brightness": max(0, min(255, round(parse_entity_number(entity.get("renderamt"), 255)))),
+            "width": max(1, min(96, parse_entity_number(entity.get("boltwidth"), 8))),
+            "noise": max(0, min(255, parse_entity_number(entity.get("noiseamplitude"), 0))),
+            "texture": entity.get("texture", ""),
+            "targetname": targetname,
+            "startsOn": not targetname or bool(spawnflags & 1),
+        })
+    return beams
+
+
 def parse_wad_textures(path):
     data = path.read_bytes()
     if len(data) < 12 or data[:4] not in (b"WAD2", b"WAD3"):
@@ -451,6 +535,7 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
     edges = parse_edges(data, lumps[LUMP_EDGES])
     surfedges = parse_surfedges(data, lumps[LUMP_SURFEDGES])
     models = parse_models(data, lumps[LUMP_MODELS])
+    entity_beams = extract_entity_beams(data, lumps[LUMP_ENTITIES])
     face_models = {}
     for model_index, model in enumerate(models):
         for face_index in range(model["first_face"], model["first_face"] + model["face_count"]):
@@ -532,6 +617,7 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
         "triangles": total_vertices // 3,
         "vertices": total_vertices,
         "models": models,
+        "entityBeams": entity_beams,
     }
 
 
@@ -669,6 +755,7 @@ def write_glb(path, primitives_by_texture, textures, stats):
 
     bin_blob = b"".join(bin_chunks)
 
+    source_stats = {key: value for key, value in stats.items() if key != "entityBeams"}
     gltf = {
         "asset": {
             "version": "2.0",
@@ -683,7 +770,8 @@ def write_glb(path, primitives_by_texture, textures, stats):
         "accessors": accessors,
         "materials": materials,
         "extras": {
-            "source": stats,
+            "source": source_stats,
+            "goldsrcBeams": stats.get("entityBeams") or [],
         },
     }
     if images:

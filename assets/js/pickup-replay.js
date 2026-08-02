@@ -93,6 +93,7 @@ const hitscanRoot = new THREE.Group();
 world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot);
 let grid = null;
 let mapModel = null;
+let mapBeamGroup = null;
 const corpseGroundRay = new THREE.Raycaster();
 const corpseDown = new THREE.Vector3(0, -1, 0);
 const acRaycaster = new THREE.Raycaster();
@@ -1116,7 +1117,64 @@ function updateScene() {
 }
 
 function mapAssetUrl(map) {
-  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260731brushes1`;
+  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260801beams1`;
+}
+
+function buildMapBeams(gltf) {
+  if (mapBeamGroup) world.remove(mapBeamGroup);
+  mapBeamGroup = new THREE.Group();
+  mapBeamGroup.name = "goldsrc-entity-beams";
+  world.add(mapBeamGroup);
+
+  const definitions = gltf?.userData?.goldsrcBeams;
+  if (!Array.isArray(definitions)) return;
+  const up = new THREE.Vector3(0, 1, 0);
+
+  for (const definition of definitions) {
+    if (!Array.isArray(definition?.start) || !Array.isArray(definition?.end)) continue;
+    // Trigger state is not present in older pickup archives. Keeping these
+    // visible is preferable to silently omitting permanent map hazards.
+    const start = sourcePoint(...definition.start);
+    const end = sourcePoint(...definition.end);
+    const delta = end.clone().sub(start);
+    const length = delta.length();
+    if (!Number.isFinite(length) || length < 0.01) continue;
+
+    const channels = Array.isArray(definition.color) ? definition.color : [255, 64, 48];
+    const color = new THREE.Color(
+      THREE.MathUtils.clamp(Number(channels[0]) / 255, 0, 1),
+      THREE.MathUtils.clamp(Number(channels[1]) / 255, 0, 1),
+      THREE.MathUtils.clamp(Number(channels[2]) / 255, 0, 1)
+    );
+    const opacity = THREE.MathUtils.clamp(Number(definition.brightness ?? 255) / 255, 0.18, 1);
+    const radius = THREE.MathUtils.clamp(Number(definition.width || 8) * 0.22, 0.7, 8);
+    const midpoint = start.clone().add(end).multiplyScalar(0.5);
+    const rotation = new THREE.Quaternion().setFromUnitVectors(up, delta.clone().normalize());
+
+    const addBeamLayer = (layerRadius, layerOpacity) => {
+      const material = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: layerOpacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false
+      });
+      const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(layerRadius, layerRadius, 1, 8, 1, true),
+        material
+      );
+      beam.position.copy(midpoint);
+      beam.quaternion.copy(rotation);
+      beam.scale.y = length;
+      beam.renderOrder = 40;
+      beam.frustumCulled = false;
+      mapBeamGroup.add(beam);
+    };
+
+    addBeamLayer(radius * 2.4, opacity * 0.2);
+    addBeamLayer(radius, opacity);
+  }
 }
 
 function loadMap() {
@@ -1133,6 +1191,7 @@ function loadMap() {
     });
     world.add(mapModel);
     settleCorpses();
+    buildMapBeams(gltf);
     bindBrushNodes();
     updateBrushes();
     if (grid) grid.visible = false;

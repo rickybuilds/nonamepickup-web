@@ -18,6 +18,15 @@ test("BSP converter exports model-lump face ranges as named GLB nodes", () => {
   assert.match(converter, /"goldsrcModel": name/);
 });
 
+test("BSP converter exports resolved GoldSrc beam entities for replay maps", () => {
+  assert.match(converter, /def extract_entity_beams\(data, lump\):/);
+  assert.match(converter, /"env_beam", "env_laser", "env_lightning"/);
+  assert.match(converter, /"goldsrcBeams": stats\.get\("entityBeams"\) or \[\]/);
+  assert.match(renderer, /gltf\?\.userData\?\.goldsrcBeams/);
+  assert.match(renderer, /THREE\.AdditiveBlending/);
+  assert.match(renderer, /buildMapBeams\(gltf\)/);
+});
+
 test("schema-v4 worker parses sparse brush definitions and transferable timelines", () => {
   assert.match(worker, /const BRUSH_DEFS_COLUMNS/);
   assert.match(worker, /const BRUSHES_COLUMNS/);
