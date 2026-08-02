@@ -30,6 +30,15 @@ test("BSP converter exports resolved GoldSrc beam entities for replay maps", () 
   assert.match(renderer, /visual\.visible = visual\.userData\.startsOn \? controllersAtBase : !controllersAtBase/);
 });
 
+test("BSP converter exports GoldSrc skyboxes and pickup replay loads all six faces", () => {
+  assert.match(converter, /def extract_sky_name\(entities\):/);
+  assert.match(converter, /def parse_tga_png\(path\):/);
+  assert.match(converter, /"goldsrcSky": \{/);
+  assert.match(renderer, /new THREE\.CubeTextureLoader\(\)/);
+  assert.match(renderer, /gltf\?\.userData\?\.goldsrcSky/);
+  assert.match(renderer, /buildMapSky\(gltf\)/);
+});
+
 test("BSP converter archives the complete entity lump for future replay features", () => {
   assert.match(converter, /"goldsrcEntityArchiveVersion": 1/);
   assert.match(converter, /"goldsrcEntityLump": goldsrc_entity_lump/);

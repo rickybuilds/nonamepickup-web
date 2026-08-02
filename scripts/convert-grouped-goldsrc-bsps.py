@@ -70,7 +70,7 @@ def safe_display(value):
     return str(value).encode("ascii", errors="replace").decode("ascii")
 
 
-def convert_map(converter, item, out_root, wad_textures, loaded_wads, force, skip_newer_than_seconds):
+def convert_map(converter, item, out_root, wad_textures, loaded_wads, wad_dirs, force, skip_newer_than_seconds):
     map_name = item["map"]
     out = out_root / map_name / f"{map_name}.glb"
     if out.is_file() and skip_newer_than_seconds > 0:
@@ -88,6 +88,7 @@ def convert_map(converter, item, out_root, wad_textures, loaded_wads, force, ski
     primitives, textures, stats = converter.build_triangles(
         data,
         item["lumps"],
+        wad_dirs=wad_dirs,
         preloaded_wad_textures=wad_textures,
         preloaded_wads=loaded_wads,
     )
@@ -151,6 +152,7 @@ def main():
                     args.out_root,
                     wad_textures,
                     loaded_wads,
+                    args.wad_dir,
                     args.force,
                     args.skip_newer_than_seconds,
                 )

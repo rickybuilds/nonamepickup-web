@@ -212,6 +212,15 @@ def entity_activation_outputs(entity, known_targetnames):
     return outputs
 
 
+def extract_sky_name(entities):
+    for entity in entities:
+        if entity.get("classname", "").lower() != "worldspawn":
+            continue
+        name = (entity.get("skyname") or "desert").strip()
+        return name if re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name) else ""
+    return ""
+
+
 def extract_entity_beams(data, lump):
     """Resolve GoldSrc beam entities to world-space endpoints for replay clients."""
     entities = parse_entities(data, lump)
@@ -448,6 +457,93 @@ def make_png_rgba(width, height, indexed_pixels, palette):
     )
 
 
+def make_png_rgba_bytes(width, height, pixels):
+    rows = [b"\0" + pixels[y * width * 4:(y + 1) * width * 4] for y in range(height)]
+
+    def chunk(kind, payload):
+        return (
+            struct.pack(">I", len(payload)) + kind + payload
+            + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)
+        )
+
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(b"".join(rows), 9))
+        + chunk(b"IEND", b"")
+    )
+
+
+def parse_tga_png(path):
+    data = path.read_bytes()
+    if len(data) < 18:
+        return b""
+    id_length, color_map_type, image_type = data[0], data[1], data[2]
+    width, height = read_u16(data, 12), read_u16(data, 14)
+    depth, descriptor = data[16], data[17]
+    if color_map_type != 0 or image_type not in (2, 10) or depth not in (24, 32) or width < 1 or height < 1:
+        return b""
+
+    bytes_per_pixel = depth // 8
+    offset = 18 + id_length
+    raw_pixels = []
+    pixel_count = width * height
+    if image_type == 2:
+        end = offset + pixel_count * bytes_per_pixel
+        if end > len(data):
+            return b""
+        raw_pixels = [data[pos:pos + bytes_per_pixel] for pos in range(offset, end, bytes_per_pixel)]
+    else:
+        while len(raw_pixels) < pixel_count and offset < len(data):
+            packet = data[offset]
+            offset += 1
+            count = (packet & 0x7F) + 1
+            if packet & 0x80:
+                pixel = data[offset:offset + bytes_per_pixel]
+                offset += bytes_per_pixel
+                raw_pixels.extend([pixel] * count)
+            else:
+                end = offset + count * bytes_per_pixel
+                raw_pixels.extend(data[pos:pos + bytes_per_pixel] for pos in range(offset, end, bytes_per_pixel))
+                offset = end
+        if len(raw_pixels) < pixel_count:
+            return b""
+        raw_pixels = raw_pixels[:pixel_count]
+
+    top_origin = bool(descriptor & 0x20)
+    right_origin = bool(descriptor & 0x10)
+    rgba = bytearray(pixel_count * 4)
+    for source_index, pixel in enumerate(raw_pixels):
+        source_y, source_x = divmod(source_index, width)
+        x = width - 1 - source_x if right_origin else source_x
+        y = source_y if top_origin else height - 1 - source_y
+        target = (y * width + x) * 4
+        rgba[target:target + 4] = (pixel[2], pixel[1], pixel[0], pixel[3] if bytes_per_pixel == 4 else 255)
+    return make_png_rgba_bytes(width, height, bytes(rgba))
+
+
+def load_skybox(sky_name, search_dirs):
+    if not sky_name:
+        return {}
+    suffixes = ("rt", "lf", "up", "dn", "bk", "ft")
+    candidate_dirs = []
+    for root in [Path(value) for value in search_dirs if value]:
+        if root.is_file():
+            root = root.parent
+        candidate_dirs.extend((root, root / "gfx" / "env", root / "tfc" / "gfx" / "env", root / "env"))
+    for directory in candidate_dirs:
+        if not directory.is_dir():
+            continue
+        names = {entry.name.lower(): entry for entry in directory.iterdir() if entry.is_file()}
+        paths = [names.get(f"{sky_name}{suffix}.tga".lower()) for suffix in suffixes]
+        if not all(paths):
+            continue
+        faces = {suffix: parse_tga_png(path) for suffix, path in zip(suffixes, paths)}
+        if all(faces.values()):
+            return faces
+    return {}
+
+
 def should_skip_texture(name):
     lowered = (name or "").lower()
     return lowered in SKIP_TEXTURE_NAMES or any(lowered.startswith(prefix) for prefix in SKIP_TEXTURE_PREFIXES)
@@ -569,6 +665,9 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
     entities = parse_entities(data, lumps[LUMP_ENTITIES])
     raw_entity_lump = entity_lump_text(data, lumps[LUMP_ENTITIES])
     entity_beams = extract_entity_beams(data, lumps[LUMP_ENTITIES])
+    sky_name = extract_sky_name(entities)
+    sky_search_dirs = list(wad_dirs or []) + list(preloaded_wads or [])
+    skybox_images = load_skybox(sky_name, sky_search_dirs)
     face_models = {}
     for model_index, model in enumerate(models):
         for face_index in range(model["first_face"], model["first_face"] + model["face_count"]):
@@ -653,6 +752,9 @@ def build_triangles(data, lumps, wad_dirs=None, preloaded_wad_textures=None, pre
         "entityCount": len(entities),
         "entityBeamCount": len(entity_beams),
         "entityBeams": entity_beams,
+        "skyName": sky_name,
+        "skyboxFaceCount": len(skybox_images),
+        "_skyboxImages": skybox_images,
         "_goldsrcEntities": entities,
         "_goldsrcEntityLump": raw_entity_lump,
     }
@@ -674,6 +776,16 @@ def write_glb(path, primitives_by_texture, textures, stats):
     entity_beams = stats.pop("entityBeams", [])
     goldsrc_entities = stats.pop("_goldsrcEntities", [])
     goldsrc_entity_lump = stats.pop("_goldsrcEntityLump", "")
+    skybox_images = stats.pop("_skyboxImages", {})
+    skybox_files = []
+    if skybox_images:
+        skybox_dir = path.parent / "sky"
+        skybox_dir.mkdir(parents=True, exist_ok=True)
+        for suffix in ("rt", "lf", "up", "dn", "bk", "ft"):
+            filename = f"{stats.get('skyName')}{suffix}.png"
+            with open(skybox_dir / filename, "wb") as handle:
+                handle.write(skybox_images[suffix])
+            skybox_files.append(f"sky/{filename}")
     bin_chunks = []
     buffer_views = []
     accessors = []
@@ -815,6 +927,10 @@ def write_glb(path, primitives_by_texture, textures, stats):
             "goldsrcEntityLump": goldsrc_entity_lump,
             "goldsrcEntities": goldsrc_entities,
             "goldsrcBeams": entity_beams,
+            "goldsrcSky": {
+                "name": stats.get("skyName") or "",
+                "faces": skybox_files,
+            },
         },
     }
     if images:

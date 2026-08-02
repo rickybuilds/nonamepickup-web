@@ -43,6 +43,7 @@ const BEAM_CONTROLLER_CLASSES = new Set([
 const TFC_MODEL_ASSET_VERSION = "20260731schema3fix5";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
+const skyLoader = new THREE.CubeTextureLoader();
 const projectileVisuals = new ReplayProjectileVisuals(loader);
 const modelCache = new Map();
 
@@ -1369,7 +1370,22 @@ function updateScene() {
 }
 
 function mapAssetUrl(map) {
-  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260801entities1`;
+  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260801skies1`;
+}
+
+function buildMapSky(gltf) {
+  const definition = gltf?.userData?.goldsrcSky;
+  if (!Array.isArray(definition?.faces) || definition.faces.length !== 6) return;
+  const map = encodeURIComponent(state.metadata.map);
+  const urls = definition.faces.map(face =>
+    `assets/maps/${map}/${String(face).split("/").map(encodeURIComponent).join("/")}?v=20260801skies1`
+  );
+  skyLoader.load(urls, texture => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    scene.background = texture;
+  }, undefined, () => {
+    scene.background = new THREE.Color(0x070a0f);
+  });
 }
 
 function buildMapBeams(gltf) {
@@ -1455,6 +1471,7 @@ function loadMap() {
     world.add(mapModel);
     settleCorpses();
     bindBrushNodes();
+    buildMapSky(gltf);
     buildMapBeams(gltf);
     updateBrushes();
     updateMapBeams();
