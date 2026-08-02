@@ -1247,7 +1247,9 @@ function updateMapBeams() {
   for (const visual of mapBeamGroup.children) {
     const controllers = visual.userData.controllerTracks || [];
     if (!controllers.length) {
-      visual.visible = true;
+      visual.visible = visual.userData.captureTriggered
+        ? flagCapturePulseActive(visual.userData.capturePulseDuration)
+        : visual.userData.startsOn;
       continue;
     }
     const controllersAtBase = controllers.every(track => brushAtBase(
@@ -1305,12 +1307,19 @@ function entitySyncTargets(entity, activationGroups) {
   return targets;
 }
 
-function beamControllerTracks(syncTargets) {
+function beamControllerTracks(syncTargets, triggerTargets = new Set()) {
   const exact = state.brushes.filter(track => {
     const brush = state.brushDefinitions.get(track.brushId);
     return BEAM_CONTROLLER_CLASSES.has(brush?.classname) && syncTargets.has(brush?.targetname);
   });
   if (exact.length) return exact;
+
+  const buttons = state.brushes.filter(track => {
+    const brush = state.brushDefinitions.get(track.brushId);
+    return ["func_button", "func_rot_button"].includes(brush?.classname) &&
+      triggerTargets.has(brush?.target);
+  });
+  if (buttons.length) return buttons;
 
   // Some GoldSrc maps (including schtop) toggle a security system through a
   // multi_manager without directly naming its moving func_train. Associate
@@ -1324,6 +1333,15 @@ function beamControllerTracks(syncTargets) {
     const targetname = String(brush?.targetname || "").toLowerCase();
     const family = targetname.match(/^([^_]+)_/)?.[1];
     return brush?.classname === "func_train" && family && families.has(family);
+  });
+}
+
+function flagCapturePulseActive(duration) {
+  const now = state.playbackTime;
+  return state.events.some(event => {
+    if (event.time > now || event.time + duration < now) return false;
+    const identity = `${event.event || ""} ${event.text || ""}`.toLowerCase();
+    return /flag[_\s-]*(?:cap|capture|capped)|(?:cap|capture|capped)[_\s-]*flag|ctf[_\s-]*(?:cap|capture)/.test(identity);
   });
 }
 
@@ -1651,6 +1669,13 @@ function buildMapBeams(gltf) {
 
   const definitions = gltf?.userData?.goldsrcBeams;
   if (!Array.isArray(definitions)) return;
+  const entities = Array.isArray(gltf?.userData?.goldsrcEntities)
+    ? gltf.userData.goldsrcEntities : [];
+  const knownTargetnames = new Set(entities.map(entity => entity?.targetname).filter(Boolean));
+  const managers = entities.filter(entity => entity?.classname === "multi_manager").map(entity => ({
+    entity,
+    outputs: entityOutputs(entity, knownTargetnames)
+  }));
   const up = new THREE.Vector3(0, 1, 0);
 
   for (const definition of definitions) {
@@ -1676,11 +1701,33 @@ function buildMapBeams(gltf) {
     const syncTargets = new Set(
       (Array.isArray(definition.syncTargets) ? definition.syncTargets : [definition.targetname]).filter(Boolean)
     );
+    const controllingManagers = managers.filter(manager =>
+      [...syncTargets].some(target => manager.outputs.has(target))
+    );
+    const triggerTargets = new Set(
+      controllingManagers.map(manager => manager.entity.targetname).filter(Boolean)
+    );
+    const captureTriggered = entities.some(entity =>
+      triggerTargets.has(entity?.target) &&
+      /capture/i.test(`${entity?.netname || ""} ${entity?.message || ""}`)
+    );
+    let capturePulseDuration = 0;
+    if (captureTriggered) {
+      for (const manager of controllingManagers) {
+        for (const [key, value] of Object.entries(manager.entity)) {
+          if (syncTargets.has(key.replace(/#\d+$/, ""))) {
+            capturePulseDuration = Math.max(capturePulseDuration, Number(value) || 0);
+          }
+        }
+      }
+    }
     const visual = new THREE.Group();
     visual.userData.startsOn = definition.startsOn !== false;
     visual.userData.syncTargets = syncTargets;
     visual.userData.midpoint = midpoint.clone();
-    visual.userData.controllerTracks = beamControllerTracks(syncTargets);
+    visual.userData.controllerTracks = beamControllerTracks(syncTargets, triggerTargets);
+    visual.userData.captureTriggered = captureTriggered;
+    visual.userData.capturePulseDuration = capturePulseDuration || 5;
     mapBeamGroup.add(visual);
 
     const addBeamLayer = (layerRadius, layerOpacity) => {
