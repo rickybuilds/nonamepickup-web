@@ -40,6 +40,17 @@ const AC_TRACER_RANGE = 900;
 const BEAM_CONTROLLER_CLASSES = new Set([
   "func_door", "func_door_rotating", "func_plat", "func_platrot", "func_train", "func_tracktrain"
 ]);
+const LIGHT_CONTROLLER_CLASSES = new Set([
+  ...BEAM_CONTROLLER_CLASSES, "func_button", "func_rot_button"
+]);
+const MAX_ACTIVE_MAP_LIGHTS = 24;
+const LIGHT_STYLE_PATTERNS = [
+  "m", "mmnmmommommnonmmonqnmmo", "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba",
+  "mmmmmaaaaammmmmaaaaaabcdefgabcdefg", "mamamamamama", "jklmnopqrstuvwxyzyxwvutsrqponmlkj",
+  "nmonqnmomnmomomno", "mmmaaaabcdefgmmmmaaaammmaamm", "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa",
+  "aaaaaaaazzzzzzzz", "mmamammmmammamamaaamammma", "abcdefghijklmnopqrrqponmlkjihgfedcba",
+  "mmnnmmnnnmmnn"
+];
 const TFC_MODEL_ASSET_VERSION = "20260731schema3fix5";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
@@ -90,7 +101,8 @@ const camera = new THREE.PerspectiveCamera(90, 1, 1, 50000);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x131820, 2.2));
+const hemisphere = new THREE.HemisphereLight(0xcfe8ff, 0x131820, 2.2);
+scene.add(hemisphere);
 const sun = new THREE.DirectionalLight(0xffffff, 1.8);
 sun.position.set(1000, 1800, 700);
 scene.add(sun);
@@ -104,10 +116,12 @@ const buildableRoot = new THREE.Group();
 const impactRoot = new THREE.Group();
 const hitscanRoot = new THREE.Group();
 const bloodRoot = new THREE.Group();
-world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot);
+const mapLightRoot = new THREE.Group();
+world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot, mapLightRoot);
 let grid = null;
 let mapModel = null;
 let mapBeamGroup = null;
+let mapLightDefinitions = [];
 const corpseGroundRay = new THREE.Raycaster();
 const corpseDown = new THREE.Vector3(0, -1, 0);
 const acRaycaster = new THREE.Raycaster();
@@ -1242,6 +1256,195 @@ function updateMapBeams() {
   }
 }
 
+function entityNumbers(value, fallback = []) {
+  const values = String(value || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
+  return values.length ? values : fallback;
+}
+
+function entityPoint(value) {
+  const values = entityNumbers(value);
+  return values.length >= 3 ? sourcePoint(values[0], values[1], values[2]) : null;
+}
+
+function entityLightColor(entity) {
+  const values = entityNumbers(entity?._light || entity?.rendercolor, [255, 255, 255]);
+  return new THREE.Color(
+    THREE.MathUtils.clamp((values[0] ?? 255) / 255, 0, 1),
+    THREE.MathUtils.clamp((values[1] ?? values[0] ?? 255) / 255, 0, 1),
+    THREE.MathUtils.clamp((values[2] ?? values[0] ?? 255) / 255, 0, 1)
+  );
+}
+
+function entityLightBrightness(entity) {
+  const values = entityNumbers(entity?._light);
+  if (values.length >= 4) return THREE.MathUtils.clamp(values[3], 1, 1000);
+  if (values.length === 1) return THREE.MathUtils.clamp(values[0], 1, 1000);
+  return THREE.MathUtils.clamp(Number(entity?.renderamt) || 180, 1, 1000);
+}
+
+function entityOutputs(entity, knownTargetnames) {
+  const outputs = new Set();
+  if (entity?.target) outputs.add(entity.target);
+  if (entity?.classname === "multi_manager") {
+    for (const key of Object.keys(entity)) {
+      const candidate = key.replace(/#\d+$/, "");
+      if (knownTargetnames.has(candidate)) outputs.add(candidate);
+    }
+  }
+  return outputs;
+}
+
+function entitySyncTargets(entity, activationGroups) {
+  const targetname = String(entity?.targetname || "");
+  const targets = new Set(targetname ? [targetname] : []);
+  for (const outputs of activationGroups) {
+    if (targetname && outputs.has(targetname)) outputs.forEach(target => targets.add(target));
+  }
+  return targets;
+}
+
+function entityControllers(entity, activationGroups) {
+  const syncTargets = entitySyncTargets(entity, activationGroups);
+  return state.brushes.filter(track => {
+    const brush = state.brushDefinitions.get(track.brushId);
+    return LIGHT_CONTROLLER_CLASSES.has(brush?.classname) && syncTargets.has(brush?.targetname);
+  });
+}
+
+function entityDirection(entity, targets) {
+  const origin = entityPoint(entity?.origin);
+  const target = entity?.target ? targets.get(entity.target) : null;
+  if (origin && target) return target.clone().sub(origin).normalize();
+  const angles = entityNumbers(entity?.angles);
+  const pitch = Number(entity?.pitch ?? angles[0] ?? 0);
+  const yaw = Number(entity?.angle ?? angles[1] ?? 0);
+  const pitchRadians = THREE.MathUtils.degToRad(pitch);
+  const yawRadians = THREE.MathUtils.degToRad(yaw);
+  return new THREE.Vector3(
+    Math.cos(pitchRadians) * Math.cos(yawRadians),
+    -Math.sin(pitchRadians),
+    -Math.cos(pitchRadians) * Math.sin(yawRadians)
+  ).normalize();
+}
+
+function lightStyleFactor(style, time) {
+  const pattern = LIGHT_STYLE_PATTERNS[style];
+  if (!pattern) return 1;
+  const index = Math.floor(Math.max(0, time) * 10) % pattern.length;
+  return THREE.MathUtils.clamp((pattern.charCodeAt(index) - 97) / 12, 0, 2);
+}
+
+function mapLightTriggeredOn(definition) {
+  if (!definition.controllers.length) return definition.startsOn;
+  const controllersAtBase = definition.controllers.every(track => brushAtBase(
+    track,
+    brushSnapshot(track, state.playbackTime)
+  ));
+  return definition.startsOn ? controllersAtBase : !controllersAtBase;
+}
+
+function updateMapLights() {
+  if (!mapLightDefinitions.length) return;
+  const eligible = [];
+  for (const definition of mapLightDefinitions) {
+    const style = lightStyleFactor(definition.style, state.playbackTime);
+    definition.light.intensity = definition.baseIntensity * style;
+    definition.triggeredOn = style > 0.01 && mapLightTriggeredOn(definition);
+    definition.light.visible = false;
+    if (definition.glow) definition.glow.visible = definition.triggeredOn;
+    if (definition.triggeredOn) {
+      definition.distanceToCamera = definition.light.position.distanceToSquared(camera.position);
+      eligible.push(definition);
+    }
+  }
+  eligible.sort((a, b) => a.distanceToCamera - b.distanceToCamera);
+  for (let index = 0; index < Math.min(MAX_ACTIVE_MAP_LIGHTS, eligible.length); index += 1) {
+    eligible[index].light.visible = true;
+  }
+}
+
+function buildMapLights(gltf) {
+  mapLightRoot.clear();
+  mapLightDefinitions = [];
+  sun.color.set(0xffffff);
+  sun.intensity = 1.8;
+  sun.position.set(1000, 1800, 700);
+  hemisphere.color.set(0xcfe8ff);
+  hemisphere.groundColor.set(0x131820);
+  hemisphere.intensity = 2.2;
+
+  const entities = gltf?.userData?.goldsrcEntities;
+  if (!Array.isArray(entities)) return;
+  const knownTargetnames = new Set(entities.map(entity => entity?.targetname).filter(Boolean));
+  const activationGroups = entities.map(entity => entityOutputs(entity, knownTargetnames));
+  const targets = new Map();
+  for (const entity of entities) {
+    const point = entityPoint(entity?.origin);
+    if (entity?.targetname && point && !targets.has(entity.targetname)) targets.set(entity.targetname, point);
+  }
+
+  const environment = entities.find(entity => entity?.classname === "light_environment");
+  if (environment) {
+    const brightness = entityLightBrightness(environment);
+    const direction = entityDirection(environment, targets);
+    sun.color.copy(entityLightColor(environment));
+    sun.intensity = THREE.MathUtils.clamp(brightness / 180, 0.35, 3.5);
+    sun.position.copy(direction.multiplyScalar(-1800));
+    hemisphere.color.copy(sun.color).lerp(new THREE.Color(0xbad8ff), 0.55);
+    hemisphere.intensity = THREE.MathUtils.clamp(1.1 + brightness / 500, 1.2, 2.8);
+  }
+
+  for (const [entityIndex, entity] of entities.entries()) {
+    if (!["light", "light_spot", "env_glow"].includes(entity?.classname)) continue;
+    const position = entityPoint(entity.origin);
+    if (!position) continue;
+    const brightness = entityLightBrightness(entity);
+    const color = entityLightColor(entity);
+    const isGlow = entity.classname === "env_glow";
+    const distance = THREE.MathUtils.clamp(280 + brightness * 1.8, 320, 1800);
+    const baseIntensity = THREE.MathUtils.clamp(brightness / (isGlow ? 115 : 70), 0.3, 10);
+    let light;
+    if (entity.classname === "light_spot") {
+      const outerCone = THREE.MathUtils.clamp(Number(entity._cone) || 45, 5, 120);
+      const innerCone = THREE.MathUtils.clamp(Number(entity._cone2) || outerCone * 0.7, 1, outerCone);
+      light = new THREE.SpotLight(
+        color, baseIntensity, distance, THREE.MathUtils.degToRad(outerCone / 2),
+        THREE.MathUtils.clamp(1 - innerCone / outerCone, 0.05, 0.85), 1.25
+      );
+      light.target.position.copy(position).add(entityDirection(entity, targets).multiplyScalar(512));
+      mapLightRoot.add(light.target);
+    } else {
+      light = new THREE.PointLight(color, baseIntensity, distance, 1.25);
+    }
+    light.position.copy(position);
+    light.visible = false;
+    mapLightRoot.add(light);
+
+    let glow = null;
+    if (isGlow) {
+      glow = new THREE.Mesh(
+        new THREE.SphereGeometry(4.5, 8, 6),
+        new THREE.MeshBasicMaterial({
+          color, transparent: true,
+          opacity: THREE.MathUtils.clamp((Number(entity.renderamt) || 150) / 255, 0.15, 1),
+          blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+        })
+      );
+      glow.position.copy(position);
+      glow.renderOrder = 35;
+      mapLightRoot.add(glow);
+    }
+
+    mapLightDefinitions.push({
+      entityIndex, light, glow, baseIntensity,
+      style: Math.round(Number(entity.style) || 0),
+      startsOn: !(Math.round(Number(entity.spawnflags) || 0) & 1),
+      controllers: entityControllers(entity, activationGroups)
+    });
+  }
+  updateMapLights();
+}
+
 function updateCorpses() {
   for (const corpse of state.corpses) {
     corpse.mesh.visible =
@@ -1361,6 +1564,7 @@ function updateScene() {
   updateBrushes();
   updateMapBeams();
   updateCamera();
+  updateMapLights();
   updateSelectedStats();
   renderEvents();
   $("replay-clock").textContent = formatTime(state.playbackTime);
@@ -1472,6 +1676,7 @@ function loadMap() {
     settleCorpses();
     bindBrushNodes();
     buildMapSky(gltf);
+    buildMapLights(gltf);
     buildMapBeams(gltf);
     updateBrushes();
     updateMapBeams();

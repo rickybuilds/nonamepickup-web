@@ -39,6 +39,18 @@ test("BSP converter exports GoldSrc skyboxes and pickup replay loads all six fac
   assert.match(renderer, /buildMapSky\(gltf\)/);
 });
 
+test("pickup replay renders bounded and trigger-aware GoldSrc entity lighting", () => {
+  assert.match(renderer, /gltf\?\.userData\?\.goldsrcEntities/);
+  assert.match(renderer, /const MAX_ACTIVE_MAP_LIGHTS = 24/);
+  assert.match(renderer, /new THREE\.PointLight/);
+  assert.match(renderer, /new THREE\.SpotLight/);
+  assert.match(renderer, /entity\?\.classname === "light_environment"/);
+  assert.match(renderer, /LIGHT_STYLE_PATTERNS\[style\]/);
+  assert.match(renderer, /controllersAtBase/);
+  assert.match(renderer, /buildMapLights\(gltf\)/);
+  assert.match(renderer, /updateMapLights\(\)/);
+});
+
 test("BSP converter archives the complete entity lump for future replay features", () => {
   assert.match(converter, /"goldsrcEntityArchiveVersion": 1/);
   assert.match(converter, /"goldsrcEntityLump": goldsrc_entity_lump/);
