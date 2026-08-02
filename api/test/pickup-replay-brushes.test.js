@@ -49,7 +49,7 @@ test("pickup replay renders bounded and trigger-aware GoldSrc entity lighting", 
   assert.match(renderer, /controllersAtBase/);
   assert.match(renderer, /definition\.linkedBeams\.some\(beam => beam\.visible\)/);
   assert.match(renderer, /visual\.userData\.syncTargets = syncTargets/);
-  assert.match(renderer, /isSwitchLight \? 4 : 7/);
+  assert.match(renderer, /brightness \* 12, 500, 4000/);
   assert.match(renderer, /buildMapLights\(gltf\)/);
   assert.match(renderer, /updateMapLights\(\)/);
   assert.match(renderer, /renderer\.toneMappingExposure = 1\.4/);

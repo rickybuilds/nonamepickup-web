@@ -1410,12 +1410,12 @@ function buildMapLights(gltf) {
     const color = entityLightColor(entity);
     const isGlow = entity.classname === "env_glow";
     const isSwitchLight = Boolean(entity.targetname) || Number(entity.style) >= 32;
-    const distance = THREE.MathUtils.clamp(280 + brightness * 1.8, 320, 1800);
-    const baseIntensity = THREE.MathUtils.clamp(
-      brightness / (isGlow ? 12 : isSwitchLight ? 4 : 7),
-      isSwitchLight ? 4 : 1,
-      isSwitchLight ? 80 : 45
-    );
+    const distance = isSwitchLight
+      ? THREE.MathUtils.clamp(220 + brightness * 5, 450, 1800)
+      : THREE.MathUtils.clamp(280 + brightness * 1.8, 320, 1800);
+    const baseIntensity = isSwitchLight
+      ? THREE.MathUtils.clamp(brightness * 12, 500, 4000)
+      : THREE.MathUtils.clamp(brightness / (isGlow ? 12 : 7), 1, 45);
     let light;
     if (entity.classname === "light_spot") {
       const outerCone = THREE.MathUtils.clamp(Number(entity._cone) || 45, 5, 120);
