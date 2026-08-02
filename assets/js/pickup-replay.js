@@ -1436,7 +1436,7 @@ function buildMapLights(gltf) {
       ? THREE.MathUtils.clamp(220 + brightness * 5, 450, 1800)
       : THREE.MathUtils.clamp(280 + brightness * 1.8, 320, 1800);
     const baseIntensity = isSwitchLight
-      ? THREE.MathUtils.clamp(brightness * 12, 500, 4000)
+      ? THREE.MathUtils.clamp(brightness * 8, 335, 2670)
       : THREE.MathUtils.clamp(brightness / (isGlow ? 12 : 7), 1, 45);
     let light;
     if (entity.classname === "light_spot") {
@@ -1471,10 +1471,19 @@ function buildMapLights(gltf) {
     }
 
     const syncTargets = entitySyncTargets(entity, activationGroups);
-    const linkedBeams = mapBeamGroup?.children.filter(beam => {
+    let linkedBeams = mapBeamGroup?.children.filter(beam => {
       const beamTargets = beam.userData.syncTargets;
       return beamTargets instanceof Set && [...syncTargets].some(target => beamTargets.has(target));
     }) || [];
+    if (/switchlight/i.test(String(entity.targetname || "")) && mapBeamGroup?.children.length) {
+      const nearestBeam = mapBeamGroup.children.reduce((nearest, beam) => {
+        const midpoint = beam.userData.midpoint;
+        if (!midpoint) return nearest;
+        const distance = midpoint.distanceToSquared(position);
+        return !nearest || distance < nearest.distance ? { beam, distance } : nearest;
+      }, null);
+      if (nearestBeam) linkedBeams = [nearestBeam.beam];
+    }
 
     mapLightDefinitions.push({
       entityIndex, light, glow, baseIntensity,
@@ -1670,6 +1679,7 @@ function buildMapBeams(gltf) {
     const visual = new THREE.Group();
     visual.userData.startsOn = definition.startsOn !== false;
     visual.userData.syncTargets = syncTargets;
+    visual.userData.midpoint = midpoint.clone();
     visual.userData.controllerTracks = beamControllerTracks(syncTargets);
     mapBeamGroup.add(visual);
 
