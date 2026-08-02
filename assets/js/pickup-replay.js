@@ -1252,6 +1252,10 @@ function updateMapBeams() {
         : visual.userData.startsOn;
       continue;
     }
+    if (visual.userData.controllerPulseDuration > 0 && buttonPulseActive(visual)) {
+      visual.visible = !visual.userData.startsOn;
+      continue;
+    }
     const controllersAtBase = controllers.every(track => brushAtBase(
       track,
       brushSnapshot(track, state.playbackTime)
@@ -1338,10 +1342,64 @@ function beamControllerTracks(syncTargets, triggerTargets = new Set()) {
 
 function flagCapturePulseActive(duration) {
   const now = state.playbackTime;
-  return state.events.some(event => {
+  return state.events.some((event, eventIndex) => {
     if (event.time > now || event.time + duration < now) return false;
     const identity = `${event.event || ""} ${event.text || ""}`.toLowerCase();
-    return /flag[_\s-]*(?:cap|capture|capped)|(?:cap|capture|capped)[_\s-]*flag|ctf[_\s-]*(?:cap|capture)/.test(identity);
+    if (/flag[_\s-]*(?:cap|capture|capped)|(?:cap|capture|capped)[_\s-]*flag|ctf[_\s-]*(?:cap|capture)/.test(identity)) {
+      return true;
+    }
+    if (event.event !== "flag_entity_base" || !event.entity) return false;
+    for (let index = eventIndex - 1; index >= 0; index -= 1) {
+      const previous = state.events[index];
+      if (previous.entity !== event.entity || !String(previous.event).startsWith("flag_entity_")) continue;
+      return previous.event === "flag_entity_carried";
+    }
+    return false;
+  });
+}
+
+function buttonActivationTimes(track) {
+  if (Array.isArray(track.buttonActivationTimes)) return track.buttonActivationTimes;
+  const times = [];
+  const base = brushBaseTransform(track);
+  let wasAtBase = true;
+  if (base) {
+    for (let offset = 0; offset < track.frames.length; offset += track.stride) {
+      const atBase = track.frames[offset + 1] === 1 &&
+        Math.hypot(
+          track.frames[offset + 2] - base.x,
+          track.frames[offset + 3] - base.y,
+          track.frames[offset + 4] - base.z
+        ) < 0.25;
+      if (wasAtBase && !atBase) times.push(track.frames[offset]);
+      wasAtBase = atBase;
+    }
+  }
+
+  if (!times.length && track.node) {
+    const bounds = new THREE.Box3().setFromObject(track.node).expandByVector(
+      new THREE.Vector3(80, 64, 80)
+    );
+    for (const player of state.players) {
+      const { frames, stride } = player;
+      for (let offset = 0; offset < frames.length; offset += stride) {
+        if (frames[offset + 10] !== 1 || !(Math.round(frames[offset + 14]) & 32)) continue;
+        const position = sourcePoint(frames[offset + 1], frames[offset + 2], frames[offset + 3]);
+        if (bounds.containsPoint(position)) times.push(frames[offset]);
+      }
+    }
+  }
+  track.buttonActivationTimes = times.sort((a, b) => a - b);
+  return track.buttonActivationTimes;
+}
+
+function buttonPulseActive(visual) {
+  const now = state.playbackTime;
+  const duration = visual.userData.controllerPulseDuration;
+  return visual.userData.controllerTracks.some(track => {
+    const brush = state.brushDefinitions.get(track.brushId);
+    if (!["func_button", "func_rot_button"].includes(brush?.classname)) return false;
+    return buttonActivationTimes(track).some(time => time <= now && time + duration >= now);
   });
 }
 
@@ -1711,13 +1769,11 @@ function buildMapBeams(gltf) {
       triggerTargets.has(entity?.target) &&
       /capture/i.test(`${entity?.netname || ""} ${entity?.message || ""}`)
     );
-    let capturePulseDuration = 0;
-    if (captureTriggered) {
-      for (const manager of controllingManagers) {
-        for (const [key, value] of Object.entries(manager.entity)) {
-          if (syncTargets.has(key.replace(/#\d+$/, ""))) {
-            capturePulseDuration = Math.max(capturePulseDuration, Number(value) || 0);
-          }
+    let controllerPulseDuration = 0;
+    for (const manager of controllingManagers) {
+      for (const [key, value] of Object.entries(manager.entity)) {
+        if (syncTargets.has(key.replace(/#\d+$/, ""))) {
+          controllerPulseDuration = Math.max(controllerPulseDuration, Number(value) || 0);
         }
       }
     }
@@ -1726,8 +1782,9 @@ function buildMapBeams(gltf) {
     visual.userData.syncTargets = syncTargets;
     visual.userData.midpoint = midpoint.clone();
     visual.userData.controllerTracks = beamControllerTracks(syncTargets, triggerTargets);
+    visual.userData.controllerPulseDuration = controllerPulseDuration;
     visual.userData.captureTriggered = captureTriggered;
-    visual.userData.capturePulseDuration = capturePulseDuration || 5;
+    visual.userData.capturePulseDuration = controllerPulseDuration || 5;
     mapBeamGroup.add(visual);
 
     const addBeamLayer = (layerRadius, layerOpacity) => {
