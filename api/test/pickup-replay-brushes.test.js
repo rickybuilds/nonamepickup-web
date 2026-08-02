@@ -21,10 +21,20 @@ test("BSP converter exports model-lump face ranges as named GLB nodes", () => {
 test("BSP converter exports resolved GoldSrc beam entities for replay maps", () => {
   assert.match(converter, /def extract_entity_beams\(data, lump\):/);
   assert.match(converter, /"env_beam", "env_laser", "env_lightning"/);
-  assert.match(converter, /"goldsrcBeams": stats\.get\("entityBeams"\) or \[\]/);
+  assert.match(converter, /"goldsrcBeams": entity_beams/);
   assert.match(renderer, /gltf\?\.userData\?\.goldsrcBeams/);
   assert.match(renderer, /THREE\.AdditiveBlending/);
   assert.match(renderer, /buildMapBeams\(gltf\)/);
+  assert.match(converter, /"syncTargets": sorted\(sync_targets\)/);
+  assert.match(renderer, /BEAM_CONTROLLER_CLASSES\.has\(brush\?\.classname\)/);
+  assert.match(renderer, /visual\.visible = visual\.userData\.startsOn \? controllersAtBase : !controllersAtBase/);
+});
+
+test("BSP converter archives the complete entity lump for future replay features", () => {
+  assert.match(converter, /"goldsrcEntityArchiveVersion": 1/);
+  assert.match(converter, /"goldsrcEntityLump": goldsrc_entity_lump/);
+  assert.match(converter, /"goldsrcEntities": goldsrc_entities/);
+  assert.match(converter, /"entityCount": len\(entities\)/);
 });
 
 test("schema-v4 worker parses sparse brush definitions and transferable timelines", () => {

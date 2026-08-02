@@ -37,6 +37,9 @@ const CARRIED_OBJECTIVE_CROUCH_HEIGHT = -28;
 const IN_ATTACK = 1;
 const AC_ROUNDS_PER_SECOND = 12;
 const AC_TRACER_RANGE = 900;
+const BEAM_CONTROLLER_CLASSES = new Set([
+  "func_door", "func_door_rotating", "func_plat", "func_platrot", "func_train", "func_tracktrain"
+]);
 const TFC_MODEL_ASSET_VERSION = "20260731schema3fix5";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
@@ -1197,6 +1200,47 @@ function updateBrushes() {
   }
 }
 
+function brushBaseTransform(track) {
+  const { frames, stride } = track;
+  for (let offset = 0; offset < frames.length; offset += stride) {
+    if (frames[offset + 1] !== 1) continue;
+    return {
+      x: frames[offset + 2], y: frames[offset + 3], z: frames[offset + 4],
+      pitch: frames[offset + 8], yaw: frames[offset + 9], roll: frames[offset + 10]
+    };
+  }
+  return null;
+}
+
+function angleDistance(a, b) {
+  return Math.abs(((((a - b) % 360) + 540) % 360) - 180);
+}
+
+function brushAtBase(track, frame) {
+  const base = track.beamBaseTransform || (track.beamBaseTransform = brushBaseTransform(track));
+  return Boolean(base && frame?.active &&
+    Math.hypot(frame.x - base.x, frame.y - base.y, frame.z - base.z) < 0.25 &&
+    angleDistance(frame.pitch, base.pitch) < 0.1 &&
+    angleDistance(frame.yaw, base.yaw) < 0.1 &&
+    angleDistance(frame.roll, base.roll) < 0.1);
+}
+
+function updateMapBeams() {
+  if (!mapBeamGroup) return;
+  for (const visual of mapBeamGroup.children) {
+    const controllers = visual.userData.controllerTracks || [];
+    if (!controllers.length) {
+      visual.visible = true;
+      continue;
+    }
+    const controllersAtBase = controllers.every(track => brushAtBase(
+      track,
+      brushSnapshot(track, state.playbackTime)
+    ));
+    visual.visible = visual.userData.startsOn ? controllersAtBase : !controllersAtBase;
+  }
+}
+
 function updateCorpses() {
   for (const corpse of state.corpses) {
     corpse.mesh.visible =
@@ -1314,6 +1358,7 @@ function updateScene() {
   updateObjectives();
   updateBuildables();
   updateBrushes();
+  updateMapBeams();
   updateCamera();
   updateSelectedStats();
   renderEvents();
@@ -1324,7 +1369,7 @@ function updateScene() {
 }
 
 function mapAssetUrl(map) {
-  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260801beams1`;
+  return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260801entities1`;
 }
 
 function buildMapBeams(gltf) {
@@ -1339,8 +1384,8 @@ function buildMapBeams(gltf) {
 
   for (const definition of definitions) {
     if (!Array.isArray(definition?.start) || !Array.isArray(definition?.end)) continue;
-    // Trigger state is not present in older pickup archives. Keeping these
-    // visible is preferable to silently omitting permanent map hazards.
+    // The matching recorded brush track below supplies trigger timing. Beams
+    // without a recorded controller remain visible as static map hazards.
     const start = sourcePoint(...definition.start);
     const end = sourcePoint(...definition.end);
     const delta = end.clone().sub(start);
@@ -1357,6 +1402,16 @@ function buildMapBeams(gltf) {
     const radius = THREE.MathUtils.clamp(Number(definition.width || 8) * 0.22, 0.7, 8);
     const midpoint = start.clone().add(end).multiplyScalar(0.5);
     const rotation = new THREE.Quaternion().setFromUnitVectors(up, delta.clone().normalize());
+    const syncTargets = new Set(
+      (Array.isArray(definition.syncTargets) ? definition.syncTargets : [definition.targetname]).filter(Boolean)
+    );
+    const visual = new THREE.Group();
+    visual.userData.startsOn = definition.startsOn !== false;
+    visual.userData.controllerTracks = state.brushes.filter(track => {
+      const brush = state.brushDefinitions.get(track.brushId);
+      return BEAM_CONTROLLER_CLASSES.has(brush?.classname) && syncTargets.has(brush?.targetname);
+    });
+    mapBeamGroup.add(visual);
 
     const addBeamLayer = (layerRadius, layerOpacity) => {
       const material = new THREE.MeshBasicMaterial({
@@ -1376,7 +1431,7 @@ function buildMapBeams(gltf) {
       beam.scale.y = length;
       beam.renderOrder = 40;
       beam.frustumCulled = false;
-      mapBeamGroup.add(beam);
+      visual.add(beam);
     };
 
     addBeamLayer(radius * 2.4, opacity * 0.2);
@@ -1399,9 +1454,10 @@ function loadMap() {
     });
     world.add(mapModel);
     settleCorpses();
-    buildMapBeams(gltf);
     bindBrushNodes();
+    buildMapBeams(gltf);
     updateBrushes();
+    updateMapBeams();
     if (grid) grid.visible = false;
   }, undefined, () => {
     if (grid) grid.visible = true;
@@ -1538,7 +1594,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731brushes1");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260731brushes2");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
