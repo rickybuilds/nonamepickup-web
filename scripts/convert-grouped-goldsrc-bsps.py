@@ -38,6 +38,7 @@ def discover_map_names(map_dir):
 def group_maps(converter, map_dir, map_names):
     groups = defaultdict(list)
     missing = []
+    incompatible = []
 
     for map_name in map_names:
         bsp = map_dir / f"{map_name}.bsp"
@@ -45,17 +46,24 @@ def group_maps(converter, map_dir, map_names):
             missing.append(str(bsp))
             continue
 
-        data = bsp.read_bytes()
-        lumps = converter.parse_header(data)
-        wads = tuple(sorted(set(converter.parse_entity_wads(data, lumps[converter.LUMP_ENTITIES]))))
+        try:
+            with bsp.open("rb") as handle:
+                header = handle.read(4 + converter.HEADER_LUMPS * 8)
+                lumps = converter.parse_header(header)
+                entity_offset, entity_length = lumps[converter.LUMP_ENTITIES]
+                handle.seek(entity_offset)
+                entity_data = handle.read(entity_length)
+        except ValueError as error:
+            incompatible.append((str(bsp), str(error)))
+            continue
+        wads = tuple(sorted(set(converter.parse_entity_wads(entity_data, (0, len(entity_data))))))
         groups[wads].append({
             "map": map_name,
             "bsp": bsp,
-            "data": data,
             "lumps": lumps,
         })
 
-    return groups, missing
+    return groups, missing, incompatible
 
 
 def safe_display(value):
@@ -76,8 +84,9 @@ def convert_map(converter, item, out_root, wad_textures, loaded_wads, force, ski
         return "skipped"
 
     print(f"converting {map_name}", flush=True)
+    data = item["bsp"].read_bytes()
     primitives, textures, stats = converter.build_triangles(
-        item["data"],
+        data,
         item["lumps"],
         preloaded_wad_textures=wad_textures,
         preloaded_wads=loaded_wads,
@@ -92,8 +101,10 @@ def convert_map(converter, item, out_root, wad_textures, loaded_wads, force, ski
     print(json.dumps({
         "output": str(out),
         "bytes": os.path.getsize(out),
-        **stats,
-    }, indent=2), flush=True)
+        "triangles": stats.get("triangles", 0),
+        "entities": stats.get("entityCount", 0),
+        "beams": stats.get("entityBeamCount", 0),
+    }, separators=(",", ":")), flush=True)
     return "converted"
 
 
@@ -112,10 +123,12 @@ def main():
 
     converter = load_converter(args.converter)
     map_names = read_map_names(args.map_list) if args.map_list else discover_map_names(args.map_dir)
-    groups, missing = group_maps(converter, args.map_dir, map_names)
+    groups, missing, incompatible = group_maps(converter, args.map_dir, map_names)
 
     for path in missing:
         print(f"missing {path}", flush=True)
+    for path, reason in incompatible:
+        print(f"skip incompatible {path}: {reason}", flush=True)
 
     converted = 0
     skipped = 0
@@ -152,7 +165,11 @@ def main():
             if args.sleep_between > 0:
                 time.sleep(args.sleep_between)
 
-    print(f"Done. converted={converted} skipped={skipped} failed={failed} missing={len(missing)}", flush=True)
+    print(
+        f"Done. converted={converted} skipped={skipped} failed={failed} "
+        f"missing={len(missing)} incompatible={len(incompatible)}",
+        flush=True,
+    )
     if failed:
         raise SystemExit(1)
 
