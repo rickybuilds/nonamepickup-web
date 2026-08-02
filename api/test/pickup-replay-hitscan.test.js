@@ -53,7 +53,7 @@ test("assault cannon effects originate at the player muzzle and honor the projec
   assert.match(source, /updateAssaultCannonVisual\(track, frame, state\.playbackTime\)/);
   assert.match(source, /hitscanRoot\.visible = state\.showProjectiles/);
   assert.match(source, /if \(track\.acFireVisual\) track\.acFireVisual\.group\.visible = false/);
-  assert.match(html, /pickup-replay\.js\?v=20260802lights1/);
+  assert.match(html, /pickup-replay\.js\?v=20260802lights2/);
 
 });
 

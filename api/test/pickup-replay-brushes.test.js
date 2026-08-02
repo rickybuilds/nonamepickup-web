@@ -49,6 +49,9 @@ test("pickup replay renders bounded and trigger-aware GoldSrc entity lighting", 
   assert.match(renderer, /controllersAtBase/);
   assert.match(renderer, /buildMapLights\(gltf\)/);
   assert.match(renderer, /updateMapLights\(\)/);
+  assert.match(renderer, /renderer\.toneMappingExposure = 1\.4/);
+  assert.match(renderer, /1\.8 \+ brightness \/ 600/);
+  assert.match(renderer, /2\.2 \+ brightness \/ 1000/);
 });
 
 test("BSP converter archives the complete entity lump for future replay features", () => {

@@ -101,6 +101,8 @@ const camera = new THREE.PerspectiveCamera(90, 1, 1, 50000);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.LinearToneMapping;
+renderer.toneMappingExposure = 1.4;
 const hemisphere = new THREE.HemisphereLight(0xcfe8ff, 0x131820, 2.2);
 scene.add(hemisphere);
 const sun = new THREE.DirectionalLight(0xffffff, 1.8);
@@ -1387,11 +1389,14 @@ function buildMapLights(gltf) {
   if (environment) {
     const brightness = entityLightBrightness(environment);
     const direction = entityDirection(environment, targets);
-    sun.color.copy(entityLightColor(environment));
-    sun.intensity = THREE.MathUtils.clamp(brightness / 180, 0.35, 3.5);
+    const environmentColor = entityLightColor(environment);
+    const peak = Math.max(environmentColor.r, environmentColor.g, environmentColor.b, 0.001);
+    environmentColor.multiplyScalar(1 / peak);
+    sun.color.copy(environmentColor);
+    sun.intensity = THREE.MathUtils.clamp(1.8 + brightness / 600, 1.8, 3.5);
     sun.position.copy(direction.multiplyScalar(-1800));
-    hemisphere.color.copy(sun.color).lerp(new THREE.Color(0xbad8ff), 0.55);
-    hemisphere.intensity = THREE.MathUtils.clamp(1.1 + brightness / 500, 1.2, 2.8);
+    hemisphere.color.copy(environmentColor).lerp(new THREE.Color(0xcfe8ff), 0.65);
+    hemisphere.intensity = THREE.MathUtils.clamp(2.2 + brightness / 1000, 2.2, 3.2);
   }
 
   for (const [entityIndex, entity] of entities.entries()) {
