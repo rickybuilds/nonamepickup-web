@@ -10,6 +10,9 @@ import {
 } from "./replay-map-materials.js?v=20260730mapmaterials2";
 
 const $ = id => document.getElementById(id);
+const LIVE_SIMULATION = document.body?.dataset.replayMode === "live-simulated";
+const LIVE_BUFFER_SECONDS = 120;
+const LIVE_TARGET_LATENCY_SECONDS = 0.35;
 const TEAM = {
   1: { name: "Blue", css: "#4da3ff", color: 0x4da3ff },
   2: { name: "Red", css: "#ff5d6c", color: 0xff5d6c },
@@ -83,6 +86,11 @@ const state = {
   duration: 0,
   speed: 1,
   playing: true,
+  liveReady: false,
+  liveEdge: 0,
+  liveEnded: false,
+  followLive: LIVE_SIMULATION,
+  feedSpeed: 1,
   cameraMode: "pov",
   showProjectiles: true,
   showObjectives: true,
@@ -1023,7 +1031,10 @@ function renderEvents(force = false) {
     item.append(time, copy);
     container.appendChild(item);
   }
-  $("pickup-event-count").textContent = state.events.length.toLocaleString();
+  const visibleEventCount = LIVE_SIMULATION
+    ? state.events.filter(event => event.time <= state.liveEdge).length
+    : state.events.length;
+  $("pickup-event-count").textContent = visibleEventCount.toLocaleString();
 }
 
 function selectPlayer(sessionId) {
@@ -1804,6 +1815,57 @@ function updateScene() {
   }
 }
 
+function liveDelaySeconds() {
+  return Math.max(0, state.liveEdge - state.playbackTime);
+}
+
+function setLiveChrome(mode) {
+  if (!LIVE_SIMULATION) return;
+  const signal = $("pickup-live-signal");
+  const label = $("pickup-live-state");
+  if (!signal || !label) return;
+  signal.className = `pickup-live-signal ${mode}`;
+  label.textContent = mode === "live"
+    ? "LIVE"
+    : mode === "delayed"
+      ? "DELAYED"
+      : mode === "ended"
+        ? "FEED ENDED"
+        : "CONNECTING";
+  document.body.classList.toggle("live-delayed", mode === "delayed");
+}
+
+function updateLiveHud() {
+  if (!LIVE_SIMULATION) return;
+  const delay = liveDelaySeconds();
+  const slider = $("replay-slider");
+  const minimum = Math.max(0, state.liveEdge - LIVE_BUFFER_SECONDS);
+  slider.min = String(Math.round(minimum * 1000));
+  slider.max = String(Math.max(1, Math.round(state.liveEdge * 1000)));
+  $("pickup-live-buffer-label").textContent = minimum > 0
+    ? `${formatTime(minimum)}–${formatTime(state.liveEdge)}`
+    : `Rolling ${Math.round(LIVE_BUFFER_SECONDS / 60)}:00 buffer`;
+
+  const atLiveEdge = !state.liveEnded && state.followLive && delay <= LIVE_TARGET_LATENCY_SECONDS + 0.2;
+  $("pickup-live-delay").textContent = state.liveEnded
+    ? "ROUND COMPLETE"
+    : atLiveEdge
+      ? "LIVE"
+      : `-${formatTime(delay)}`;
+  const jump = $("replay-jump-live");
+  if (jump) jump.disabled = state.liveEnded || atLiveEdge;
+  setLiveChrome(state.liveEnded ? "ended" : atLiveEdge ? "live" : state.liveReady ? "delayed" : "connecting");
+}
+
+function jumpToLive() {
+  if (!LIVE_SIMULATION || !state.liveReady || state.liveEnded) return;
+  state.followLive = true;
+  state.playbackTime = Math.max(0, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
+  setPlaying(true);
+  updateLiveHud();
+  updateScene();
+}
+
 function mapAssetUrl(map) {
   return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260801skies1`;
 }
@@ -1992,6 +2054,7 @@ function setupWorld() {
 
 function setPlaying(value) {
   state.playing = Boolean(value);
+  if (LIVE_SIMULATION && !state.playing) state.followLive = false;
   $("replay-play").textContent = state.playing ? "Pause" : "Play";
   document.body.classList.toggle("replay-playing", state.playing);
 }
@@ -2032,12 +2095,20 @@ function updateFreeCamera(delta) {
 }
 
 function wireControls() {
-  $("replay-play").addEventListener("click", () => setPlaying(!state.playing));
-  $("replay-restart").addEventListener("click", () => {
+  $("replay-play").addEventListener("click", () => {
+    const next = !state.playing;
+    if (LIVE_SIMULATION && next && liveDelaySeconds() <= LIVE_TARGET_LATENCY_SECONDS + 0.5 && !state.liveEnded) {
+      state.followLive = true;
+    }
+    setPlaying(next);
+  });
+  const restart = $("replay-restart");
+  if (restart) restart.addEventListener("click", () => {
     state.playbackTime = 0;
     setPlaying(true);
     updateScene();
   });
+  $("replay-jump-live")?.addEventListener("click", jumpToLive);
   $("replay-camera").addEventListener("click", () => {
     const index = CAMERA_MODES.indexOf(state.cameraMode);
     setCameraMode(CAMERA_MODES[(index + 1) % CAMERA_MODES.length]);
@@ -2056,7 +2127,9 @@ function wireControls() {
     });
   });
   $("replay-slider").addEventListener("input", event => {
-    state.playbackTime = Math.min(state.duration, Number(event.target.value) / 1000);
+    const limit = LIVE_SIMULATION ? state.liveEdge : state.duration;
+    state.playbackTime = Math.min(limit, Number(event.target.value) / 1000);
+    if (LIVE_SIMULATION) state.followLive = false;
     updateScene();
   });
   canvas.addEventListener("click", () => {
@@ -2090,7 +2163,30 @@ function resize() {
 function tick(now) {
   const delta = Math.min(0.1, (now - state.lastTick) / 1000);
   state.lastTick = now;
-  if (state.playing) {
+  if (LIVE_SIMULATION) {
+    if (state.liveReady) {
+      if (!state.liveEnded) {
+        state.liveEdge = Math.min(state.duration, state.liveEdge + delta * state.feedSpeed);
+        if (state.liveEdge >= state.duration) {
+          state.liveEnded = true;
+          state.followLive = false;
+        }
+      }
+      const minimum = Math.max(0, state.liveEdge - LIVE_BUFFER_SECONDS);
+      if (state.followLive && !state.liveEnded) {
+        state.playbackTime = Math.max(minimum, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
+      } else if (state.playing) {
+        state.playbackTime = Math.min(state.liveEdge, state.playbackTime + delta * state.speed);
+        if (!state.liveEnded && state.playbackTime >= state.liveEdge - LIVE_TARGET_LATENCY_SECONDS) {
+          state.followLive = true;
+        } else if (state.liveEnded && state.playbackTime >= state.liveEdge) {
+          setPlaying(false);
+        }
+      }
+      state.playbackTime = Math.max(minimum, Math.min(state.playbackTime, state.liveEdge));
+      updateLiveHud();
+    }
+  } else if (state.playing) {
     state.playbackTime += delta * state.speed;
     if (state.playbackTime >= state.duration) {
       state.playbackTime = state.duration;
@@ -2159,12 +2255,17 @@ async function init() {
     state.metadata = metadata;
     state.duration = metadata.durationMs / 1000;
     $("replay-title").textContent = `${metadata.map} · ${metadata.matchId} / Round ${metadata.round}`;
-    $("replay-subtitle").textContent =
-      `${metadata.snapshots.toLocaleString()} snapshots · ${metadata.rowCounts.players.toLocaleString()} player rows · ${metadata.rowCounts.projectiles.toLocaleString()} projectile rows`;
-    $("replay-round-status").textContent = `${metadata.status} · ${metadata.reason || "no reason"}`;
-    $("replay-duration").textContent = formatTime(state.duration);
-    $("replay-slider").max = String(Math.max(1, metadata.durationMs));
-    document.title = `NoName TFC | ${metadata.map} 4v4 Replay`;
+    $("replay-subtitle").textContent = LIVE_SIMULATION
+      ? `${metadata.sourceServer || "recorded server"} · simulated ${state.feedSpeed}x telemetry delivery`
+      : `${metadata.snapshots.toLocaleString()} snapshots · ${metadata.rowCounts.players.toLocaleString()} player rows · ${metadata.rowCounts.projectiles.toLocaleString()} projectile rows`;
+    $("replay-round-status").textContent = LIVE_SIMULATION
+      ? "SIMULATED FEED"
+      : `${metadata.status} · ${metadata.reason || "no reason"}`;
+    $("replay-duration").textContent = LIVE_SIMULATION ? "LIVE" : formatTime(state.duration);
+    $("replay-slider").max = String(LIVE_SIMULATION ? 1 : Math.max(1, metadata.durationMs));
+    document.title = LIVE_SIMULATION
+      ? `NoName TFC | ${metadata.map} Pickup Live Prototype`
+      : `NoName TFC | ${metadata.map} 4v4 Replay`;
 
     const [telemetry, modelCatalog] = await Promise.all([
       loadTelemetry(metadata.files),
@@ -2194,6 +2295,20 @@ async function init() {
     selectPlayer(state.roster[0]?.sessionId);
     setupWorld();
     renderEvents(true);
+    if (LIVE_SIMULATION) {
+      const requestedFeedSpeed = Number(new URLSearchParams(location.search).get("feedSpeed"));
+      state.feedSpeed = Number.isFinite(requestedFeedSpeed)
+        ? THREE.MathUtils.clamp(requestedFeedSpeed, 0.25, 16)
+        : 1;
+      state.liveEdge = Math.min(state.duration, LIVE_TARGET_LATENCY_SECONDS);
+      state.playbackTime = Math.max(0, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
+      state.liveReady = true;
+      state.followLive = true;
+      setPlaying(true);
+      $("replay-subtitle").textContent =
+        `${metadata.sourceServer || "recorded server"} · simulated ${state.feedSpeed}x telemetry delivery`;
+      updateLiveHud();
+    }
     updateScene();
     setStatus("");
   } catch (error) {

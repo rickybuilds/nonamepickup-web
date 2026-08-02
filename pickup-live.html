@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>NoName TFC | Pickup Live Prototype</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260713freeroam5">
+  <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260731hud5">
+  <link rel="stylesheet" href="assets/css/pickup-live.css?v=20260802prototype1">
+  <script src="assets/js/main.js?v=20260618i" defer></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="assets/js/pickup-replay.js?v=20260802liveprototype1"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#0a0c10] replay-page pickup-replay-page pickup-live-viewer-page replay-playing" data-replay-mode="live-simulated">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span><span class="logo-slash">//</span><span class="logo-tfc">TFC</span>
+      </div>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a>
+        <a href="speedruns.html">Speedruns</a>
+        <a href="live.html" class="nav-live" aria-current="page">LIVE</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Leaderboard</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="compare.html">Compare</a>
+      </nav>
+      <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+    </div>
+  </header>
+
+  <main class="replay-main">
+    <section class="replay-stage pickup-replay-stage" aria-label="Simulated live 4v4 pickup viewer">
+      <canvas id="replay-canvas"></canvas>
+      <div id="replay-status" class="replay-status">Connecting to simulated feed…</div>
+
+      <section class="replay-topbar pickup-topbar" aria-label="Live round details">
+        <div>
+          <p class="speedrun-kicker pickup-live-kicker"><span></span> LIVE PICKUP VIEWER</p>
+          <h1 id="replay-title">Pickup Live</h1>
+        </div>
+        <div class="pickup-round-summary">
+          <div class="pickup-round-badges">
+            <span id="pickup-live-signal" class="pickup-live-signal connecting">
+              <i></i><span id="pickup-live-state">CONNECTING</span>
+            </span>
+            <span id="replay-round-status" class="pickup-badge">SIMULATED FEED</span>
+            <span id="replay-camera-label" class="pickup-badge">POV</span>
+          </div>
+          <p id="replay-subtitle">Preparing the rolling live buffer…</p>
+        </div>
+      </section>
+
+      <aside class="pickup-event-panel" aria-label="Live round events">
+        <header><span>LIVE EVENT FEED</span><strong id="pickup-event-count">0</strong></header>
+        <div id="pickup-events"></div>
+      </aside>
+
+      <section class="pickup-selected-player" aria-label="Selected player">
+        <div>
+          <span id="pickup-selected-team" class="pickup-team-dot"></span>
+          <strong id="pickup-selected-name">Select a player</strong>
+          <small id="pickup-selected-class">—</small>
+        </div>
+        <dl>
+          <div><dt>HP</dt><dd id="pickup-stat-health">—</dd></div>
+          <div><dt>Armor</dt><dd id="pickup-stat-armor">—</dd></div>
+          <div><dt>Speed</dt><dd id="pickup-stat-speed">—</dd></div>
+          <div><dt>Weapon</dt><dd id="pickup-stat-weapon">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="pickup-bottom-hud" aria-label="Live controls and players">
+        <section class="replay-controls pickup-controls" aria-label="Live playback controls">
+          <div class="pickup-control-stack">
+            <button id="replay-play" type="button" class="replay-button">Pause</button>
+            <button id="replay-jump-live" type="button" class="replay-button pickup-jump-live" disabled><span></span> Live</button>
+            <button id="replay-camera" type="button" class="replay-button secondary">Camera: POV</button>
+            <button id="replay-effects" type="button" class="replay-button secondary active">Effects: On</button>
+          </div>
+          <div class="pickup-timeline-controls">
+            <label class="replay-scrubber">
+              <span id="replay-clock">0:00.000</span>
+              <input id="replay-slider" type="range" min="0" max="1" step="1" value="0" aria-label="Live replay position">
+              <span id="replay-duration" class="pickup-live-edge-label">LIVE</span>
+            </label>
+            <div class="pickup-live-playback-row">
+              <span id="pickup-live-buffer-label">Rolling 2:00 buffer</span>
+              <div class="replay-speed" role="group" aria-label="Catch-up speed">
+                <button type="button" data-speed="0.5">0.5x</button>
+                <button type="button" data-speed="1" class="active">1x</button>
+                <button type="button" data-speed="4">4x</button>
+              </div>
+              <strong id="pickup-live-delay">LIVE</strong>
+            </div>
+          </div>
+        </section>
+
+        <aside class="pickup-roster-panel" aria-label="Live round roster">
+          <header>
+            <span>PLAYERS</span>
+            <strong id="pickup-roster-count">0 sessions</strong>
+          </header>
+          <div id="pickup-roster"></div>
+        </aside>
+      </section>
+
+      <div class="pickup-live-prototype-note">
+        <strong>PROTOTYPE</strong>
+        <span>A completed replay is being released through a simulated live feed.</span>
+      </div>
+
+      <div id="pickup-free-help" class="replay-free-roam-help" hidden>
+        <strong>FREE ROAM</strong><span>Click to capture mouse · WASD move · Q/E down/up · Esc release</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

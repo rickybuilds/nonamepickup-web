@@ -1,0 +1,176 @@
+.pickup-live-viewer-page {
+  --pickup-live: #fb3f4f;
+  --pickup-live-soft: rgba(251, 63, 79, .16);
+}
+
+.pickup-live-kicker {
+  display: flex;
+  align-items: center;
+  gap: .48rem;
+  color: #ff7a86;
+}
+
+.pickup-live-viewer-page .pickup-topbar > div:first-child {
+  min-width: 0;
+}
+
+.pickup-live-viewer-page .pickup-topbar h1 {
+  max-width: min(42vw, 34rem);
+  overflow: hidden;
+  font-size: clamp(22px, 2vw, 34px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickup-live-kicker > span,
+.pickup-live-signal i,
+.pickup-jump-live span {
+  width: .48rem;
+  height: .48rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--pickup-live);
+  box-shadow: 0 0 0 .24rem rgba(251, 63, 79, .13), 0 0 1rem rgba(251, 63, 79, .72);
+}
+
+.pickup-live-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: .48rem;
+  border: 1px solid rgba(251, 63, 79, .52);
+  border-radius: 999px;
+  padding: .42rem .72rem;
+  color: #fff0f2;
+  background: rgba(91, 13, 23, .72);
+  font: 800 .68rem/1 Orbitron, sans-serif;
+  letter-spacing: .09em;
+}
+
+.pickup-live-signal.live i,
+.pickup-live-kicker > span {
+  animation: pickup-live-pulse 1.7s ease-out infinite;
+}
+
+.pickup-live-signal.delayed {
+  border-color: rgba(251, 191, 36, .5);
+  color: #fef3c7;
+  background: rgba(92, 56, 9, .7);
+}
+
+.pickup-live-signal.delayed i {
+  background: #fbbf24;
+  box-shadow: 0 0 .8rem rgba(251, 191, 36, .62);
+}
+
+.pickup-live-signal.ended,
+.pickup-live-signal.connecting {
+  border-color: rgba(148, 163, 184, .34);
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, .78);
+}
+
+.pickup-live-signal.ended i,
+.pickup-live-signal.connecting i {
+  background: #94a3b8;
+  box-shadow: 0 0 .65rem rgba(148, 163, 184, .42);
+}
+
+.pickup-jump-live {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border-color: rgba(251, 63, 79, .62) !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, rgba(190, 24, 42, .84), rgba(127, 20, 34, .78)) !important;
+}
+
+.pickup-jump-live:disabled {
+  opacity: .54;
+  cursor: default;
+}
+
+.pickup-jump-live:not(:disabled) {
+  box-shadow: 0 0 1.1rem rgba(251, 63, 79, .18);
+}
+
+.pickup-live-playback-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) minmax(10rem, 14rem) minmax(4.5rem, 1fr);
+  align-items: center;
+  gap: .55rem;
+  color: #64748b;
+  font: 700 .56rem/1 Orbitron, sans-serif;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.pickup-live-playback-row .replay-speed {
+  width: 100%;
+  margin: .1rem 0 0;
+}
+
+#pickup-live-delay {
+  justify-self: end;
+  color: #ff7a86;
+  font-size: .62rem;
+}
+
+.pickup-live-viewer-page.live-delayed #pickup-live-delay {
+  color: #fbbf24;
+}
+
+.pickup-live-edge-label {
+  color: #ff6573 !important;
+  letter-spacing: .08em;
+}
+
+.pickup-live-prototype-note {
+  position: absolute;
+  z-index: 5;
+  top: 7.1rem;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  max-width: min(32rem, calc(100% - 36rem));
+  padding: .48rem .65rem;
+  border: 1px solid rgba(251, 191, 36, .2);
+  border-radius: 8px;
+  color: #91a0b3;
+  background: rgba(7, 11, 18, .7);
+  font-size: .64rem;
+  backdrop-filter: blur(10px);
+}
+
+.pickup-live-prototype-note strong {
+  color: #fbbf24;
+  font: 800 .57rem/1 Orbitron, sans-serif;
+  letter-spacing: .08em;
+}
+
+@keyframes pickup-live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(251, 63, 79, .45), 0 0 .8rem rgba(251, 63, 79, .75); }
+  70% { box-shadow: 0 0 0 .42rem rgba(251, 63, 79, 0), 0 0 1.1rem rgba(251, 63, 79, .45); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 63, 79, 0), 0 0 .8rem rgba(251, 63, 79, .7); }
+}
+
+@media (max-width: 1250px) {
+  .pickup-live-prototype-note { max-width: min(32rem, calc(100% - 2rem)); }
+}
+
+@media (max-width: 900px) {
+  .pickup-live-prototype-note { display: none; }
+}
+
+@media (max-width: 620px) {
+  .pickup-live-viewer-page .pickup-topbar h1 {
+    max-width: 100%;
+  }
+
+  .pickup-live-playback-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .pickup-live-playback-row .replay-speed { display: none; }
+}
