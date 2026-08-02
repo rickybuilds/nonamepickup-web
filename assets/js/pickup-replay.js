@@ -1242,6 +1242,57 @@ function brushAtBase(track, frame) {
     angleDistance(frame.roll, base.roll) < 0.1);
 }
 
+function lightningNoise(seed) {
+  const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return (value - Math.floor(value)) * 2 - 1;
+}
+
+function updateLightningStrike(visual) {
+  if (!visual.userData.isLightning || !visual.visible) return;
+  const rate = 3;
+  const cycle = state.playbackTime * rate + visual.userData.lightningSeed * 0.17;
+  const phase = cycle - Math.floor(cycle);
+  if (!(phase < 0.22 || (phase > 0.34 && phase < 0.43))) {
+    visual.visible = false;
+    return;
+  }
+
+  const bucket = Math.floor(cycle * 2);
+  if (visual.userData.lightningBucket === bucket) return;
+  visual.userData.lightningBucket = bucket;
+  const start = visual.userData.lightningStart;
+  const end = visual.userData.lightningEnd;
+  const direction = end.clone().sub(start);
+  const length = direction.length();
+  const forward = direction.clone().normalize();
+  const side = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
+  if (side.lengthSq() < 0.01) side.crossVectors(forward, new THREE.Vector3(1, 0, 0));
+  side.normalize();
+  const vertical = new THREE.Vector3().crossVectors(forward, side).normalize();
+  const amplitude = THREE.MathUtils.clamp(length * 0.075, 18, 64);
+  const points = [];
+  const count = visual.userData.lightningSegments.length;
+  for (let index = 0; index <= count; index += 1) {
+    const ratio = index / count;
+    const taper = Math.sin(Math.PI * ratio);
+    const point = start.clone().lerp(end, ratio);
+    if (index > 0 && index < count) {
+      const noiseSeed = bucket * 97 + visual.userData.lightningSeed * 31 + index;
+      point.addScaledVector(side, lightningNoise(noiseSeed) * amplitude * taper);
+      point.addScaledVector(vertical, lightningNoise(noiseSeed + 19) * amplitude * 0.7 * taper);
+    }
+    points.push(point);
+  }
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let index = 0; index < count; index += 1) {
+    const segment = visual.userData.lightningSegments[index];
+    const delta = points[index + 1].clone().sub(points[index]);
+    segment.position.copy(points[index]).add(points[index + 1]).multiplyScalar(0.5);
+    segment.quaternion.setFromUnitVectors(up, delta.clone().normalize());
+    segment.scale.y = delta.length();
+  }
+}
+
 function updateMapBeams() {
   if (!mapBeamGroup) return;
   for (const visual of mapBeamGroup.children) {
@@ -1250,6 +1301,7 @@ function updateMapBeams() {
       visual.visible = visual.userData.captureTriggered
         ? flagCapturePulseActive(visual.userData.capturePulseDuration)
         : visual.userData.startsOn;
+      updateLightningStrike(visual);
       continue;
     }
     if (visual.userData.controllerPulseDuration > 0 && buttonPulseActive(visual)) {
@@ -1261,6 +1313,7 @@ function updateMapBeams() {
       brushSnapshot(track, state.playbackTime)
     ));
     visual.visible = visual.userData.startsOn ? controllersAtBase : !controllersAtBase;
+    updateLightningStrike(visual);
   }
 }
 
@@ -1736,7 +1789,7 @@ function buildMapBeams(gltf) {
   }));
   const up = new THREE.Vector3(0, 1, 0);
 
-  for (const definition of definitions) {
+  for (const [beamIndex, definition] of definitions.entries()) {
     if (!Array.isArray(definition?.start) || !Array.isArray(definition?.end)) continue;
     // The matching recorded brush track below supplies trigger timing. Beams
     // without a recorded controller remain visible as static map hazards.
@@ -1769,6 +1822,7 @@ function buildMapBeams(gltf) {
       triggerTargets.has(entity?.target) &&
       /capture/i.test(`${entity?.netname || ""} ${entity?.message || ""}`)
     );
+    const isLightning = captureTriggered && Number(definition.noise || 0) >= 64;
     let controllerPulseDuration = 0;
     for (const manager of controllingManagers) {
       for (const [key, value] of Object.entries(manager.entity)) {
@@ -1785,6 +1839,11 @@ function buildMapBeams(gltf) {
     visual.userData.controllerPulseDuration = controllerPulseDuration;
     visual.userData.captureTriggered = captureTriggered;
     visual.userData.capturePulseDuration = controllerPulseDuration || 5;
+    visual.userData.isLightning = isLightning;
+    visual.userData.lightningSeed = beamIndex + 1;
+    visual.userData.lightningStart = start;
+    visual.userData.lightningEnd = end;
+    visual.userData.lightningSegments = [];
     mapBeamGroup.add(visual);
 
     const addBeamLayer = (layerRadius, layerOpacity) => {
@@ -1808,8 +1867,32 @@ function buildMapBeams(gltf) {
       visual.add(beam);
     };
 
-    addBeamLayer(radius * 2.4, opacity * 0.2);
-    addBeamLayer(radius, opacity);
+    if (isLightning) {
+      const haloGeometry = new THREE.CylinderGeometry(radius * 2.2, radius * 2.2, 1, 6, 1, true);
+      const coreGeometry = new THREE.CylinderGeometry(radius * 0.7, radius * 0.7, 1, 6, 1, true);
+      const haloMaterial = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: opacity * 0.22,
+        blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+      });
+      const coreMaterial = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity,
+        blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+      });
+      for (let index = 0; index < 12; index += 1) {
+        const segment = new THREE.Group();
+        for (const [geometry, material] of [[haloGeometry, haloMaterial], [coreGeometry, coreMaterial]]) {
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.renderOrder = 40;
+          mesh.frustumCulled = false;
+          segment.add(mesh);
+        }
+        visual.userData.lightningSegments.push(segment);
+        visual.add(segment);
+      }
+    } else {
+      addBeamLayer(radius * 2.4, opacity * 0.2);
+      addBeamLayer(radius, opacity);
+    }
   }
 
 }
