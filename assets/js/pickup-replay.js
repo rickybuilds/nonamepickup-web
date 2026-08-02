@@ -1337,6 +1337,9 @@ function lightStyleFactor(style, time) {
 }
 
 function mapLightTriggeredOn(definition) {
+  if (definition.linkedBeams.length) {
+    return definition.linkedBeams.some(beam => beam.visible);
+  }
   if (!definition.controllers.length) return definition.startsOn;
   const controllersAtBase = definition.controllers.every(track => brushAtBase(
     track,
@@ -1406,29 +1409,34 @@ function buildMapLights(gltf) {
     const brightness = entityLightBrightness(entity);
     const color = entityLightColor(entity);
     const isGlow = entity.classname === "env_glow";
+    const isSwitchLight = Boolean(entity.targetname) || Number(entity.style) >= 32;
     const distance = THREE.MathUtils.clamp(280 + brightness * 1.8, 320, 1800);
-    const baseIntensity = THREE.MathUtils.clamp(brightness / (isGlow ? 115 : 70), 0.3, 10);
+    const baseIntensity = THREE.MathUtils.clamp(
+      brightness / (isGlow ? 12 : isSwitchLight ? 4 : 7),
+      isSwitchLight ? 4 : 1,
+      isSwitchLight ? 80 : 45
+    );
     let light;
     if (entity.classname === "light_spot") {
       const outerCone = THREE.MathUtils.clamp(Number(entity._cone) || 45, 5, 120);
       const innerCone = THREE.MathUtils.clamp(Number(entity._cone2) || outerCone * 0.7, 1, outerCone);
       light = new THREE.SpotLight(
         color, baseIntensity, distance, THREE.MathUtils.degToRad(outerCone / 2),
-        THREE.MathUtils.clamp(1 - innerCone / outerCone, 0.05, 0.85), 1.25
+        THREE.MathUtils.clamp(1 - innerCone / outerCone, 0.05, 0.85), 1
       );
       light.target.position.copy(position).add(entityDirection(entity, targets).multiplyScalar(512));
       mapLightRoot.add(light.target);
     } else {
-      light = new THREE.PointLight(color, baseIntensity, distance, 1.25);
+      light = new THREE.PointLight(color, baseIntensity, distance, 1);
     }
     light.position.copy(position);
     light.visible = false;
     mapLightRoot.add(light);
 
     let glow = null;
-    if (isGlow) {
+    if (isGlow || isSwitchLight) {
       glow = new THREE.Mesh(
-        new THREE.SphereGeometry(4.5, 8, 6),
+        new THREE.SphereGeometry(isGlow ? 4.5 : 3, 8, 6),
         new THREE.MeshBasicMaterial({
           color, transparent: true,
           opacity: THREE.MathUtils.clamp((Number(entity.renderamt) || 150) / 255, 0.15, 1),
@@ -1440,11 +1448,18 @@ function buildMapLights(gltf) {
       mapLightRoot.add(glow);
     }
 
+    const syncTargets = entitySyncTargets(entity, activationGroups);
+    const linkedBeams = mapBeamGroup?.children.filter(beam => {
+      const beamTargets = beam.userData.syncTargets;
+      return beamTargets instanceof Set && [...syncTargets].some(target => beamTargets.has(target));
+    }) || [];
+
     mapLightDefinitions.push({
       entityIndex, light, glow, baseIntensity,
       style: Math.round(Number(entity.style) || 0),
       startsOn: !(Math.round(Number(entity.spawnflags) || 0) & 1),
-      controllers: entityControllers(entity, activationGroups)
+      controllers: entityControllers(entity, activationGroups),
+      linkedBeams
     });
   }
   updateMapLights();
@@ -1632,6 +1647,7 @@ function buildMapBeams(gltf) {
     );
     const visual = new THREE.Group();
     visual.userData.startsOn = definition.startsOn !== false;
+    visual.userData.syncTargets = syncTargets;
     visual.userData.controllerTracks = state.brushes.filter(track => {
       const brush = state.brushDefinitions.get(track.brushId);
       return BEAM_CONTROLLER_CLASSES.has(brush?.classname) && syncTargets.has(brush?.targetname);
@@ -1681,10 +1697,10 @@ function loadMap() {
     settleCorpses();
     bindBrushNodes();
     buildMapSky(gltf);
-    buildMapLights(gltf);
     buildMapBeams(gltf);
     updateBrushes();
     updateMapBeams();
+    buildMapLights(gltf);
     if (grid) grid.visible = false;
   }, undefined, () => {
     if (grid) grid.visible = true;
