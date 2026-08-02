@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260731blood2";
+} from "./replay-projectile-visuals.js?v=20260802nails1";
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
@@ -730,6 +730,7 @@ async function setBuildableModel(track, modelId, team) {
 }
 
 async function setProjectileCatalogModel(track, definitionSignature) {
+  if (track.definition?.ignoreRecordedModel) return;
   const url = catalogUrl(track.recordedDefinition?.modelId, "projectile");
   if (!url) return;
   const asset = await loadModelAsset(url);
@@ -922,7 +923,7 @@ function buildVisuals() {
     track.mesh.visible = false;
     void setProjectileCatalogModel(track, definitionSignature);
     const removal = track.impactCreated ? null : projectileRemoval(track);
-    if (removal && recorded) {
+    if (removal && recorded && track.definition.impact !== "none") {
       const impact = projectileVisuals.impact(
         track.definition,
         sourcePoint(removal.x, removal.y, removal.z),

@@ -29,7 +29,10 @@ const DEFINITIONS = [
   { key: "mirv", classnames: ["tf_weapon_mirvgrenade"], models: ["models/mirv_grenade.mdl"], color: 0xef4444, radius: 19, impact: "mirv", effect: "explode02", rotation: [-75, 180, 58], spinAxis: "z", spinSpeed: 2.5 },
   { key: "mirv-bomblet", classnames: ["tf_weapon_mirvbomblet"], models: ["models/bomblet.mdl"], color: 0xfb923c, radius: 12, impact: "mirvlet", effect: "explode01" },
   { key: "nail", classnames: ["tf_weapon_nailgrenade"], models: ["models/ngrenade.mdl"], color: 0x22d3ee, radius: 18, impact: "generic", effect: "explode01" },
-  { key: "napalm", classnames: ["tf_weapon_napalmgrenade"], models: ["models/napalm.mdl"], color: 0xf97316, radius: 18, impact: "generic", effect: "explode01" }
+  { key: "napalm", classnames: ["tf_weapon_napalmgrenade"], models: ["models/napalm.mdl"], color: 0xf97316, radius: 18, impact: "generic", effect: "explode01" },
+  // GoldSrc records nail entities with models/rpgrocket.mdl as an engine
+  // placeholder. Their classname is authoritative; never turn them into rockets.
+  { key: "nail-projectile", classnames: ["tf_weapon_nailgrenadenail", "tf_nailgun_nail"], models: [], color: 0xc7d8e8, radius: 2, impact: "none", effect: "", fallback: "nail", noSpin: true, ignoreRecordedModel: true }
 ];
 
 const UNKNOWN = {
@@ -85,6 +88,16 @@ function fallbackMesh(definition) {
     const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(8, 20, 6, 10), material);
     mesh.rotation.z = Math.PI / 2;
     return mesh;
+  }
+  if (definition.fallback === "nail") {
+    const group = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 9, 6), material);
+    shaft.rotation.z = Math.PI / 2;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(1.35, 4, 6), material);
+    tip.rotation.z = -Math.PI / 2;
+    tip.position.x = 6.2;
+    group.add(shaft, tip);
+    return group;
   }
   return new THREE.Mesh(new THREE.SphereGeometry(definition.radius, 16, 12), material);
 }
@@ -196,7 +209,7 @@ export class ReplayProjectileVisuals {
       ...definitions.map(definition => definition.effect),
       ...(definitions.some(definition => definition.flare) ? ["animglow01"] : []),
       "bloodspray"
-    ]);
+    ].filter(Boolean));
     await Promise.all([
       ...[...models].map(model => this.loadModel(model)),
       ...[...sprites].map(sprite => this.loadSprite(sprite))
@@ -392,7 +405,7 @@ export class ReplayProjectileVisuals {
       THREE.MathUtils.degToRad(yaw + (definition.yawOffset || 0) + base[1]),
       THREE.MathUtils.degToRad(base[2])
     );
-    if (definition.key !== "rocket") {
+    if (definition.key !== "rocket" && !definition.noSpin) {
       const spin = playbackTime * (definition.spinSpeed || 1.2);
       mesh.rotation[definition.spinAxis || "y"] += spin;
     }
