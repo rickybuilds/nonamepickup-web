@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 "use strict";
 
-const crypto = require("node:crypto");
-const fs = require("node:fs/promises");
-const path = require("node:path");
-const { spawn } = require("node:child_process");
+// EAST currently runs a pre-Node-14 runtime, so keep this sidecar compatible
+// with the older CommonJS builtin names and syntax it already supports.
+const crypto = require("crypto");
+const fs = require("fs").promises;
+const path = require("path");
+const { spawn } = require("child_process");
 
 const FILE_ORDER = [
   "roster.csv",
@@ -25,7 +27,7 @@ const ROUND_PATTERN = /^round-(\d{1,4})$/;
 const SERVER_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
 
 function positiveInteger(value, fallback, minimum, maximum) {
-  const parsed = Number(value ?? fallback);
+  const parsed = Number(value == null ? fallback : value);
   if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
     throw new Error(`Expected an integer from ${minimum} through ${maximum}.`);
   }
@@ -59,7 +61,10 @@ function log(message) {
 }
 
 function streamId() {
-  return crypto.randomBytes(24).toString("base64url");
+  return crypto.randomBytes(24).toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 function createState(matchId, round, directory) {
