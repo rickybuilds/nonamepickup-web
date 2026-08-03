@@ -1684,6 +1684,7 @@ function buildMapEntityBrushes(gltf) {
       );
       mapTriggeredBrushes.push({
         node,
+        family,
         controllerTrack,
         duration: Math.max(0.1, Number(buttonEntity?.wait) || 45),
         startsOn: true
@@ -1993,6 +1994,9 @@ function lightStyleFactor(style, time) {
 }
 
 function mapLightTriggeredOn(definition) {
+  if (definition.linkedTriggeredBrushes.length) {
+    return definition.linkedTriggeredBrushes.some(visual => visual.node.visible);
+  }
   if (definition.linkedBeams.length) {
     return definition.linkedBeams.some(beam => beam.visible);
   }
@@ -2119,13 +2123,18 @@ function buildMapLights(gltf) {
       }, null);
       if (nearestBeam) linkedBeams = [nearestBeam.beam];
     }
+    const phantomButtonLight = String(entity.targetname || "").toLowerCase().match(/^([br])buttonlight2$/);
+    const linkedTriggeredBrushes = phantomButtonLight
+      ? mapTriggeredBrushes.filter(visual => visual.family === phantomButtonLight[1])
+      : [];
 
     mapLightDefinitions.push({
       entityIndex, light, glow, baseIntensity,
       style: Math.round(Number(entity.style) || 0),
       startsOn: !(Math.round(Number(entity.spawnflags) || 0) & 1),
       controllers: entityControllers(entity, activationGroups),
-      linkedBeams
+      linkedBeams,
+      linkedTriggeredBrushes
     });
   }
   updateMapLights();
