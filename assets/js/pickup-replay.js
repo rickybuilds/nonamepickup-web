@@ -906,14 +906,22 @@ function createGlowSprite(color = 0xffffff, opacity = 0.8, size = 32) {
   return sprite;
 }
 
+function isNonVisualEntityClass(classname) {
+  return /^trigger_/i.test(String(classname || ""));
+}
+
 async function setEntityModel(track, modelId) {
   if (track.mesh.userData.modelId === modelId) return;
   track.mesh.userData.modelId = modelId;
+  track.mesh.userData.diagnosticFallback = false;
   track.visual.clear();
   const recorded = state.renderModels.get(Number(modelId));
   const semantic = sceneMetadataAt("entity", track.entityId);
   const classname = String(track.definition?.classname || "").toLowerCase();
   const isSprite = semantic?.kind === "sprite" || /\.spr$/i.test(recorded?.path || "");
+  // GoldSrc trigger entities are invisible collision volumes. Model id zero
+  // likewise means there is no recorded visual, not an unknown model.
+  if (!Number(modelId) || isNonVisualEntityClass(classname)) return;
   // Static env_glow entities are already represented by buildMapLights. Do
   // not draw a second generic object at the same origin.
   if (classname === "env_glow") return;
@@ -928,6 +936,7 @@ async function setEntityModel(track, modelId) {
       new THREE.BoxGeometry(12, 12, 12),
       new THREE.MeshStandardMaterial({ color: 0xaed7ff, wireframe: true })
     ));
+    track.mesh.userData.diagnosticFallback = true;
     return;
   }
   const asset = await loadModelAsset(url);
@@ -1508,7 +1517,8 @@ function updateEntities() {
   for (const track of state.entities) {
     if (!track.mesh) continue;
     const frame = entitySnapshot(track, state.playbackTime);
-    track.mesh.visible = Boolean(frame && !(frame.effects & 128));
+    const nonVisual = isNonVisualEntityClass(track.definition?.classname);
+    track.mesh.visible = Boolean(frame && !(frame.effects & 128) && !nonVisual);
     if (!frame || !track.mesh.visible) continue;
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     track.mesh.rotation.set(
@@ -1516,8 +1526,10 @@ function updateEntities() {
       THREE.MathUtils.degToRad(frame.yaw),
       THREE.MathUtils.degToRad(frame.roll)
     );
-    track.mesh.scale.setScalar(frame.scale > 0 ? frame.scale : 1);
     void setEntityModel(track, frame.modelId);
+    track.mesh.scale.setScalar(
+      track.mesh.userData.diagnosticFallback ? 1 : (frame.scale > 0 ? frame.scale : 1)
+    );
     const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
     if (track.mesh.userData.renderSignature !== signature) {
       track.mesh.userData.renderSignature = signature;
@@ -1619,6 +1631,13 @@ function buildMapEntityBrushes(gltf) {
     ? gltf.userData.goldsrcEntities : [];
   for (const entity of entities) {
     const node = nodes.get(entity?.model);
+    // BSP trigger brushes define gameplay volumes only. Their faces can still
+    // exist in converted GLBs, so hide the complete submodel before applying
+    // any entity transform.
+    if (node && isNonVisualEntityClass(entity?.classname)) {
+      node.visible = false;
+      continue;
+    }
     const position = entityPoint(entity?.origin);
     if (!node || !position) continue;
     node.position.copy(position);
