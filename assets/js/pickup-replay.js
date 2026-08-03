@@ -914,6 +914,7 @@ async function setEntityModel(track, modelId) {
   if (track.mesh.userData.modelId === modelId) return;
   track.mesh.userData.modelId = modelId;
   track.mesh.userData.diagnosticFallback = false;
+  track.mesh.userData.spriteFallback = false;
   track.visual.clear();
   const recorded = state.renderModels.get(Number(modelId));
   const semantic = sceneMetadataAt("entity", track.entityId);
@@ -929,6 +930,7 @@ async function setEntityModel(track, modelId) {
   if (!url) {
     if (isSprite) {
       track.visual.add(createGlowSprite(0xffffff, 0.8, 48));
+      track.mesh.userData.spriteFallback = true;
       delete track.mesh.userData.renderSignature;
       return;
     }
@@ -1218,6 +1220,11 @@ function bindBrushNodes() {
     track.definition = state.brushDefinitions.get(track.brushId);
     track.node = nodes.get(track.definition?.model) || null;
     if (!track.node) continue;
+    track.nonVisual = isNonVisualEntityClass(track.definition?.classname);
+    if (track.nonVisual) {
+      track.node.visible = false;
+      continue;
+    }
     track.node.userData.brushId = track.brushId;
     track.node.traverse(child => {
       if (!child.isMesh) return;
@@ -1528,7 +1535,9 @@ function updateEntities() {
     );
     void setEntityModel(track, frame.modelId);
     track.mesh.scale.setScalar(
-      track.mesh.userData.diagnosticFallback ? 1 : (frame.scale > 0 ? frame.scale : 1)
+      track.mesh.userData.diagnosticFallback || track.mesh.userData.spriteFallback
+        ? 1
+        : (frame.scale > 0 ? frame.scale : 1)
     );
     const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
     if (track.mesh.userData.renderSignature !== signature) {
@@ -1584,6 +1593,10 @@ function updateEntities() {
 function updateBrushes() {
   for (const track of state.brushes) {
     if (!track.node) continue;
+    if (track.nonVisual || isNonVisualEntityClass(track.definition?.classname)) {
+      track.node.visible = false;
+      continue;
+    }
     const frame = brushSnapshot(track, state.playbackTime);
     track.node.visible = Boolean(frame?.active && !(frame.effects & 128));
     if (!track.node.visible) continue;
