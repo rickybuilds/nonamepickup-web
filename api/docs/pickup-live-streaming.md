@@ -81,7 +81,7 @@ For the current round, a successful log begins with lines similar to:
 
 ```text
 [pickup-live-forwarder] watching /root/steamcmd/tfc/tfc/addons/amxmodx/data/pickup_replays as east
-[pickup-live-forwarder] discovered east:TNQXH6:1 schema 5
+[pickup-live-forwarder] discovered east:TNQXH6:1 schema 6
 ```
 
 Open the feed directly with:

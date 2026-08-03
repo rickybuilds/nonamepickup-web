@@ -1,6 +1,6 @@
 # Pickup replay ingestion
 
-`POST /api/pickup-replays` accepts one schema-version-2, schema-version-3, or schema-version-4 TFC 4v4 round replay package. The
+`POST /api/pickup-replays` accepts one schema-version-2 through schema-version-6 TFC 4v4 round replay package. The
 route is upload-only. Replay storage is private and is not registered as an
 Express static directory.
 
@@ -94,6 +94,8 @@ brushes.csv          # schema version 4+
 entity_defs.csv      # schema version 5+
 entities.csv         # schema version 5+
 entity_census.csv    # schema version 5+
+entity_meta.csv      # schema version 6+
+scene_events.csv     # schema version 6+
 manifest.json
 complete.ready       # exactly one ready marker
 ```
@@ -125,7 +127,12 @@ lifetime IDs; state references must use an `entity` render-model kind. An
 specialized tracker temporarily claimed the edict. Entity snapshot order is
 authoritative; `time_ms` may regress by at most 50 milliseconds to accommodate
 bounded recorder-clock jitter. The census is a validated diagnostic inventory of
-stream assignment and exclusion decisions. Versions other than 2, 3, 4, and 5 are rejected with `unsupported_schema_version`;
+stream assignment and exclusion decisions. Version 6 additionally requires
+`entity_meta.csv` and `scene_events.csv`, with `entity_metadata` and
+`scene_events` row counts and matching byte entries. Semantic object identity
+is the composite `(stream, stream_id)` in metadata and
+`(object_stream, object_id)` in ordered scene events. Scene `seq` values are
+strictly increasing within a round. Versions other than 2, 3, 4, 5, and 6 are rejected with `unsupported_schema_version`;
 future versions are never reinterpreted.
 
 Event rows preserve file order and may regress by at most 100 milliseconds in
@@ -406,6 +413,8 @@ brushes.csv          # v4+
 entity_defs.csv      # v5+
 entities.csv         # v5+
 entity_census.csv    # v5+
+entity_meta.csv      # v6+
+scene_events.csv     # v6+
 ```
 
 Archive members are read with a fixed `tar` argument array. Match IDs and round

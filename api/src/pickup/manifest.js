@@ -3,7 +3,7 @@
 const { pickupError } = require("./errors");
 
 const MIN_SCHEMA_VERSION = 2;
-const CURRENT_SCHEMA_VERSION = 5;
+const CURRENT_SCHEMA_VERSION = 6;
 
 function isPlainObject(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -90,6 +90,13 @@ function validateManifest(value, expected) {
        !Number.isSafeInteger(value.bytes["entity_defs.csv"]) ||
        !Number.isSafeInteger(value.bytes["entities.csv"]) ||
        !Number.isSafeInteger(value.bytes["entity_census.csv"]))) {
+    throw pickupError(422, "invalid_manifest", { quarantine: true });
+  }
+  if (value.schema_version >= 6 &&
+      (!Number.isSafeInteger(value.rows.entity_metadata) ||
+       !Number.isSafeInteger(value.rows.scene_events) ||
+       !Number.isSafeInteger(value.bytes["entity_meta.csv"]) ||
+       !Number.isSafeInteger(value.bytes["scene_events.csv"]))) {
     throw pickupError(422, "invalid_manifest", { quarantine: true });
   }
   if (value.ended_at_epoch < value.started_at_epoch) {

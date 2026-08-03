@@ -58,7 +58,7 @@ const LIGHT_STYLE_PATTERNS = [
   "aaaaaaaazzzzzzzz", "mmamammmmammamamaaamammma", "abcdefghijklmnopqrrqponmlkjihgfedcba",
   "mmnnmmnnnmmnn"
 ];
-const TFC_MODEL_ASSET_VERSION = "20260802schema5entities1";
+const TFC_MODEL_ASSET_VERSION = "20260803schema6scene1";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
 const skyLoader = new THREE.CubeTextureLoader();
@@ -82,7 +82,12 @@ const state = {
   brushes: [],
   entityDefinitions: new Map(),
   entities: [],
+  entityById: new Map(),
   entityCensus: [],
+  entityMetadata: new Map(),
+  sceneMetadataRows: [],
+  sceneEvents: [],
+  sceneDeathsBySession: new Map(),
   events: [],
   impacts: [],
   bloodEffects: [],
@@ -264,6 +269,101 @@ function playerSnapshot(track, time) {
   return snapshot;
 }
 
+function replaySchemaVersion() {
+  return Number(state.metadata?.manifest?.schema_version || state.metadata?.schemaVersion || 2);
+}
+
+function sceneObjectKey(stream, streamId) {
+  return `${stream}:${Number(streamId)}`;
+}
+
+function sceneMetadataAt(stream, streamId, time = state.playbackTime) {
+  const updates = state.entityMetadata.get(sceneObjectKey(stream, streamId));
+  if (!updates?.length || time < updates[0].time) return null;
+  let low = 0;
+  let high = updates.length - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (updates[middle].time <= time) low = middle;
+    else high = middle - 1;
+  }
+  return updates[low];
+}
+
+function rebuildSceneIndexes() {
+  const metadata = new Map();
+  for (const update of state.sceneMetadataRows || []) {
+    const key = sceneObjectKey(update.stream, update.streamId);
+    if (!metadata.has(key)) metadata.set(key, []);
+    metadata.get(key).push(update);
+  }
+  for (const updates of metadata.values()) {
+    updates.sort((a, b) => a.time - b.time);
+  }
+  state.entityMetadata = metadata;
+
+  state.sceneEvents.sort((a, b) => a.sequence - b.sequence);
+  const deathsById = new Map();
+  const deathsBySession = new Map();
+  for (const event of state.sceneEvents) {
+    if (event.event === "death") {
+      const death = {
+        deathId: event.objectId,
+        sessionId: event.targetSession,
+        startsAt: event.time,
+        endsAt: Number.POSITIVE_INFINITY,
+        gibDirective: event.intValue1,
+        lethalDamageBits: event.intValue2,
+        inflictor: event.text,
+        attackerSession: event.actorSession,
+        weaponNotice: "",
+        deathSequence: 0,
+        deathGaitSequence: 0
+      };
+      deathsById.set(death.deathId, death);
+      if (!deathsBySession.has(death.sessionId)) deathsBySession.set(death.sessionId, []);
+      deathsBySession.get(death.sessionId).push(death);
+      continue;
+    }
+    const death = deathsById.get(event.objectId);
+    if (!death) continue;
+    if (event.event === "corpse_end") death.endsAt = event.time;
+    else if (event.event === "death_notice") death.weaponNotice = event.text;
+    else if (event.event === "death_pose") {
+      death.deathSequence = event.intValue1;
+      death.deathGaitSequence = event.intValue2;
+    }
+  }
+  state.sceneDeathsBySession = deathsBySession;
+}
+
+function linkedDeathObjectActive(deathId, kinds, time) {
+  for (const [key, updates] of state.entityMetadata) {
+    if (!key.startsWith("entity:")) continue;
+    const update = sceneMetadataAt("entity", Number(key.slice(7)), time);
+    if (!update || update.deathId !== deathId || !kinds.has(update.kind)) continue;
+    const track = state.entityById.get(update.streamId);
+    const frame = track ? entitySnapshot(track, time) : null;
+    if (frame && !(frame.effects & 128)) return true;
+  }
+  return false;
+}
+
+function playerDeathAt(sessionId, time = state.playbackTime) {
+  const deaths = state.sceneDeathsBySession.get(Number(sessionId));
+  if (!deaths?.length) return null;
+  for (let index = deaths.length - 1; index >= 0; index -= 1) {
+    const death = deaths[index];
+    if (death.startsAt <= time && time < death.endsAt) {
+      const gibbed = death.gibDirective === 1 ||
+        linkedDeathObjectActive(death.deathId, new Set(["gib"]), time);
+      const bodyQueued = linkedDeathObjectActive(death.deathId, new Set(["corpse_body"]), time);
+      return { ...death, gibbed, bodyQueued };
+    }
+  }
+  return null;
+}
+
 function isDucking(frame) {
   return frame.schemaVersion >= 3 ? frame.ducking : Boolean(frame.buttons & 4);
 }
@@ -377,7 +477,7 @@ function projectileSnapshot(track, time) {
 
 function objectiveSnapshot(track, time) {
   const frame = trackFrame(track, time);
-  if (!frame) return null;
+  if (!frame || value(frame, 1, false) < 0) return null;
   return {
     state: value(frame, 1, false),
     carrierSession: Math.round(value(frame, 2, false)),
@@ -926,16 +1026,18 @@ function buildVisuals() {
     track.acFireVisual = createAssaultCannonVisual();
     hitscanRoot.add(track.acFireVisual.group);
 
-    for (const corpse of corpseRecords(track)) {
-      corpse.mesh = new THREE.Group();
-      corpse.mesh.visible = false;
-      corpse.mesh.position.copy(sourcePoint(corpse.x, corpse.y, corpse.z));
-      corpse.mesh.position.y -= (corpse.buttons & 4) ? 18 : 36;
-      corpse.mesh.rotation.y = THREE.MathUtils.degToRad(corpse.yaw);
-      corpse.mesh.add(layCorpseModel(fallbackPlayerMesh(corpse.team), corpse.side));
-      corpseRoot.add(corpse.mesh);
-      state.corpses.push(corpse);
-      void setCorpseModel(corpse);
+    if (replaySchemaVersion() < 6) {
+      for (const corpse of corpseRecords(track)) {
+        corpse.mesh = new THREE.Group();
+        corpse.mesh.visible = false;
+        corpse.mesh.position.copy(sourcePoint(corpse.x, corpse.y, corpse.z));
+        corpse.mesh.position.y -= (corpse.buttons & 4) ? 18 : 36;
+        corpse.mesh.rotation.y = THREE.MathUtils.degToRad(corpse.yaw);
+        corpse.mesh.add(layCorpseModel(fallbackPlayerMesh(corpse.team), corpse.side));
+        corpseRoot.add(corpse.mesh);
+        state.corpses.push(corpse);
+        void setCorpseModel(corpse);
+      }
     }
 
     const { frames, stride } = track;
@@ -1116,11 +1218,32 @@ function eventDescription(event) {
   return `${label}${event.text ? ` · ${event.text}` : ""}`;
 }
 
+function pickupTimelineEvent(event) {
+  const gains = [
+    [event.shells, "shells"], [event.bullets, "bullets"], [event.cells, "cells"],
+    [event.rockets, "rockets"], [event.nade1, "grenade 1"], [event.nade2, "grenade 2"],
+    [event.health, "health"], [event.armor, "armor"]
+  ].filter(([amount]) => amount > 0).map(([amount, label]) => `+${amount} ${label}`);
+  return {
+    ...event,
+    event: `picked up ${String(event.objectKind || "item").replace(/_/g, " ")}`,
+    text: gains.join(" · ")
+  };
+}
+
+function timelineEvents() {
+  return [
+    ...state.events,
+    ...state.sceneEvents.filter(event => event.event === "pickup").map(pickupTimelineEvent)
+  ].sort((a, b) => a.time - b.time || (a.sequence || 0) - (b.sequence || 0));
+}
+
 function renderEvents(force = false) {
   const second = Math.floor(state.playbackTime);
   if (!force && second === state.lastEventSecond) return;
   state.lastEventSecond = second;
-  const nearby = state.events
+  const eventFeed = timelineEvents();
+  const nearby = eventFeed
     .filter(event => event.time <= state.playbackTime + 1 && event.time >= state.playbackTime - 18)
     .slice(-24)
     .reverse();
@@ -1137,8 +1260,8 @@ function renderEvents(force = false) {
     container.appendChild(item);
   }
   const visibleEventCount = LIVE_MODE
-    ? state.events.filter(event => event.time <= state.liveEdge).length
-    : state.events.length;
+    ? eventFeed.filter(event => event.time <= state.liveEdge).length
+    : eventFeed.length;
   $("pickup-event-count").textContent = visibleEventCount.toLocaleString();
 }
 
@@ -1207,20 +1330,34 @@ function updatePlayers() {
       if (track.acFireVisual) track.acFireVisual.group.visible = false;
       continue;
     }
+    const death = replaySchemaVersion() >= 6 ? playerDeathAt(track.sessionId) : null;
+    const playerBackedCorpse = Boolean(death && !death.gibbed && !death.bodyQueued);
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     // Schema 3 records the authoritative entity origin, including crouch transitions.
     // Keep the legacy visual offset only for schema 2's basic fallback.
     if (frame.schemaVersion === 2) track.mesh.position.y -= isDucking(frame) ? 18 : 36;
     track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyYaw : frame.yaw);
     const crouched = frame.schemaVersion >= 3 && isDucking(frame);
-    updatePlayerMotion(track, frame, crouched);
+    if (frame.alive) {
+      updatePlayerMotion(track, frame, crouched);
+    } else {
+      track.motionUniforms.walk.value = 0;
+      track.motionUniforms.air.value = 0;
+      track.motionUniforms.tuck.value = 0;
+    }
+    const fallProgress = playerBackedCorpse
+      ? THREE.MathUtils.smoothstep(state.playbackTime - death.startsAt, 0, 0.65)
+      : 0;
+    const deathSide = ((track.sessionId + (death?.deathId || 0)) % 2) ? 1 : -1;
     track.playerVisual.position.y = crouched ? 2.5 : 0;
     track.weaponVisual.position.y = crouched ? -18 : 0;
     track.playerVisual.rotation.x = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyPitch : 0);
-    track.playerVisual.rotation.z = THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyRoll : 0);
+    track.playerVisual.rotation.z =
+      THREE.MathUtils.degToRad(frame.schemaVersion >= 3 ? frame.bodyRoll : 0) +
+      deathSide * fallProgress * Math.PI / 2;
     const isSelectedPov =
       state.cameraMode === "pov" && track.sessionId === state.selectedSession;
-    track.mesh.visible = frame.alive && !isSelectedPov;
+    track.mesh.visible = (frame.alive || playerBackedCorpse) && !isSelectedPov;
     void setPlayerModel(track, frame.classId, frame.team, frame.playerModelId || 0, crouched);
     if (frame.schemaVersion >= 3) {
       void setWeaponModel(track, frame.weaponModelId, frame.classId);
@@ -1231,6 +1368,20 @@ function updatePlayers() {
         gaitsequence: frame.gaitsequence, frame: frame.frame, framerate: frame.framerate,
         animtime: frame.animtime, controller: frame.controller, blending: frame.blending
       });
+    }
+    if (death) {
+      track.playerVisual.userData.death = {
+        deathId: death.deathId,
+        sequence: death.deathSequence || frame.sequence || 0,
+        gaitsequence: death.deathGaitSequence || frame.gaitsequence || 0,
+        frame: frame.frame || 0,
+        gibDirective: death.gibDirective,
+        lethalDamageBits: death.lethalDamageBits,
+        inflictor: death.inflictor,
+        weaponNotice: death.weaponNotice
+      };
+    } else {
+      delete track.playerVisual.userData.death;
     }
     updateAssaultCannonVisual(track, frame, state.playbackTime);
 
@@ -1349,6 +1500,18 @@ function updateEntities() {
       animationFrame: frame.frame, framerate: frame.framerate, animtime: frame.animtime,
       controller: frame.controller, blending: frame.blending, aiment: frame.aiment,
       unsupportedGoldSrcState: ["body", "skin", "sequence", "gaitsequence", "controller", "blending", "aiment"]
+    });
+    const semantic = sceneMetadataAt("entity", track.entityId);
+    Object.assign(track.mesh.userData, {
+      semanticKind: semantic?.kind || null,
+      semanticIdentity: semantic?.key || sceneObjectKey("entity", track.entityId),
+      sourceSession: semantic?.sourceSession || 0,
+      deathId: semantic?.deathId || 0,
+      reserveAmmoAtDeath: semantic?.kind === "backpack" ? {
+        shells: semantic.shells, bullets: semantic.bullets, cells: semantic.cells,
+        rockets: semantic.rockets, nade1: semantic.nade1, nade2: semantic.nade2
+      } : null,
+      semanticReason: semantic?.reason || ""
     });
   }
 }
@@ -1905,6 +2068,14 @@ function updateObjectives() {
       track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
       track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
     }
+    const semantic = sceneMetadataAt("objective", track.objectiveId);
+    Object.assign(track.mesh.userData, {
+      semanticKind: semantic?.kind || null,
+      semanticIdentity: semantic?.key || sceneObjectKey("objective", track.objectiveId),
+      sourceSession: semantic?.sourceSession || 0,
+      deathId: semantic?.deathId || 0,
+      semanticReason: semantic?.reason || ""
+    });
   }
 }
 
@@ -2363,7 +2534,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260803liveunresolved1");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260803schema6scene1");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -2394,6 +2565,7 @@ function latestTelemetryTime(payload) {
     }
   }
   for (const event of payload.events || []) latest = Math.max(latest, event.time || 0);
+  for (const event of payload.sceneEvents || []) latest = Math.max(latest, event.time || 0);
   return latest;
 }
 
@@ -2436,6 +2608,8 @@ function trimLiveTelemetry() {
     for (const track of collection) trimTrack(track, cutoff);
   }
   state.events = state.events.filter(event => event.time >= cutoff);
+  state.sceneEvents = state.sceneEvents.filter(event => event.time >= cutoff);
+  rebuildSceneIndexes();
 }
 
 function installTelemetry(telemetry) {
@@ -2459,8 +2633,12 @@ function installTelemetry(telemetry) {
     telemetry.entityDefinitions.map(definition => [definition.entityId, definition])
   );
   state.entities = telemetry.entities;
+  state.entityById = new Map(state.entities.map(track => [track.entityId, track]));
   state.entityCensus = telemetry.entityCensus;
+  state.sceneMetadataRows = telemetry.entityMetadata || [];
+  state.sceneEvents = telemetry.sceneEvents || [];
   state.events = telemetry.events;
+  rebuildSceneIndexes();
   buildRoster();
   selectPlayer(state.roster[0]?.sessionId);
   setupWorld();
@@ -2499,8 +2677,12 @@ async function applyLiveDelta(telemetry) {
   mergeTracks(state.buildables, telemetry.buildables, "buildableId");
   mergeTracks(state.brushes, telemetry.brushes, "brushId");
   mergeTracks(state.entities, telemetry.entities, "entityId");
+  state.entityById = new Map(state.entities.map(track => [track.entityId, track]));
   state.entityCensus.push(...telemetry.entityCensus);
+  state.sceneMetadataRows.push(...(telemetry.entityMetadata || []));
+  state.sceneEvents.push(...(telemetry.sceneEvents || []));
   state.events.push(...telemetry.events);
+  rebuildSceneIndexes();
   state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
   state.liveEdge = Math.max(state.liveEdge, latestTelemetryTime(telemetry));
   state.duration = state.liveEdge;
@@ -2522,7 +2704,7 @@ let liveWorkerPending = null;
 
 function ensureLiveWorker() {
   if (liveWorker) return;
-  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260803liveunresolved1");
+  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260803schema6scene1");
   liveWorker.onmessage = event => {
     if (event.data.type === "progress") return setStatus(event.data.label);
     if (!liveWorkerPending) return;
@@ -2610,7 +2792,7 @@ function connectLiveEvents(metadata, sequence) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json?v=20260802schema5entities1", { cache: "force-cache" });
+  const response = await fetch("/assets/tfc/models/manifest.json?v=20260803schema6scene1", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));
@@ -2634,7 +2816,12 @@ function cleanupReplayObjects() {
   state.buildableDefinitions.clear();
   state.brushDefinitions.clear();
   state.entityDefinitions.clear();
+  state.entityById.clear();
   state.entityCensus = [];
+  state.entityMetadata.clear();
+  state.sceneMetadataRows = [];
+  state.sceneEvents = [];
+  state.sceneDeathsBySession.clear();
 }
 
 async function initRealLive() {

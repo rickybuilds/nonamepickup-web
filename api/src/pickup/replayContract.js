@@ -15,6 +15,8 @@ const REPLAY_FILE_ORDER = Object.freeze([
   "entity_defs.csv",
   "entities.csv",
   "entity_census.csv",
+  "entity_meta.csv",
+  "scene_events.csv",
   "events.csv"
 ]);
 
@@ -27,7 +29,8 @@ const DICTIONARY_FILES = new Set([
   "buildable_defs.csv",
   "brush_defs.csv",
   "entity_defs.csv",
-  "entity_census.csv"
+  "entity_census.csv",
+  "entity_meta.csv"
 ]);
 
 const MINIMUM_SCHEMA_BY_FILE = Object.freeze({
@@ -38,7 +41,9 @@ const MINIMUM_SCHEMA_BY_FILE = Object.freeze({
   "brushes.csv": 4,
   "entity_defs.csv": 5,
   "entities.csv": 5,
-  "entity_census.csv": 5
+  "entity_census.csv": 5,
+  "entity_meta.csv": 6,
+  "scene_events.csv": 6
 });
 
 function replayFileAvailable(fileName, schemaVersion) {

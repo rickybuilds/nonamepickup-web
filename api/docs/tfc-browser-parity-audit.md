@@ -15,18 +15,24 @@ remove columns. Therefore, a field present in a current CSV normally reaches
 the browser; the remaining distinction is whether the worker parses it and
 whether the renderer uses it.
 
-## Schema-5 implementation status
+## Schema-6 implementation status
 
-The AMXX recorder and website now implement the generic-entity portion of
-schema 5. `entity_defs.csv`, `entities.csv`, and `entity_census.csv` are
+The AMXX recorder and website implement the generic-entity portion of schema 5
+and the scene-semantic additions in schema 6. `entity_defs.csv`, `entities.csv`,
+`entity_census.csv`, `entity_meta.csv`, and `scene_events.csv` are
 allowlisted, validated, transported, parsed, retained, and rendered through a
 generic entity layer. The model catalog includes standard TFC backpack, pickup,
 armor, power-up, prop, and dropped-item studio models. Unknown safe generic
 assets remain visible as diagnostic fallback geometry instead of invalidating
-live playback; native sprite rendering remains pending.
+live playback; native sprite rendering remains pending. Schema-6 metadata uses
+`(stream, stream_id)` identity, ordered scene events use
+`(object_stream, object_id)`, pickup resource gains reach the event feed, and
+death/corpse/gib lifetimes drive the persistent player and generic scene
+objects. Exact native studio-sequence playback remains pending because the GLB
+assets are still static approximations.
 
-Schema 2–4 compatibility remains intact. The sections below remain the backlog
-for true 1:1 parity beyond generic entities.
+Schema 2–5 compatibility remains intact. The sections below preserve the
+historical inventory and remaining backlog for true 1:1 parity.
 
 ## Status legend
 
@@ -255,8 +261,8 @@ look right. It is captured only when all of these are true:
 
 ## Recommended implementation order
 
-1. Deploy the schema-5 recorder and website together; schema-5 output requires
-   schema-5 API/forwarder/browser support.
+1. Deploy the schema-6 recorder and website together; schema-6 output requires
+   schema-6 API/forwarder/browser support.
 2. Run the all-entity census across several
    stock and league maps and save the unique classname/model signatures.
 3. Use backpack plus at least one pickup and removal as the first live

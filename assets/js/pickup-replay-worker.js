@@ -465,6 +465,30 @@ const ENTITY_CENSUS_COLUMNS = [
   "time_ms", "entity", "entity_generation", "classname", "model", "model_index", "movetype", "solid",
   "effects", "rendermode", "stream", "reason", "observation"
 ];
+const ENTITY_META_COLUMNS = [
+  "time_ms", "stream", "stream_id", "kind", "source_session", "death_id", "shells", "bullets",
+  "cells", "rockets", "nade1", "nade2", "reason"
+];
+const SCENE_EVENTS_COLUMNS = [
+  "seq", "time_ms", "event", "object_stream", "object_kind", "object_id", "actor_session",
+  "target_session", "shells", "bullets", "cells", "rockets", "nade1", "nade2", "health",
+  "armor", "int_value1", "int_value2", "text"
+];
+const ENTITY_META_KINDS = new Set([
+  "generic", "backpack", "medkit", "armor", "ammo", "gib", "corpse_body", "sprite", "map_model"
+]);
+const SCENE_EVENT_NAMES = new Set([
+  "death", "death_notice", "death_pose", "corpse_end", "entity_spawn", "entity_activate",
+  "entity_deactivate", "entity_remove", "objective_spawn", "objective_remove", "pickup"
+]);
+const SCENE_EVENT_STREAMS = new Map([
+  ["death", new Set(["player"])], ["death_notice", new Set(["player"])],
+  ["death_pose", new Set(["player"])], ["corpse_end", new Set(["player"])],
+  ["entity_spawn", new Set(["entity"])], ["entity_activate", new Set(["entity"])],
+  ["entity_deactivate", new Set(["entity"])], ["entity_remove", new Set(["entity"])],
+  ["objective_spawn", new Set(["objective"])], ["objective_remove", new Set(["objective"])],
+  ["pickup", new Set(["entity", "objective", "buildable"])]
+]);
 
 async function loadEntityDefinitions(url, renderModels) {
   const definitions = [];
@@ -552,6 +576,71 @@ async function loadEntityCensus(url) {
   return census;
 }
 
+async function loadEntityMetadata(url) {
+  const metadata = [];
+  await rows(url, (cols, i) => {
+    const stream = cols[i.stream] || "";
+    const streamId = number(cols[i.stream_id]);
+    const kind = cols[i.kind] || "";
+    if (!["entity", "objective"].includes(stream) || !Number.isSafeInteger(streamId) || streamId < 1 ||
+        !ENTITY_META_KINDS.has(kind)) {
+      throw new Error("Invalid scene object metadata.");
+    }
+    metadata.push({
+      time: number(cols[i.time_ms]) / 1000,
+      stream,
+      streamId,
+      key: `${stream}:${streamId}`,
+      kind,
+      sourceSession: number(cols[i.source_session]),
+      deathId: number(cols[i.death_id]),
+      shells: number(cols[i.shells]), bullets: number(cols[i.bullets]), cells: number(cols[i.cells]),
+      rockets: number(cols[i.rockets]), nade1: number(cols[i.nade1]), nade2: number(cols[i.nade2]),
+      reason: cols[i.reason] || ""
+    });
+  }, ENTITY_META_COLUMNS);
+  return metadata;
+}
+
+async function loadSceneEvents(url) {
+  const output = [];
+  let previousSequence = 0;
+  await rows(url, (cols, i) => {
+    const sequence = number(cols[i.seq]);
+    const event = cols[i.event] || "";
+    const objectStream = cols[i.object_stream] || "";
+    const objectKind = cols[i.object_kind] || "";
+    const objectId = number(cols[i.object_id]);
+    const deathEvent = ["death", "death_notice", "death_pose", "corpse_end"].includes(event);
+    const semanticEvent = objectStream === "entity" || objectStream === "objective";
+    if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence <= previousSequence ||
+        !SCENE_EVENT_NAMES.has(event) || !SCENE_EVENT_STREAMS.get(event)?.has(objectStream) ||
+        !Number.isSafeInteger(objectId) || objectId < 1 ||
+        (deathEvent && objectKind !== "corpse") || (semanticEvent && !ENTITY_META_KINDS.has(objectKind)) ||
+        (objectStream === "buildable" && objectKind !== "dispenser")) {
+      throw new Error("Invalid ordered scene event.");
+    }
+    previousSequence = sequence;
+    output.push({
+      sequence,
+      time: number(cols[i.time_ms]) / 1000,
+      event,
+      objectStream,
+      objectKind,
+      objectId,
+      objectKey: `${objectStream}:${objectId}`,
+      actorSession: number(cols[i.actor_session]),
+      targetSession: number(cols[i.target_session]),
+      shells: number(cols[i.shells]), bullets: number(cols[i.bullets]), cells: number(cols[i.cells]),
+      rockets: number(cols[i.rockets]), nade1: number(cols[i.nade1]), nade2: number(cols[i.nade2]),
+      health: number(cols[i.health]), armor: number(cols[i.armor]),
+      intValue1: number(cols[i.int_value1]), intValue2: number(cols[i.int_value2]),
+      text: cols[i.text] || ""
+    });
+  }, SCENE_EVENTS_COLUMNS);
+  return output;
+}
+
 async function loadEvents(url) {
   const output = [];
   let lastTime = -Infinity;
@@ -590,6 +679,8 @@ const LIVE_FILE_KEYS = {
   entityDefs: "entity_defs.csv",
   entities: "entities.csv",
   entityCensus: "entity_census.csv",
+  entityMeta: "entity_meta.csv",
+  sceneEvents: "scene_events.csv",
   events: "events.csv"
 };
 
@@ -613,7 +704,7 @@ function transferFor(payload) {
 }
 
 async function loadTelemetry(files, schemaVersion, progress = false, allowUnresolved = false) {
-  if (![2, 3, 4, 5].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
+  if (![2, 3, 4, 5, 6].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
   if (progress) self.postMessage({ type: "progress", label: "Loading roster…" });
   const roster = await loadRoster(sourceFor(files, "roster"));
   const renderModels = schemaVersion >= 3 ? await loadRenderModels(sourceFor(files, "renderModels")) : [];
@@ -646,11 +737,15 @@ async function loadTelemetry(files, schemaVersion, progress = false, allowUnreso
     ? await loadEntities(sourceFor(files, "entities"), entityDefinitions, renderModels, allowUnresolved) : [];
   const entityCensus = schemaVersion >= 5
     ? await loadEntityCensus(sourceFor(files, "entityCensus")) : [];
+  const entityMetadata = schemaVersion >= 6
+    ? await loadEntityMetadata(sourceFor(files, "entityMeta")) : [];
+  const sceneEvents = schemaVersion >= 6
+    ? await loadSceneEvents(sourceFor(files, "sceneEvents")) : [];
   const events = await loadEvents(sourceFor(files, "events"));
   return {
     roster, renderModels, players, projectileDefinitions, projectiles,
     objectiveDefinitions, objectives, buildableDefinitions, buildables,
-    brushDefinitions, brushes, entityDefinitions, entities, entityCensus, events
+    brushDefinitions, brushes, entityDefinitions, entities, entityCensus, entityMetadata, sceneEvents, events
   };
 }
 
@@ -751,6 +846,10 @@ async function loadLiveAppend(message) {
     ) : [];
   const entityCensus = schemaVersion >= 5 && source("entity_census.csv")
     ? await loadEntityCensus(source("entity_census.csv")) : [];
+  const entityMetadata = schemaVersion >= 6 && source("entity_meta.csv")
+    ? await loadEntityMetadata(source("entity_meta.csv")) : [];
+  const sceneEvents = schemaVersion >= 6 && source("scene_events.csv")
+    ? await loadSceneEvents(source("scene_events.csv")) : [];
   const events = source("events.csv") ? await loadEvents(source("events.csv")) : [];
   const payload = {
     roster,
@@ -767,6 +866,8 @@ async function loadLiveAppend(message) {
     entityDefinitions,
     entities,
     entityCensus,
+    entityMetadata,
+    sceneEvents,
     events
   };
   self.postMessage({ type: "live-delta", sequence: batch.sequence, payload }, transferFor(payload));

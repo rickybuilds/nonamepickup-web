@@ -30,12 +30,16 @@ const BRUSHES_FILE = "brushes.csv";
 const ENTITY_DEFS_FILE = "entity_defs.csv";
 const ENTITIES_FILE = "entities.csv";
 const ENTITY_CENSUS_FILE = "entity_census.csv";
+const ENTITY_META_FILE = "entity_meta.csv";
+const SCENE_EVENTS_FILE = "scene_events.csv";
 const READY_FILES = new Set(["complete.ready", "aborted.ready"]);
 const SCHEMA_V3_FILES = Object.freeze([RENDER_MODELS_FILE, BUILDABLE_DEFS_FILE, BUILDABLES_FILE]);
 const SCHEMA_V4_FILES = Object.freeze([BRUSH_DEFS_FILE, BRUSHES_FILE]);
 const SCHEMA_V5_FILES = Object.freeze([ENTITY_DEFS_FILE, ENTITIES_FILE, ENTITY_CENSUS_FILE]);
+const SCHEMA_V6_FILES = Object.freeze([ENTITY_META_FILE, SCENE_EVENTS_FILE]);
 const ALLOWED_FILES = new Set([
-  ...REQUIRED_FILES, ...SCHEMA_V3_FILES, ...SCHEMA_V4_FILES, ...SCHEMA_V5_FILES, ...READY_FILES
+  ...REQUIRED_FILES, ...SCHEMA_V3_FILES, ...SCHEMA_V4_FILES, ...SCHEMA_V5_FILES, ...SCHEMA_V6_FILES,
+  ...READY_FILES
 ]);
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
@@ -98,6 +102,15 @@ const ENTITY_CENSUS_COLUMNS = Object.freeze([
   "time_ms", "entity", "entity_generation", "classname", "model", "model_index", "movetype", "solid",
   "effects", "rendermode", "stream", "reason", "observation"
 ]);
+const ENTITY_META_COLUMNS = Object.freeze([
+  "time_ms", "stream", "stream_id", "kind", "source_session", "death_id", "shells", "bullets",
+  "cells", "rockets", "nade1", "nade2", "reason"
+]);
+const SCENE_EVENTS_COLUMNS = Object.freeze([
+  "seq", "time_ms", "event", "object_stream", "object_kind", "object_id", "actor_session",
+  "target_session", "shells", "bullets", "cells", "rockets", "nade1", "nade2", "health",
+  "armor", "int_value1", "int_value2", "text"
+]);
 const EVENTS_COLUMNS = Object.freeze([
   "time_ms", "event", "actor_session", "target_session", "entity", "value1", "value2",
   "int_value1", "int_value2", "text"
@@ -111,6 +124,26 @@ const PROJECTILES_COLUMNS = Object.freeze([
 ]);
 const OBJECTIVES_COLUMNS = Object.freeze([
   "snapshot", "time_ms", "objective_id", "state", "carrier_session", "solid", "effects", "x", "y", "z", "yaw"
+]);
+const ENTITY_META_KINDS = new Set([
+  "generic", "backpack", "medkit", "armor", "ammo", "gib", "corpse_body", "sprite", "map_model"
+]);
+const SCENE_EVENT_NAMES = new Set([
+  "death", "death_notice", "death_pose", "corpse_end", "entity_spawn", "entity_activate",
+  "entity_deactivate", "entity_remove", "objective_spawn", "objective_remove", "pickup"
+]);
+const SCENE_EVENT_STREAMS = new Map([
+  ["death", new Set(["player"])],
+  ["death_notice", new Set(["player"])],
+  ["death_pose", new Set(["player"])],
+  ["corpse_end", new Set(["player"])],
+  ["entity_spawn", new Set(["entity"])],
+  ["entity_activate", new Set(["entity"])],
+  ["entity_deactivate", new Set(["entity"])],
+  ["entity_remove", new Set(["entity"])],
+  ["objective_spawn", new Set(["objective"])],
+  ["objective_remove", new Set(["objective"])],
+  ["pickup", new Set(["entity", "objective", "buildable"])]
 ]);
 const DEFAULT_MODEL_CATALOG = path.resolve(__dirname, "../../../assets/tfc/models/manifest.json");
 
@@ -572,13 +605,20 @@ async function validateArchive({
   if (manifest.schema_version >= 5 && SCHEMA_V5_FILES.some(name => !extractor.files.has(name))) {
     throw pickupError(422, "missing_entity_streams", { quarantine: true });
   }
+  if (manifest.schema_version < 6 && SCHEMA_V6_FILES.some(name => extractor.files.has(name))) {
+    throw pickupError(422, "unexpected_archive_file", { quarantine: true });
+  }
+  if (manifest.schema_version >= 6 && SCHEMA_V6_FILES.some(name => !extractor.files.has(name))) {
+    throw pickupError(422, "missing_scene_streams", { quarantine: true });
+  }
   if (manifest.schema_version === 2 && SCHEMA_V3_FILES.some(name => extractor.files.has(name))) {
     throw pickupError(422, "unexpected_archive_file", { quarantine: true });
   }
   const expectedFileCount = REQUIRED_FILES.length + 1 +
     (manifest.schema_version >= 3 ? SCHEMA_V3_FILES.length : 0) +
     (manifest.schema_version >= 4 ? SCHEMA_V4_FILES.length : 0) +
-    (manifest.schema_version >= 5 ? SCHEMA_V5_FILES.length : 0);
+    (manifest.schema_version >= 5 ? SCHEMA_V5_FILES.length : 0) +
+    (manifest.schema_version >= 6 ? SCHEMA_V6_FILES.length : 0);
   if (extractor.files.size !== expectedFileCount) {
     throw pickupError(422, "unexpected_archive_file", { quarantine: true });
   }
@@ -628,6 +668,7 @@ async function validateArchive({
     "projectile"
   );
   validateNumericColumns(projectileDefs, new Set(["classname", manifest.schema_version === 2 ? "model" : "model_id"]));
+  let buildableDefinitionIds = new Set();
   if (manifest.schema_version >= 3) {
     for (const row of projectileDefs.rows) requiredInteger(row.model_id, "invalid_render_model_reference", { min: 0 });
   }
@@ -637,7 +678,7 @@ async function validateArchive({
     await fsp.readFile(extractor.files.get("objective_defs.csv").path, "utf8"),
     "objective_definitions"
   );
-  validateUniqueIds(
+  const objectiveDefinitionIds = validateUniqueIds(
     objectiveDefs,
     manifest.schema_version === 2 ? OBJECTIVE_DEFS_V2_COLUMNS : OBJECTIVE_DEFS_V3_COLUMNS,
     "objective_id",
@@ -679,6 +720,7 @@ async function validateArchive({
     }
     const buildableDefs = parseCsvDocument(await fsp.readFile(buildableDefsFile.path, "utf8"), "buildable_definitions");
     const definitionIds = validateUniqueIds(buildableDefs, BUILDABLE_DEFS_COLUMNS, "buildable_id", "buildable");
+    buildableDefinitionIds = definitionIds;
     for (const row of buildableDefs.rows) {
       if (!["sentry", "dispenser", "building"].includes(row.kind)) {
         throw pickupError(422, "invalid_buildable_kind", { quarantine: true });
@@ -745,6 +787,7 @@ async function validateArchive({
     }
   }
 
+  let entityDefinitionIds = new Set();
   if (manifest.schema_version >= 5) {
     const entityDefsFile = extractor.files.get(ENTITY_DEFS_FILE);
     const entitiesFile = extractor.files.get(ENTITIES_FILE);
@@ -756,6 +799,7 @@ async function validateArchive({
     }
     const entityDefs = parseCsvDocument(await fsp.readFile(entityDefsFile.path, "utf8"), "entity_definitions");
     const definitionIds = validateUniqueIds(entityDefs, ENTITY_DEFS_COLUMNS, "entity_id", "entity");
+    entityDefinitionIds = definitionIds;
     validateNumericColumns(entityDefs, new Set(["classname", "targetname"]));
     validateModelReferences(entityDefs, "model_id", "entity", renderModels);
     for (const row of entityDefs.rows) {
@@ -803,6 +847,89 @@ async function validateArchive({
     if (manifest.rows.entity_definitions !== entityDefs.rows.length ||
         manifest.rows.entities !== entityRows || manifest.rows.entity_census !== censusRows) {
       throw pickupError(422, "entity_manifest_mismatch", { quarantine: true });
+    }
+  }
+
+  if (manifest.schema_version >= 6) {
+    const entityMetaFile = extractor.files.get(ENTITY_META_FILE);
+    const sceneEventsFile = extractor.files.get(SCENE_EVENTS_FILE);
+    if (manifest.bytes[ENTITY_META_FILE] !== entityMetaFile.size ||
+        manifest.bytes[SCENE_EVENTS_FILE] !== sceneEventsFile.size) {
+      throw pickupError(422, "scene_manifest_mismatch", { quarantine: true });
+    }
+
+    const metadataRows = await validateCsvStream(
+      entityMetaFile.path,
+      "entity_meta",
+      ENTITY_META_COLUMNS,
+      (row, headers) => {
+        validateNumericRow(row, headers, new Set(["stream", "kind", "reason"]));
+        requiredInteger(row.time_ms, "invalid_entity_meta_timestamp", { min: 0 });
+        const streamId = requiredInteger(row.stream_id, "invalid_entity_meta_id", { min: 1 });
+        requiredInteger(row.source_session, "invalid_entity_meta_session", { min: 0 });
+        requiredInteger(row.death_id, "invalid_entity_meta_death", { min: 0 });
+        for (const field of ["shells", "bullets", "cells", "rockets", "nade1", "nade2"]) {
+          requiredInteger(row[field], "invalid_entity_meta_ammo", { min: -1 });
+        }
+        const knownIdentity = row.stream === "entity"
+          ? entityDefinitionIds.has(streamId)
+          : row.stream === "objective" && objectiveDefinitionIds.has(streamId);
+        if (!knownIdentity || !ENTITY_META_KINDS.has(row.kind) || row.reason.length > 96 ||
+            /[\0-\x1f\x7f]/.test(row.reason)) {
+          throw pickupError(422, "invalid_entity_meta", { quarantine: true });
+        }
+      }
+    );
+
+    const knownDeaths = new Set();
+    let previousSequence = 0;
+    let previousSceneTime = -1;
+    const sceneRows = await validateCsvStream(
+      sceneEventsFile.path,
+      "scene_events",
+      SCENE_EVENTS_COLUMNS,
+      (row, headers) => {
+        validateNumericRow(row, headers, new Set(["event", "object_stream", "object_kind", "text"]));
+        const sequence = requiredInteger(row.seq, "invalid_scene_sequence", { min: 1 });
+        const time = requiredInteger(row.time_ms, "invalid_scene_timestamp", { min: 0 });
+        const objectId = requiredInteger(row.object_id, "invalid_scene_object_id", { min: 1 });
+        requiredInteger(row.actor_session, "invalid_scene_session", { min: 0 });
+        requiredInteger(row.target_session, "invalid_scene_session", { min: 0 });
+        for (const field of ["shells", "bullets", "cells", "rockets", "nade1", "nade2", "health", "armor"]) {
+          requiredInteger(row[field], "invalid_scene_resource", { min: 0 });
+        }
+        requiredInteger(row.int_value1, "invalid_scene_integer");
+        requiredInteger(row.int_value2, "invalid_scene_integer");
+        if (sequence <= previousSequence || time + 100 < previousSceneTime ||
+            !SCENE_EVENT_NAMES.has(row.event) ||
+            !/^(player|entity|objective|buildable)$/.test(row.object_stream) ||
+            !SCENE_EVENT_STREAMS.get(row.event)?.has(row.object_stream) ||
+            !/^[a-z][a-z0-9_]{0,31}$/.test(row.object_kind) ||
+            row.text.length > 512 || /[\0-\x1f\x7f]/.test(row.text)) {
+          throw pickupError(422, "invalid_scene_event", { quarantine: true });
+        }
+        const deathEvent = ["death", "death_notice", "death_pose", "corpse_end"].includes(row.event);
+        const semanticEvent = row.object_stream === "entity" || row.object_stream === "objective";
+        if ((deathEvent && row.object_kind !== "corpse") ||
+            (semanticEvent && !ENTITY_META_KINDS.has(row.object_kind)) ||
+            (row.object_stream === "buildable" && row.object_kind !== "dispenser")) {
+          throw pickupError(422, "invalid_scene_event_kind", { quarantine: true });
+        }
+        if (row.object_stream === "entity" && !entityDefinitionIds.has(objectId) ||
+            row.object_stream === "objective" && !objectiveDefinitionIds.has(objectId) ||
+            row.object_stream === "buildable" && !buildableDefinitionIds.has(objectId)) {
+          throw pickupError(422, "undefined_scene_object", { quarantine: true });
+        }
+        if (row.event === "death") knownDeaths.add(objectId);
+        if (["death_notice", "death_pose", "corpse_end"].includes(row.event) && !knownDeaths.has(objectId)) {
+          throw pickupError(422, "undefined_scene_death", { quarantine: true });
+        }
+        previousSequence = sequence;
+        previousSceneTime = Math.max(previousSceneTime, time);
+      }
+    );
+    if (manifest.rows.entity_metadata !== metadataRows || manifest.rows.scene_events !== sceneRows) {
+      throw pickupError(422, "scene_manifest_mismatch", { quarantine: true });
     }
   }
 

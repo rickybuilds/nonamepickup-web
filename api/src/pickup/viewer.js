@@ -107,6 +107,8 @@ class PickupReplayViewer {
         ,entityDefinitions: Number(manifest.rows?.entity_definitions || 0)
         ,entities: Number(manifest.rows?.entities || 0)
         ,entityCensus: Number(manifest.rows?.entity_census || 0)
+        ,entityMetadata: Number(manifest.rows?.entity_metadata || 0)
+        ,sceneEvents: Number(manifest.rows?.scene_events || 0)
       },
       sha256: row.sha256,
       byteSize: Number(row.byte_size || 0),
