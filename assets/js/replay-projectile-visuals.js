@@ -46,6 +46,28 @@ const UNKNOWN = {
 };
 
 const normalized = value => String(value || "").trim().toLowerCase();
+let rocketGlowTextureCache = null;
+
+function rocketGlowTexture() {
+  if (rocketGlowTextureCache) return rocketGlowTextureCache;
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.16, "rgba(255,250,230,.9)");
+  gradient.addColorStop(0.38, "rgba(255,120,90,.5)");
+  gradient.addColorStop(0.7, "rgba(255,45,32,.15)");
+  gradient.addColorStop(1, "rgba(255,20,12,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  rocketGlowTextureCache = new THREE.CanvasTexture(canvas);
+  rocketGlowTextureCache.colorSpace = THREE.SRGBColorSpace;
+  rocketGlowTextureCache.minFilter = THREE.LinearFilter;
+  rocketGlowTextureCache.magFilter = THREE.LinearFilter;
+  return rocketGlowTextureCache;
+}
 
 export function replayProjectileDefinition(recorded = {}) {
   const classname = normalized(recorded.classname);
@@ -274,14 +296,24 @@ export class ReplayProjectileVisuals {
       core.material.depthTest = false;
       core.renderOrder = 82;
 
-      const bodyGlow = this.sprite("animglow01", 0xffffff);
+      const bodyGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: rocketGlowTexture(),
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.58,
+        blending: THREE.AdditiveBlending,
+        depthTest: false,
+        depthWrite: false,
+        toneMapped: false
+      }));
       bodyGlow.name = "rocketbodyglow";
-      bodyGlow.position.set(-7, 0, 0);
-      bodyGlow.scale.set(24, 24, 1);
-      bodyGlow.material.opacity = 0.34;
-      bodyGlow.material.toneMapped = false;
-      bodyGlow.material.depthTest = false;
+      bodyGlow.position.set(0.3, 0, 0);
+      bodyGlow.scale.set(30, 30, 1);
       bodyGlow.renderOrder = 78;
+
+      const flightLight = new THREE.PointLight(0xff6048, 38, 110, 2);
+      flightLight.name = "rocketflightlight";
+      flightLight.position.set(0, 0, 0);
 
       const trail = new THREE.Mesh(
         new THREE.CylinderGeometry(0.15, 1.2, 44, 8, 1, true),
@@ -299,7 +331,7 @@ export class ReplayProjectileVisuals {
       trail.position.set(23, 0, 0);
       trail.rotation.z = -Math.PI / 2;
       trail.renderOrder = 80;
-      visual.add(bodyGlow, trail, flare, core);
+      visual.add(flightLight, bodyGlow, trail, flare, core);
     }
     return visual;
   }
@@ -541,7 +573,8 @@ export class ReplayProjectileVisuals {
     const bodyGlow = mesh.getObjectByName?.("rocketbodyglow");
     if (bodyGlow) {
       const bodyPulse = 0.94 + ((Math.sin(playbackTime * 24) + 1) * 0.04);
-      bodyGlow.scale.set(24 * bodyPulse, 24 * bodyPulse, 1);
+      bodyGlow.scale.set(30 * bodyPulse, 30 * bodyPulse, 1);
+      bodyGlow.material.opacity = 0.5 + ((Math.sin(playbackTime * 28) + 1) * 0.07);
     }
     const trail = mesh.getObjectByName?.("rocketflaretrail");
     if (trail) trail.material.opacity = 0.4 + ((Math.sin(playbackTime * 31) + 1) * 0.07);
