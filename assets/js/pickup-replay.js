@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260803rocketfx4";
+} from "./replay-projectile-visuals.js?v=20260803rocketfx5";
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
@@ -2180,21 +2180,31 @@ function updateProjectiles() {
     track.mesh.visible = Boolean(frame);
     if (track.rocketTrail) {
       const samples = [];
-      const cutoff = state.playbackTime - 3;
+      const cutoff = state.playbackTime - 1;
+      let wasActive = false;
       for (let offset = 0; offset < track.frames.length; offset += track.stride) {
         const time = track.frames[offset];
         if (time > state.playbackTime) break;
-        if (time < cutoff || track.frames[offset + 1] !== 1) continue;
-        samples.push({
+        const active = track.frames[offset + 1] === 1;
+        if (active && !wasActive) samples.length = 0;
+        wasActive = active;
+        if (time < cutoff || !active) continue;
+        const sample = {
           time,
           point: sourcePoint(
             track.frames[offset + 2],
             track.frames[offset + 3],
             track.frames[offset + 4]
           )
-        });
+        };
+        const previous = samples[samples.length - 1];
+        if (previous) {
+          const elapsed = Math.max(0.001, sample.time - previous.time);
+          if (sample.point.distanceTo(previous.point) / elapsed > 2400) samples.length = 0;
+        }
+        samples.push(sample);
       }
-      projectileVisuals.updateRocketTrail(track.rocketTrail, samples, state.playbackTime, 3);
+      projectileVisuals.updateRocketTrail(track.rocketTrail, samples, state.playbackTime, 1);
     }
     if (!frame) continue;
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));

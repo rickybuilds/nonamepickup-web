@@ -274,6 +274,15 @@ export class ReplayProjectileVisuals {
       core.material.depthTest = false;
       core.renderOrder = 82;
 
+      const bodyGlow = this.sprite("animglow01", 0xffffff);
+      bodyGlow.name = "rocketbodyglow";
+      bodyGlow.position.set(-7, 0, 0);
+      bodyGlow.scale.set(24, 24, 1);
+      bodyGlow.material.opacity = 0.34;
+      bodyGlow.material.toneMapped = false;
+      bodyGlow.material.depthTest = false;
+      bodyGlow.renderOrder = 78;
+
       const trail = new THREE.Mesh(
         new THREE.CylinderGeometry(0.15, 1.2, 44, 8, 1, true),
         new THREE.MeshBasicMaterial({
@@ -290,22 +299,23 @@ export class ReplayProjectileVisuals {
       trail.position.set(23, 0, 0);
       trail.rotation.z = -Math.PI / 2;
       trail.renderOrder = 80;
-      visual.add(trail, flare, core);
+      visual.add(bodyGlow, trail, flare, core);
     }
     return visual;
   }
 
   rocketTrail() {
     const geometry = new THREE.BufferGeometry();
-    const material = new THREE.LineBasicMaterial({
+    const material = new THREE.MeshBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.82,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      toneMapped: false
+      toneMapped: false,
+      side: THREE.DoubleSide
     });
-    const trail = new THREE.Line(geometry, material);
+    const trail = new THREE.Mesh(geometry, material);
     trail.name = "rocket-history-trail";
     trail.frustumCulled = false;
     trail.renderOrder = 79;
@@ -313,7 +323,7 @@ export class ReplayProjectileVisuals {
     return trail;
   }
 
-  updateRocketTrail(trail, samples, playbackTime, lifetime = 3) {
+  updateRocketTrail(trail, samples, playbackTime, lifetime = 1) {
     if (!trail) return;
     const cutoff = playbackTime - lifetime;
     const active = samples.filter(sample => sample.time <= playbackTime && sample.time >= cutoff);
@@ -321,21 +331,27 @@ export class ReplayProjectileVisuals {
       trail.visible = false;
       return;
     }
-    const positions = new Float32Array(active.length * 3);
-    const colors = new Float32Array(active.length * 3);
-    for (const [index, sample] of active.entries()) {
-      positions[index * 3] = sample.point.x;
-      positions[index * 3 + 1] = sample.point.y;
-      positions[index * 3 + 2] = sample.point.z;
-      const life = THREE.MathUtils.clamp((sample.time - cutoff) / lifetime, 0, 1);
+    const points = active.map(sample => sample.point);
+    const curve = points.length === 2
+      ? new THREE.LineCurve3(points[0], points[1])
+      : new THREE.CatmullRomCurve3(points, false, "centripetal", 0.5);
+    const tubularSegments = Math.max(2, active.length - 1);
+    const radialSegments = 6;
+    const geometry = new THREE.TubeGeometry(curve, tubularSegments, 1.15, radialSegments, false);
+    const colors = new Float32Array(geometry.getAttribute("position").count * 3);
+    const oldestLife = THREE.MathUtils.clamp((active[0].time - cutoff) / lifetime, 0, 1);
+    const newestLife = THREE.MathUtils.clamp((active[active.length - 1].time - cutoff) / lifetime, 0, 1);
+    for (let index = 0; index < geometry.getAttribute("position").count; index += 1) {
+      const segment = Math.min(tubularSegments, Math.floor(index / (radialSegments + 1)));
+      const life = THREE.MathUtils.lerp(oldestLife, newestLife, segment / tubularSegments);
       const fade = life ** 1.7;
       colors[index * 3] = fade;
       colors[index * 3 + 1] = 0.035 * fade;
       colors[index * 3 + 2] = 0.02 * fade;
     }
-    trail.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    trail.geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    trail.geometry.computeBoundingSphere();
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    trail.geometry.dispose();
+    trail.geometry = geometry;
     trail.visible = true;
   }
 
@@ -508,7 +524,7 @@ export class ReplayProjectileVisuals {
       mesh.rotation[definition.spinAxis || "y"] += spin;
     }
     const flareFrame = Math.floor(playbackTime * 12);
-    for (const name of ["rocketflare", "rocketflarecore"]) {
+    for (const name of ["rocketflare", "rocketflarecore", "rocketbodyglow"]) {
       const flare = mesh.getObjectByName?.(name);
       const frames = flare?.userData?.frames || [];
       if (frames.length) {
@@ -522,6 +538,11 @@ export class ReplayProjectileVisuals {
     const pulse = 0.88 + ((Math.sin(playbackTime * 38) + 1) * 0.08);
     const outerFlare = mesh.getObjectByName?.("rocketflare");
     if (outerFlare) outerFlare.scale.set(18 * pulse, 18 * pulse, 1);
+    const bodyGlow = mesh.getObjectByName?.("rocketbodyglow");
+    if (bodyGlow) {
+      const bodyPulse = 0.94 + ((Math.sin(playbackTime * 24) + 1) * 0.04);
+      bodyGlow.scale.set(24 * bodyPulse, 24 * bodyPulse, 1);
+    }
     const trail = mesh.getObjectByName?.("rocketflaretrail");
     if (trail) trail.material.opacity = 0.4 + ((Math.sin(playbackTime * 31) + 1) * 0.07);
   }
