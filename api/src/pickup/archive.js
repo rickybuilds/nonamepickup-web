@@ -260,7 +260,7 @@ function validateNumericRow(row, headers, excluded = new Set()) {
   }
 }
 
-function timelineRowValidator(idColumn, { terminalActive = false } = {}) {
+function timelineRowValidator(idColumn, { terminalActive = false, timeToleranceMs = 0 } = {}) {
   const last = new Map();
   const removed = new Set();
   return row => {
@@ -268,14 +268,14 @@ function timelineRowValidator(idColumn, { terminalActive = false } = {}) {
     const snapshot = requiredInteger(row.snapshot, "invalid_timeline_snapshot", { min: 0 });
     const time = requiredInteger(row.time_ms, "invalid_timeline_timestamp", { min: 0 });
     const previous = last.get(id);
-    if (previous && (snapshot < previous.snapshot || time < previous.time)) {
+    if (previous && (snapshot < previous.snapshot || time + timeToleranceMs < previous.time)) {
       throw pickupError(422, "unordered_timeline", { quarantine: true });
     }
     if (removed.has(id)) throw pickupError(422, "state_after_terminal_removal", { quarantine: true });
     if (terminalActive && requiredInteger(row.active, "invalid_buildable_active", { min: 0, max: 1 }) === 0) {
       removed.add(id);
     }
-    last.set(id, { snapshot, time });
+    last.set(id, { snapshot, time: Math.max(previous?.time ?? time, time) });
   };
 }
 
@@ -768,7 +768,11 @@ async function validateArchive({
     // Generic entities may temporarily leave this fallback stream when a
     // specialized tracker claims them, then resume under the same lifetime ID.
     // Consequently active=0 is not always a permanent removal marker.
-    const validateEntityTimeline = timelineRowValidator("entity_id");
+    // The recorder's entity clock can jitter by a few milliseconds between
+    // consecutive snapshots. Snapshot numbers remain authoritative and
+    // strictly reject reordering; match the existing event-clock allowance
+    // for small time_ms regressions.
+    const validateEntityTimeline = timelineRowValidator("entity_id", { timeToleranceMs: 50 });
     const entityRows = await validateCsvStream(entitiesFile.path, "entities", ENTITIES_COLUMNS, (row, headers) => {
       validateNumericRow(row, headers);
       const id = requiredInteger(row.entity_id, "invalid_entity_id", { min: 1 });

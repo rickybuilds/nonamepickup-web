@@ -122,7 +122,9 @@ entity streams and their `entity_definitions`, `entities`, and `entity_census`
 manifest counts. Generic definitions expose edict generations and stable
 lifetime IDs; state references must use an `entity` render-model kind. An
 `active=0` row hides the generic track, but that lifetime may resume if a
-specialized tracker temporarily claimed the edict. The census is a validated diagnostic inventory of
+specialized tracker temporarily claimed the edict. Entity snapshot order is
+authoritative; `time_ms` may regress by at most 50 milliseconds to accommodate
+bounded recorder-clock jitter. The census is a validated diagnostic inventory of
 stream assignment and exclusion decisions. Versions other than 2, 3, 4, and 5 are rejected with `unsupported_schema_version`;
 future versions are never reinterpreted.
 
