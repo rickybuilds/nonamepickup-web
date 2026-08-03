@@ -256,11 +256,36 @@ export class ReplayProjectileVisuals {
       ? asset.clone(true)
       : fallbackMesh(definition);
     if (definition.flare) {
-      const flare = this.sprite("animglow01", 0xffd166);
+      const flare = this.sprite("animglow01", 0xff3b30);
       flare.name = "rocketflare";
       flare.position.set(-30, 0, 0);
-      flare.scale.set(56, 56, 1);
-      visual.add(flare);
+      flare.scale.set(30, 30, 1);
+      flare.material.opacity = 0.92;
+      flare.material.toneMapped = false;
+
+      const core = this.sprite("animglow01", 0xfff4dc);
+      core.name = "rocketflarecore";
+      core.position.set(-30.5, 0, 0);
+      core.scale.set(11, 11, 1);
+      core.material.opacity = 1;
+      core.material.toneMapped = false;
+
+      const trail = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.25, 2.1, 86, 8, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: 0xff3428,
+          transparent: true,
+          opacity: 0.48,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          toneMapped: false,
+          side: THREE.DoubleSide
+        })
+      );
+      trail.name = "rocketflaretrail";
+      trail.position.set(-72, 0, 0);
+      trail.rotation.z = Math.PI / 2;
+      visual.add(trail, flare, core);
     }
     return visual;
   }
@@ -325,7 +350,7 @@ export class ReplayProjectileVisuals {
       isShockwave,
       start,
       duration: definition.impact === "mirv" || definition.impact === "conc" ? 0.75 : 0.46,
-      maxSize: definition.impact === "mirv" ? 250 : definition.impact === "conc" ? 170 : 150
+      maxSize: definition.impact === "mirv" ? 500 : definition.impact === "conc" ? 170 : 300
     };
   }
 
@@ -377,7 +402,8 @@ export class ReplayProjectileVisuals {
       return;
     }
     const progress = age / impact.duration;
-    const size = THREE.MathUtils.lerp(42, impact.maxSize, 1 - ((1 - progress) ** 2));
+    const startSize = impact.isShockwave ? 42 : 84;
+    const size = THREE.MathUtils.lerp(startSize, impact.maxSize, 1 - ((1 - progress) ** 2));
     impact.group.visible = true;
     if (impact.isShockwave) {
       const height = THREE.MathUtils.lerp(27, 66, progress);
@@ -409,14 +435,22 @@ export class ReplayProjectileVisuals {
       const spin = playbackTime * (definition.spinSpeed || 1.2);
       mesh.rotation[definition.spinAxis || "y"] += spin;
     }
-    const flare = mesh.getObjectByName?.("rocketflare");
-    const frames = flare?.userData?.frames || [];
-    if (frames.length) {
-      const frame = frames[Math.floor((playbackTime * 12) % frames.length)];
-      if (flare.material.map !== frame) {
-        flare.material.map = frame;
-        flare.material.needsUpdate = true;
+    const flareFrame = Math.floor(playbackTime * 12);
+    for (const name of ["rocketflare", "rocketflarecore"]) {
+      const flare = mesh.getObjectByName?.(name);
+      const frames = flare?.userData?.frames || [];
+      if (frames.length) {
+        const frame = frames[flareFrame % frames.length];
+        if (flare.material.map !== frame) {
+          flare.material.map = frame;
+          flare.material.needsUpdate = true;
+        }
       }
     }
+    const pulse = 0.88 + ((Math.sin(playbackTime * 38) + 1) * 0.08);
+    const outerFlare = mesh.getObjectByName?.("rocketflare");
+    if (outerFlare) outerFlare.scale.set(30 * pulse, 30 * pulse, 1);
+    const trail = mesh.getObjectByName?.("rocketflaretrail");
+    if (trail) trail.material.opacity = 0.4 + ((Math.sin(playbackTime * 31) + 1) * 0.07);
   }
 }
