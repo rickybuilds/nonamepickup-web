@@ -258,20 +258,24 @@ export class ReplayProjectileVisuals {
     if (definition.flare) {
       const flare = this.sprite("animglow01", 0xff3b30);
       flare.name = "rocketflare";
-      flare.position.set(-30, 0, 0);
-      flare.scale.set(30, 30, 1);
+      flare.position.set(1.2, 0, 0);
+      flare.scale.set(18, 18, 1);
       flare.material.opacity = 0.92;
       flare.material.toneMapped = false;
+      flare.material.depthTest = false;
+      flare.renderOrder = 81;
 
       const core = this.sprite("animglow01", 0xfff4dc);
       core.name = "rocketflarecore";
-      core.position.set(-30.5, 0, 0);
-      core.scale.set(11, 11, 1);
+      core.position.set(1.5, 0, 0);
+      core.scale.set(7, 7, 1);
       core.material.opacity = 1;
       core.material.toneMapped = false;
+      core.material.depthTest = false;
+      core.renderOrder = 82;
 
       const trail = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.25, 2.1, 86, 8, 1, true),
+        new THREE.CylinderGeometry(0.15, 1.2, 44, 8, 1, true),
         new THREE.MeshBasicMaterial({
           color: 0xff3428,
           transparent: true,
@@ -283,8 +287,9 @@ export class ReplayProjectileVisuals {
         })
       );
       trail.name = "rocketflaretrail";
-      trail.position.set(-72, 0, 0);
-      trail.rotation.z = Math.PI / 2;
+      trail.position.set(23, 0, 0);
+      trail.rotation.z = -Math.PI / 2;
+      trail.renderOrder = 80;
       visual.add(trail, flare, core);
     }
     return visual;
@@ -472,7 +477,7 @@ export class ReplayProjectileVisuals {
     }
     const pulse = 0.88 + ((Math.sin(playbackTime * 38) + 1) * 0.08);
     const outerFlare = mesh.getObjectByName?.("rocketflare");
-    if (outerFlare) outerFlare.scale.set(30 * pulse, 30 * pulse, 1);
+    if (outerFlare) outerFlare.scale.set(18 * pulse, 18 * pulse, 1);
     const trail = mesh.getObjectByName?.("rocketflaretrail");
     if (trail) trail.material.opacity = 0.4 + ((Math.sin(playbackTime * 31) + 1) * 0.07);
   }

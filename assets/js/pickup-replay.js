@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260803rocketfx2";
+} from "./replay-projectile-visuals.js?v=20260803rocketfx3";
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
@@ -961,7 +961,10 @@ async function setEntityModel(track, modelId) {
 }
 
 async function setProjectileCatalogModel(track, definitionSignature) {
-  if (track.definition?.ignoreRecordedModel) return;
+  // Canonical projectile visuals can carry renderer-owned children such as
+  // the rocket flare. Replacing the group with the catalog GLB would silently
+  // discard those effects after they were constructed.
+  if (track.definition?.ignoreRecordedModel || track.definition?.flare) return;
   const url = catalogUrl(track.recordedDefinition?.modelId, "projectile");
   if (!url) return;
   const asset = await loadModelAsset(url);
