@@ -360,14 +360,22 @@ export class ReplayProjectileVisuals {
     const visual = this.sprite("bloodspray", 0xb31217);
     const group = new THREE.Group();
     group.add(visual);
+    const splashes = [
+      { visual, scale: 1, x: 0, y: 0, driftX: 0, driftY: 12, opacity: 1, frameOffset: 0 },
+      { visual: this.sprite("bloodspray", 0x9d0b12), scale: 0.68, x: -16, y: 5, driftX: -18, driftY: 22, opacity: 0.82, frameOffset: 1 },
+      { visual: this.sprite("bloodspray", 0xc0181e), scale: 0.56, x: 15, y: 9, driftX: 22, driftY: 15, opacity: 0.76, frameOffset: 2 },
+      { visual: this.sprite("bloodspray", 0x76070c), scale: 0.44, x: 5, y: -8, driftX: 10, driftY: -10, opacity: 0.68, frameOffset: 3 }
+    ];
+    for (const splash of splashes.slice(1)) group.add(splash.visual);
     group.position.copy(position);
     group.visible = false;
     return {
       group,
       visual,
+      splashes,
       start,
-      duration: 0.34,
-      maxSize: THREE.MathUtils.clamp(34 + (Math.max(1, damage) * 0.7), 42, 92),
+      duration: 0.5,
+      maxSize: THREE.MathUtils.clamp(72 + (Math.max(1, damage) * 1.1), 84, 180),
       spin: (((Math.sin(start * 91.7) + 1) * 0.5) - 0.5) * 0.7
     };
   }
@@ -381,16 +389,31 @@ export class ReplayProjectileVisuals {
     const progress = age / effect.duration;
     const size = THREE.MathUtils.lerp(effect.maxSize * 0.55, effect.maxSize, 1 - ((1 - progress) ** 2));
     effect.group.visible = true;
-    effect.visual.scale.set(size, size, 1);
-    effect.visual.position.y = progress * 8;
-    effect.visual.material.rotation = effect.spin * progress;
-    effect.visual.material.opacity = 1 - (progress ** 3);
-    const frames = effect.visual.userData.frames;
-    if (frames.length) {
-      const frame = frames[Math.min(frames.length - 1, Math.floor(progress * frames.length))];
-      if (effect.visual.material.map !== frame) {
-        effect.visual.material.map = frame;
-        effect.visual.material.needsUpdate = true;
+    const splashes = effect.splashes || [{
+      visual: effect.visual, scale: 1, x: 0, y: 0, driftX: 0, driftY: 8, opacity: 1, frameOffset: 0
+    }];
+    for (const [index, splash] of splashes.entries()) {
+      const visual = splash.visual;
+      const splashSize = size * splash.scale;
+      visual.scale.set(splashSize, splashSize, 1);
+      visual.position.set(
+        splash.x + splash.driftX * progress,
+        splash.y + splash.driftY * progress,
+        index * 0.15
+      );
+      visual.material.rotation = (effect.spin + (index - 1.5) * 0.22) * progress;
+      visual.material.opacity = splash.opacity * (1 - (progress ** 2.4));
+      const frames = visual.userData.frames;
+      if (frames.length) {
+        const frameIndex = Math.min(
+          frames.length - 1,
+          Math.floor(progress * frames.length + splash.frameOffset)
+        );
+        const frame = frames[frameIndex];
+        if (visual.material.map !== frame) {
+          visual.material.map = frame;
+          visual.material.needsUpdate = true;
+        }
       }
     }
   }

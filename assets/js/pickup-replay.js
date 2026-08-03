@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260803rocketfx1";
+} from "./replay-projectile-visuals.js?v=20260803rocketfx2";
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
