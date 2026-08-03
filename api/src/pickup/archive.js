@@ -814,7 +814,7 @@ async function validateArchive({
   const eventRows = await validateCsvStream(eventsFile.path, "events", EVENTS_COLUMNS, (row, headers) => {
     validateNumericRow(row, headers, new Set(["event", "text"]));
     const time = requiredInteger(row.time_ms, "invalid_event_timestamp", { min: 0 });
-    if (time + 50 < previousEventTime || !/^[A-Za-z0-9_.-]{1,64}$/.test(row.event) ||
+    if (time + 100 < previousEventTime || !/^[A-Za-z0-9_.-]{1,64}$/.test(row.event) ||
         row.text.length > 512 || /[\0-\x1f\x7f]/.test(row.text)) {
       throw pickupError(422, "invalid_event", { quarantine: true });
     }

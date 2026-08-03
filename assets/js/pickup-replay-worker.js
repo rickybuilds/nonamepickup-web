@@ -554,9 +554,13 @@ async function loadEntityCensus(url) {
 
 async function loadEvents(url) {
   const output = [];
+  let lastTime = -Infinity;
   await rows(url, (cols, i) => {
+    const recordedTime = number(cols[i.time_ms]) / 1000;
+    const time = Math.max(lastTime, recordedTime);
+    lastTime = time;
     output.push({
-      time: number(cols[i.time_ms]) / 1000,
+      time,
       event: cols[i.event] || "event",
       actorSession: number(cols[i.actor_session]),
       targetSession: number(cols[i.target_session]),

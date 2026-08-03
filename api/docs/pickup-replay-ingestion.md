@@ -128,6 +128,10 @@ bounded recorder-clock jitter. The census is a validated diagnostic inventory of
 stream assignment and exclusion decisions. Versions other than 2, 3, 4, and 5 are rejected with `unsupported_schema_version`;
 future versions are never reinterpreted.
 
+Event rows preserve file order and may regress by at most 100 milliseconds in
+`time_ms` to accommodate the same recorder clock; replay parsing clamps that
+bounded jitter to a monotonic playback timestamp.
+
 The schema-2 `players.csv` header is the original 21-column contract. Schema 3
 appends recorder animation state and the `player_model_id` and
 `weapon_model_id` dictionary references. `render_models.csv` contains
