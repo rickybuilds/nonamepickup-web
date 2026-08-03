@@ -621,7 +621,10 @@ function catalogUrl(modelId, expectedKind) {
   const recorded = state.renderModels.get(Number(modelId));
   if (!recorded || recorded.kind !== expectedKind) return null;
   const catalog = state.modelCatalog.get(recorded.path);
-  return catalog && (catalog.kind === expectedKind || expectedKind === "entity")
+  return catalog && (
+    catalog.kind === expectedKind || expectedKind === "entity" ||
+    (expectedKind === "objective" && catalog.kind === "entity")
+  )
     ? catalog.url
     : null;
 }

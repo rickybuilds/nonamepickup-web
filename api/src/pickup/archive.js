@@ -201,14 +201,15 @@ function validateRenderModels(document, catalog) {
       throw pickupError(422, "invalid_render_model_kind", { quarantine: true });
     }
     const catalogEntry = catalog.get(normalizedPath);
-    if (!catalogEntry && row.kind !== "entity") {
-      throw pickupError(422, "render_model_not_allowlisted", { quarantine: true });
-    }
     // Generic entity telemetry can legitimately observe an edict that reuses
     // a model catalogued for a specialized stream (for example, a player
-    // corpse using a player model). The catalog still provides the trusted
-    // asset URL; only specialized streams require an exact catalog kind.
-    if (catalogEntry && row.kind !== "entity" && catalogEntry.kind !== row.kind) {
+    // corpse using a player model). Schema-6 objective/resupply entities can
+    // likewise use models catalogued as generic pickups. Unknown safe paths
+    // remain telemetry-only and render through a local fallback; the browser
+    // never derives an asset URL from an unlisted path.
+    const catalogKindMatches = !catalogEntry || row.kind === "entity" ||
+      catalogEntry.kind === row.kind || (row.kind === "objective" && catalogEntry.kind === "entity");
+    if (!catalogKindMatches) {
       throw pickupError(422, "render_model_catalog_kind_mismatch", { quarantine: true });
     }
     models.set(modelId, {

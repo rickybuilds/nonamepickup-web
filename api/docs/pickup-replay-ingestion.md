@@ -143,11 +143,12 @@ The schema-2 `players.csv` header is the original 21-column contract. Schema 3
 appends recorder animation state and the `player_model_id` and
 `weapon_model_id` dictionary references. `render_models.csv` contains
 `model_id,kind,path,first_seen_ms`; IDs are positive, round-local, and unique,
-while any reference of zero means no model was available. Nonzero references
-for specialized streams must exist and match the expected `player`, `weapon`,
-`projectile`, `objective`, or `buildable` kind. Generic `entity` references may
-reuse a catalogued specialized model when an edict represents something such
-as a player corpse. Separators and casing are normalized before lookup. Model paths must be safe relative `models/.../*.mdl` paths with no URL,
+while any reference of zero means no model was available. Safe model paths not
+present in the website catalog are retained as telemetry and use local fallback
+geometry; they are never converted into client asset URLs. Catalogued models
+must match the expected stream kind, except generic entities may reuse a
+specialized model and schema-6 objectives may reuse a generic pickup model.
+Separators and casing are normalized before lookup. Model paths must be safe relative `models/.../*.mdl` paths with no URL,
 drive letter, absolute prefix, null byte, or dot segment, and must exist in the
 generated standard-TFC catalog. Generic entities may also name a safe `.spr`
 path; unknown generic assets render as diagnostics and never trigger a
