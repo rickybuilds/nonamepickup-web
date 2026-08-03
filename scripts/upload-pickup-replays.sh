@@ -233,7 +233,6 @@ process_round() {
   http_status="$(curl --config "$PICKUP_CURL_CONFIG" \
     --silent --show-error \
     --connect-timeout 15 --max-time 1800 \
-    --retry 2 --retry-delay 10 --retry-all-errors \
     --output "$response" --write-out '%{http_code}' \
     --request POST "$PICKUP_UPLOAD_URL" \
     --header "X-Pickup-Server-Id: $PICKUP_SERVER_ID" \
@@ -252,13 +251,24 @@ process_round() {
     return 1
   fi
 
-  if [[ "$http_status" != "200" && "$http_status" != "201" ]] || ! jq -e \
+  local completed=false quarantined=false
+  if [[ "$http_status" == "200" || "$http_status" == "201" ]] && jq -e \
     --arg match "$match_id" \
     --arg round "$manifest_round" \
     --arg sha "$sha256" \
     --arg bytes "$byte_size" \
     '.ok == true and .matchId == $match and (.round | tostring) == $round and .sha256 == $sha and (.byteSize | tostring) == $bytes' \
     "$response" >/dev/null; then
+    completed=true
+  elif [[ "$http_status" == "202" ]] && jq -e \
+    --arg sha "$sha256" \
+    '.ok == false and .quarantined == true and .retryable == false and .sha256 == $sha and (.error | type == "string")' \
+    "$response" >/dev/null; then
+    completed=true
+    quarantined=true
+  fi
+
+  if [[ "$completed" != "true" ]]; then
     rm -f -- "$response"
     log "upload was not verified for $match_id round $manifest_round (HTTP $http_status); it will be retried"
     return 1
@@ -270,11 +280,16 @@ process_round() {
     --arg uploaded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg local_archive "$archive" \
     --arg http_status "$http_status" \
-    '. + {verifiedByUploader: true, uploadedAt: $uploaded_at, localArchive: $local_archive, httpStatus: ($http_status | tonumber)}' \
+    --argjson quarantined "$quarantined" \
+    '. + {completedByUploader: true, verifiedByUploader: (.ok == true), quarantined: $quarantined, uploadedAt: $uploaded_at, localArchive: $local_archive, httpStatus: ($http_status | tonumber)}' \
     "$response" >"$receipt_tmp"
   mv -- "$receipt_tmp" "$receipt"
   rm -f -- "$response"
-  log "verified upload for $match_id round $manifest_round (HTTP $http_status)"
+  if [[ "$quarantined" == "true" ]]; then
+    log "terminal quarantine accepted for $match_id round $manifest_round (HTTP $http_status); upload removed from retry queue"
+  else
+    log "verified upload for $match_id round $manifest_round (HTTP $http_status)"
+  fi
   safe_remove_after_retention "$round_dir" "$receipt"
 }
 

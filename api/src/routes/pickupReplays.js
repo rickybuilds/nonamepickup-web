@@ -9,6 +9,21 @@ function closeAfterResponse(req, res) {
   req.resume();
 }
 
+function logIngestionFailure(logger, error, httpStatus, metadata) {
+  const fields = {
+    event: "pickup_replay_ingestion_failed",
+    errorCode: error.code || "ingestion_failed",
+    httpStatus,
+    sha256: error.sha256 || metadata?.sha256 || null,
+    byteSize: error.byteSize || metadata?.contentLength || null,
+    quarantine: error.quarantined
+      ? (error.quarantineCreated ? "created" : "deduplicated")
+      : "none",
+    retryable: error.retryable !== false
+  };
+  logger.error?.(JSON.stringify(fields));
+}
+
 function createPickupReplaysRouter({ ingestion, logger = console }) {
   const router = express.Router();
 
@@ -43,13 +58,20 @@ function createPickupReplaysRouter({ ingestion, logger = console }) {
     } catch (error) {
       if (req.aborted || res.headersSent || res.destroyed) return;
       const expected = error instanceof PickupError;
-      if (!expected || error.status >= 500) logger.error?.("[pickup replay] ingestion_failed");
+      const terminalQuarantine = expected && error.quarantined && error.retryable === false;
+      const responseStatus = terminalQuarantine ? 202 : (expected ? error.status : 500);
+      logIngestionFailure(logger, error, responseStatus, metadata);
       if (error.code === "upload_too_large" || error.code === "upload_stream_error") {
         closeAfterResponse(req, res);
       }
-      return res.status(expected ? error.status : 500).json({
+      return res.status(responseStatus).json({
         ok: false,
-        error: expected ? error.code : "ingestion_failed"
+        ...(terminalQuarantine ? {
+          quarantined: true,
+          retryable: false
+        } : {}),
+        error: expected ? error.code : "ingestion_failed",
+        ...(terminalQuarantine ? { sha256: error.sha256 } : {})
       });
     }
   });

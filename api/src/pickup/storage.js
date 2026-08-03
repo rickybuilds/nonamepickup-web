@@ -114,23 +114,83 @@ class PickupStorage {
     if (!exists) return null;
 
     await this.ensureReady();
-    const identifier = crypto.randomUUID();
+    const sha256 = /^[a-f0-9]{64}$/.test(diagnostic.sha256 || "")
+      ? diagnostic.sha256
+      : null;
+    if (!sha256) throw pickupError(500, "quarantine_sha256_required");
+
+    const existing = await this.findQuarantineBySha256(sha256);
+    if (existing) {
+      await this.remove(stagedPath);
+      return { id: existing.id, created: false };
+    }
+
+    const identifier = sha256;
     const archivePath = path.join(this.quarantine, `${identifier}.tar.zst`);
     const diagnosticPath = path.join(this.quarantine, `${identifier}.json`);
-    await fsp.rename(stagedPath, archivePath);
+    let created = false;
+    try {
+      await fsp.link(stagedPath, archivePath);
+      created = true;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+    }
     const safeDiagnostic = {
       id: identifier,
       receivedAt: new Date().toISOString(),
       error: String(diagnostic.code || "invalid_archive").slice(0, 128),
-      sha256: /^[a-f0-9]{64}$/.test(diagnostic.sha256 || "") ? diagnostic.sha256 : null,
+      sha256,
       byteSize: Number.isSafeInteger(diagnostic.byteSize) ? diagnostic.byteSize : null
     };
-    await fsp.writeFile(diagnosticPath, `${JSON.stringify(safeDiagnostic)}\n`, {
-      encoding: "utf8",
-      mode: 0o600,
-      flag: "wx"
-    });
-    return identifier;
+    try {
+      await fsp.writeFile(diagnosticPath, `${JSON.stringify(safeDiagnostic)}\n`, {
+        encoding: "utf8",
+        mode: 0o600,
+        flag: "wx"
+      });
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+    }
+    await this.remove(stagedPath);
+    return { id: identifier, created };
+  }
+
+  async findQuarantineBySha256(sha256) {
+    const canonicalArchive = path.join(this.quarantine, `${sha256}.tar.zst`);
+    const canonicalDiagnostic = path.join(this.quarantine, `${sha256}.json`);
+    if (await this.pathsExist(canonicalArchive, canonicalDiagnostic)) {
+      return { id: sha256 };
+    }
+
+    const entries = await fsp.readdir(this.quarantine, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+      const id = entry.name.slice(0, -5);
+      try {
+        const value = JSON.parse(await fsp.readFile(path.join(this.quarantine, entry.name), "utf8"));
+        if (value.sha256 === sha256 &&
+            await this.pathsExist(path.join(this.quarantine, `${id}.tar.zst`), path.join(this.quarantine, entry.name))) {
+          return { id };
+        }
+      } catch (error) {
+        if (error.code === "ENOENT" || error instanceof SyntaxError) continue;
+        throw error;
+      }
+    }
+    return null;
+  }
+
+  async pathsExist(...paths) {
+    const results = await Promise.all(paths.map(async pathname => {
+      try {
+        await fsp.access(pathname);
+        return true;
+      } catch (error) {
+        if (error.code === "ENOENT") return false;
+        throw error;
+      }
+    }));
+    return results.every(Boolean);
   }
 
   async remove(pathname) {

@@ -245,13 +245,27 @@ for media type, 422 for archive/manifest validation, 500 for persistence or
 tool failures, and 503 for unsafe/missing storage configuration. Responses do
 not contain tokens, SQL, stack traces, or absolute paths.
 
-Invalid complete archives are moved to `quarantine` with a random identifier
-and a sanitized JSON diagnostic. Partial/disconnected uploads are deleted.
+Invalid complete archives are stored once in `quarantine`, keyed by SHA-256,
+with a sanitized JSON diagnostic. Legacy random-name quarantine diagnostics are
+also checked before a new copy is created. Concurrent identical uploads cannot
+overwrite the retained archive and their staged duplicates are deleted.
+
+After a deterministic 4xx failure has been quarantined successfully, the API
+returns HTTP 202 with `quarantined: true` and `retryable: false`. The uploader
+records that response as terminal and removes the round from its retry queue.
+Transport failures, HTTP 408/429, and 5xx responses remain retryable.
+
+Quarantine retention is intentionally manual for now. A future cleanup job may
+enforce a configurable maximum age or total byte budget, but it must preserve
+each archive/diagnostic pair, skip active writes, log every candidate, and run
+in report-only mode before deletion is enabled. No production quarantine files
+should be removed as part of deploying this ingestion fix.
 
 Game servers may delete their local archives only after receiving a verified
-HTTP 200 or 201 success response **and** completing the separately configured
-local retention window. A timeout, disconnect, or error response is not
-permission to delete the local artifact.
+HTTP 200/201 success or terminal HTTP 202 quarantine response **and** completing
+the separately configured local retention window. A timeout, disconnect,
+HTTP 408/429, 5xx, or unverified response is not permission to delete the local
+artifact.
 
 ## Automated game-server uploader
 

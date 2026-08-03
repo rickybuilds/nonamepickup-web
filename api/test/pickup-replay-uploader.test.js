@@ -44,11 +44,19 @@ test("game-server uploader packages a fixed allowlist after a ready marker", () 
 test("uploader keeps authentication out of arguments and verifies success identity", () => {
   assert.match(uploader, /curl --config "\$PICKUP_CURL_CONFIG"/);
   assert.doesNotMatch(uploader, /Authorization: Bearer/);
-  assert.match(uploader, /"\$http_status" != "200" && "\$http_status" != "201"/);
+  assert.match(uploader, /"\$http_status" == "200" \|\| "\$http_status" == "201"/);
   assert.match(uploader, /\.ok == true and \.matchId == \$match/);
   assert.match(uploader, /\.sha256 == \$sha/);
   assert.match(uploader, /\.byteSize \| tostring/);
-  assert.match(uploader, /verifiedByUploader: true/);
+  assert.match(uploader, /verifiedByUploader: \(\.ok == true\)/);
+});
+
+test("uploader completes terminal quarantines but retries transient responses", () => {
+  assert.match(uploader, /"\$http_status" == "202"/);
+  assert.match(uploader, /\.quarantined == true and \.retryable == false/);
+  assert.match(uploader, /upload removed from retry queue/);
+  assert.match(uploader, /upload was not verified.*it will be retried/);
+  assert.doesNotMatch(uploader, /--retry-all-errors/);
 });
 
 test("systemd timer serializes recurring scans with a hardened one-shot", () => {

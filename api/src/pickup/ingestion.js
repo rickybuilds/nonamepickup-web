@@ -202,9 +202,10 @@ class PickupIngestion {
       const shouldQuarantine =
         error.quarantine === true ||
         (!error.status && received != null);
+      let quarantineResult = null;
       if (shouldQuarantine) {
         try {
-          await this.storage.quarantineFile(stagedPath, {
+          quarantineResult = await this.storage.quarantineFile(stagedPath, {
             code: error.code || "ingestion_failed",
             sha256: received?.sha256,
             byteSize: received?.byteSize
@@ -216,8 +217,19 @@ class PickupIngestion {
       } else {
         await this.storage.remove(stagedPath);
       }
-      if (error instanceof PickupError) throw error;
-      throw pickupError(500, "ingestion_failed", { cause: error });
+      const reportedError = error instanceof PickupError
+        ? error
+        : pickupError(500, "ingestion_failed", { cause: error });
+      reportedError.sha256 = received?.sha256 || metadata.sha256;
+      reportedError.byteSize = received?.byteSize || metadata.contentLength;
+      reportedError.quarantined = quarantineResult != null;
+      reportedError.quarantineCreated = quarantineResult?.created === true;
+      reportedError.retryable = !(
+        reportedError.quarantined &&
+        reportedError.status >= 400 && reportedError.status < 500 &&
+        reportedError.status !== 408 && reportedError.status !== 429
+      );
+      throw reportedError;
     } finally {
       await this.storage.remove(extractionPath);
     }

@@ -35,6 +35,8 @@ const BUILDABLES_HEADER = "snapshot,time_ms,buildable_id,entity,active,owner_ses
 const BUILDABLES = `${BUILDABLES_HEADER}\n1,0,1,100,1,1,1,2,0,0,0,1,0,100,10,20,30,0,0,0,0,90,0,0,0,0,0,0,1,0,1,0,255,0,255,255,255,0,0,0,0,0,0,0\n`;
 const BRUSH_DEFS = "brush_id,entity,classname,model,targetname,target,spawnflags,first_seen_ms\n1,101,func_door,*12,door_a,,0,0\n";
 const BRUSHES = "snapshot,time_ms,brush_id,active,x,y,z,vx,vy,vz,pitch,yaw,roll,avel_pitch,avel_yaw,avel_roll,effects,solid,movetype,rendermode,renderamt,renderfx,render_r,render_g,render_b\n1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,7,0,0,0,255,255,255\n2,20,1,1,1,0,0,50,0,0,0,0,0,0,0,0,0,1,7,0,0,0,255,255,255\n";
+const EVENTS_HEADER = "time_ms,event,actor_session,target_session,entity,value1,value2,int_value1,int_value2,text";
+const DEFAULT_EVENTS = `${EVENTS_HEADER}\n0,round_start,0,0,0,0,0,0,0,\n`;
 
 test("large replay timelines are validated as bounded streams", () => {
   assert.match(archiveSource, /fs\.createReadStream\(filePath, \{ encoding: "utf8", highWaterMark: 64 \* 1024 \}\)/);
@@ -88,8 +90,8 @@ function validManifest(overrides = {}) {
     snapshots: 3600,
     dropped_snapshots: 0,
     write_error: false,
-    rows: { roster: 8, players: 100 },
-    bytes: { roster: 100, players: 1000 },
+    rows: { roster: 8, players: 100, events: 1 },
+    bytes: { roster: 100, players: 1000, "events.csv": Buffer.byteLength(DEFAULT_EVENTS) },
     ...overrides
   };
 }
@@ -98,12 +100,13 @@ function validV3Manifest(renderModels = RENDER_MODELS, overrides = {}) {
   const renderModelRows = Math.max(0, renderModels.trim().split(/\r?\n/).length - 1);
   return validManifest({
     schema_version: 3,
-    rows: { roster: 8, players: 1, render_models: renderModelRows, buildable_definitions: 1, buildables: 1 },
+    rows: { roster: 8, players: 1, events: 1, render_models: renderModelRows, buildable_definitions: 1, buildables: 1 },
     bytes: {
       roster: 100, players: 1000,
       "render_models.csv": Buffer.byteLength(renderModels),
       "buildable_defs.csv": Buffer.byteLength(BUILDABLE_DEFS),
-      "buildables.csv": Buffer.byteLength(BUILDABLES)
+      "buildables.csv": Buffer.byteLength(BUILDABLES),
+      "events.csv": Buffer.byteLength(DEFAULT_EVENTS)
     },
     ...overrides
   });
@@ -114,7 +117,7 @@ function validV4Manifest(overrides = {}) {
     schema_version: 4,
     rows: {
       roster: 8, players: 1, render_models: 5, buildable_definitions: 1, buildables: 1,
-      brush_definitions: 1, brushes: 2
+      brush_definitions: 1, brushes: 2, events: 1
     },
     bytes: {
       roster: 100, players: 1000,
@@ -122,7 +125,8 @@ function validV4Manifest(overrides = {}) {
       "buildable_defs.csv": Buffer.byteLength(BUILDABLE_DEFS),
       "buildables.csv": Buffer.byteLength(BUILDABLES),
       "brush_defs.csv": Buffer.byteLength(BRUSH_DEFS),
-      "brushes.csv": Buffer.byteLength(BRUSHES)
+      "brushes.csv": Buffer.byteLength(BRUSHES),
+      "events.csv": Buffer.byteLength(DEFAULT_EVENTS)
     },
     ...overrides
   });
@@ -140,6 +144,7 @@ function archiveBuffer({
   objectiveDefs = null,
   brushDefs = manifest.schema_version === 4 ? BRUSH_DEFS : null,
   brushes = manifest.schema_version === 4 ? BRUSHES : null,
+  events = DEFAULT_EVENTS,
   players = manifest.schema_version >= 3
     ? `${PLAYERS_V3_HEADER}\n${PLAYERS_V3_ROW}\n`
     : `${PLAYERS_V2_HEADER}\n${PLAYERS_V2_ROW}\n`,
@@ -156,7 +161,7 @@ function archiveBuffer({
       ? "objective_id,entity,classname,model_id,targetname,base_x,base_y,base_z,base_yaw,first_seen_ms\n1,20,item_tfgoal,0,blue_flag,0,0,0,0,0\n"
       : "objective_id,entity,classname,model,targetname,base_x,base_y,base_z,base_yaw,first_seen_ms\n1,20,item_tfgoal,models/flag.mdl,blue_flag,0,0,0,0,0\n"),
     "objectives.csv": "snapshot,time_ms,objective_id,state,carrier_session,solid,effects,x,y,z,yaw\n1,0,1,1,0,1,0,0,0,0,0\n",
-    "events.csv": "tick\n1\n",
+    "events.csv": events,
     "manifest.json": JSON.stringify(manifest)
   };
   if (renderModels != null) {
@@ -189,6 +194,7 @@ function v3Archive(options = {}) {
     rows: {
       roster: 8,
       players: 1,
+      events: 1,
       render_models: rowCount(renderModels),
       buildable_definitions: rowCount(buildableDefs),
       buildables: rowCount(buildables)
@@ -196,6 +202,7 @@ function v3Archive(options = {}) {
     bytes: {
       roster: 100,
       players: 1000,
+      "events.csv": Buffer.byteLength(DEFAULT_EVENTS),
       "render_models.csv": Buffer.byteLength(renderModels),
       "buildable_defs.csv": Buffer.byteLength(buildableDefs),
       "buildables.csv": Buffer.byteLength(buildables)
@@ -203,6 +210,17 @@ function v3Archive(options = {}) {
     ...(options.manifestOverrides || {})
   });
   return archiveBuffer({ ...options, manifest, renderModels, buildableDefs, buildables });
+}
+
+function eventArchive(times) {
+  const events = `${EVENTS_HEADER}\n${times.map(time =>
+    `${time},test_event,0,0,0,0,0,0,0,`
+  ).join("\n")}\n`;
+  const manifest = validManifest({
+    rows: { roster: 8, players: 100, events: times.length },
+    bytes: { roster: 100, players: 1000, "events.csv": Buffer.byteLength(events) }
+  });
+  return archiveBuffer({ manifest, events });
 }
 
 function passthroughArchive(buffer) {
@@ -469,7 +487,7 @@ test("field-tested schema-2 manifest accepts precise recorder sampling", async t
       projectiles: 295376,
       objective_definitions: 2,
       objectives: 90390,
-      events: 4660
+      events: 1
     },
     bytes: {
       "roster.csv": 525,
@@ -478,7 +496,7 @@ test("field-tested schema-2 manifest accepts precise recorder sampling", async t
       "projectiles.csv": 19307278,
       "objective_defs.csv": 229,
       "objectives.csv": 4760886,
-      "events.csv": 207131
+      "events.csv": Buffer.byteLength(DEFAULT_EVENTS)
     }
   });
   const validated = await validateBuffer(t, archiveBuffer({
@@ -491,6 +509,17 @@ test("field-tested schema-2 manifest accepts precise recorder sampling", async t
   assert.equal(validated.complete, false);
   assert.equal(validated.manifest.flushes, 188);
   assert.equal(validated.manifest.sample_interval_seconds, 0.0199);
+});
+
+test("event timestamp reversals up to 50 ms are accepted", async t => {
+  await validateBuffer(t, eventArchive([100, 50, 75, 101]));
+});
+
+test("event timestamp reversals greater than 50 ms are rejected", async t => {
+  await assert.rejects(
+    validateBuffer(t, eventArchive([100, 49])),
+    error => error.code === "invalid_event"
+  );
 });
 
 function onceListening(server) {
@@ -628,7 +657,7 @@ test("manifest/header mismatch and unsupported future schema versions are reject
     error => error.code === "manifest_header_mismatch"
   );
   await assert.rejects(
-    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 5 }), renderModels: null })),
+    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 6 }), renderModels: null })),
     error => error.code === "unsupported_schema_version"
   );
 });
@@ -811,7 +840,49 @@ test("duplicate upload is idempotent and conflicting second artifact is rejected
   );
 });
 
-test("database failure removes the promoted link and quarantines the verified source", async t => {
+test("concurrent identical invalid uploads create one terminal quarantine", async t => {
+  const { root, storage } = await tempContext(t);
+  const logs = [];
+  const ingestion = createIngestion(storage, new MemoryRepository());
+  const app = express();
+  app.use("/api", createPickupReplaysRouter({
+    ingestion,
+    logger: { error(message) { logs.push(JSON.parse(message)); } }
+  }));
+  const server = app.listen(0, "127.0.0.1");
+  await onceListening(server);
+  t.after(() => server.close());
+
+  const body = eventArchive([100, 49]);
+  const sha256 = uploadHeaders(body)["X-Pickup-SHA256"];
+  const responses = await Promise.all([
+    post(server, body, uploadHeaders(body)),
+    post(server, body, uploadHeaders(body))
+  ]);
+
+  for (const response of responses) {
+    assert.equal(response.status, 202);
+    assert.deepEqual(response.body, {
+      ok: false,
+      quarantined: true,
+      retryable: false,
+      error: "invalid_event",
+      sha256
+    });
+  }
+  const quarantined = await fsp.readdir(path.join(root, "quarantine"));
+  assert.deepEqual(quarantined.sort(), [`${sha256}.json`, `${sha256}.tar.zst`]);
+  assert.deepEqual(logs.map(fields => fields.quarantine).sort(), ["created", "deduplicated"]);
+  for (const fields of logs) {
+    assert.equal(fields.errorCode, "invalid_event");
+    assert.equal(fields.httpStatus, 202);
+    assert.equal(fields.sha256, sha256);
+    assert.equal(fields.byteSize, body.length);
+    assert.equal(fields.retryable, false);
+  }
+});
+
+test("database failure removes the promoted link, quarantines the source, and remains retryable", async t => {
   const { root, storage } = await tempContext(t);
   const repository = new MemoryRepository();
   repository.failAfterPromotion = true;
@@ -821,10 +892,11 @@ test("database failure removes the promoted link and quarantines the verified so
     Object.entries(uploadHeaders(body)).map(([key, value]) => [key.toLowerCase(), value])
   ));
 
-  await assert.rejects(
-    ingestion.ingest(requestStream(body), metadata),
-    error => error.code === "ingestion_failed"
-  );
+  const error = await ingestion.ingest(requestStream(body), metadata).catch(value => value);
+  assert.equal(error.code, "ingestion_failed");
+  assert.equal(error.status, 500);
+  assert.equal(error.quarantined, true);
+  assert.equal(error.retryable, true);
   const artifactFiles = await fsp.readdir(path.join(root, "artifacts"), { recursive: true });
   assert.equal(artifactFiles.some(name => name.endsWith(".tar.zst")), false);
   const quarantined = await fsp.readdir(path.join(root, "quarantine"));
@@ -962,7 +1034,7 @@ test("viewer extracts only an allowlisted CSV with fixed tar arguments", async t
         sha256: "b".repeat(64),
         byte_size: 27,
         storage_key: storageKey,
-        manifest_json: "{}",
+        manifest_json: '{"schema_version":2}',
         match_id: "test",
         round_number: 1
       }]];
