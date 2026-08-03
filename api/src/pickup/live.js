@@ -4,38 +4,16 @@ const crypto = require("node:crypto");
 const path = require("node:path");
 const { tokenMatches } = require("./ingestion");
 const { pickupError } = require("./errors");
+const {
+  DICTIONARY_FILES,
+  REPLAY_FILE_ORDER,
+  replayFileAvailable
+} = require("./replayContract");
 
 const MATCH_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const SERVER_ID_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
 const STREAM_ID_PATTERN = /^[A-Za-z0-9_-]{16,96}$/;
-const LIVE_FILE_ORDER = [
-  "roster.csv",
-  "render_models.csv",
-  "players.csv",
-  "projectile_defs.csv",
-  "projectiles.csv",
-  "objective_defs.csv",
-  "objectives.csv",
-  "buildable_defs.csv",
-  "buildables.csv",
-  "brush_defs.csv",
-  "brushes.csv",
-  "entity_defs.csv",
-  "entities.csv",
-  "entity_census.csv",
-  "events.csv"
-];
-const LIVE_FILES = new Set(LIVE_FILE_ORDER);
-const DICTIONARY_FILES = new Set([
-  "roster.csv",
-  "render_models.csv",
-  "projectile_defs.csv",
-  "objective_defs.csv",
-  "buildable_defs.csv",
-  "brush_defs.csv",
-  "entity_defs.csv",
-  "entity_census.csv"
-]);
+const LIVE_FILE_ORDER = REPLAY_FILE_ORDER;
 
 function cleanIdentity(serverId, matchId, roundText) {
   if (!SERVER_ID_PATTERN.test(String(serverId || ""))) throw pickupError(400, "invalid_server_id");
@@ -137,7 +115,7 @@ class PickupLiveService {
     };
   }
 
-  validateBody(body) {
+  validateBody(body, schemaVersion) {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       throw pickupError(400, "invalid_live_batch");
     }
@@ -147,7 +125,8 @@ class PickupLiveService {
     let byteSize = 0;
     const chunks = [];
     for (const [fileName, chunk] of Object.entries(body.files)) {
-      if (!LIVE_FILES.has(fileName) || !chunk || typeof chunk !== "object" || Array.isArray(chunk)) {
+      if (!replayFileAvailable(fileName, schemaVersion) || !chunk ||
+          typeof chunk !== "object" || Array.isArray(chunk)) {
         throw pickupError(422, "invalid_live_file");
       }
       const { start, end, data } = chunk;
@@ -166,7 +145,7 @@ class PickupLiveService {
 
   ingest(metadata, body) {
     const key = streamKey(metadata);
-    const validated = this.validateBody(body);
+    const validated = this.validateBody(body, metadata.schemaVersion);
     const digest = digestBatch(body);
     let stream = this.streams.get(key);
 

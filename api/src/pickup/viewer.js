@@ -3,25 +3,14 @@
 const fs = require("node:fs");
 const { spawn } = require("node:child_process");
 const { pickupError } = require("./errors");
+const {
+  REPLAY_FILES,
+  replayFileAvailable,
+  replayFilesForSchema
+} = require("./replayContract");
 
 const MATCH_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
-const VIEWER_FILES = new Set([
-  "roster.csv",
-  "players.csv",
-  "render_models.csv",
-  "buildable_defs.csv",
-  "buildables.csv",
-  "brush_defs.csv",
-  "brushes.csv",
-  "entity_defs.csv",
-  "entities.csv",
-  "entity_census.csv",
-  "projectile_defs.csv",
-  "projectiles.csv",
-  "objective_defs.csv",
-  "objectives.csv",
-  "events.csv"
-]);
+const VIEWER_FILES = REPLAY_FILES;
 
 function parseViewerIdentity(matchId, roundText) {
   if (!MATCH_ID_PATTERN.test(String(matchId || ""))) {
@@ -93,16 +82,7 @@ class PickupReplayViewer {
     const row = await this.artifact(matchId, round);
     const base = `/api/pickup-replays/viewer/${encodeURIComponent(matchId)}/${round}`;
     const manifest = parseManifest(row.manifest_json);
-    const viewerFiles = [...VIEWER_FILES].filter(name => {
-      if (["brush_defs.csv", "brushes.csv"].includes(name)) return manifest.schema_version >= 4;
-      if (["entity_defs.csv", "entities.csv", "entity_census.csv"].includes(name)) {
-        return manifest.schema_version >= 5;
-      }
-      if (["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(name)) {
-        return manifest.schema_version >= 3;
-      }
-      return true;
-    });
+    const viewerFiles = replayFilesForSchema(manifest.schema_version);
     return {
       artifactId: Number(row.artifact_id),
       matchId: row.match_id,
@@ -142,15 +122,7 @@ class PickupReplayViewer {
     if (!VIEWER_FILES.has(fileName)) throw pickupError(404, "replay_file_not_found");
     const row = await this.artifact(matchId, round);
     const manifest = parseManifest(row.manifest_json);
-    if (["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(fileName) &&
-        manifest.schema_version < 3) {
-      throw pickupError(404, "replay_file_not_found");
-    }
-    if (["brush_defs.csv", "brushes.csv"].includes(fileName) && manifest.schema_version < 4) {
-      throw pickupError(404, "replay_file_not_found");
-    }
-    if (["entity_defs.csv", "entities.csv", "entity_census.csv"].includes(fileName) &&
-        manifest.schema_version < 5) {
+    if (!replayFileAvailable(fileName, manifest.schema_version)) {
       throw pickupError(404, "replay_file_not_found");
     }
     await this.storage.ensureReady();
