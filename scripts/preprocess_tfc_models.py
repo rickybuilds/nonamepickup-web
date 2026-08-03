@@ -146,6 +146,12 @@ def classify(relative: Path) -> str | None:
         return "objective"
     if name in BUILDABLES:
         return "buildable"
+    # Schema 5 uses a generic entity stream for visible studio models that do
+    # not belong to a specialized gameplay stream (backpacks, pickups, gibs,
+    # dropped items and map-specific props). Viewmodels are client-only and
+    # cannot be assigned to a world edict, so they remain outside this catalog.
+    if not name.startswith("v_"):
+        return "entity"
     return None
 
 

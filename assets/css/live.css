@@ -39,6 +39,10 @@
 .live2-map-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,7,13,.10) 0%,rgba(5,7,13,.25) 25%,rgba(5,7,13,.62) 62%,rgba(5,7,13,.92) 100%);pointer-events:none;}
 .live2-match-content{position:relative;z-index:2;width:100%;height:100%;padding:26px 26px 22px;display:flex;flex-direction:column;}
 .live2-match-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;}
+.live2-match-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+.live2-browser-watch{display:inline-flex;align-items:center;justify-content:center;color:#fff!important;background:#dc2626;border:1px solid #ef4444;border-radius:12px;padding:8px 12px;font-size:11px;font-weight:950;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 0 22px rgba(220,38,38,.24);}
+.live2-browser-watch:hover{background:#ef4444;}
+.live2-browser-watch.disabled{pointer-events:none;opacity:.45;filter:saturate(.35);}
 .live2-match-top h2{margin:4px 0 10px;color:#fff;font-size:44px;line-height:1.04;font-weight:950;letter-spacing:-2px;text-transform:uppercase;text-shadow:0 0 24px rgba(255,255,255,.08);}
 .live2-match-id{color:#93c5fd!important;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-weight:950;font-size:12px;padding:8px 10px;border-radius:12px;background:rgba(37,99,235,.13);border:1px solid rgba(59,130,246,.32);}
 .live2-match-id.disabled{pointer-events:none;opacity:.62;color:#94a3b8!important;border-color:rgba(148,163,184,.22);background:rgba(15,23,42,.42);}
@@ -196,7 +200,9 @@ transform:translateY(-1px);
 
 .live2-match-content{padding:14px 16px 14px 14px;}
 
-.live2-match-top{display:grid!important;grid-template-columns:minmax(0,1fr) 62px!important;gap:6px;align-items:start;justify-content:normal!important;width:100%;overflow:hidden;}
+.live2-match-top{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:6px;align-items:start;justify-content:normal!important;width:100%;overflow:hidden;}
+.live2-match-actions{max-width:92px;gap:4px;}
+.live2-browser-watch{width:92px;padding:5px 4px;font-size:9px;}
 
 .live2-match-top h2{font-size:clamp(18px,6.4vw,26px);line-height:.9;margin:2px 0 8px;padding-right:4px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 

@@ -58,7 +58,7 @@ const LIGHT_STYLE_PATTERNS = [
   "aaaaaaaazzzzzzzz", "mmamammmmammamamaaamammma", "abcdefghijklmnopqrrqponmlkjihgfedcba",
   "mmnnmmnnnmmnn"
 ];
-const TFC_MODEL_ASSET_VERSION = "20260731schema3fix5";
+const TFC_MODEL_ASSET_VERSION = "20260802schema5entities1";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
 const skyLoader = new THREE.CubeTextureLoader();
@@ -80,6 +80,9 @@ const state = {
   buildables: [],
   brushDefinitions: new Map(),
   brushes: [],
+  entityDefinitions: new Map(),
+  entities: [],
+  entityCensus: [],
   events: [],
   impacts: [],
   bloodEffects: [],
@@ -129,11 +132,15 @@ const corpseRoot = new THREE.Group();
 const projectileRoot = new THREE.Group();
 const objectiveRoot = new THREE.Group();
 const buildableRoot = new THREE.Group();
+const entityRoot = new THREE.Group();
 const impactRoot = new THREE.Group();
 const hitscanRoot = new THREE.Group();
 const bloodRoot = new THREE.Group();
 const mapLightRoot = new THREE.Group();
-world.add(playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot, mapLightRoot);
+world.add(
+  playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, entityRoot,
+  impactRoot, hitscanRoot, bloodRoot, mapLightRoot
+);
 let grid = null;
 let mapModel = null;
 let mapBeamGroup = null;
@@ -399,6 +406,33 @@ function buildableSnapshot(track, time) {
     color: [32, 33, 34].map(index => value(frame, index, false)),
     controller: [35, 36, 37, 38].map(index => value(frame, index, false)),
     blending: [39, 40].map(index => value(frame, index, false)), aiment: value(frame, 41, false)
+  };
+}
+
+function entitySnapshot(track, time) {
+  const frame = trackFrame(track, time);
+  if (!frame || value(frame, 1, false) !== 1) return null;
+  if (frame.nextOffset !== frame.offset &&
+      value(frame, 6, false) !== value({ ...frame, offset: frame.nextOffset }, 6, false)) {
+    frame.mix = 0;
+  }
+  return {
+    active: true,
+    ownerSession: value(frame, 2, false), ownerEntity: value(frame, 3, false),
+    team: value(frame, 4, false), health: value(frame, 5, false), modelId: value(frame, 6, false),
+    colormap: value(frame, 7, false), movetype: value(frame, 8, false), solid: value(frame, 9, false),
+    effects: value(frame, 10, false), flags: value(frame, 11, false),
+    x: value(frame, 12), y: value(frame, 13), z: value(frame, 14),
+    vx: value(frame, 15), vy: value(frame, 16), vz: value(frame, 17),
+    pitch: angle(frame, 18), yaw: angle(frame, 19), roll: angle(frame, 20),
+    avelPitch: value(frame, 21), avelYaw: value(frame, 22), avelRoll: value(frame, 23),
+    body: value(frame, 24, false), skin: value(frame, 25, false), sequence: value(frame, 26, false),
+    gaitsequence: value(frame, 27, false), frame: value(frame, 28), framerate: value(frame, 29),
+    animtime: value(frame, 30), scale: value(frame, 31, false),
+    rendermode: value(frame, 32, false), renderamt: value(frame, 33, false),
+    renderfx: value(frame, 34, false), color: [35, 36, 37].map(index => value(frame, index, false)),
+    controller: [38, 39, 40, 41].map(index => value(frame, index, false)),
+    blending: [42, 43].map(index => value(frame, index, false)), aiment: value(frame, 44, false)
   };
 }
 
@@ -729,6 +763,36 @@ async function setBuildableModel(track, modelId, team) {
   delete track.mesh.userData.renderSignature;
 }
 
+async function setEntityModel(track, modelId) {
+  if (track.mesh.userData.modelId === modelId) return;
+  track.mesh.userData.modelId = modelId;
+  track.visual.clear();
+  const url = catalogUrl(modelId, "entity");
+  if (!url) {
+    track.visual.add(new THREE.Mesh(
+      new THREE.BoxGeometry(12, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xaed7ff, wireframe: true })
+    ));
+    return;
+  }
+  const asset = await loadModelAsset(url);
+  if (!asset || track.mesh.userData.modelId !== modelId) return;
+  const model = asset.clone(true);
+  model.traverse(child => {
+    if (!child.isMesh) return;
+    child.frustumCulled = false;
+    if (Array.isArray(child.material)) child.material = child.material.map(material => material.clone());
+    else if (child.material) child.material = child.material.clone();
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      if (material?.color) material.userData.replayBaseColor = material.color.clone();
+    }
+  });
+  track.visual.clear();
+  track.visual.add(model);
+  delete track.mesh.userData.renderSignature;
+}
+
 async function setProjectileCatalogModel(track, definitionSignature) {
   if (track.definition?.ignoreRecordedModel) return;
   const url = catalogUrl(track.recordedDefinition?.modelId, "projectile");
@@ -964,6 +1028,16 @@ function buildVisuals() {
     track.mesh.visible = false;
     track.mesh.userData.buildableId = track.buildableId;
     buildableRoot.add(track.mesh);
+  }
+  for (const track of state.entities) {
+    if (track.mesh) continue;
+    track.definition = state.entityDefinitions.get(track.entityId);
+    track.mesh = new THREE.Group();
+    track.visual = new THREE.Group();
+    track.mesh.add(track.visual);
+    track.mesh.visible = false;
+    track.mesh.userData.entityId = track.entityId;
+    entityRoot.add(track.mesh);
   }
 }
 
@@ -1218,6 +1292,59 @@ function updateBuildables() {
       body: frame.body, skin: frame.skin, sequence: frame.sequence,
       gaitsequence: frame.gaitsequence, animationFrame: frame.frame,
       framerate: frame.framerate, animtime: frame.animtime,
+      controller: frame.controller, blending: frame.blending, aiment: frame.aiment,
+      unsupportedGoldSrcState: ["body", "skin", "sequence", "gaitsequence", "controller", "blending", "aiment"]
+    });
+  }
+}
+
+function updateEntities() {
+  for (const track of state.entities) {
+    if (!track.mesh) continue;
+    const frame = entitySnapshot(track, state.playbackTime);
+    track.mesh.visible = Boolean(frame && !(frame.effects & 128));
+    if (!frame || !track.mesh.visible) continue;
+    track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
+    track.mesh.rotation.set(
+      THREE.MathUtils.degToRad(frame.pitch),
+      THREE.MathUtils.degToRad(frame.yaw),
+      THREE.MathUtils.degToRad(frame.roll)
+    );
+    track.mesh.scale.setScalar(frame.scale > 0 ? frame.scale : 1);
+    void setEntityModel(track, frame.modelId);
+    const signature = [frame.renderamt, ...frame.color, frame.rendermode, frame.renderfx].join(":");
+    if (track.mesh.userData.renderSignature !== signature) {
+      track.mesh.userData.renderSignature = signature;
+      const opacity = frame.rendermode === 0 ? 1 : THREE.MathUtils.clamp(frame.renderamt / 255, 0, 1);
+      const tint = new THREE.Color(
+        THREE.MathUtils.clamp(frame.color[0] / 255, 0, 1),
+        THREE.MathUtils.clamp(frame.color[1] / 255, 0, 1),
+        THREE.MathUtils.clamp(frame.color[2] / 255, 0, 1)
+      );
+      track.visual.traverse(child => {
+        if (!child.isMesh) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of materials) {
+          if (!material) continue;
+          if (material.color && material.userData.replayBaseColor) {
+            material.color.copy(material.userData.replayBaseColor);
+            if (frame.rendermode !== 0 && frame.color.some(channel => channel > 0)) material.color.multiply(tint);
+          }
+          material.opacity = opacity;
+          material.transparent = opacity < 1 || frame.rendermode !== 0;
+          material.depthWrite = opacity >= 1;
+          material.needsUpdate = true;
+        }
+      });
+    }
+    Object.assign(track.mesh.userData, {
+      classname: track.definition?.classname || "",
+      model: state.renderModels.get(frame.modelId)?.path || "",
+      ownerSession: frame.ownerSession, ownerEntity: frame.ownerEntity,
+      team: frame.team, health: frame.health, movetype: frame.movetype,
+      solid: frame.solid, flags: frame.flags, body: frame.body, skin: frame.skin,
+      sequence: frame.sequence, gaitsequence: frame.gaitsequence,
+      animationFrame: frame.frame, framerate: frame.framerate, animtime: frame.animtime,
       controller: frame.controller, blending: frame.blending, aiment: frame.aiment,
       unsupportedGoldSrcState: ["body", "skin", "sequence", "gaitsequence", "controller", "blending", "aiment"]
     });
@@ -1831,6 +1958,7 @@ function updateScene() {
   updateBloodEffects();
   updateObjectives();
   updateBuildables();
+  updateEntities();
   updateBrushes();
   updateMapRotators();
   updateMapBeams();
@@ -2233,7 +2361,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802live3");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802schema5entities1");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -2255,7 +2383,9 @@ function loadTelemetry(files) {
 
 function latestTelemetryTime(payload) {
   let latest = 0;
-  for (const collection of [payload.players, payload.projectiles, payload.objectives, payload.buildables, payload.brushes]) {
+  for (const collection of [
+    payload.players, payload.projectiles, payload.objectives, payload.buildables, payload.brushes, payload.entities
+  ]) {
     for (const track of collection || []) {
       const count = Math.floor(track.frames.length / track.stride);
       if (count) latest = Math.max(latest, track.frames[(count - 1) * track.stride]);
@@ -2298,7 +2428,9 @@ function trimTrack(track, cutoff) {
 
 function trimLiveTelemetry() {
   const cutoff = Math.max(0, state.liveEdge - state.liveBufferSeconds - 2);
-  for (const collection of [state.players, state.projectiles, state.objectives, state.buildables, state.brushes]) {
+  for (const collection of [
+    state.players, state.projectiles, state.objectives, state.buildables, state.brushes, state.entities
+  ]) {
     for (const track of collection) trimTrack(track, cutoff);
   }
   state.events = state.events.filter(event => event.time >= cutoff);
@@ -2321,6 +2453,11 @@ function installTelemetry(telemetry) {
     telemetry.brushDefinitions.map(definition => [definition.brushId, definition])
   );
   state.brushes = telemetry.brushes;
+  state.entityDefinitions = new Map(
+    telemetry.entityDefinitions.map(definition => [definition.entityId, definition])
+  );
+  state.entities = telemetry.entities;
+  state.entityCensus = telemetry.entityCensus;
   state.events = telemetry.events;
   buildRoster();
   selectPlayer(state.roster[0]?.sessionId);
@@ -2350,12 +2487,17 @@ async function applyLiveDelta(telemetry) {
   for (const definition of telemetry.brushDefinitions) {
     state.brushDefinitions.set(definition.brushId, definition);
   }
+  for (const definition of telemetry.entityDefinitions) {
+    state.entityDefinitions.set(definition.entityId, definition);
+  }
   await projectileVisuals.preload(telemetry.projectileDefinitions);
   mergeTracks(state.players, telemetry.players, "sessionId");
   mergeTracks(state.projectiles, telemetry.projectiles, "projectileId");
   mergeTracks(state.objectives, telemetry.objectives, "objectiveId");
   mergeTracks(state.buildables, telemetry.buildables, "buildableId");
   mergeTracks(state.brushes, telemetry.brushes, "brushId");
+  mergeTracks(state.entities, telemetry.entities, "entityId");
+  state.entityCensus.push(...telemetry.entityCensus);
   state.events.push(...telemetry.events);
   state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
   state.liveEdge = Math.max(state.liveEdge, latestTelemetryTime(telemetry));
@@ -2378,7 +2520,7 @@ let liveWorkerPending = null;
 
 function ensureLiveWorker() {
   if (liveWorker) return;
-  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802live3");
+  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802schema5entities1");
   liveWorker.onmessage = event => {
     if (event.data.type === "progress") return setStatus(event.data.label);
     if (!liveWorkerPending) return;
@@ -2466,7 +2608,7 @@ function connectLiveEvents(metadata, sequence) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json?v=20260731schema3fix5", { cache: "force-cache" });
+  const response = await fetch("/assets/tfc/models/manifest.json?v=20260802schema5entities1", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));
@@ -2477,7 +2619,10 @@ function cleanupReplayObjects() {
   liveEventSource = null;
   liveWorker?.terminate();
   liveWorker = null;
-  for (const root of [playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, impactRoot, hitscanRoot, bloodRoot]) {
+  for (const root of [
+    playerRoot, corpseRoot, projectileRoot, objectiveRoot, buildableRoot, entityRoot,
+    impactRoot, hitscanRoot, bloodRoot
+  ]) {
     root.clear();
   }
   state.bloodEffects = [];
@@ -2486,6 +2631,8 @@ function cleanupReplayObjects() {
   state.objectiveDefinitions.clear();
   state.buildableDefinitions.clear();
   state.brushDefinitions.clear();
+  state.entityDefinitions.clear();
+  state.entityCensus = [];
 }
 
 async function initRealLive() {

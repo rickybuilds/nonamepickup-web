@@ -8,10 +8,11 @@ python scripts/preprocess_tfc_models.py "C:\Program Files (x86)\Steam\steamapps\
 ```
 
 Linux uses the same script with the deployed TFC path, such as
-`/root/steamcmd/tfc/tfc/models`. The script scans only known categories: class
-models under `player/`, top-level third-person `p_*.mdl` weapons, known
-projectiles and objectives, sentry levels/components, dispensers, and other
-standard buildables. It preserves source-relative output paths under
+`/root/steamcmd/tfc/tfc/models`. The script scans class models under `player/`,
+top-level third-person `p_*.mdl` weapons, known projectiles and objectives,
+sentry levels/components and other standard buildables. Schema-5 studio models
+outside those specialized groups are cataloged as generic `entity` assets;
+client-only `v_*.mdl` viewmodels remain excluded. It preserves source-relative output paths under
 `assets/tfc/models`, produces deterministic lowercase catalog keys and URLs,
 and reports missing or failed inputs. It does not copy or expose source MDLs.
 

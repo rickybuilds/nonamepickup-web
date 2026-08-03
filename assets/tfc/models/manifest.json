@@ -3,6 +3,72 @@
   "pipelineVersion": 2,
   "converter": "scripts/convert_goldsrc_player_models.py (static idle-pose GLB)",
   "models": {
+    "models/back_gren.mdl": {
+      "url": "/assets/tfc/models/back_gren.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 101,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "0cd07549400835fbff24f5f51303af43056edff06ca6abcc9b005ed5515a2ca2",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/backpack.mdl": {
+      "url": "/assets/tfc/models/backpack.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 101,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "377424731aad426bcabb02da5bf0c2bda36e94681e6e5560f0001f6e534843a2",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
     "models/ball.mdl": {
       "url": "/assets/tfc/models/ball.glb",
       "kind": "objective",
@@ -88,6 +154,39 @@
         "green": "3287831ec5f4cef3e9e19ad41e4601d86efbb9454caa01f5b681c7bc5ddce965:green:(74, 222, 128):warm-v1"
       }
     },
+    "models/bigrat.mdl": {
+      "url": "/assets/tfc/models/bigrat.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 1.0,
+          "frames": 1,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "body",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 5,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "5994c218534c5945e43402966a15a10f2e1f81f294251a3bb6f6ab1b381c37a0",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
     "models/bomblet.mdl": {
       "url": "/assets/tfc/models/bomblet.glb",
       "kind": "projectile",
@@ -145,6 +244,39 @@
       "boneControllers": 0,
       "attachments": 0,
       "sourceSha256": "d7bdfb119df349ab3c7b0138a42cc627cb567e0084b091370c98d429e5a61a72",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/chainammo.mdl": {
+      "url": "/assets/tfc/models/chainammo.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 30.0,
+          "frames": 1,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "63396e462772360eb724bab9bddbe907665376447a5a3eaa7b51c14c2d46d793",
       "glb": {
         "animations": false,
         "bodygroups": false,
@@ -362,6 +494,105 @@
       "boneControllers": 0,
       "attachments": 0,
       "sourceSha256": "c721dac8703eaf06f5cb1553cc2a24a53eed0335f112adef315b56e66bf42df0",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/g_armor.mdl": {
+      "url": "/assets/tfc/models/g_armor.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 2,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "7dc76803fe386038a29b438f2588e501bc4650fb862797cb4ea5a8a7748f3f08",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/gasmask.mdl": {
+      "url": "/assets/tfc/models/gasmask.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 101,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "bd26130fdb141c6172307ff43e68b66e21c41ba0fdeca686722cb04eb6b811ba",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/invis.mdl": {
+      "url": "/assets/tfc/models/invis.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 101,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "c60bd566cd84ded42a456a7abf16c6ab1c778842e78a7e3322c0299308a86ae0",
       "glb": {
         "animations": false,
         "bodygroups": false,
@@ -2443,6 +2674,39 @@
         "sniper": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:10eae0c7be91dc1f9f84f0ce0de9d33b92f122f1cb6c1c0e3fce49a017229710",
         "soldier": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:42502da801cd5b9fd864f6ff6d44ab69b1862ff47af8416b25f1ec9ac6fca573",
         "spy": "d147b4098ed17b28666e6de03f928735925e9c10ae0c530baddfcd029bd5adcb:f462dc91dc4483be4ba83d254a148b43fe9b182991091e2491583a01e3f0518d"
+      }
+    },
+    "models/pent.mdl": {
+      "url": "/assets/tfc/models/pent.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 101,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "a0c23e1b7d2a553147644c5fc9b033583031a110f494bf8af15d1fa7db49d521",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
       }
     },
     "models/pipebomb.mdl": {
@@ -13213,6 +13477,190 @@
         "attachments": false
       }
     },
+    "models/presentlg.mdl": {
+      "url": "/assets/tfc/models/presentlg.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 30.0,
+          "frames": 1,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "435ca4750aaff810bb57b9156e827eb0047610abb016b3f6ff0cb7660aaa7995",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/presentsm.mdl": {
+      "url": "/assets/tfc/models/presentsm.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 30.0,
+          "frames": 1,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "ae2067e58a72206f33e78395c38111ce66aa5834b8a67ed0cf999ed69fa9e878",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/quad.mdl": {
+      "url": "/assets/tfc/models/quad.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 101,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "7be9f448f71b4480fe22bec54d865690b97d68ba09ec6961152f8fb374f5f60d",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/r_armor.mdl": {
+      "url": "/assets/tfc/models/r_armor.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 2,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "0c9c523c5dffdcf67b5d5b9a5ebfd5a3a4d5d7975b09ef67215f89dfc276c77e",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/rpgrocket.mdl": {
+      "url": "/assets/models/rocket.glb",
+      "kind": "projectile",
+      "animations": [],
+      "bodygroups": [],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": null,
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      },
+      "fallback": "legacy-replay-asset"
+    },
+    "models/scientist_dead1.mdl": {
+      "url": "/assets/tfc/models/scientist_dead1.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 23.0,
+          "frames": 23,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "body",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "149045276852da5ecf25695e25512f316908c21a5bc8a5113c2350b1d378f5cc",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
     "models/sentry1.mdl": {
       "url": "/assets/tfc/models/sentry1.glb",
       "kind": "buildable",
@@ -13468,25 +13916,6 @@
         "green": "1076e576adc6568c1e1aaa522c6f858650faf85819474bd9dfb3bd2198165fa9:green:(74, 222, 128):warm-v1"
       }
     },
-    "models/rpgrocket.mdl": {
-      "url": "/assets/models/rocket.glb",
-      "kind": "projectile",
-      "animations": [],
-      "bodygroups": [],
-      "skins": 1,
-      "boneControllers": 0,
-      "attachments": 0,
-      "sourceSha256": null,
-      "glb": {
-        "animations": false,
-        "bodygroups": false,
-        "skins": "baked-family-0",
-        "boneControllers": false,
-        "sequenceBlending": false,
-        "attachments": false
-      },
-      "fallback": "legacy-replay-asset"
-    },
     "models/w_grenade.mdl": {
       "url": "/assets/models/grenade.glb",
       "kind": "projectile",
@@ -13505,6 +13934,39 @@
         "attachments": false
       },
       "fallback": "legacy-replay-asset"
+    },
+    "models/y_armor.mdl": {
+      "url": "/assets/tfc/models/y_armor.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 2,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "48adf0fbd278aac49df7f33587a3427f2b4dd1eaa60e5656efadd1c9bdf26b1e",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
     }
   },
   "missing": [],

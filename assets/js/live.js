@@ -260,6 +260,20 @@ const warnedMissingDbMatches=new Set();
       }
     }
 
+    const browserWatch = $("live2-browser-watch");
+    const serverId = String(liveState?.serverKey || "").toLowerCase();
+    const roundNumber = Number(liveState?.round || 0);
+    const canWatch = active && /^[a-z0-9_.-]{1,64}$/.test(serverId) &&
+      /^[A-Za-z0-9_-]{1,64}$/.test(String(matchId)) && Number.isInteger(roundNumber) && roundNumber > 0;
+    if (browserWatch) {
+      browserWatch.href = canWatch
+        ? `pickup-live.html?server=${encodeURIComponent(serverId)}&matchId=${encodeURIComponent(matchId)}&round=${roundNumber}&map=${encodeURIComponent(mapName)}`
+        : "#";
+      browserWatch.classList.toggle("disabled", !canWatch);
+      browserWatch.classList.toggle("hidden", !canWatch);
+      browserWatch.setAttribute("aria-disabled", String(!canWatch));
+    }
+
 const round = Number(liveState?.round || 0);
 
 let roundText = "WAITING";

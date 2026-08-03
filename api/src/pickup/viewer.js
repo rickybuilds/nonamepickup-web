@@ -13,6 +13,9 @@ const VIEWER_FILES = new Set([
   "buildables.csv",
   "brush_defs.csv",
   "brushes.csv",
+  "entity_defs.csv",
+  "entities.csv",
+  "entity_census.csv",
   "projectile_defs.csv",
   "projectiles.csv",
   "objective_defs.csv",
@@ -91,7 +94,10 @@ class PickupReplayViewer {
     const base = `/api/pickup-replays/viewer/${encodeURIComponent(matchId)}/${round}`;
     const manifest = parseManifest(row.manifest_json);
     const viewerFiles = [...VIEWER_FILES].filter(name => {
-      if (["brush_defs.csv", "brushes.csv"].includes(name)) return manifest.schema_version === 4;
+      if (["brush_defs.csv", "brushes.csv"].includes(name)) return manifest.schema_version >= 4;
+      if (["entity_defs.csv", "entities.csv", "entity_census.csv"].includes(name)) {
+        return manifest.schema_version >= 5;
+      }
       if (["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(name)) {
         return manifest.schema_version >= 3;
       }
@@ -118,6 +124,9 @@ class PickupReplayViewer {
         ,buildables: Number(manifest.rows?.buildables || 0)
         ,brushDefinitions: Number(manifest.rows?.brush_definitions || 0)
         ,brushes: Number(manifest.rows?.brushes || 0)
+        ,entityDefinitions: Number(manifest.rows?.entity_definitions || 0)
+        ,entities: Number(manifest.rows?.entities || 0)
+        ,entityCensus: Number(manifest.rows?.entity_census || 0)
       },
       sha256: row.sha256,
       byteSize: Number(row.byte_size || 0),
@@ -137,7 +146,11 @@ class PickupReplayViewer {
         manifest.schema_version < 3) {
       throw pickupError(404, "replay_file_not_found");
     }
-    if (["brush_defs.csv", "brushes.csv"].includes(fileName) && manifest.schema_version !== 4) {
+    if (["brush_defs.csv", "brushes.csv"].includes(fileName) && manifest.schema_version < 4) {
+      throw pickupError(404, "replay_file_not_found");
+    }
+    if (["entity_defs.csv", "entities.csv", "entity_census.csv"].includes(fileName) &&
+        manifest.schema_version < 5) {
       throw pickupError(404, "replay_file_not_found");
     }
     await this.storage.ensureReady();

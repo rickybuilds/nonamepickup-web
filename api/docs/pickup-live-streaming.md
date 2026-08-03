@@ -45,7 +45,7 @@ The application also sends `X-Accel-Buffering: no`, but the proxy configuration 
 Run these from a checkout containing this repository:
 
 ```sh
-install -D -m 755 scripts/stream-pickup-live.js \
+install -D -m 755 scripts/stream-pickup-live \
   /usr/local/sbin/stream-pickup-live
 install -D -m 644 deploy/systemd/tfc-pickup-live-forwarder.service \
   /etc/systemd/system/tfc-pickup-live-forwarder.service
@@ -81,7 +81,7 @@ For the current round, a successful log begins with lines similar to:
 
 ```text
 [pickup-live-forwarder] watching /root/steamcmd/tfc/tfc/addons/amxmodx/data/pickup_replays as east
-[pickup-live-forwarder] discovered east:TNQXH6:1 schema 4
+[pickup-live-forwarder] discovered east:TNQXH6:1 schema 5
 ```
 
 Open the feed directly with:

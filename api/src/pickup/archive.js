@@ -27,10 +27,16 @@ const BUILDABLE_DEFS_FILE = "buildable_defs.csv";
 const BUILDABLES_FILE = "buildables.csv";
 const BRUSH_DEFS_FILE = "brush_defs.csv";
 const BRUSHES_FILE = "brushes.csv";
+const ENTITY_DEFS_FILE = "entity_defs.csv";
+const ENTITIES_FILE = "entities.csv";
+const ENTITY_CENSUS_FILE = "entity_census.csv";
 const READY_FILES = new Set(["complete.ready", "aborted.ready"]);
 const SCHEMA_V3_FILES = Object.freeze([RENDER_MODELS_FILE, BUILDABLE_DEFS_FILE, BUILDABLES_FILE]);
 const SCHEMA_V4_FILES = Object.freeze([BRUSH_DEFS_FILE, BRUSHES_FILE]);
-const ALLOWED_FILES = new Set([...REQUIRED_FILES, ...SCHEMA_V3_FILES, ...SCHEMA_V4_FILES, ...READY_FILES]);
+const SCHEMA_V5_FILES = Object.freeze([ENTITY_DEFS_FILE, ENTITIES_FILE, ENTITY_CENSUS_FILE]);
+const ALLOWED_FILES = new Set([
+  ...REQUIRED_FILES, ...SCHEMA_V3_FILES, ...SCHEMA_V4_FILES, ...SCHEMA_V5_FILES, ...READY_FILES
+]);
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
 const PLAYERS_V2_COLUMNS = Object.freeze([
@@ -45,7 +51,7 @@ const PLAYERS_V3_COLUMNS = Object.freeze([...PLAYERS_V2_COLUMNS,
   "blending0", "blending1"
 ]);
 const RENDER_MODEL_COLUMNS = Object.freeze(["model_id", "kind", "path", "first_seen_ms"]);
-const RENDER_MODEL_KINDS = new Set(["player", "weapon", "projectile", "objective", "buildable"]);
+const RENDER_MODEL_KINDS = new Set(["player", "weapon", "projectile", "objective", "buildable", "entity"]);
 const PROJECTILE_DEFS_V2_COLUMNS = Object.freeze([
   "projectile_id", "entity", "owner_session", "classname", "model", "spawned_ms"
 ]);
@@ -75,6 +81,26 @@ const BRUSHES_COLUMNS = Object.freeze([
   "snapshot", "time_ms", "brush_id", "active", "x", "y", "z", "vx", "vy", "vz",
   "pitch", "yaw", "roll", "avel_pitch", "avel_yaw", "avel_roll", "effects", "solid",
   "movetype", "rendermode", "renderamt", "renderfx", "render_r", "render_g", "render_b"
+]);
+const ENTITY_DEFS_COLUMNS = Object.freeze([
+  "entity_id", "entity", "entity_generation", "classname", "model_id", "owner_session",
+  "owner_entity", "targetname", "spawned_ms"
+]);
+const ENTITIES_COLUMNS = Object.freeze([
+  "snapshot", "time_ms", "entity_id", "active", "owner_session", "owner_entity", "team", "health",
+  "model_id", "colormap", "movetype", "solid", "effects", "flags", "x", "y", "z", "vx", "vy", "vz",
+  "pitch", "yaw", "roll", "avel_pitch", "avel_yaw", "avel_roll", "body", "skin", "sequence",
+  "gaitsequence", "frame", "framerate", "animtime", "scale", "rendermode", "renderamt", "renderfx",
+  "render_r", "render_g", "render_b", "controller0", "controller1", "controller2", "controller3",
+  "blending0", "blending1", "aiment"
+]);
+const ENTITY_CENSUS_COLUMNS = Object.freeze([
+  "time_ms", "entity", "entity_generation", "classname", "model", "model_index", "movetype", "solid",
+  "effects", "rendermode", "stream", "reason", "observation"
+]);
+const EVENTS_COLUMNS = Object.freeze([
+  "time_ms", "event", "actor_session", "target_session", "entity", "value1", "value2",
+  "int_value1", "int_value2", "text"
 ]);
 const BRUSH_CLASSES = new Set([
   "func_door", "func_door_rotating", "func_button", "func_rot_button", "func_plat",
@@ -122,7 +148,7 @@ function safeTfcModelPath(value) {
   const normalized = value.trim().replace(/\\/g, "/").toLowerCase();
   if (normalized.length < 12 || normalized.length > 255 || path.posix.isAbsolute(normalized) ||
       normalized.split("/").some(part => !part || part === "." || part === "..") ||
-      !/^models\/[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)*\.mdl$/.test(normalized)) {
+      !/^models\/[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)*\.(?:mdl|spr)$/.test(normalized)) {
     throw pickupError(422, "unsafe_render_model_path", { quarantine: true });
   }
   return normalized;
@@ -138,11 +164,14 @@ function validateRenderModels(document, catalog) {
       throw pickupError(422, "invalid_render_model_kind", { quarantine: true });
     }
     const normalizedPath = safeTfcModelPath(row.path);
+    if (row.kind !== "entity" && !normalizedPath.endsWith(".mdl")) {
+      throw pickupError(422, "invalid_render_model_kind", { quarantine: true });
+    }
     const catalogEntry = catalog.get(normalizedPath);
-    if (!catalogEntry) {
+    if (!catalogEntry && row.kind !== "entity") {
       throw pickupError(422, "render_model_not_allowlisted", { quarantine: true });
     }
-    if (catalogEntry.kind !== row.kind) {
+    if (catalogEntry && catalogEntry.kind !== row.kind) {
       throw pickupError(422, "render_model_catalog_kind_mismatch", { quarantine: true });
     }
     models.set(modelId, {
@@ -530,15 +559,22 @@ async function validateArchive({
   if (manifest.schema_version < 4 && SCHEMA_V4_FILES.some(name => extractor.files.has(name))) {
     throw pickupError(422, "unexpected_archive_file", { quarantine: true });
   }
-  if (manifest.schema_version === 4 && SCHEMA_V4_FILES.some(name => !extractor.files.has(name))) {
+  if (manifest.schema_version >= 4 && SCHEMA_V4_FILES.some(name => !extractor.files.has(name))) {
     throw pickupError(422, "missing_brush_streams", { quarantine: true });
+  }
+  if (manifest.schema_version < 5 && SCHEMA_V5_FILES.some(name => extractor.files.has(name))) {
+    throw pickupError(422, "unexpected_archive_file", { quarantine: true });
+  }
+  if (manifest.schema_version >= 5 && SCHEMA_V5_FILES.some(name => !extractor.files.has(name))) {
+    throw pickupError(422, "missing_entity_streams", { quarantine: true });
   }
   if (manifest.schema_version === 2 && SCHEMA_V3_FILES.some(name => extractor.files.has(name))) {
     throw pickupError(422, "unexpected_archive_file", { quarantine: true });
   }
   const expectedFileCount = REQUIRED_FILES.length + 1 +
     (manifest.schema_version >= 3 ? SCHEMA_V3_FILES.length : 0) +
-    (manifest.schema_version === 4 ? SCHEMA_V4_FILES.length : 0);
+    (manifest.schema_version >= 4 ? SCHEMA_V4_FILES.length : 0) +
+    (manifest.schema_version >= 5 ? SCHEMA_V5_FILES.length : 0);
   if (extractor.files.size !== expectedFileCount) {
     throw pickupError(422, "unexpected_archive_file", { quarantine: true });
   }
@@ -671,7 +707,7 @@ async function validateArchive({
     }
   }
 
-  if (manifest.schema_version === 4) {
+  if (manifest.schema_version >= 4) {
     const brushDefsFile = extractor.files.get(BRUSH_DEFS_FILE);
     const brushesFile = extractor.files.get(BRUSHES_FILE);
     if (manifest.bytes[BRUSH_DEFS_FILE] !== brushDefsFile.size ||
@@ -703,6 +739,81 @@ async function validateArchive({
     if (manifest.rows.brush_definitions !== brushDefs.rows.length || manifest.rows.brushes !== brushRows) {
       throw pickupError(422, "brush_manifest_mismatch", { quarantine: true });
     }
+  }
+
+  if (manifest.schema_version >= 5) {
+    const entityDefsFile = extractor.files.get(ENTITY_DEFS_FILE);
+    const entitiesFile = extractor.files.get(ENTITIES_FILE);
+    const censusFile = extractor.files.get(ENTITY_CENSUS_FILE);
+    if (manifest.bytes[ENTITY_DEFS_FILE] !== entityDefsFile.size ||
+        manifest.bytes[ENTITIES_FILE] !== entitiesFile.size ||
+        manifest.bytes[ENTITY_CENSUS_FILE] !== censusFile.size) {
+      throw pickupError(422, "entity_manifest_mismatch", { quarantine: true });
+    }
+    const entityDefs = parseCsvDocument(await fsp.readFile(entityDefsFile.path, "utf8"), "entity_definitions");
+    const definitionIds = validateUniqueIds(entityDefs, ENTITY_DEFS_COLUMNS, "entity_id", "entity");
+    validateNumericColumns(entityDefs, new Set(["classname", "targetname"]));
+    validateModelReferences(entityDefs, "model_id", "entity", renderModels);
+    for (const row of entityDefs.rows) {
+      requiredInteger(row.entity_generation, "invalid_entity_generation", { min: 1 });
+      if (row.classname.length > 64 || row.targetname.length > 128 ||
+          /[\0-\x1f\x7f]/.test(row.classname) || /[\0-\x1f\x7f]/.test(row.targetname)) {
+        throw pickupError(422, "invalid_entity_definition", { quarantine: true });
+      }
+    }
+    // Generic entities may temporarily leave this fallback stream when a
+    // specialized tracker claims them, then resume under the same lifetime ID.
+    // Consequently active=0 is not always a permanent removal marker.
+    const validateEntityTimeline = timelineRowValidator("entity_id");
+    const entityRows = await validateCsvStream(entitiesFile.path, "entities", ENTITIES_COLUMNS, (row, headers) => {
+      validateNumericRow(row, headers);
+      const id = requiredInteger(row.entity_id, "invalid_entity_id", { min: 1 });
+      if (!definitionIds.has(id)) throw pickupError(422, "undefined_entity_id", { quarantine: true });
+      const modelId = requiredInteger(row.model_id, "invalid_render_model_reference", { min: 0 });
+      if (modelId !== 0) {
+        const model = renderModels.get(modelId);
+        if (!model) throw pickupError(422, "undefined_render_model_id", { quarantine: true });
+        if (model.kind !== "entity") throw pickupError(422, "render_model_kind_mismatch", { quarantine: true });
+      }
+      validateEntityTimeline(row);
+    });
+    const censusRows = await validateCsvStream(
+      censusFile.path,
+      "entity_census",
+      ENTITY_CENSUS_COLUMNS,
+      (row, headers) => {
+        validateNumericRow(row, headers, new Set(["classname", "model", "stream", "reason", "observation"]));
+        requiredInteger(row.entity_generation, "invalid_entity_generation", { min: 1 });
+        if (!/^(players|projectiles|objectives|buildables|brushes|entities|excluded)$/.test(row.stream) ||
+            !/^(baseline|new_signature)$/.test(row.observation) ||
+            row.classname.length > 64 || row.model.length > 255 || row.reason.length > 96 ||
+            /[\0-\x1f\x7f]/.test(`${row.classname}${row.model}${row.reason}`)) {
+          throw pickupError(422, "invalid_entity_census", { quarantine: true });
+        }
+      }
+    );
+    if (manifest.rows.entity_definitions !== entityDefs.rows.length ||
+        manifest.rows.entities !== entityRows || manifest.rows.entity_census !== censusRows) {
+      throw pickupError(422, "entity_manifest_mismatch", { quarantine: true });
+    }
+  }
+
+  const eventsFile = extractor.files.get("events.csv");
+  if (manifest.bytes["events.csv"] !== eventsFile.size) {
+    throw pickupError(422, "events_manifest_mismatch", { quarantine: true });
+  }
+  let previousEventTime = -1;
+  const eventRows = await validateCsvStream(eventsFile.path, "events", EVENTS_COLUMNS, (row, headers) => {
+    validateNumericRow(row, headers, new Set(["event", "text"]));
+    const time = requiredInteger(row.time_ms, "invalid_event_timestamp", { min: 0 });
+    if (time < previousEventTime || !/^[A-Za-z0-9_.-]{1,64}$/.test(row.event) ||
+        row.text.length > 512 || /[\0-\x1f\x7f]/.test(row.text)) {
+      throw pickupError(422, "invalid_event", { quarantine: true });
+    }
+    previousEventTime = time;
+  });
+  if (manifest.rows.events !== eventRows) {
+    throw pickupError(422, "events_manifest_mismatch", { quarantine: true });
   }
 
   const rosterText = await fsp.readFile(extractor.files.get("roster.csv").path, "utf8");

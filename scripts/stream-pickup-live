@@ -20,6 +20,9 @@ const FILE_ORDER = [
   "buildables.csv",
   "brush_defs.csv",
   "brushes.csv",
+  "entity_defs.csv",
+  "entities.csv",
+  "entity_census.csv",
   "events.csv"
 ];
 const MATCH_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -93,6 +96,7 @@ async function exists(file) {
 }
 
 async function schemaVersion(directory) {
+  if (await exists(path.join(directory, "entity_defs.csv.part")) || await exists(path.join(directory, "entity_defs.csv"))) return 5;
   if (await exists(path.join(directory, "brush_defs.csv.part")) || await exists(path.join(directory, "brush_defs.csv"))) return 4;
   if (await exists(path.join(directory, "render_models.csv.part")) || await exists(path.join(directory, "render_models.csv"))) return 3;
   return 2;
@@ -167,6 +171,7 @@ async function collect(state) {
   for (const fileName of FILE_ORDER) {
     if (state.schemaVersion < 3 && ["render_models.csv", "buildable_defs.csv", "buildables.csv"].includes(fileName)) continue;
     if (state.schemaVersion < 4 && ["brush_defs.csv", "brushes.csv"].includes(fileName)) continue;
+    if (state.schemaVersion < 5 && ["entity_defs.csv", "entities.csv", "entity_census.csv"].includes(fileName)) continue;
     const file = await sourcePath(state.directory, fileName);
     if (!file) continue;
     const start = state.offsets.get(fileName) || 0;

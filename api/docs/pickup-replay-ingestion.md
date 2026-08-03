@@ -89,8 +89,11 @@ events.csv
 render_models.csv    # schema version 3+
 buildable_defs.csv   # schema version 3+
 buildables.csv       # schema version 3+
-brush_defs.csv       # schema version 4 only
-brushes.csv          # schema version 4 only
+brush_defs.csv       # schema version 4+
+brushes.csv          # schema version 4+
+entity_defs.csv      # schema version 5+
+entities.csv         # schema version 5+
+entity_census.csv    # schema version 5+
 manifest.json
 complete.ready       # exactly one ready marker
 ```
@@ -114,7 +117,13 @@ Version 4 additionally requires `rows.brush_definitions`, `rows.brushes`, the
 matching byte entries, and exact `brush_defs.csv` and `brushes.csv` streams.
 Brush definitions accept only the supported mover classnames and literal `*N`
 BSP submodel names; brush timelines are ordered by stable `brush_id` and may
-terminate with `active=0`. Versions other than 2, 3, and 4 are rejected with `unsupported_schema_version`;
+terminate with `active=0`. Version 5 additionally requires the three generic
+entity streams and their `entity_definitions`, `entities`, and `entity_census`
+manifest counts. Generic definitions expose edict generations and stable
+lifetime IDs; state references must use an `entity` render-model kind. An
+`active=0` row hides the generic track, but that lifetime may resume if a
+specialized tracker temporarily claimed the edict. The census is a validated diagnostic inventory of
+stream assignment and exclusion decisions. Versions other than 2, 3, 4, and 5 are rejected with `unsupported_schema_version`;
 future versions are never reinterpreted.
 
 The schema-2 `players.csv` header is the original 21-column contract. Schema 3
@@ -123,11 +132,12 @@ appends recorder animation state and the `player_model_id` and
 `model_id,kind,path,first_seen_ms`; IDs are positive, round-local, and unique,
 while any reference of zero means no model was available. Nonzero references
 must exist and match the expected `player`, `weapon`, `projectile`, `objective`,
-or `buildable` kind. Separators and casing are normalized before lookup. Model
-paths must be safe relative `models/.../*.mdl` paths with no URL, drive letter,
-absolute prefix, null byte, or dot segment, and must exist in the generated
-standard-TFC catalog. Uploaded paths never trigger a filesystem read or model
-conversion.
+`buildable`, or `entity` kind. Separators and casing are normalized before
+lookup. Model paths must be safe relative `models/.../*.mdl` paths with no URL,
+drive letter, absolute prefix, null byte, or dot segment, and must exist in the
+generated standard-TFC catalog. Generic entities may also name a safe `.spr`
+path; unknown generic assets render as diagnostics and never trigger a
+filesystem read or conversion from uploaded data.
 
 Schema 3 changes `projectile_defs.csv` and `objective_defs.csv` from a `model`
 string to `model_id`. Schema 2 retains the string columns and 21-column player
@@ -370,8 +380,11 @@ events.csv
 render_models.csv    # v3+
 buildable_defs.csv   # v3+
 buildables.csv       # v3+
-brush_defs.csv       # v4
-brushes.csv          # v4
+brush_defs.csv       # v4+
+brushes.csv          # v4+
+entity_defs.csv      # v5+
+entities.csv         # v5+
+entity_census.csv    # v5+
 ```
 
 Archive members are read with a fixed `tar` argument array. Match IDs and round

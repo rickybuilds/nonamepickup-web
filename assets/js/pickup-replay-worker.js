@@ -159,10 +159,11 @@ async function loadRenderModels(url) {
     const kind = cols[i.kind];
     const modelPath = cols[i.path] || "";
     if (!Number.isSafeInteger(modelId) || modelId < 1 || seen.has(modelId) ||
-        !["player", "weapon", "projectile", "objective", "buildable"].includes(kind) ||
+        !["player", "weapon", "projectile", "objective", "buildable", "entity"].includes(kind) ||
         modelPath.includes("\0") || /^[a-z][a-z0-9+.-]*:\/\//i.test(modelPath) || /^[a-z]:/i.test(modelPath) ||
         modelPath.replace(/\\/g, "/").split("/").some(part => !part || part === "." || part === "..") ||
-        !/^models\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.mdl$/i.test(modelPath.replace(/\\/g, "/"))) {
+        !/^models\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.(?:mdl|spr)$/i.test(modelPath.replace(/\\/g, "/")) ||
+        (kind !== "entity" && !/\.mdl$/i.test(modelPath))) {
       throw new Error("Invalid render model dictionary.");
     }
     seen.add(modelId);
@@ -448,6 +449,105 @@ async function loadBrushes(url, definitions) {
   return [...tracks].map(([brushId, values]) => ({ brushId, stride: 23, frames: values.finish() }));
 }
 
+const ENTITY_DEFS_COLUMNS = [
+  "entity_id", "entity", "entity_generation", "classname", "model_id", "owner_session",
+  "owner_entity", "targetname", "spawned_ms"
+];
+const ENTITIES_COLUMNS = [
+  "snapshot", "time_ms", "entity_id", "active", "owner_session", "owner_entity", "team", "health",
+  "model_id", "colormap", "movetype", "solid", "effects", "flags", "x", "y", "z", "vx", "vy", "vz",
+  "pitch", "yaw", "roll", "avel_pitch", "avel_yaw", "avel_roll", "body", "skin", "sequence",
+  "gaitsequence", "frame", "framerate", "animtime", "scale", "rendermode", "renderamt", "renderfx",
+  "render_r", "render_g", "render_b", "controller0", "controller1", "controller2", "controller3",
+  "blending0", "blending1", "aiment"
+];
+const ENTITY_CENSUS_COLUMNS = [
+  "time_ms", "entity", "entity_generation", "classname", "model", "model_index", "movetype", "solid",
+  "effects", "rendermode", "stream", "reason", "observation"
+];
+
+async function loadEntityDefinitions(url, renderModels) {
+  const definitions = [];
+  const seen = new Set();
+  const models = new Map(renderModels.map(model => [model.modelId, model]));
+  await rows(url, (cols, i) => {
+    const entityId = number(cols[i.entity_id]);
+    const modelId = number(cols[i.model_id]);
+    if (!Number.isSafeInteger(entityId) || entityId < 1 || seen.has(entityId) ||
+        !Number.isSafeInteger(modelId) || modelId < 0 ||
+        (modelId !== 0 && models.get(modelId)?.kind !== "entity")) {
+      throw new Error("Invalid generic entity definition.");
+    }
+    seen.add(entityId);
+    definitions.push({
+      entityId,
+      entity: number(cols[i.entity]),
+      entityGeneration: number(cols[i.entity_generation]),
+      classname: cols[i.classname] || "",
+      modelId,
+      model: models.get(modelId)?.path || "",
+      ownerSession: number(cols[i.owner_session]),
+      ownerEntity: number(cols[i.owner_entity]),
+      targetname: cols[i.targetname] || "",
+      spawnedMs: number(cols[i.spawned_ms])
+    });
+  }, ENTITY_DEFS_COLUMNS);
+  return definitions;
+}
+
+async function loadEntities(url, definitions, renderModels, allowUnresolved = false) {
+  const tracks = new Map();
+  const ids = new Set(definitions.map(definition => definition.entityId));
+  const models = new Map(renderModels.map(model => [model.modelId, model]));
+  await rows(url, (cols, i) => {
+    const entityId = number(cols[i.entity_id]);
+    const modelId = number(cols[i.model_id]);
+    if (!ids.has(entityId) || !Number.isSafeInteger(modelId) || modelId < 0 ||
+        (modelId !== 0 && models.get(modelId)?.kind !== "entity")) {
+      if (allowUnresolved) return;
+      throw new Error("Generic entity state references an invalid definition or model.");
+    }
+    if (!tracks.has(entityId)) tracks.set(entityId, new Float32Builder());
+    tracks.get(entityId).push(
+      number(cols[i.time_ms]) / 1000, number(cols[i.active]), number(cols[i.owner_session]),
+      number(cols[i.owner_entity]), number(cols[i.team]), number(cols[i.health]), modelId,
+      number(cols[i.colormap]), number(cols[i.movetype]), number(cols[i.solid]), number(cols[i.effects]),
+      number(cols[i.flags]), number(cols[i.x]), number(cols[i.y]), number(cols[i.z]),
+      number(cols[i.vx]), number(cols[i.vy]), number(cols[i.vz]), number(cols[i.pitch]),
+      number(cols[i.yaw]), number(cols[i.roll]), number(cols[i.avel_pitch]), number(cols[i.avel_yaw]),
+      number(cols[i.avel_roll]), number(cols[i.body]), number(cols[i.skin]), number(cols[i.sequence]),
+      number(cols[i.gaitsequence]), number(cols[i.frame]), number(cols[i.framerate]), number(cols[i.animtime]),
+      number(cols[i.scale]), number(cols[i.rendermode]), number(cols[i.renderamt]), number(cols[i.renderfx]),
+      number(cols[i.render_r]), number(cols[i.render_g]), number(cols[i.render_b]), number(cols[i.controller0]),
+      number(cols[i.controller1]), number(cols[i.controller2]), number(cols[i.controller3]),
+      number(cols[i.blending0]), number(cols[i.blending1]), number(cols[i.aiment])
+    );
+  }, ENTITIES_COLUMNS);
+  return [...tracks].map(([entityId, values]) => ({ entityId, stride: 45, frames: values.finish() }));
+}
+
+async function loadEntityCensus(url) {
+  const census = [];
+  await rows(url, (cols, i) => {
+    census.push({
+      time: number(cols[i.time_ms]) / 1000,
+      entity: number(cols[i.entity]),
+      entityGeneration: number(cols[i.entity_generation]),
+      classname: cols[i.classname] || "",
+      model: (cols[i.model] || "").replace(/\\/g, "/").toLowerCase(),
+      modelIndex: number(cols[i.model_index]),
+      movetype: number(cols[i.movetype]),
+      solid: number(cols[i.solid]),
+      effects: number(cols[i.effects]),
+      rendermode: number(cols[i.rendermode]),
+      stream: cols[i.stream] || "excluded",
+      reason: cols[i.reason] || "",
+      observation: cols[i.observation] || ""
+    });
+  }, ENTITY_CENSUS_COLUMNS);
+  return census;
+}
+
 async function loadEvents(url) {
   const output = [];
   await rows(url, (cols, i) => {
@@ -479,6 +579,9 @@ const LIVE_FILE_KEYS = {
   buildables: "buildables.csv",
   brushDefs: "brush_defs.csv",
   brushes: "brushes.csv",
+  entityDefs: "entity_defs.csv",
+  entities: "entities.csv",
+  entityCensus: "entity_census.csv",
   events: "events.csv"
 };
 
@@ -496,12 +599,13 @@ function transferFor(payload) {
     ...payload.projectiles.map(track => track.frames.buffer),
     ...payload.objectives.map(track => track.frames.buffer),
     ...payload.buildables.map(track => track.frames.buffer),
-    ...payload.brushes.map(track => track.frames.buffer)
+    ...payload.brushes.map(track => track.frames.buffer),
+    ...payload.entities.map(track => track.frames.buffer)
   ];
 }
 
 async function loadTelemetry(files, schemaVersion, progress = false) {
-  if (![2, 3, 4].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
+  if (![2, 3, 4, 5].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
   if (progress) self.postMessage({ type: "progress", label: "Loading roster…" });
   const roster = await loadRoster(sourceFor(files, "roster"));
   const renderModels = schemaVersion >= 3 ? await loadRenderModels(sourceFor(files, "renderModels")) : [];
@@ -524,15 +628,21 @@ async function loadTelemetry(files, schemaVersion, progress = false) {
     ? await loadBuildableDefinitions(sourceFor(files, "buildableDefs")) : [];
   const buildables = schemaVersion >= 3
     ? await loadBuildables(sourceFor(files, "buildables"), buildableDefinitions, renderModels) : [];
-  const brushDefinitions = schemaVersion === 4
+  const brushDefinitions = schemaVersion >= 4
     ? await loadBrushDefinitions(sourceFor(files, "brushDefs")) : [];
-  const brushes = schemaVersion === 4
+  const brushes = schemaVersion >= 4
     ? await loadBrushes(sourceFor(files, "brushes"), brushDefinitions) : [];
+  const entityDefinitions = schemaVersion >= 5
+    ? await loadEntityDefinitions(sourceFor(files, "entityDefs"), renderModels) : [];
+  const entities = schemaVersion >= 5
+    ? await loadEntities(sourceFor(files, "entities"), entityDefinitions, renderModels) : [];
+  const entityCensus = schemaVersion >= 5
+    ? await loadEntityCensus(sourceFor(files, "entityCensus")) : [];
   const events = await loadEvents(sourceFor(files, "events"));
   return {
     roster, renderModels, players, projectileDefinitions, projectiles,
     objectiveDefinitions, objectives, buildableDefinitions, buildables,
-    brushDefinitions, brushes, events
+    brushDefinitions, brushes, entityDefinitions, entities, entityCensus, events
   };
 }
 
@@ -563,6 +673,7 @@ async function loadLiveSnapshot(message) {
     objectiveDefinitions: new Map(),
     buildableDefinitions: new Map(),
     brushDefinitions: new Map(),
+    entityDefinitions: new Map(),
     latestWeapons: new Map()
   };
   for (const [fileName, text] of Object.entries(message.files || {})) rememberHeader(fileName, text);
@@ -572,6 +683,7 @@ async function loadLiveSnapshot(message) {
   mergeDefinitions(liveContext.objectiveDefinitions, payload.objectiveDefinitions, "objectiveId");
   mergeDefinitions(liveContext.buildableDefinitions, payload.buildableDefinitions, "buildableId");
   mergeDefinitions(liveContext.brushDefinitions, payload.brushDefinitions, "brushId");
+  mergeDefinitions(liveContext.entityDefinitions, payload.entityDefinitions, "entityId");
   rememberLatestWeapons(payload.players);
   self.postMessage({ type: "live-complete", sequence: message.sequence, payload }, transferFor(payload));
 }
@@ -617,11 +729,20 @@ async function loadLiveAppend(message) {
     ? await loadBuildables(
       source("buildables.csv"), [...liveContext.buildableDefinitions.values()], renderModels, true
     ) : [];
-  const brushDefinitions = schemaVersion === 4 && source("brush_defs.csv")
+  const brushDefinitions = schemaVersion >= 4 && source("brush_defs.csv")
     ? await loadBrushDefinitions(source("brush_defs.csv")) : [];
   mergeDefinitions(liveContext.brushDefinitions, brushDefinitions, "brushId");
-  const brushes = schemaVersion === 4 && source("brushes.csv")
+  const brushes = schemaVersion >= 4 && source("brushes.csv")
     ? await loadBrushes(source("brushes.csv"), [...liveContext.brushDefinitions.values()]) : [];
+  const entityDefinitions = schemaVersion >= 5 && source("entity_defs.csv")
+    ? await loadEntityDefinitions(source("entity_defs.csv"), renderModels) : [];
+  mergeDefinitions(liveContext.entityDefinitions, entityDefinitions, "entityId");
+  const entities = schemaVersion >= 5 && source("entities.csv")
+    ? await loadEntities(
+      source("entities.csv"), [...liveContext.entityDefinitions.values()], renderModels, true
+    ) : [];
+  const entityCensus = schemaVersion >= 5 && source("entity_census.csv")
+    ? await loadEntityCensus(source("entity_census.csv")) : [];
   const events = source("events.csv") ? await loadEvents(source("events.csv")) : [];
   const payload = {
     roster,
@@ -635,6 +756,9 @@ async function loadLiveAppend(message) {
     buildables,
     brushDefinitions,
     brushes,
+    entityDefinitions,
+    entities,
+    entityCensus,
     events
   };
   self.postMessage({ type: "live-delta", sequence: batch.sequence, payload }, transferFor(payload));

@@ -20,6 +20,9 @@ const LIVE_FILE_ORDER = [
   "buildables.csv",
   "brush_defs.csv",
   "brushes.csv",
+  "entity_defs.csv",
+  "entities.csv",
+  "entity_census.csv",
   "events.csv"
 ];
 const LIVE_FILES = new Set(LIVE_FILE_ORDER);
@@ -29,7 +32,9 @@ const DICTIONARY_FILES = new Set([
   "projectile_defs.csv",
   "objective_defs.csv",
   "buildable_defs.csv",
-  "brush_defs.csv"
+  "brush_defs.csv",
+  "entity_defs.csv",
+  "entity_census.csv"
 ]);
 
 function cleanIdentity(serverId, matchId, roundText) {
@@ -56,7 +61,7 @@ function parseIngestMetadata(headers) {
   if (typeof sequenceText !== "string" || !/^[1-9]\d{0,9}$/.test(sequenceText)) {
     throw pickupError(400, "invalid_sequence");
   }
-  if (typeof schemaText !== "string" || !/^[234]$/.test(schemaText)) {
+  if (typeof schemaText !== "string" || !/^[2345]$/.test(schemaText)) {
     throw pickupError(400, "invalid_schema_version");
   }
   return {
