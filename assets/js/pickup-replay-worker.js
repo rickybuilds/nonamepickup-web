@@ -162,7 +162,7 @@ async function loadRenderModels(url) {
         !["player", "weapon", "projectile", "objective", "buildable", "entity"].includes(kind) ||
         modelPath.includes("\0") || /^[a-z][a-z0-9+.-]*:\/\//i.test(modelPath) || /^[a-z]:/i.test(modelPath) ||
         modelPath.replace(/\\/g, "/").split("/").some(part => !part || part === "." || part === "..") ||
-        !/^models\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.(?:mdl|spr)$/i.test(modelPath.replace(/\\/g, "/")) ||
+        !/^(?:models\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.(?:mdl|spr)|sprites\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.spr)$/i.test(modelPath.replace(/\\/g, "/")) ||
         (kind !== "entity" && !/\.mdl$/i.test(modelPath))) {
       throw new Error("Invalid render model dictionary.");
     }

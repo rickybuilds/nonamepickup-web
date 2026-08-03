@@ -148,7 +148,7 @@ function safeTfcModelPath(value) {
   const normalized = value.trim().replace(/\\/g, "/").toLowerCase();
   if (normalized.length < 12 || normalized.length > 255 || path.posix.isAbsolute(normalized) ||
       normalized.split("/").some(part => !part || part === "." || part === "..") ||
-      !/^models\/[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)*\.(?:mdl|spr)$/.test(normalized)) {
+      !/^(?:models\/[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)*\.(?:mdl|spr)|sprites\/[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)*\.spr)$/.test(normalized)) {
     throw pickupError(422, "unsafe_render_model_path", { quarantine: true });
   }
   return normalized;

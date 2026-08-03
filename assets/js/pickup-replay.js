@@ -2361,7 +2361,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802schema5entities1");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260803entitysprites1");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -2520,7 +2520,7 @@ let liveWorkerPending = null;
 
 function ensureLiveWorker() {
   if (liveWorker) return;
-  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260802schema5entities1");
+  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260803entitysprites1");
   liveWorker.onmessage = event => {
     if (event.data.type === "progress") return setStatus(event.data.label);
     if (!liveWorkerPending) return;
