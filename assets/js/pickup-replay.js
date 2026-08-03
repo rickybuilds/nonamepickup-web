@@ -1137,9 +1137,17 @@ function buildVisuals() {
     }
   }
   for (const track of state.projectiles) {
-    const recorded = state.projectileDefinitions.get(track.projectileId);
+    const rawRecorded = state.projectileDefinitions.get(track.projectileId);
+    // In live mode a projectile definition can precede its render_models row.
+    // Re-resolve the model id here so a late dictionary row reclassifies a
+    // bare catalog rocket as the flare-enabled canonical rocket visual.
+    const resolvedModel = rawRecorded?.model ||
+      state.renderModels.get(Number(rawRecorded?.modelId))?.path || "";
+    const recorded = rawRecorded && resolvedModel !== rawRecorded.model
+      ? { ...rawRecorded, model: resolvedModel }
+      : rawRecorded;
     const definitionSignature = recorded
-      ? `${recorded.modelId || 0}:${recorded.classname || ""}:${recorded.model || ""}:${recorded.ownerWeapon || 0}`
+      ? `${recorded.modelId || 0}:${recorded.classname || ""}:${resolvedModel}:${recorded.ownerWeapon || 0}`
       : "pending";
     if (track.mesh && track.definitionSignature === definitionSignature) continue;
     track.recordedDefinition = recorded;
