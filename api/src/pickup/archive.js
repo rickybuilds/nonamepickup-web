@@ -171,7 +171,11 @@ function validateRenderModels(document, catalog) {
     if (!catalogEntry && row.kind !== "entity") {
       throw pickupError(422, "render_model_not_allowlisted", { quarantine: true });
     }
-    if (catalogEntry && catalogEntry.kind !== row.kind) {
+    // Generic entity telemetry can legitimately observe an edict that reuses
+    // a model catalogued for a specialized stream (for example, a player
+    // corpse using a player model). The catalog still provides the trusted
+    // asset URL; only specialized streams require an exact catalog kind.
+    if (catalogEntry && row.kind !== "entity" && catalogEntry.kind !== row.kind) {
       throw pickupError(422, "render_model_catalog_kind_mismatch", { quarantine: true });
     }
     models.set(modelId, {

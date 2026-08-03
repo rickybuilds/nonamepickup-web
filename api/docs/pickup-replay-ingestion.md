@@ -131,9 +131,10 @@ appends recorder animation state and the `player_model_id` and
 `weapon_model_id` dictionary references. `render_models.csv` contains
 `model_id,kind,path,first_seen_ms`; IDs are positive, round-local, and unique,
 while any reference of zero means no model was available. Nonzero references
-must exist and match the expected `player`, `weapon`, `projectile`, `objective`,
-`buildable`, or `entity` kind. Separators and casing are normalized before
-lookup. Model paths must be safe relative `models/.../*.mdl` paths with no URL,
+for specialized streams must exist and match the expected `player`, `weapon`,
+`projectile`, `objective`, or `buildable` kind. Generic `entity` references may
+reuse a catalogued specialized model when an edict represents something such
+as a player corpse. Separators and casing are normalized before lookup. Model paths must be safe relative `models/.../*.mdl` paths with no URL,
 drive letter, absolute prefix, null byte, or dot segment, and must exist in the
 generated standard-TFC catalog. Generic entities may also name a safe `.spr`
 path; unknown generic assets render as diagnostics and never trigger a

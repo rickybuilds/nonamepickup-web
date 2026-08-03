@@ -1,2 +1,4 @@
 assets/models/** filter=lfs diff=lfs merge=lfs -text
 assets/sprites/** filter=lfs diff=lfs merge=lfs -text
+*.sh text eol=lf
+deploy/systemd/* text eol=lf

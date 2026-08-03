@@ -521,7 +521,9 @@ function catalogUrl(modelId, expectedKind) {
   const recorded = state.renderModels.get(Number(modelId));
   if (!recorded || recorded.kind !== expectedKind) return null;
   const catalog = state.modelCatalog.get(recorded.path);
-  return catalog?.kind === expectedKind ? catalog.url : null;
+  return catalog && (catalog.kind === expectedKind || expectedKind === "entity")
+    ? catalog.url
+    : null;
 }
 
 function objectiveTeam(definition, objectiveId) {
