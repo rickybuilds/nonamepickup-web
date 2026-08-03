@@ -3,7 +3,7 @@ import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/
 import {
   ReplayProjectileVisuals,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260803rocketfx3";
+} from "./replay-projectile-visuals.js?v=20260803rocketfx4";
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
@@ -1157,12 +1157,22 @@ function buildVisuals() {
       projectileRoot.add(track.mesh);
     }
     track.definitionSignature = definitionSignature;
+    if (track.rocketTrail) {
+      projectileRoot.remove(track.rocketTrail);
+      track.rocketTrail.geometry.dispose();
+      track.rocketTrail.material.dispose();
+      track.rocketTrail = null;
+    }
     track.mesh.clear();
     // A white sphere is useful in completed-replay diagnostics, but confusing
     // in a live feed while its dictionary/model row is only milliseconds late.
     // Known projectile types retain their intentional fallback geometry.
     if (recorded && track.definition.key !== "unknown") {
       track.mesh.add(projectileVisuals.projectile(track.definition));
+      if (track.definition.flare) {
+        track.rocketTrail = projectileVisuals.rocketTrail();
+        projectileRoot.add(track.rocketTrail);
+      }
     }
     track.mesh.visible = false;
     void setProjectileCatalogModel(track, definitionSignature);
@@ -2168,6 +2178,24 @@ function updateProjectiles() {
     if (!track.mesh) continue;
     const frame = projectileSnapshot(track, state.playbackTime);
     track.mesh.visible = Boolean(frame);
+    if (track.rocketTrail) {
+      const samples = [];
+      const cutoff = state.playbackTime - 3;
+      for (let offset = 0; offset < track.frames.length; offset += track.stride) {
+        const time = track.frames[offset];
+        if (time > state.playbackTime) break;
+        if (time < cutoff || track.frames[offset + 1] !== 1) continue;
+        samples.push({
+          time,
+          point: sourcePoint(
+            track.frames[offset + 2],
+            track.frames[offset + 3],
+            track.frames[offset + 4]
+          )
+        });
+      }
+      projectileVisuals.updateRocketTrail(track.rocketTrail, samples, state.playbackTime, 3);
+    }
     if (!frame) continue;
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     projectileVisuals.rotate(track.mesh, track.definition, frame.yaw, state.playbackTime);

@@ -295,6 +295,50 @@ export class ReplayProjectileVisuals {
     return visual;
   }
 
+  rocketTrail() {
+    const geometry = new THREE.BufferGeometry();
+    const material = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false
+    });
+    const trail = new THREE.Line(geometry, material);
+    trail.name = "rocket-history-trail";
+    trail.frustumCulled = false;
+    trail.renderOrder = 79;
+    trail.visible = false;
+    return trail;
+  }
+
+  updateRocketTrail(trail, samples, playbackTime, lifetime = 3) {
+    if (!trail) return;
+    const cutoff = playbackTime - lifetime;
+    const active = samples.filter(sample => sample.time <= playbackTime && sample.time >= cutoff);
+    if (active.length < 2) {
+      trail.visible = false;
+      return;
+    }
+    const positions = new Float32Array(active.length * 3);
+    const colors = new Float32Array(active.length * 3);
+    for (const [index, sample] of active.entries()) {
+      positions[index * 3] = sample.point.x;
+      positions[index * 3 + 1] = sample.point.y;
+      positions[index * 3 + 2] = sample.point.z;
+      const life = THREE.MathUtils.clamp((sample.time - cutoff) / lifetime, 0, 1);
+      const fade = life ** 1.7;
+      colors[index * 3] = fade;
+      colors[index * 3 + 1] = 0.035 * fade;
+      colors[index * 3 + 2] = 0.02 * fade;
+    }
+    trail.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    trail.geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    trail.geometry.computeBoundingSphere();
+    trail.visible = true;
+  }
+
   sprite(key, color = 0xffffff) {
     const frames = this.sprites.get(key);
     const loaded = Array.isArray(frames) && frames.length ? frames : null;
