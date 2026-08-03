@@ -604,7 +604,7 @@ function transferFor(payload) {
   ];
 }
 
-async function loadTelemetry(files, schemaVersion, progress = false) {
+async function loadTelemetry(files, schemaVersion, progress = false, allowUnresolved = false) {
   if (![2, 3, 4, 5].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
   if (progress) self.postMessage({ type: "progress", label: "Loading roster…" });
   const roster = await loadRoster(sourceFor(files, "roster"));
@@ -627,7 +627,7 @@ async function loadTelemetry(files, schemaVersion, progress = false) {
   const buildableDefinitions = schemaVersion >= 3
     ? await loadBuildableDefinitions(sourceFor(files, "buildableDefs")) : [];
   const buildables = schemaVersion >= 3
-    ? await loadBuildables(sourceFor(files, "buildables"), buildableDefinitions, renderModels) : [];
+    ? await loadBuildables(sourceFor(files, "buildables"), buildableDefinitions, renderModels, allowUnresolved) : [];
   const brushDefinitions = schemaVersion >= 4
     ? await loadBrushDefinitions(sourceFor(files, "brushDefs")) : [];
   const brushes = schemaVersion >= 4
@@ -635,7 +635,7 @@ async function loadTelemetry(files, schemaVersion, progress = false) {
   const entityDefinitions = schemaVersion >= 5
     ? await loadEntityDefinitions(sourceFor(files, "entityDefs"), renderModels) : [];
   const entities = schemaVersion >= 5
-    ? await loadEntities(sourceFor(files, "entities"), entityDefinitions, renderModels) : [];
+    ? await loadEntities(sourceFor(files, "entities"), entityDefinitions, renderModels, allowUnresolved) : [];
   const entityCensus = schemaVersion >= 5
     ? await loadEntityCensus(sourceFor(files, "entityCensus")) : [];
   const events = await loadEvents(sourceFor(files, "events"));
@@ -677,7 +677,7 @@ async function loadLiveSnapshot(message) {
     latestWeapons: new Map()
   };
   for (const [fileName, text] of Object.entries(message.files || {})) rememberHeader(fileName, text);
-  const payload = await loadTelemetry(message.files, schemaVersion, true);
+  const payload = await loadTelemetry(message.files, schemaVersion, true, true);
   mergeDefinitions(liveContext.renderModels, payload.renderModels, "modelId");
   mergeDefinitions(liveContext.projectileDefinitions, payload.projectileDefinitions, "projectileId");
   mergeDefinitions(liveContext.objectiveDefinitions, payload.objectiveDefinitions, "objectiveId");
