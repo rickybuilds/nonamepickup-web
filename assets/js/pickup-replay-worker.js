@@ -497,6 +497,7 @@ async function loadEntityDefinitions(url, renderModels) {
 
 async function loadEntities(url, definitions, renderModels, allowUnresolved = false) {
   const tracks = new Map();
+  const lastTimes = new Map();
   const ids = new Set(definitions.map(definition => definition.entityId));
   const models = new Map(renderModels.map(model => [model.modelId, model]));
   await rows(url, (cols, i) => {
@@ -508,8 +509,11 @@ async function loadEntities(url, definitions, renderModels, allowUnresolved = fa
       throw new Error("Generic entity state references an invalid definition or model.");
     }
     if (!tracks.has(entityId)) tracks.set(entityId, new Float32Builder());
+    const recordedTime = number(cols[i.time_ms]);
+    const timeMs = Math.max(lastTimes.get(entityId) ?? recordedTime, recordedTime);
+    lastTimes.set(entityId, timeMs);
     tracks.get(entityId).push(
-      number(cols[i.time_ms]) / 1000, number(cols[i.active]), number(cols[i.owner_session]),
+      timeMs / 1000, number(cols[i.active]), number(cols[i.owner_session]),
       number(cols[i.owner_entity]), number(cols[i.team]), number(cols[i.health]), modelId,
       number(cols[i.colormap]), number(cols[i.movetype]), number(cols[i.solid]), number(cols[i.effects]),
       number(cols[i.flags]), number(cols[i.x]), number(cols[i.y]), number(cols[i.z]),
