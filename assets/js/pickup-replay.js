@@ -64,6 +64,7 @@ const loader = new GLTFLoader();
 const skyLoader = new THREE.CubeTextureLoader();
 const projectileVisuals = new ReplayProjectileVisuals(loader);
 const modelCache = new Map();
+let replayGlowTexture = null;
 
 const state = {
   metadata: null,
@@ -868,12 +869,61 @@ async function setBuildableModel(track, modelId, team) {
   delete track.mesh.userData.renderSignature;
 }
 
+function glowTexture() {
+  if (replayGlowTexture) return replayGlowTexture;
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.12, "rgba(255,255,255,0.98)");
+  gradient.addColorStop(0.35, "rgba(255,255,255,0.48)");
+  gradient.addColorStop(0.7, "rgba(255,255,255,0.1)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  replayGlowTexture = new THREE.CanvasTexture(canvas);
+  replayGlowTexture.colorSpace = THREE.SRGBColorSpace;
+  return replayGlowTexture;
+}
+
+function createGlowSprite(color = 0xffffff, opacity = 0.8, size = 32) {
+  const material = new THREE.SpriteMaterial({
+    map: glowTexture(),
+    color,
+    transparent: true,
+    opacity: THREE.MathUtils.clamp(opacity, 0, 1),
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false
+  });
+  material.userData.replayBaseColor = material.color.clone();
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(size, size, 1);
+  sprite.renderOrder = 35;
+  sprite.userData.replayGlowSprite = true;
+  return sprite;
+}
+
 async function setEntityModel(track, modelId) {
   if (track.mesh.userData.modelId === modelId) return;
   track.mesh.userData.modelId = modelId;
   track.visual.clear();
+  const recorded = state.renderModels.get(Number(modelId));
+  const semantic = sceneMetadataAt("entity", track.entityId);
+  const classname = String(track.definition?.classname || "").toLowerCase();
+  const isSprite = semantic?.kind === "sprite" || /\.spr$/i.test(recorded?.path || "");
+  // Static env_glow entities are already represented by buildMapLights. Do
+  // not draw a second generic object at the same origin.
+  if (classname === "env_glow") return;
   const url = catalogUrl(modelId, "entity");
   if (!url) {
+    if (isSprite) {
+      track.visual.add(createGlowSprite(0xffffff, 0.8, 48));
+      delete track.mesh.userData.renderSignature;
+      return;
+    }
     track.visual.add(new THREE.Mesh(
       new THREE.BoxGeometry(12, 12, 12),
       new THREE.MeshStandardMaterial({ color: 0xaed7ff, wireframe: true })
@@ -1478,7 +1528,7 @@ function updateEntities() {
         THREE.MathUtils.clamp(frame.color[2] / 255, 0, 1)
       );
       track.visual.traverse(child => {
-        if (!child.isMesh) return;
+        if (!child.isMesh && !child.isSprite) return;
         const materials = Array.isArray(child.material) ? child.material : [child.material];
         for (const material of materials) {
           if (!material) continue;
@@ -1488,7 +1538,7 @@ function updateEntities() {
           }
           material.opacity = opacity;
           material.transparent = opacity < 1 || frame.rendermode !== 0;
-          material.depthWrite = opacity >= 1;
+          material.depthWrite = child.isSprite ? false : opacity >= 1;
           material.needsUpdate = true;
         }
       });
@@ -1971,16 +2021,17 @@ function buildMapLights(gltf) {
 
     let glow = null;
     if (isGlow) {
-      glow = new THREE.Mesh(
-        new THREE.SphereGeometry(4.5, 8, 6),
-        new THREE.MeshBasicMaterial({
-          color, transparent: true,
-          opacity: THREE.MathUtils.clamp((Number(entity.renderamt) || 150) / 255, 0.15, 1),
-          blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
-        })
+      const glowSize = THREE.MathUtils.clamp(
+        (Number(entity.scale) || 0.35) * 72,
+        16,
+        72
+      );
+      glow = createGlowSprite(
+        color,
+        THREE.MathUtils.clamp((Number(entity.renderamt) || 150) / 255, 0.15, 1),
+        glowSize
       );
       glow.position.copy(position);
-      glow.renderOrder = 35;
       mapLightRoot.add(glow);
     }
 
