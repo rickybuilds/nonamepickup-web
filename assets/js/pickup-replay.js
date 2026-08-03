@@ -152,6 +152,7 @@ let mapModel = null;
 let mapBeamGroup = null;
 let mapLightDefinitions = [];
 let mapRotators = [];
+let mapTriggeredBrushes = [];
 let liveWorker = null;
 let liveEventSource = null;
 let liveBatchQueue = Promise.resolve();
@@ -1633,8 +1634,19 @@ function updateBrushes() {
   }
 }
 
+function updateMapTriggeredBrushes() {
+  const now = state.playbackTime;
+  for (const visual of mapTriggeredBrushes) {
+    const disabled = visual.controllerTrack && buttonActivationTimes(visual.controllerTrack).some(
+      time => time <= now && time + visual.duration >= now
+    );
+    visual.node.visible = visual.startsOn ? !disabled : Boolean(disabled);
+  }
+}
+
 function buildMapEntityBrushes(gltf) {
   mapRotators = [];
+  mapTriggeredBrushes = [];
   if (!mapModel) return;
   const nodes = new Map();
   mapModel.traverse(child => {
@@ -1650,6 +1662,32 @@ function buildMapEntityBrushes(gltf) {
     if (node && isNonVisualEntityClass(entity?.classname)) {
       node.visible = false;
       continue;
+    }
+    // phantom_lg renders its security lasers as translucent illusionary
+    // shield brushes rather than env_beam entities. Pair each team shield
+    // with the recorded security button so it disappears for the map's
+    // 45-second disabled window and returns with the gameplay trigger.
+    if (
+      node && String(state.metadata?.map || "").toLowerCase() === "phantom_lg" &&
+      entity?.classname === "func_illusionary" && /^[br]shield$/i.test(entity?.targetname || "")
+    ) {
+      const family = String(entity.targetname).charAt(0).toLowerCase();
+      const buttonTarget = `${family}trigger2`;
+      const controllerTrack = state.brushes.find(track => {
+        const brush = state.brushDefinitions.get(track.brushId);
+        return ["func_button", "func_rot_button"].includes(brush?.classname) &&
+          brush?.target === buttonTarget;
+      }) || null;
+      const buttonEntity = entities.find(candidate =>
+        ["func_button", "func_rot_button"].includes(candidate?.classname) &&
+        candidate?.target === buttonTarget
+      );
+      mapTriggeredBrushes.push({
+        node,
+        controllerTrack,
+        duration: Math.max(0.1, Number(buttonEntity?.wait) || 45),
+        startsOn: true
+      });
     }
     const position = entityPoint(entity?.origin);
     if (!node || !position) continue;
@@ -2219,6 +2257,7 @@ function updateScene() {
   updateBuildables();
   updateEntities();
   updateBrushes();
+  updateMapTriggeredBrushes();
   updateMapRotators();
   updateMapBeams();
   updateCamera();
@@ -2445,6 +2484,7 @@ function loadMap() {
     buildMapSky(gltf);
     buildMapBeams(gltf);
     updateBrushes();
+    updateMapTriggeredBrushes();
     updateMapBeams();
     buildMapLights(gltf);
     if (grid) grid.visible = false;
