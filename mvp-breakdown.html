@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Break down every NoName TFC MVP score by match-relative combat, objective, impact, and discipline contributions.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/mvp-breakdown.html">
+  <title>NoName TFC Pickups | MVP Breakdown</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/mvp-breakdown.css?v=20260803a">
+  <script src="assets/js/main.js?v=20260618i" defer></script>
+  <script src="assets/js/mvp-breakdown.js?v=20260803a" defer></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] matches-page">
+<div class="site-bg-grid"></div>
+<div class="site-bg-glow site-bg-glow-a"></div>
+<div class="site-bg-glow site-bg-glow-b"></div>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="nn-logo" aria-label="NoName TFC">
+      <span class="logo-nn">NN</span><span class="logo-slash">//</span><span class="logo-tfc">TFC</span>
+    </div>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="speedruns.html">Speedruns</a>
+      <a href="live.html" class="nav-live">LIVE</a>
+      <a href="matches.html" aria-current="page">Matches</a>
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="analytics.html">Analytics</a>
+      <a href="compare.html">Compare</a>
+    </nav>
+    <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+  </div>
+</header>
+
+<main class="mvpb-main">
+  <section class="mvpb-hero">
+    <div>
+      <p class="mvpb-kicker">NN MVP LAB</p>
+      <h1>MVP Score Breakdown</h1>
+      <p>See exactly how every player's match-relative score was produced.</p>
+    </div>
+    <form id="mvpb-form" class="mvpb-search" novalidate>
+      <label for="mvpb-match-id">Match ID</label>
+      <div>
+        <input id="mvpb-match-id" name="id" type="text" maxlength="100" autocomplete="off" spellcheck="false" placeholder="e.g. YFSBC4" required>
+        <button type="submit">Break It Down</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="mvpb-results" class="mvpb-results" aria-live="polite">
+    <div class="mvpb-empty">
+      <strong>Enter a match ID to begin.</strong>
+      <span>The breakdown uses the same formula and source statistics as the official NoName MVP result.</span>
+    </div>
+  </section>
+</main>
+</body>
+</html>

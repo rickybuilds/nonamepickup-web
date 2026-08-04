@@ -3,6 +3,7 @@
 const FORMULA_VERSION = "nn-mvp-v1";
 const MIN_PLAYERS = 4;
 const Z_CLAMP = 3;
+const BASE_SCORE = 50;
 
 const COMPONENTS = {
   combat: {
@@ -62,6 +63,11 @@ function roundDisplayScore(value) {
   return Math.round(num(value) * 10) / 10;
 }
 
+function roundMetric(value, places = 4) {
+  const factor = 10 ** places;
+  return Math.round(num(value) * factor) / factor;
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -73,10 +79,22 @@ function playerIdentity(row) {
 function emptyPayload(reason) {
   return {
     formula_version: FORMULA_VERSION,
+    formula: publicFormula(),
     available: false,
     reason,
     winner: null,
     players: []
+  };
+}
+
+function publicFormula() {
+  return {
+    base_score: BASE_SCORE,
+    z_clamp: Z_CLAMP,
+    standard_deviation: "population",
+    components: Object.fromEntries(
+      Object.entries(COMPONENTS).map(([component, fields]) => [component, { ...fields }])
+    )
   };
 }
 
@@ -135,6 +153,15 @@ function zScores(players, field) {
   return out;
 }
 
+function fieldDistribution(players, field) {
+  const values = players.map(player => num(player.raw[field]));
+  const avg = mean(values);
+  return {
+    mean: avg,
+    stddev: stddev(values, avg)
+  };
+}
+
 function rankPlayers(players, field, ascending = false) {
   const sorted = [...players].sort((a, b) => {
     const diff = ascending
@@ -162,6 +189,36 @@ function calculateComponent(players, player, component, zByField) {
     score += weight * num(zByField[field]?.get(player.player_key));
   }
   return score;
+}
+
+function buildScoreBreakdown(player, zByField, distributions) {
+  const components = {};
+
+  for (const [component, weights] of Object.entries(COMPONENTS)) {
+    const fields = {};
+    for (const [field, weight] of Object.entries(weights)) {
+      const zScore = num(zByField[field]?.get(player.player_key));
+      const distribution = distributions[field] || {};
+      fields[field] = {
+        raw: roundMetric(player.raw[field]),
+        mean: roundMetric(distribution.mean),
+        stddev: roundMetric(distribution.stddev),
+        z_score: roundMetric(zScore, 6),
+        weight,
+        contribution: roundScore(weight * zScore)
+      };
+    }
+    components[component] = {
+      score: roundScore(player.components[component]),
+      fields
+    };
+  }
+
+  return {
+    base_score: BASE_SCORE,
+    components,
+    final_score: roundScore(player.final_score)
+  };
 }
 
 function displayScale(value, min, max) {
@@ -241,7 +298,8 @@ function publicPlayer(player, includeReasons = false) {
       discipline: roundDisplayScore(player.display_components?.discipline)
     },
     raw: player.raw,
-    ranks: player.ranks
+    ranks: player.ranks,
+    score_breakdown: player.score_breakdown
   };
   if (includeReasons) out.reasons = player.reasons || [];
   return out;
@@ -293,6 +351,7 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
   }
 
   const zByField = {};
+  const distributions = {};
   for (const field of [
     ...Object.keys(COMPONENTS.combat),
     ...Object.keys(COMPONENTS.objective),
@@ -300,6 +359,7 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
     ...Object.keys(COMPONENTS.penalty)
   ]) {
     zByField[field] = zScores(players, field);
+    distributions[field] = fieldDistribution(players, field);
   }
 
   for (const field of RANK_DESC_FIELDS) {
@@ -317,11 +377,12 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
     player.components.objective = calculateComponent(players, player, "objective", zByField);
     player.components.impact = calculateComponent(players, player, "impact", zByField);
     player.components.penalty = calculateComponent(players, player, "penalty", zByField);
-    player.final_score = 50
+    player.final_score = BASE_SCORE
       + player.components.combat
       + player.components.objective
       + player.components.impact
       + player.components.penalty;
+    player.score_breakdown = buildScoreBreakdown(player, zByField, distributions);
   }
 
   addDisplayScores(players);
@@ -344,6 +405,7 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
 
   return {
     formula_version: FORMULA_VERSION,
+    formula: publicFormula(),
     available: true,
     winner: publicPlayer(winner, true),
     players: players.map(player => publicPlayer(player))
