@@ -51,7 +51,6 @@
     <div>
       <span class="sel-control-label">Replay window</span>
       <div id="sel-window" class="sel-segments">
-        <button type="button" data-limit="10">10</button>
         <button type="button" data-limit="20" class="active">20</button>
         <button type="button" data-limit="50">50</button>
         <button type="button" data-limit="100">100</button>
@@ -71,11 +70,7 @@
     <section class="sel-card sel-chart-card">
       <div class="sel-card-head">
         <div><p class="sel-card-kicker">ELO TRAJECTORY</p><h2>Player paths</h2></div>
-        <div id="sel-chart-scenarios" class="sel-scenario-tabs" aria-label="Chart scenario">
-          <button type="button" data-scenario="actual" class="active">Actual V1</button>
-          <button type="button" data-scenario="wide">Wide 15–35</button>
-          <button type="button" data-scenario="gentle">Gentle 20–30</button>
-        </div>
+        <div id="sel-chart-player" class="sel-chart-player">Select a player below</div>
       </div>
       <div class="sel-chart-wrap"><canvas id="sel-chart"></canvas></div>
       <p class="sel-chart-note">Select a player in the table to spotlight their line. Everyone begins at their recorded Elo before the oldest game.</p>
@@ -102,10 +97,17 @@
       <div id="sel-matches" class="sel-matches"></div>
     </section>
 
+    <section id="sel-validation" class="sel-card sel-validation" hidden></section>
+
     <aside class="sel-disclaimer">
       <strong>Historical simulation — no live Elo is changed.</strong>
       <p>The selected games are replayed oldest to newest using their real recorded team pools. The simulator changes only how each pool is divided among that game's four players; it does not recalculate later match odds. No Name MVP performance is not yet adjusted for role or class.</p>
     </aside>
+
+    <section class="sel-card sel-methodology">
+      <div class="sel-card-head"><div><p class="sel-card-kicker">METHODOLOGY</p><h2>Fixed-pool replay</h2></div></div>
+      <p>Shadow Elo preserves each team’s historical V1 Elo total and only changes how that total is divided among teammates. Match outcomes and historical records are never changed.</p>
+    </section>
   </div>
 </main>
 </body>

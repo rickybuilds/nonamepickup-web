@@ -245,13 +245,13 @@ function selRenderKpis(replay) {
     { name: player.name, scenario: "Gentle", value: player.gentle - player.actual }
   ]).sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
   const largest = shifts[0];
-  const fallbacks = replay.games.filter(game => game.fallback).length;
-  const complete = replay.games.filter(game => !game.incomplete).length;
+  const fallbacks = replay.summary?.fallback_matches ?? replay.games.filter(game => game.fallback).length;
+  const discrepancies = replay.summary?.validation_discrepancies ?? replay.validation?.length ?? 0;
   document.getElementById("sel-kpis").innerHTML = `
     <article class="sel-kpi"><span>Actual games replayed</span><strong>${replay.games.length}</strong><small>Oldest through today</small></article>
     <article class="sel-kpi accent"><span>Players compared</span><strong>${replay.players.length}</strong><small>Real V1 starting Elo</small></article>
-    <article class="sel-kpi good"><span>Complete simulations</span><strong>${complete}/${replay.games.length}</strong><small>Both allocation ranges available</small></article>
-    <article class="sel-kpi ${fallbacks ? "warn" : ""}"><span>Largest ending shift</span><strong>${largest ? selSigned(largest.value, 1) : "—"}</strong><small>${largest ? `${selEscape(largest.name)} · ${largest.scenario}` : `${fallbacks} equal-share fallbacks`}</small></article>
+    <article class="sel-kpi ${fallbacks ? "warn" : "good"}"><span>Equal-share fallbacks</span><strong>${fallbacks}</strong><small>${discrepancies} V1 validation discrepancies</small></article>
+    <article class="sel-kpi"><span>Largest ending shift</span><strong>${largest ? selSigned(largest.value, 1) : "—"}</strong><small>${largest ? `${selEscape(largest.name)} · ${largest.scenario}` : "No simulated movement"}</small></article>
   `;
 }
 
@@ -259,21 +259,24 @@ function selRenderChart() {
   const replay = selState.replay;
   if (!replay || typeof Chart === "undefined") return;
   const canvas = document.getElementById("sel-chart");
-  const selected = selState.selectedPlayer;
-  const datasets = replay.players.map((player, index) => {
-    const isSelected = !selected || selected === player.id;
-    return {
-      label: player.name,
-      data: player.paths[selState.scenario],
-      borderColor: isSelected ? SEL_COLORS[index % SEL_COLORS.length] : "rgba(110,125,156,.18)",
-      backgroundColor: "transparent",
-      borderWidth: selected === player.id ? 3 : isSelected ? 1.5 : 1,
-      pointRadius: selected === player.id ? 2.5 : 0,
-      pointHoverRadius: 4,
-      tension: .22,
-      spanGaps: true
-    };
-  });
+  const player = replay.players.find(item => item.id === selState.selectedPlayer) || replay.players[0];
+  if (!player) return;
+  document.getElementById("sel-chart-player").textContent = player.name;
+  const datasets = [
+    { key: "actual", label: "Actual V1", color: "#4d8fff" },
+    { key: "wide", label: "Wide 15%-35%", color: "#a78bfa" },
+    { key: "gentle", label: "Gentle 20%-30%", color: "#4ade80" }
+  ].map(series => ({
+    label: series.label,
+    data: player.paths[series.key],
+    borderColor: series.color,
+    backgroundColor: "transparent",
+    borderWidth: 2.5,
+    pointRadius: 1.5,
+    pointHoverRadius: 4,
+    tension: .22,
+    spanGaps: true
+  }));
 
   if (selState.chart) selState.chart.destroy();
   selState.chart = new Chart(canvas.getContext("2d"), {
@@ -282,7 +285,7 @@ function selRenderChart() {
     options: {
       responsive: true, maintainAspectRatio: false, interaction: { mode: "nearest", intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: { display: true, labels: { color: "#9baccc", boxWidth: 18, boxHeight: 2, font: { size: 10, weight: "bold" } } },
         tooltip: { backgroundColor: "#050a14", borderColor: "rgba(77,143,255,.35)", borderWidth: 1, titleColor: "#fff", bodyColor: "#b7c4df" }
       },
       scales: {
@@ -319,11 +322,12 @@ function selMatchRows(game) {
   return game.players.slice().sort((a, b) => a.team.localeCompare(b.team) || (a.rank || 99) - (b.rank || 99)).map(player => `
     <tr>
       <td><i class="sel-team-tag ${player.team.toLowerCase()}"></i><span class="sel-player-name">${selEscape(player.name)}</span></td>
+      <td>${selNumber(player.before, 1)}</td>
       <td>${Number.isFinite(player.nn_score) ? selNumber(player.nn_score, 2) : "—"}</td>
       <td>${Number.isFinite(player.rank) ? `#${player.rank}` : "—"}</td>
       <td class="${selTone(player.actual_delta)}">${selSigned(player.actual_delta, 1)}</td>
-      <td class="${selTone(player.wide_delta)}">${selSigned(player.wide_delta, 1)}</td>
-      <td class="${selTone(player.gentle_delta)}">${selSigned(player.gentle_delta, 1)}</td>
+      <td class="${selTone(player.wide_delta)}">${selSigned(player.wide_delta, 1)} <small>${selNumber(Number(player.wide_share || 0) * 100, 1)}%</small></td>
+      <td class="${selTone(player.gentle_delta)}">${selSigned(player.gentle_delta, 1)} <small>${selNumber(Number(player.gentle_share || 0) * 100, 1)}%</small></td>
     </tr>
   `).join("");
 }
@@ -338,23 +342,43 @@ function selRenderMatches(replay) {
         <span class="sel-team-pool blue">Blue ${selSigned(game.pools.BLUE, 0)}</span>
         <span class="sel-team-pool red">Red ${selSigned(game.pools.RED, 0)}</span>
         <span class="sel-chevron">⌄</span>
-        <span class="sel-fallback ${game.fallback ? "" : "none"}">${game.fallback ? "Equal fallback" : game.incomplete ? "Partial snapshot" : "Weighted"}</span>
+        <span class="sel-fallback ${game.fallback ? "" : "none"}" title="${selEscape((game.fallback_reasons || []).join(", "))}">${game.fallback ? "Equal fallback" : "Weighted"}</span>
       </summary>
-      <div class="sel-match-body"><div class="sel-table-scroll"><table class="sel-match-table">
-        <thead><tr><th>Player</th><th>NN score</th><th>Team rank</th><th>Actual V1</th><th>Wide 15–35</th><th>Gentle 20–30</th></tr></thead>
+      <div class="sel-match-body">
+        ${game.fallback ? `<p class="sel-fallback-reason"><strong>Equal-share fallback:</strong> ${selEscape((game.fallback_reasons || []).join(", ").replaceAll("_", " "))}</p>` : ""}
+        <div class="sel-table-scroll"><table class="sel-match-table">
+        <thead><tr><th>Player</th><th>Starting Elo</th><th>NN score</th><th>Team rank</th><th>Actual V1</th><th>Wide 15–35</th><th>Gentle 20–30</th></tr></thead>
         <tbody>${selMatchRows(game)}</tbody>
       </table></div></div>
     </details>
   `).join("");
 }
 
+function selRenderValidation(replay) {
+  const panel = document.getElementById("sel-validation");
+  const rows = replay.validation || [];
+  if (!rows.length) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="sel-card-head"><div><p class="sel-card-kicker">V1 VALIDATION</p><h2>${rows.length} historical discrepancies</h2></div><span class="sel-expand-hint">Shown explicitly; simulated records were not written</span></div>
+    <ul class="sel-validation-list">${rows.slice(0, 100).map(row => `
+      <li><strong>${selEscape(row.match_id)}</strong><b>${selEscape(row.type)}</b><span>${selEscape(row.player_id ? `${row.player_id} · ${row.detail}` : row.detail)}</span></li>
+    `).join("")}</ul>
+  `;
+}
+
 function selRender(replay) {
   selState.replay = replay;
+  if (!replay.players.some(player => player.id === selState.selectedPlayer)) selState.selectedPlayer = replay.players[0]?.id || null;
   selStatus.hidden = true;
   selContent.hidden = false;
   selRenderKpis(replay);
   selRenderPlayers();
   selRenderMatches(replay);
+  selRenderValidation(replay);
   selRenderChart();
 }
 
@@ -381,8 +405,8 @@ async function selLoad() {
     });
     const payload = await response.json();
     if (!response.ok || !payload.ok) throw new Error(payload.error === "shadow_elo_unavailable" ? "Historical simulation data is not available yet." : (payload.error || "The replay could not be loaded."));
-    const replay = selBuildReplay(payload.data || []);
-    if (!replay.games.length) throw new Error("No replayable snapshots were found in this window.");
+    const replay = payload.data;
+    if (!replay?.games?.length) throw new Error("No replayable historical matches were found in this window.");
     if (requestId === selState.requestId) selRender(replay);
   } catch (error) {
     if (requestId !== selState.requestId) return;
@@ -408,14 +432,6 @@ document.getElementById("sel-window")?.addEventListener("click", event => {
   document.querySelectorAll("#sel-window button").forEach(item => item.classList.toggle("active", item === button));
   selRefresh.textContent = `Replay ${selState.limit} games`;
   selLoad();
-});
-
-document.getElementById("sel-chart-scenarios")?.addEventListener("click", event => {
-  const button = event.target.closest("button[data-scenario]");
-  if (!button) return;
-  selState.scenario = button.dataset.scenario;
-  document.querySelectorAll("#sel-chart-scenarios button").forEach(item => item.classList.toggle("active", item === button));
-  selRenderChart();
 });
 
 selPlayerRows?.addEventListener("click", event => {
