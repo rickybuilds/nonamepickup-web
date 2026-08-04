@@ -174,10 +174,10 @@ function mvpbComponentTable(players, key, config) {
   }).join("");
 
   return `
-    <section class="mvpb-card">
+    <section class="mvpb-card mvpb-component-card">
       <div class="mvpb-card-head"><h2>${mvpbEscape(config.label)}</h2><span>${mvpbEscape(config.description)}</span></div>
       <div class="mvpb-table-scroll">
-        <table class="mvpb-table">
+        <table class="mvpb-table mvpb-component-table">
           <thead><tr><th>Rank / Player</th>${headers}<th>${mvpbEscape(config.label)} total</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -213,7 +213,9 @@ function mvpbRender(match, requestedId) {
       <div><strong>Score = ${mvpbNumber(baseScore, 0)} + Combat + Objective + Impact + Penalty</strong><p>Every raw statistic is converted to a z-score against all ${players.length} players using population standard deviation, clamped to ±${mvpbNumber(zClamp, 0)}, and multiplied by its field weight. Hover any contribution to see its match mean, standard deviation, z-score, and weight.</p></div>
     </section>
     ${mvpbSummary(players)}
-    ${Object.entries(MVPB_COMPONENTS).map(([key, config]) => mvpbComponentTable(players, key, config)).join("")}
+    <div class="mvpb-component-grid">
+      ${Object.entries(MVPB_COMPONENTS).map(([key, config]) => mvpbComponentTable(players, key, config)).join("")}
+    </div>
     <p class="mvpb-footnote">Raw statistics are shown above each weighted contribution. Category and final totals are calculated with full-precision values before rounding, so adding the visible two-decimal contributions can occasionally differ by 0.01.</p>
   `;
 }

@@ -37,5 +37,19 @@
 .mvpb-expression{color:#a7b5d4;font-variant-numeric:tabular-nums}
 .mvpb-stat strong{display:block;color:#e8edff;font-size:12px}.mvpb-stat span{display:block;margin-top:3px;font-size:10px;font-weight:900}
 .mvpb-component-total{font-family:Orbitron,system-ui,sans-serif;font-size:14px;font-weight:950}
+.mvpb-component-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.mvpb-component-card{min-width:0;margin-top:0}
+.mvpb-component-card .mvpb-card-head{min-height:70px;padding:13px 15px}
+.mvpb-component-card .mvpb-card-head h2{font-size:14px}
+.mvpb-component-card .mvpb-card-head span{font-size:8px;line-height:1.45;text-align:right}
+.mvpb-component-table{min-width:560px;font-size:10px}
+.mvpb-component-table th,.mvpb-component-table td{padding:8px 7px}
+.mvpb-component-table th{font-size:8px;letter-spacing:.045em}
+.mvpb-component-table .mvpb-rank{width:21px;height:21px;margin-right:6px;border-radius:6px;font-size:9px}
+.mvpb-component-table .mvpb-player{font-size:10px}
+.mvpb-component-table .mvpb-stat strong{font-size:10px}
+.mvpb-component-table .mvpb-stat span{margin-top:1px;font-size:9px}
+.mvpb-component-table .mvpb-component-total{font-size:11px}
 .mvpb-footnote{margin:14px 4px 0;color:#7787aa;font-size:11px;font-weight:700;line-height:1.5}
+@media(max-width:1180px){.mvpb-component-grid{grid-template-columns:1fr}.mvpb-component-card .mvpb-card-head{min-height:0}.mvpb-component-card .mvpb-card-head span{text-align:left}}
 @media(max-width:900px){.mvpb-main{width:100%;padding:14px 8px 40px}.mvpb-hero{grid-template-columns:1fr;padding:20px;border-radius:20px}.mvpb-search>div{grid-template-columns:1fr}.mvpb-search button{width:100%}.mvpb-matchbar{align-items:flex-start;flex-direction:column}.mvpb-formula{grid-template-columns:1fr}.mvpb-formula-badge{width:auto;height:44px}.mvpb-card-head{align-items:flex-start;flex-direction:column}.mvpb-table th,.mvpb-table td{padding:10px}}
