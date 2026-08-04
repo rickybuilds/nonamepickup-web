@@ -168,7 +168,7 @@
 
   function isCloseOrTie(m) {
     const diff = scoreDiff(m);
-    return m.winner === "TIE" || (diff != null && diff < 15);
+    return m.winner === "TIE" || (diff != null && diff < 25);
   }
 
   function isWithin25(m) {
@@ -748,7 +748,7 @@
     const topMap = mapRows[0];
 
     if ($("m2-total-matches")) $("m2-total-matches").textContent = s.totalMatches ?? state.all.length ?? "—";
-    if ($("m2-close-games")) $("m2-close-games").textContent = (Number(o.ties || 0) + Number(o.under15 || 0)) || "—";
+    if ($("m2-close-games")) $("m2-close-games").textContent = Number(o.closeGames || 0) || "—";
     if ($("m2-ties")) $("m2-ties").textContent = o.ties ?? "—";
     if ($("m2-tie-pct")) {
       const pct = o.total ? ((Number(o.ties || 0) / Number(o.total)) * 100).toFixed(1) : "—";

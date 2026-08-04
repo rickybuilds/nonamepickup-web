@@ -113,6 +113,13 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
           SUM(CASE WHEN UPPER(winner)='TIE' THEN 1 ELSE 0 END) AS ties,
           SUM(
             CASE
+              WHEN UPPER(winner) = 'TIE'
+                OR ABS(score_blue - score_red) < 25
+              THEN 1 ELSE 0
+            END
+          ) AS closeGames,
+          SUM(
+            CASE
               WHEN UPPER(winner) != 'TIE'
               AND ABS(score_blue - score_red) < 15
               THEN 1 ELSE 0
