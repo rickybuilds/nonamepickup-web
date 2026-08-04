@@ -5,7 +5,9 @@ const selState = {
   replay: null,
   scenario: "actual",
   selectedPlayer: null,
-  chart: null
+  chart: null,
+  request: null,
+  requestId: 0
 };
 
 const selStatus = document.getElementById("sel-status");
@@ -246,9 +248,9 @@ function selRenderKpis(replay) {
   const fallbacks = replay.games.filter(game => game.fallback).length;
   const complete = replay.games.filter(game => !game.incomplete).length;
   document.getElementById("sel-kpis").innerHTML = `
-    <article class="sel-kpi"><span>Games replayed</span><strong>${replay.games.length}</strong><small>Oldest to newest</small></article>
+    <article class="sel-kpi"><span>Actual games replayed</span><strong>${replay.games.length}</strong><small>Oldest through today</small></article>
     <article class="sel-kpi accent"><span>Players compared</span><strong>${replay.players.length}</strong><small>Real V1 starting Elo</small></article>
-    <article class="sel-kpi good"><span>Complete snapshots</span><strong>${complete}/${replay.games.length}</strong><small>Both shadow scenarios present</small></article>
+    <article class="sel-kpi good"><span>Complete simulations</span><strong>${complete}/${replay.games.length}</strong><small>Both allocation ranges available</small></article>
     <article class="sel-kpi ${fallbacks ? "warn" : ""}"><span>Largest ending shift</span><strong>${largest ? selSigned(largest.value, 1) : "—"}</strong><small>${largest ? `${selEscape(largest.name)} · ${largest.scenario}` : `${fallbacks} equal-share fallbacks`}</small></article>
   `;
 }
@@ -357,6 +359,15 @@ function selRender(replay) {
 }
 
 async function selLoad() {
+  if (selState.request) selState.request.abort();
+  const controller = new AbortController();
+  const requestId = ++selState.requestId;
+  selState.request = controller;
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 30000);
   selRefresh.disabled = true;
   selRefresh.textContent = "Replaying…";
   selContent.hidden = true;
@@ -364,16 +375,27 @@ async function selLoad() {
   selStatus.className = "sel-status";
   selStatus.innerHTML = `<div class="sel-spinner" aria-hidden="true"></div><strong>Replaying ${selState.limit} games…</strong>`;
   try {
-    const response = await fetch(`api/shadow-elo?limit=${selState.limit}`, { cache: "no-store" });
+    const response = await fetch(`api/shadow-elo?limit=${selState.limit}`, {
+      cache: "no-store",
+      signal: controller.signal
+    });
     const payload = await response.json();
-    if (!response.ok || !payload.ok) throw new Error(payload.error === "shadow_elo_unavailable" ? "No shadow snapshots have been stored yet." : (payload.error || "The replay could not be loaded."));
+    if (!response.ok || !payload.ok) throw new Error(payload.error === "shadow_elo_unavailable" ? "Historical simulation data is not available yet." : (payload.error || "The replay could not be loaded."));
     const replay = selBuildReplay(payload.data || []);
     if (!replay.games.length) throw new Error("No replayable snapshots were found in this window.");
-    selRender(replay);
+    if (requestId === selState.requestId) selRender(replay);
   } catch (error) {
+    if (requestId !== selState.requestId) return;
     selStatus.className = "sel-status error";
-    selStatus.innerHTML = `<strong>Shadow Elo is unavailable.</strong><span>${selEscape(error?.message || "Please try again in a moment.")}</span>`;
+    const message = timedOut || error?.name === "AbortError"
+      ? "The 100-game replay took too long. Try again, or use a smaller window while the server catches up."
+      : (error?.message || "Please try again in a moment.");
+    selStatus.innerHTML = `<strong>The Elo simulation is unavailable.</strong><span>${selEscape(message)}</span><button class="sel-refresh" type="button" id="sel-status-retry">Try again</button>`;
+    document.getElementById("sel-status-retry")?.addEventListener("click", selLoad, { once: true });
   } finally {
+    clearTimeout(timeout);
+    if (requestId !== selState.requestId) return;
+    selState.request = null;
     selRefresh.disabled = false;
     selRefresh.textContent = `Replay ${selState.limit} games`;
   }

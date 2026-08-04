@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta name="description" content="Private NoName TFC allocation-only Shadow Elo replay lab.">
-  <title>NoName TFC | Shadow Elo Lab</title>
+  <meta name="description" content="Private NoName TFC historical Elo allocation simulator.">
+  <title>NoName TFC | Historical Elo Simulator</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
@@ -34,16 +34,16 @@
 <main class="sel-main">
   <section class="sel-hero">
     <div class="sel-hero-copy">
-      <p class="sel-kicker">NN RATING LAB / ALLOCATION-ONLY REPLAY</p>
-      <h1>Same team result.<br><span>Different split.</span></h1>
-      <p>Replay recent games from each player's real starting Elo and compare equal-share V1 with two performance-weighted allocations.</p>
+      <p class="sel-kicker">NN RATING LAB / HISTORICAL ELO SIMULATOR</p>
+      <h1>Replay the past.<br><span>See today's Elo.</span></h1>
+      <p>Go back to the oldest game in the selected window, restore every player's Elo from that point, then replay each real game through today using 15–35% or 20–30% team-pool splits.</p>
     </div>
     <div class="sel-pool-demo" aria-label="Allocation comparison example">
       <div class="sel-pool-head"><span>Example team pool</span><strong>+64 Elo</strong></div>
       <div class="sel-pool-row"><span><i class="sel-dot actual"></i>Actual V1</span><b>25% each</b></div>
       <div class="sel-pool-row"><span><i class="sel-dot wide"></i>Wide</span><b>15–35%</b></div>
       <div class="sel-pool-row"><span><i class="sel-dot gentle"></i>Gentle</span><b>20–30%</b></div>
-      <p>Every scenario preserves the exact team pool.</p>
+      <p>Every replay preserves each game's real team Elo pool.</p>
     </div>
   </section>
 
@@ -57,12 +57,12 @@
         <button type="button" data-limit="100">100</button>
       </div>
     </div>
-    <div class="sel-rule"><span>Method</span><strong>Recorded pools only</strong><small>Future odds are not recalculated</small></div>
+    <div class="sel-rule"><span>Method</span><strong>Last N actual rated games</strong><small>Replayed chronologically through today</small></div>
     <button id="sel-refresh" class="sel-refresh" type="button">Replay 20 games</button>
   </section>
 
   <div id="sel-status" class="sel-status" aria-live="polite">
-    <div class="sel-spinner" aria-hidden="true"></div><strong>Loading shadow snapshots…</strong>
+    <div class="sel-spinner" aria-hidden="true"></div><strong>Preparing historical replay…</strong>
   </div>
 
   <div id="sel-content" hidden>
@@ -83,7 +83,7 @@
 
     <section class="sel-card">
       <div class="sel-card-head sel-table-head">
-        <div><p class="sel-card-kicker">ENDING ELO</p><h2>Allocation comparison</h2></div>
+        <div><p class="sel-card-kicker">SIMULATED ELO TODAY</p><h2>Where players would be now</h2></div>
         <label class="sel-filter">Find player<input id="sel-player-filter" type="search" placeholder="Type a name…" autocomplete="off"></label>
       </div>
       <div class="sel-table-scroll">
@@ -103,8 +103,8 @@
     </section>
 
     <aside class="sel-disclaimer">
-      <strong>Research build — no live Elo is changed.</strong>
-      <p>This is an allocation-only replay: later match odds and team pools remain the recorded V1 values. No Name MVP performance is not yet adjusted for role or class, so a quiet Engineer game may not reflect their true impact.</p>
+      <strong>Historical simulation — no live Elo is changed.</strong>
+      <p>The selected games are replayed oldest to newest using their real recorded team pools. The simulator changes only how each pool is divided among that game's four players; it does not recalculate later match odds. No Name MVP performance is not yet adjusted for role or class.</p>
     </aside>
   </div>
 </main>
