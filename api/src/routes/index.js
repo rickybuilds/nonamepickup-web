@@ -15,6 +15,7 @@ const { createSpeedrunsRouter } = require("./speedruns");
 const { createStatusRouter } = require("./status");
 const { createPlayerIdentitiesRouter } = require("./playerIdentities");
 const { createSpeedrunComparisonsRouter } = require("./speedrunComparisons");
+const { createShadowEloRouter } = require("./shadowElo");
 
 function registerRoutes(app, {
   leaderboardHandler,
@@ -163,6 +164,12 @@ app.use("/api", createCompareRouter({
 app.use("/api", createVegasOddsRouter({
   db,
   cleanString,
+  sendError,
+  logRouteError
+}));
+app.use("/api", createShadowEloRouter({
+  db,
+  positiveInt,
   sendError,
   logRouteError
 }));

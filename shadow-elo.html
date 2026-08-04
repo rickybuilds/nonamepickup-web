@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="description" content="Private NoName TFC allocation-only Shadow Elo replay lab.">
+  <title>NoName TFC | Shadow Elo Lab</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/shadow-elo.css?v=20260804a">
+  <script src="assets/js/main.js?v=20260618i" defer></script>
+  <script src="assets/js/shadow-elo.js?v=20260804a" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#0a0c10] shadow-elo-page">
+<div class="site-bg-grid"></div>
+<div class="site-bg-glow site-bg-glow-a"></div>
+<div class="site-bg-glow site-bg-glow-b"></div>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="nn-logo" href="index.html" aria-label="NoName TFC home">
+      <span class="logo-nn">NN</span><span class="logo-slash">//</span><span class="logo-tfc">TFC</span>
+    </a>
+    <div class="sel-private"><span></span> Private research preview</div>
+    <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+  </div>
+</header>
+
+<main class="sel-main">
+  <section class="sel-hero">
+    <div class="sel-hero-copy">
+      <p class="sel-kicker">NN RATING LAB / ALLOCATION-ONLY REPLAY</p>
+      <h1>Same team result.<br><span>Different split.</span></h1>
+      <p>Replay recent games from each player's real starting Elo and compare equal-share V1 with two performance-weighted allocations.</p>
+    </div>
+    <div class="sel-pool-demo" aria-label="Allocation comparison example">
+      <div class="sel-pool-head"><span>Example team pool</span><strong>+64 Elo</strong></div>
+      <div class="sel-pool-row"><span><i class="sel-dot actual"></i>Actual V1</span><b>25% each</b></div>
+      <div class="sel-pool-row"><span><i class="sel-dot wide"></i>Wide</span><b>15–35%</b></div>
+      <div class="sel-pool-row"><span><i class="sel-dot gentle"></i>Gentle</span><b>20–30%</b></div>
+      <p>Every scenario preserves the exact team pool.</p>
+    </div>
+  </section>
+
+  <section class="sel-controlbar" aria-label="Replay controls">
+    <div>
+      <span class="sel-control-label">Replay window</span>
+      <div id="sel-window" class="sel-segments">
+        <button type="button" data-limit="10">10</button>
+        <button type="button" data-limit="20" class="active">20</button>
+        <button type="button" data-limit="50">50</button>
+        <button type="button" data-limit="100">100</button>
+      </div>
+    </div>
+    <div class="sel-rule"><span>Method</span><strong>Recorded pools only</strong><small>Future odds are not recalculated</small></div>
+    <button id="sel-refresh" class="sel-refresh" type="button">Replay 20 games</button>
+  </section>
+
+  <div id="sel-status" class="sel-status" aria-live="polite">
+    <div class="sel-spinner" aria-hidden="true"></div><strong>Loading shadow snapshots…</strong>
+  </div>
+
+  <div id="sel-content" hidden>
+    <section id="sel-kpis" class="sel-kpis"></section>
+
+    <section class="sel-card sel-chart-card">
+      <div class="sel-card-head">
+        <div><p class="sel-card-kicker">ELO TRAJECTORY</p><h2>Player paths</h2></div>
+        <div id="sel-chart-scenarios" class="sel-scenario-tabs" aria-label="Chart scenario">
+          <button type="button" data-scenario="actual" class="active">Actual V1</button>
+          <button type="button" data-scenario="wide">Wide 15–35</button>
+          <button type="button" data-scenario="gentle">Gentle 20–30</button>
+        </div>
+      </div>
+      <div class="sel-chart-wrap"><canvas id="sel-chart"></canvas></div>
+      <p class="sel-chart-note">Select a player in the table to spotlight their line. Everyone begins at their recorded Elo before the oldest game.</p>
+    </section>
+
+    <section class="sel-card">
+      <div class="sel-card-head sel-table-head">
+        <div><p class="sel-card-kicker">ENDING ELO</p><h2>Allocation comparison</h2></div>
+        <label class="sel-filter">Find player<input id="sel-player-filter" type="search" placeholder="Type a name…" autocomplete="off"></label>
+      </div>
+      <div class="sel-table-scroll">
+        <table class="sel-table">
+          <thead><tr><th>Player</th><th>Starting</th><th>Actual V1</th><th>Wide 15–35</th><th>vs V1</th><th>Gentle 20–30</th><th>vs V1</th></tr></thead>
+          <tbody id="sel-player-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sel-card">
+      <div class="sel-card-head">
+        <div><p class="sel-card-kicker">MATCH-BY-MATCH</p><h2>Replay ledger</h2></div>
+        <span class="sel-expand-hint">Select a game for NN score, team rank and deltas</span>
+      </div>
+      <div id="sel-matches" class="sel-matches"></div>
+    </section>
+
+    <aside class="sel-disclaimer">
+      <strong>Research build — no live Elo is changed.</strong>
+      <p>This is an allocation-only replay: later match odds and team pools remain the recorded V1 values. No Name MVP performance is not yet adjusted for role or class, so a quiet Engineer game may not reflect their true impact.</p>
+    </aside>
+  </div>
+</main>
+</body>
+</html>
