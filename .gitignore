@@ -65,3 +65,4 @@ __pycache__/
 api/test/kicked.test.js
 api/test/projectile-usage.test.js
 api/test/replay.test.js
+/samples
