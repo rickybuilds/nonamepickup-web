@@ -20,6 +20,13 @@ const {
   formatTimeMs,
   isValidRunTimeMs
 } = require("../src/speedruns/domain");
+const {
+  SCENARIOS,
+  boundedShares,
+  largestRemainder,
+  allocateTeamPool,
+  replayFixedPool
+} = require("../src/lib/eloReplay");
 
 function row(overrides = {}) {
   return {
@@ -299,4 +306,124 @@ test("comparison HTTP routes remain thin service adapters", async t => {
   );
   assert.equal(invalidResponse.status, 400);
   assert.deepEqual(calls, ["summary", ["mapClass", "aowconc", 3]]);
+});
+
+function eloPlayers(scores = [10, 20, 30, 40]) {
+  return scores.map((final_score, index) => ({ id: `p${index + 1}`, final_score }));
+}
+
+function replayMatch({ index = 1, winner = "BLUE", blueDelta = 16, redDelta = -20, available = true } = {}) {
+  const blueIds = ["p1", "p2", "p3", "p4"];
+  const redIds = ["p5", "p6", "p7", "p8"];
+  const allIds = [...blueIds, ...redIds];
+  return {
+    match_id: `m${index}`,
+    created_at: index,
+    map_name: "2fort",
+    winner,
+    blue_ids: blueIds,
+    red_ids: redIds,
+    rating_changes: allIds.map((player_id, playerIndex) => {
+      const delta = blueIds.includes(player_id) ? blueDelta : redDelta;
+      const priorDelta = (index - 1) * delta;
+      return {
+        player_id,
+        display_name: player_id.toUpperCase(),
+        before: 1000 + playerIndex + priorDelta,
+        delta,
+        after: 1000 + playerIndex + priorDelta + delta
+      };
+    }),
+    performance: {
+      available,
+      formula_version: "nn-mvp-v1",
+      players: allIds.map((id, playerIndex) => ({
+        player_key: `steam-${id}`,
+        steam_id: `steam-${id}`,
+        discord_id: id,
+        display_name: id.toUpperCase(),
+        final_score: 10 + (playerIndex % 4) * 10
+      }))
+    }
+  };
+}
+
+test("Shadow Elo uses bounded softmax for positive winner pools", () => {
+  const allocation = allocateTeamPool(64, eloPlayers(), SCENARIOS.wide);
+  assert.equal(allocation.reduce((sum, row) => sum + row.delta, 0), 64);
+  assert.ok(allocation.every(row => row.delta >= 0));
+  assert.ok(allocation.every(row => row.share >= 0.15 - 1e-9 && row.share <= 0.35 + 1e-9));
+  assert.ok(allocation[3].delta > allocation[0].delta);
+
+  const scores = [10, 20, 30, 40];
+  const mean = 25;
+  const sd = Math.sqrt(scores.reduce((sum, score) => sum + ((score - mean) ** 2), 0) / 4);
+  const weights = scores.map(score => Math.exp(0.35 * Math.max(-2, Math.min(2, (score - mean) / sd))));
+  const expected = boundedShares(weights.map(weight => weight / weights.reduce((sum, item) => sum + item, 0)), 0.15, 0.35);
+  allocation.forEach((row, index) => assert.ok(Math.abs(row.share - expected[index]) < 1e-10));
+});
+
+test("negative loser softmax reverses performance weighting", () => {
+  const allocation = allocateTeamPool(-80, eloPlayers(), SCENARIOS.wide);
+  assert.equal(allocation.reduce((sum, row) => sum + row.delta, 0), -80);
+  assert.ok(allocation.every(row => row.delta <= 0));
+  assert.ok(Math.abs(allocation[3].delta) < Math.abs(allocation[0].delta));
+});
+
+test("gentle softmax stays within 20%-30% and conserves the pool", () => {
+  const allocation = allocateTeamPool(65, eloPlayers(), SCENARIOS.gentle);
+  assert.equal(allocation.reduce((sum, row) => sum + row.delta, 0), 65);
+  assert.ok(allocation.every(row => row.share >= 0.20 - 1e-9 && row.share <= 0.30 + 1e-9));
+});
+
+test("bounded redistribution fixes limits and proportionally redistributes mass", () => {
+  const shares = boundedShares([0.90, 0.04, 0.03, 0.03], 0.15, 0.35);
+  assert.ok(Math.abs(shares.reduce((sum, share) => sum + share, 0) - 1) < 1e-10);
+  assert.equal(shares[0], 0.35);
+  assert.ok(shares.slice(1).every(share => share >= 0.15 && share <= 0.35));
+  assert.ok(Math.abs(shares[1] / shares[2] - 4 / 3) < 1e-10);
+});
+
+test("largest-remainder rounding is deterministic and exact", () => {
+  assert.deepEqual(largestRemainder(65, [0.25, 0.25, 0.25, 0.25], ["a", "b", "c", "d"]), [17, 16, 16, 16]);
+  assert.deepEqual(largestRemainder(-65, [0.25, 0.25, 0.25, 0.25], ["a", "b", "c", "d"]), [-17, -16, -16, -16]);
+});
+
+test("invalid performance and zero variance use equal-share fallback", () => {
+  const invalidReplay = replayFixedPool([replayMatch({ available: false })]);
+  assert.equal(invalidReplay.games[0].fallback, true);
+  assert.ok(invalidReplay.games[0].fallback_reasons.includes("statistics_unavailable"));
+  assert.deepEqual(invalidReplay.games[0].players.filter(row => row.team === "BLUE").map(row => row.wide_delta), [16, 16, 16, 16]);
+
+  const zeroVariance = replayMatch();
+  zeroVariance.performance.players.forEach(player => { player.final_score = 50; });
+  const zeroReplay = replayFixedPool([zeroVariance]);
+  assert.ok(zeroReplay.games[0].fallback_reasons.includes("blue_team_standard_deviation_zero"));
+  assert.deepEqual(zeroReplay.games[0].players.filter(row => row.team === "RED").map(row => row.gentle_delta), [-20, -20, -20, -20]);
+});
+
+test("missing, extra, and duplicated identity mappings trigger fallbacks", () => {
+  const missing = replayMatch();
+  missing.performance.players[0].discord_id = null;
+  const extra = replayMatch({ index: 2 });
+  extra.performance.players.push({ player_key: "steam-extra", steam_id: "steam-extra", discord_id: "extra", final_score: 50 });
+  const duplicate = replayMatch({ index: 3 });
+  duplicate.performance.players[1].discord_id = duplicate.performance.players[0].discord_id;
+  const replay = replayFixedPool([missing, extra, duplicate]);
+  assert.ok(replay.games[0].fallback_reasons.includes("performance_identity_unmapped"));
+  assert.ok(replay.games[1].fallback_reasons.includes("performance_row_count_not_eight"));
+  assert.ok(replay.games[2].fallback_reasons.includes("performance_identity_duplicated"));
+});
+
+test("fixed-pool replay is chronological, cumulative, separate, and read-only", () => {
+  const fixture = [replayMatch({ index: 3 }), replayMatch({ index: 1 }), replayMatch({ index: 2 })];
+  const original = structuredClone(fixture);
+  const replay = replayFixedPool(fixture);
+  assert.deepEqual(replay.games.map(game => game.match_id), ["m1", "m2", "m3"]);
+  const player = replay.players.find(row => row.id === "p4");
+  assert.equal(player.games, 3);
+  assert.equal(player.actual, 1051);
+  assert.notEqual(player.wide, player.actual);
+  assert.notEqual(player.gentle, player.wide);
+  assert.deepEqual(fixture, original, "the replay must not mutate source records");
 });

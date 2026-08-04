@@ -15,22 +15,35 @@ function clamp(value, min, max) {
 }
 
 function boundedShares(rawShares, minShare, maxShare) {
-  let low = -1;
-  let high = 1;
-  for (let iteration = 0; iteration < 80; iteration += 1) {
-    const offset = (low + high) / 2;
-    const total = rawShares.reduce(
-      (sum, share) => sum + clamp(share + offset, minShare, maxShare),
-      0
-    );
-    if (total > 1) high = offset;
-    else low = offset;
+  const shares = Array(rawShares.length).fill(0);
+  const active = new Set(rawShares.map((_, index) => index));
+  let remainingMass = 1;
+
+  while (active.size) {
+    const activeWeight = [...active].reduce((sum, index) => sum + rawShares[index], 0);
+    const proposed = new Map([...active].map(index => [
+      index,
+      activeWeight > 0 ? (rawShares[index] / activeWeight) * remainingMass : remainingMass / active.size
+    ]));
+    const violations = [...active].map(index => {
+      const share = proposed.get(index);
+      if (share < minShare) return { index, fixed: minShare, distance: minShare - share };
+      if (share > maxShare) return { index, fixed: maxShare, distance: share - maxShare };
+      return null;
+    }).filter(Boolean).sort((a, b) => b.distance - a.distance || a.index - b.index);
+    if (!violations.length) {
+      for (const index of active) shares[index] = proposed.get(index);
+      break;
+    }
+    const violation = violations[0];
+    shares[violation.index] = violation.fixed;
+    remainingMass -= violation.fixed;
+    active.delete(violation.index);
   }
-  const offset = (low + high) / 2;
-  const shares = rawShares.map(share => clamp(share + offset, minShare, maxShare));
+
   const drift = 1 - shares.reduce((sum, share) => sum + share, 0);
-  if (Math.abs(drift) > 1e-10) {
-    const index = shares.findIndex(share => share + drift >= minShare && share + drift <= maxShare);
+  if (Math.abs(drift) > 1e-12) {
+    const index = shares.findIndex(share => share + drift >= minShare - 1e-12 && share + drift <= maxShare + 1e-12);
     if (index >= 0) shares[index] += drift;
   }
   return shares;
@@ -64,12 +77,16 @@ function allocateTeamPool(poolValue, players, scenario, equalShare = false) {
     const mean = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     const variance = scores.reduce((sum, score) => sum + ((score - mean) ** 2), 0) / scores.length;
     const standardDeviation = Math.sqrt(variance);
-    const direction = pool < 0 ? -1 : 1;
-    const rawShares = scores.map(score => {
-      const zScore = standardDeviation > 0 ? clamp((score - mean) / standardDeviation, -2, 2) : 0;
-      return 0.25 * (1 + (config.alpha * direction * zScore));
-    });
-    shares = boundedShares(rawShares, config.minShare, config.maxShare);
+    if (standardDeviation > 0) {
+      const direction = pool < 0 ? -1 : 1;
+      const weights = scores.map(score => {
+        const zScore = clamp((score - mean) / standardDeviation, -2, 2);
+        return Math.exp(direction * config.alpha * zScore);
+      });
+      const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
+      const rawShares = weights.map(weight => weight / weightTotal);
+      shares = boundedShares(rawShares, config.minShare, config.maxShare);
+    }
   }
 
   const deltas = largestRemainder(pool, shares, players.map(player => player.id));
@@ -105,6 +122,15 @@ function fallbackReasons(match) {
     reasons.push("performance_roster_mapping_incomplete");
   }
   if (performance.some(player => number(player.final_score) == null)) reasons.push("final_score_missing");
+  const scoresById = new Map(performance.filter(player => player.discord_id != null).map(player => [String(player.discord_id), number(player.final_score)]));
+  for (const [team, ids] of [["blue", blueIds], ["red", redIds]]) {
+    const scores = ids.map(id => scoresById.get(id));
+    if (scores.length === 4 && scores.every(score => score != null)) {
+      const mean = scores.reduce((sum, score) => sum + score, 0) / 4;
+      const variance = scores.reduce((sum, score) => sum + ((score - mean) ** 2), 0) / 4;
+      if (variance === 0) reasons.push(`${team}_team_standard_deviation_zero`);
+    }
+  }
   return [...new Set(reasons)];
 }
 
@@ -159,6 +185,7 @@ function replayFixedPool(inputMatches) {
     const pools = { BLUE: poolFor(blueIds), RED: poolFor(redIds) };
     const reasons = fallbackReasons({ ...match, blue_ids: blueIds, red_ids: redIds });
     const fallback = reasons.length > 0;
+    const invalidPerformance = reasons.some(reason => !reason.endsWith("_team_standard_deviation_zero"));
     const performanceById = new Map((match.performance?.players || []).filter(player => player.discord_id != null).map(player => [String(player.discord_id), player]));
 
     const teamAllocations = {};
@@ -166,8 +193,9 @@ function replayFixedPool(inputMatches) {
       if (ids.length !== 4) continue;
       const teamPlayers = ids.map(id => ({ id, final_score: performanceById.get(id)?.final_score }));
       teamAllocations[team] = {};
+      const equalShare = invalidPerformance || reasons.includes(`${team.toLowerCase()}_team_standard_deviation_zero`);
       for (const scenario of Object.keys(SCENARIOS)) {
-        teamAllocations[team][scenario] = allocateTeamPool(pools[team], teamPlayers, scenario, fallback);
+        teamAllocations[team][scenario] = allocateTeamPool(pools[team], teamPlayers, scenario, equalShare);
         const allocation = teamAllocations[team][scenario];
         const allocatedPool = allocation.reduce((sum, row) => sum + row.delta, 0);
         if (allocatedPool !== pools[team]) {
