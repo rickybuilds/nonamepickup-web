@@ -712,14 +712,14 @@ float replayStride = sin(replaySidePhase);
 // These converted GoldSrc models are single rigid meshes rather than skinned
 // skeletons. Offset each leg instead of rotating the whole lower body, which
 // would fold the player mesh through its waist.
-transformed.z += replayStride * replayWalk * (2.4 * replayLegMask + 1.8 * replayFootMask);
-transformed.y += max(0.0, replayStride) * replayWalk * 1.8 * replayFootMask;
+transformed.z += replayStride * replayWalk * (3.8 * replayLegMask + 2.7 * replayFootMask);
+transformed.y += max(0.0, replayStride) * replayWalk * 3.2 * replayFootMask;
 transformed.z += replayStride * replayTuck * 1.4 * replayLegMask;
 transformed.y += replayTuck * 2.2 * replayLegMask;
 transformed.y += abs(sin(replayPhase)) * 0.45 * replayWalk * (1.0 - replayAir);
 `);
   };
-  material.customProgramCacheKey = () => "pickup-player-motion-v3";
+  material.customProgramCacheKey = () => "pickup-player-motion-v4";
   material.needsUpdate = true;
 }
 
@@ -1422,11 +1422,10 @@ function updatePlayerMotion(track, frame, crouched) {
   const elapsed = previousTime == null ? 0 : state.playbackTime - previousTime;
   const continuous = elapsed >= 0 && elapsed <= 0.25;
   const horizontalSpeed = Math.hypot(frame.vx, frame.vy);
-  const recordedAir = frame.schemaVersion >= 3 && (
-    frame.sequence === 8 || frame.sequence === 9 ||
-    frame.gaitsequence === 8 || frame.gaitsequence === 9
-  );
-  if (recordedAir || Math.abs(frame.vz) > 32) {
+  // Studio sequence numbers are model-specific. Sequence 8 is commonly used
+  // while grounded in these TFC recordings, so it cannot identify a jump.
+  // Vertical velocity is the portable signal available in every schema.
+  if (Math.abs(frame.vz) > 32) {
     track.motionAirUntil = state.playbackTime + PLAYER_AIR_HOLD_SECONDS;
   }
   const airborne = state.playbackTime < track.motionAirUntil;
