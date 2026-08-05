@@ -610,12 +610,6 @@ function modelUrl(classId, team, ducking = false) {
   return `assets/models/player/${info[0]}/${classic}${teamSuffix}${poseSuffix}.glb?v=20260731crouch1`;
 }
 
-function animatedModelUrl(classId) {
-  const info = CLASS_MODELS[classId] || CLASS_MODELS[0];
-  const classic = info[0] === "civilian" ? info[1] : `${info[1]}2`;
-  return `assets/models/player/${info[0]}/${classic}_animated.glb?v=20260805nativegait3`;
-}
-
 async function modelAsset(classId, team, ducking = false) {
   return loadModelAsset(modelUrl(classId, team, ducking));
 }
@@ -626,11 +620,7 @@ async function loadModelAsset(url) {
     : url;
   if (!modelCache.has(assetUrl)) {
     modelCache.set(assetUrl, new Promise(resolve => {
-      loader.load(assetUrl, gltf => {
-        const asset = gltf.scene || null;
-        if (asset) asset.userData.replayAnimations = gltf.animations || [];
-        resolve(asset);
-      }, undefined, () => resolve(null));
+      loader.load(assetUrl, gltf => resolve(gltf.scene || null), undefined, () => resolve(null));
     }));
   }
   return modelCache.get(assetUrl);
@@ -688,7 +678,7 @@ function playerMotionUniforms() {
     tuck: { value: 0 },
     minY: { value: -36 },
     height: { value: PLAYER_STANDING_VISUAL_HEIGHT },
-    centerX: { value: 0 }
+    centerZ: { value: 0 }
   };
 }
 
@@ -701,7 +691,7 @@ function installPlayerMotionShader(material, motion) {
       replayTuck: motion.tuck,
       replayMinY: motion.minY,
       replayHeight: motion.height,
-      replayCenterX: motion.centerX
+      replayCenterZ: motion.centerZ
     });
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>
@@ -711,25 +701,35 @@ uniform float replayAir;
 uniform float replayTuck;
 uniform float replayMinY;
 uniform float replayHeight;
-uniform float replayCenterX;`)
+uniform float replayCenterZ;
+mat2 replayRotate(float angle) {
+  float sine = sin(angle);
+  float cosine = cos(angle);
+  return mat2(cosine, sine, -sine, cosine);
+}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>
 float replaySafeHeight = max(replayHeight, 1.0);
 float replayNormalizedY = (position.y - replayMinY) / replaySafeHeight;
-float replayLegMask = 1.0 - smoothstep(0.18, 0.48, replayNormalizedY);
-float replayFootMask = 1.0 - smoothstep(0.06, 0.20, replayNormalizedY);
-float replaySidePhase = replayPhase + (position.x < replayCenterX ? 3.14159265 : 0.0);
+float replayLegMask = 1.0 - smoothstep(0.50, 0.55, replayNormalizedY);
+float replaySidePhase = replayPhase + (position.z < replayCenterZ ? 3.14159265 : 0.0);
 float replayStride = sin(replaySidePhase);
-// These converted GoldSrc models are single rigid meshes rather than skinned
-// skeletons. Offset each leg instead of rotating the whole lower body, which
-// would fold the player mesh through its waist.
-transformed.z += replayStride * replayWalk * (3.8 * replayLegMask + 2.7 * replayFootMask);
-transformed.y += max(0.0, replayStride) * replayWalk * 3.2 * replayFootMask;
-transformed.z += replayStride * replayTuck * 1.4 * replayLegMask;
-transformed.y += replayTuck * 2.2 * replayLegMask;
-transformed.y += abs(sin(replayPhase)) * 0.45 * replayWalk * (1.0 - replayAir);
+float replayHipAngle = replayStride * 0.62 * replayWalk + 1.02 * replayTuck;
+float replayKneeAngle = -max(0.0, replayStride) * 0.72 * replayWalk - 1.28 * replayTuck;
+float replayHipY = replayMinY + replaySafeHeight * 0.51;
+float replayKneeY = replayMinY + replaySafeHeight * 0.255;
+vec2 replayHip = vec2(0.0, replayHipY);
+vec2 replayKnee = vec2(0.0, replayKneeY);
+vec2 replayUpper = replayHip + replayRotate(replayHipAngle) * (transformed.xy - replayHip);
+vec2 replayLower = replayHip + replayRotate(replayHipAngle) * (
+  (replayKnee - replayHip) + replayRotate(replayKneeAngle) * (transformed.xy - replayKnee)
+);
+float replayLowerMix = 1.0 - smoothstep(0.245, 0.285, replayNormalizedY);
+vec2 replayAnimated = mix(replayUpper, replayLower, replayLowerMix);
+transformed.xy = mix(transformed.xy, replayAnimated, replayLegMask);
+transformed.y += abs(sin(replayPhase)) * 0.75 * replayWalk * (1.0 - replayAir);
 `);
   };
-  material.customProgramCacheKey = () => "pickup-player-motion-v4";
+  material.customProgramCacheKey = () => "pickup-player-motion-v1";
   material.needsUpdate = true;
 }
 
@@ -740,12 +740,10 @@ function clonedPlayerModel(
   motion = null
 ) {
   const model = asset.clone(true);
-  const replayAnimations = asset.userData.replayAnimations || [];
-  model.userData.replayAnimations = replayAnimations;
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
-    if (motion && !replayAnimations.length) {
+    if (motion) {
       if (Array.isArray(child.material)) {
         child.material = child.material.map(material => {
           const copy = material.clone();
@@ -764,7 +762,7 @@ function clonedPlayerModel(
   if (motion) {
     motion.minY.value = bounds.min.y;
     motion.height.value = size.y;
-    motion.centerX.value = (bounds.min.x + bounds.max.x) * 0.5;
+    motion.centerZ.value = (bounds.min.z + bounds.max.z) * 0.5;
   }
   model.scale.setScalar(scale);
   model.userData.replayScale = scale;
@@ -773,24 +771,7 @@ function clonedPlayerModel(
   // player by about 36 units. Only the legacy schema-2 fallback expects a
   // feet-at-origin visual because its render object keeps the old hull offset.
   if (alignFeetToOrigin) model.position.y = -bounds.min.y * scale;
-  else if (replayAnimations.length) model.position.y = -(bounds.min.y + size.y * 0.5) * scale;
   return model;
-}
-
-function applyPlayerMaterials(model, styledAsset) {
-  const materials = [];
-  styledAsset?.traverse(child => {
-    if (!child.isMesh) return;
-    const source = Array.isArray(child.material) ? child.material : [child.material];
-    materials.push(...source.filter(Boolean));
-  });
-  if (!materials.length) return;
-  let meshIndex = 0;
-  model.traverse(child => {
-    if (!child.isMesh) return;
-    child.material = materials[Math.min(meshIndex, materials.length - 1)].clone();
-    meshIndex += 1;
-  });
 }
 
 async function setPlayerModel(track, classId, team, modelId = 0, ducking = false) {
@@ -802,13 +783,9 @@ async function setPlayerModel(track, classId, team, modelId = 0, ducking = false
   track.mesh.userData.playerModelId = modelId;
   track.mesh.userData.modelPose = pose;
   const recordedUrl = catalogUrl(modelId, "player");
-  const styledAsset = CLASS_MODELS[classId]
+  const asset = CLASS_MODELS[classId]
     ? await modelAsset(classId, team, ducking)
     : recordedUrl ? await loadModelAsset(recordedUrl) : await modelAsset(0, team, ducking);
-  const animatedAsset = CLASS_MODELS[classId]
-    ? await loadModelAsset(animatedModelUrl(classId))
-    : null;
-  const asset = animatedAsset || styledAsset;
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team ||
       track.mesh.userData.playerModelId !== modelId || track.mesh.userData.modelPose !== pose) return;
   const targetHeight = ducking ? PLAYER_CROUCH_VISUAL_HEIGHT : PLAYER_STANDING_VISUAL_HEIGHT;
@@ -818,20 +795,8 @@ async function setPlayerModel(track, classId, team, modelId = 0, ducking = false
     targetHeight,
     track.motionUniforms
   );
-  if (animatedAsset && styledAsset) applyPlayerMaterials(model, styledAsset);
   track.modelVisual.clear();
   track.modelVisual.add(model);
-  track.animatedPlayerModel = model;
-  track.playerAnimationMixer = model.userData.replayAnimations?.length
-    ? new THREE.AnimationMixer(model)
-    : null;
-  track.playerAnimationActions = new Map();
-  if (track.playerAnimationMixer) {
-    for (const clip of model.userData.replayAnimations) {
-      const match = /^gait_(\d+)_/.exec(clip.name);
-      if (match) track.playerAnimationActions.set(Number(match[1]), track.playerAnimationMixer.clipAction(clip));
-    }
-  }
   track.weaponVisual.scale.setScalar(model.userData.replayScale || 1);
 }
 
@@ -1467,10 +1432,11 @@ function updatePlayerMotion(track, frame, crouched) {
   const elapsed = previousTime == null ? 0 : state.playbackTime - previousTime;
   const continuous = elapsed >= 0 && elapsed <= 0.25;
   const horizontalSpeed = Math.hypot(frame.vx, frame.vy);
-  // Studio sequence numbers are model-specific. Sequence 8 is commonly used
-  // while grounded in these TFC recordings, so it cannot identify a jump.
-  // Vertical velocity is the portable signal available in every schema.
-  if (Math.abs(frame.vz) > 32) {
+  const recordedAir = frame.schemaVersion >= 3 && (
+    frame.sequence === 8 || frame.sequence === 9 ||
+    frame.gaitsequence === 8 || frame.gaitsequence === 9
+  );
+  if (recordedAir || Math.abs(frame.vz) > 32) {
     track.motionAirUntil = state.playbackTime + PLAYER_AIR_HOLD_SECONDS;
   }
   const airborne = state.playbackTime < track.motionAirUntil;
@@ -1503,34 +1469,6 @@ function updatePlayerMotion(track, frame, crouched) {
   track.motionLastY = frame.y;
 }
 
-function updateNativePlayerGait(track, frame, crouched) {
-  const mixer = track.playerAnimationMixer;
-  const actions = track.playerAnimationActions;
-  if (!mixer || !actions?.size) return;
-  const horizontalSpeed = Math.hypot(frame.vx, frame.vy);
-  const grounded = track.motionAir < 0.5;
-  const moving = horizontalSpeed > 20 && grounded;
-  let gait = crouched ? 6 : Number(frame.gaitsequence);
-  if (gait !== 3 && gait !== 4 && gait !== 6) gait = horizontalSpeed < 170 ? 4 : 3;
-  const selected = moving ? actions.get(gait) : null;
-  for (const action of actions.values()) {
-    action.enabled = action === selected;
-    action.setEffectiveWeight(action === selected ? 1 : 0);
-  }
-  if (!selected) {
-    track.animatedPlayerModel?.traverse(child => {
-      if (child.morphTargetInfluences) child.morphTargetInfluences.fill(0);
-    });
-    return;
-  }
-  const duration = Math.max(selected.getClip().duration, 0.001);
-  const phase = ((track.motionPhase / (Math.PI * 2)) % 1 + 1) % 1;
-  selected.play();
-  selected.paused = true;
-  selected.time = phase * duration;
-  mixer.update(0);
-}
-
 function updatePlayers() {
   for (const track of state.players) {
     if (!track.mesh) continue;
@@ -1554,7 +1492,6 @@ function updatePlayers() {
     const crouched = frame.schemaVersion >= 3 && isDucking(frame);
     if (frame.alive) {
       updatePlayerMotion(track, frame, crouched);
-      updateNativePlayerGait(track, frame, crouched);
     } else {
       track.motionUniforms.walk.value = 0;
       track.motionUniforms.air.value = 0;
