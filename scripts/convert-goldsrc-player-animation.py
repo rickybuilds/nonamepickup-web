@@ -16,7 +16,6 @@ MDL = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MDL)
 
 GAIT_SEQUENCES = (3, 4, 6)
-MORPH_SAMPLES = 8
 
 
 def rotate_radians(angles):
@@ -278,8 +277,8 @@ def convert(source, output):
         if sequence["numframes"] < 2:
             continue
         target_indexes = []
-        for sample in range(MORPH_SAMPLES):
-            frame = round(sample * (sequence["numframes"] - 1) / MORPH_SAMPLES)
+        frame_count = sequence["numframes"] - 1
+        for frame in range(frame_count):
             poses.append(world_pose(local_pose(data, bones, sequence, frame), bones))
             target_indexes.append(len(poses) - 2)
         target_indexes.append(target_indexes[0])
@@ -287,15 +286,25 @@ def convert(source, output):
         clips.append({
             "name": f"gait_{sequence_index}_{sequence['label']}",
             "targets": target_indexes,
-            "times": [duration * index / MORPH_SAMPLES for index in range(MORPH_SAMPLES + 1)],
+            "times": [duration * index / frame_count for index in range(frame_count + 1)],
         })
 
     bodypart = MDL.parse_bodyparts(data, header)[0]
     model = MDL.parse_model(data, bodypart, 0)
-    mesh = MDL.parse_meshes(data, model)[0]
+    meshes = MDL.parse_meshes(data, model)
     textures, _, _ = MDL.load_textures_for_model(source, header, data)
     skin_family = MDL.parse_skin_families(data, header)[0]
-    _, texture = MDL.resolve_texture(textures, mesh, skin_family)
+    resolved_meshes = [
+        (mesh, MDL.resolve_texture(textures, mesh, skin_family)[1])
+        for mesh in meshes
+    ]
+    mesh, texture = next(
+        (
+            item for item in resolved_meshes
+            if (item[1].get("name") or "").lower().startswith("remapc")
+        ),
+        resolved_meshes[0],
+    )
     positions, normals, uvs, targets = decode_mesh(data, model, mesh, texture, bones, poses)
     primitives = [{
         "positions": positions,

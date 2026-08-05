@@ -613,7 +613,7 @@ function modelUrl(classId, team, ducking = false) {
 function animatedModelUrl(classId) {
   const info = CLASS_MODELS[classId] || CLASS_MODELS[0];
   const classic = info[0] === "civilian" ? info[1] : `${info[1]}2`;
-  return `assets/models/player/${info[0]}/${classic}_animated.glb?v=20260805nativegait1`;
+  return `assets/models/player/${info[0]}/${classic}_animated.glb?v=20260805nativegait3`;
 }
 
 async function modelAsset(classId, team, ducking = false) {
