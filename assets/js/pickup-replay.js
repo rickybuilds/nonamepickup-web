@@ -1471,7 +1471,10 @@ function updatePlayers() {
       continue;
     }
     const death = replaySchemaVersion() >= 6 ? playerDeathAt(track.sessionId) : null;
-    const playerBackedCorpse = Boolean(death && !death.gibbed && !death.bodyQueued);
+    // The converted player GLBs are static, so GoldSrc's bodyque model would
+    // otherwise appear as an upright baked-red Scout. Keep the player-backed
+    // fall pose until native death-sequence playback is available.
+    const playerBackedCorpse = Boolean(death && !death.gibbed);
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     // Schema 3 records the authoritative entity origin, including crouch transitions.
     // Keep the legacy visual offset only for schema 2's basic fallback.
@@ -1595,8 +1598,12 @@ function updateEntities() {
   for (const track of state.entities) {
     if (!track.mesh) continue;
     const frame = entitySnapshot(track, state.playbackTime);
+    const semantic = sceneMetadataAt("entity", track.entityId);
     const nonVisual = isNonVisualEntityClass(track.definition?.classname);
-    track.mesh.visible = Boolean(frame && !(frame.effects & 128) && !nonVisual);
+    const substitutedCorpseBody = semantic?.kind === "corpse_body";
+    track.mesh.visible = Boolean(
+      frame && !(frame.effects & 128) && !nonVisual && !substitutedCorpseBody
+    );
     if (!frame || !track.mesh.visible) continue;
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     track.mesh.rotation.set(
@@ -1657,7 +1664,6 @@ function updateEntities() {
       controller: frame.controller, blending: frame.blending, aiment: frame.aiment,
       unsupportedGoldSrcState: ["body", "skin", "sequence", "gaitsequence", "controller", "blending", "aiment"]
     });
-    const semantic = sceneMetadataAt("entity", track.entityId);
     Object.assign(track.mesh.userData, {
       semanticKind: semantic?.kind || null,
       semanticIdentity: semantic?.key || sceneObjectKey("entity", track.entityId),
