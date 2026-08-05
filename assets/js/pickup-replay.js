@@ -678,7 +678,7 @@ function playerMotionUniforms() {
     tuck: { value: 0 },
     minY: { value: -36 },
     height: { value: PLAYER_STANDING_VISUAL_HEIGHT },
-    centerZ: { value: 0 }
+    centerX: { value: 0 }
   };
 }
 
@@ -691,7 +691,7 @@ function installPlayerMotionShader(material, motion) {
       replayTuck: motion.tuck,
       replayMinY: motion.minY,
       replayHeight: motion.height,
-      replayCenterZ: motion.centerZ
+      replayCenterX: motion.centerX
     });
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>
@@ -701,7 +701,7 @@ uniform float replayAir;
 uniform float replayTuck;
 uniform float replayMinY;
 uniform float replayHeight;
-uniform float replayCenterZ;
+uniform float replayCenterX;
 mat2 replayRotate(float angle) {
   float sine = sin(angle);
   float cosine = cos(angle);
@@ -711,7 +711,7 @@ mat2 replayRotate(float angle) {
 float replaySafeHeight = max(replayHeight, 1.0);
 float replayNormalizedY = (position.y - replayMinY) / replaySafeHeight;
 float replayLegMask = 1.0 - smoothstep(0.50, 0.55, replayNormalizedY);
-float replaySidePhase = replayPhase + (position.z < replayCenterZ ? 3.14159265 : 0.0);
+float replaySidePhase = replayPhase + (position.x < replayCenterX ? 3.14159265 : 0.0);
 float replayStride = sin(replaySidePhase);
 float replayHipAngle = replayStride * 0.62 * replayWalk + 1.02 * replayTuck;
 float replayKneeAngle = -max(0.0, replayStride) * 0.72 * replayWalk - 1.28 * replayTuck;
@@ -719,17 +719,17 @@ float replayHipY = replayMinY + replaySafeHeight * 0.51;
 float replayKneeY = replayMinY + replaySafeHeight * 0.255;
 vec2 replayHip = vec2(0.0, replayHipY);
 vec2 replayKnee = vec2(0.0, replayKneeY);
-vec2 replayUpper = replayHip + replayRotate(replayHipAngle) * (transformed.xy - replayHip);
+vec2 replayUpper = replayHip + replayRotate(replayHipAngle) * (transformed.zy - replayHip);
 vec2 replayLower = replayHip + replayRotate(replayHipAngle) * (
-  (replayKnee - replayHip) + replayRotate(replayKneeAngle) * (transformed.xy - replayKnee)
+  (replayKnee - replayHip) + replayRotate(replayKneeAngle) * (transformed.zy - replayKnee)
 );
 float replayLowerMix = 1.0 - smoothstep(0.245, 0.285, replayNormalizedY);
 vec2 replayAnimated = mix(replayUpper, replayLower, replayLowerMix);
-transformed.xy = mix(transformed.xy, replayAnimated, replayLegMask);
+transformed.zy = mix(transformed.zy, replayAnimated, replayLegMask);
 transformed.y += abs(sin(replayPhase)) * 0.75 * replayWalk * (1.0 - replayAir);
 `);
   };
-  material.customProgramCacheKey = () => "pickup-player-motion-v1";
+  material.customProgramCacheKey = () => "pickup-player-motion-v2";
   material.needsUpdate = true;
 }
 
@@ -762,7 +762,7 @@ function clonedPlayerModel(
   if (motion) {
     motion.minY.value = bounds.min.y;
     motion.height.value = size.y;
-    motion.centerZ.value = (bounds.min.z + bounds.max.z) * 0.5;
+    motion.centerX.value = (bounds.min.x + bounds.max.x) * 0.5;
   }
   model.scale.setScalar(scale);
   model.userData.replayScale = scale;
@@ -1143,12 +1143,21 @@ function buildVisuals() {
     track.acFireVisual = createAssaultCannonVisual();
     hitscanRoot.add(track.acFireVisual.group);
 
-    if (replaySchemaVersion() < 6) {
+    // Completed replays can keep an independent corpse after the player has
+    // respawned. The engine body queue may be released in under a second, so
+    // its corpse_end event is not a useful visual lifetime for this fallback.
+    if (!LIVE_MODE) {
       for (const corpse of corpseRecords(track)) {
+        const recordedDeath = replaySchemaVersion() >= 6
+          ? playerDeathAt(corpse.sessionId, corpse.startsAt + 0.001)
+          : null;
+        if (replaySchemaVersion() >= 6 && (!recordedDeath || recordedDeath.gibbed)) continue;
         corpse.mesh = new THREE.Group();
         corpse.mesh.visible = false;
         corpse.mesh.position.copy(sourcePoint(corpse.x, corpse.y, corpse.z));
-        corpse.mesh.position.y -= (corpse.buttons & 4) ? 18 : 36;
+        if (track.schemaVersion === 2) {
+          corpse.mesh.position.y -= (corpse.buttons & 4) ? 18 : 36;
+        }
         corpse.mesh.rotation.y = THREE.MathUtils.degToRad(corpse.yaw);
         corpse.mesh.add(layCorpseModel(fallbackPlayerMesh(corpse.team), corpse.side));
         corpseRoot.add(corpse.mesh);
@@ -1471,10 +1480,10 @@ function updatePlayers() {
       continue;
     }
     const death = replaySchemaVersion() >= 6 ? playerDeathAt(track.sessionId) : null;
-    // The converted player GLBs are static, so GoldSrc's bodyque model would
-    // otherwise appear as an upright baked-red Scout. Keep the player-backed
-    // fall pose until native death-sequence playback is available.
-    const playerBackedCorpse = Boolean(death && !death.gibbed);
+    // Live mode uses the player-backed fall while data is still arriving.
+    // Completed replays use the independent corpse meshes built above so a
+    // respawn does not move or erase the prior body.
+    const playerBackedCorpse = Boolean(LIVE_MODE && death && !death.gibbed);
     track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
     // Schema 3 records the authoritative entity origin, including crouch transitions.
     // Keep the legacy visual offset only for schema 2's basic fallback.
