@@ -957,6 +957,7 @@ async function setEntityModel(track, modelId) {
   track.mesh.userData.modelId = modelId;
   track.mesh.userData.diagnosticFallback = false;
   track.mesh.userData.spriteFallback = false;
+  track.mesh.userData.nativeSprite = false;
   track.visual.clear();
   const recorded = state.renderModels.get(Number(modelId));
   const semantic = sceneMetadataAt("entity", track.entityId);
@@ -975,6 +976,7 @@ async function setEntityModel(track, modelId) {
       if (track.mesh.userData.modelId !== modelId) return;
       if (frames?.length) {
         track.visual.add(createRecordedSprite(frames));
+        track.mesh.userData.nativeSprite = true;
       } else {
         track.visual.add(createGlowSprite(0xffffff, 0.8, 48));
         track.mesh.userData.spriteFallback = true;
@@ -1614,7 +1616,8 @@ function updateEntities() {
       }
     });
     track.mesh.scale.setScalar(
-      track.mesh.userData.diagnosticFallback || track.mesh.userData.spriteFallback
+      track.mesh.userData.diagnosticFallback || track.mesh.userData.spriteFallback ||
+      track.mesh.userData.nativeSprite
         ? 1
         : (frame.scale > 0 ? frame.scale : 1)
     );
