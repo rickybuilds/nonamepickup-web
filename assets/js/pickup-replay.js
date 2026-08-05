@@ -701,35 +701,25 @@ uniform float replayAir;
 uniform float replayTuck;
 uniform float replayMinY;
 uniform float replayHeight;
-uniform float replayCenterX;
-mat2 replayRotate(float angle) {
-  float sine = sin(angle);
-  float cosine = cos(angle);
-  return mat2(cosine, sine, -sine, cosine);
-}`)
+uniform float replayCenterX;`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>
 float replaySafeHeight = max(replayHeight, 1.0);
 float replayNormalizedY = (position.y - replayMinY) / replaySafeHeight;
-float replayLegMask = 1.0 - smoothstep(0.50, 0.55, replayNormalizedY);
+float replayLegMask = 1.0 - smoothstep(0.18, 0.48, replayNormalizedY);
+float replayFootMask = 1.0 - smoothstep(0.06, 0.20, replayNormalizedY);
 float replaySidePhase = replayPhase + (position.x < replayCenterX ? 3.14159265 : 0.0);
 float replayStride = sin(replaySidePhase);
-float replayHipAngle = replayStride * 0.62 * replayWalk + 1.02 * replayTuck;
-float replayKneeAngle = -max(0.0, replayStride) * 0.72 * replayWalk - 1.28 * replayTuck;
-float replayHipY = replayMinY + replaySafeHeight * 0.51;
-float replayKneeY = replayMinY + replaySafeHeight * 0.255;
-vec2 replayHip = vec2(0.0, replayHipY);
-vec2 replayKnee = vec2(0.0, replayKneeY);
-vec2 replayUpper = replayHip + replayRotate(replayHipAngle) * (transformed.zy - replayHip);
-vec2 replayLower = replayHip + replayRotate(replayHipAngle) * (
-  (replayKnee - replayHip) + replayRotate(replayKneeAngle) * (transformed.zy - replayKnee)
-);
-float replayLowerMix = 1.0 - smoothstep(0.245, 0.285, replayNormalizedY);
-vec2 replayAnimated = mix(replayUpper, replayLower, replayLowerMix);
-transformed.zy = mix(transformed.zy, replayAnimated, replayLegMask);
-transformed.y += abs(sin(replayPhase)) * 0.75 * replayWalk * (1.0 - replayAir);
+// These converted GoldSrc models are single rigid meshes rather than skinned
+// skeletons. Offset each leg instead of rotating the whole lower body, which
+// would fold the player mesh through its waist.
+transformed.z += replayStride * replayWalk * (2.4 * replayLegMask + 1.8 * replayFootMask);
+transformed.y += max(0.0, replayStride) * replayWalk * 1.8 * replayFootMask;
+transformed.z += replayStride * replayTuck * 1.4 * replayLegMask;
+transformed.y += replayTuck * 2.2 * replayLegMask;
+transformed.y += abs(sin(replayPhase)) * 0.45 * replayWalk * (1.0 - replayAir);
 `);
   };
-  material.customProgramCacheKey = () => "pickup-player-motion-v2";
+  material.customProgramCacheKey = () => "pickup-player-motion-v3";
   material.needsUpdate = true;
 }
 
