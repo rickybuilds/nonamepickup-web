@@ -610,6 +610,12 @@ function modelUrl(classId, team, ducking = false) {
   return `assets/models/player/${info[0]}/${classic}${teamSuffix}${poseSuffix}.glb?v=20260731crouch1`;
 }
 
+function animatedModelUrl(classId) {
+  const info = CLASS_MODELS[classId] || CLASS_MODELS[0];
+  const classic = info[0] === "civilian" ? info[1] : `${info[1]}2`;
+  return `assets/models/player/${info[0]}/${classic}_animated.glb?v=20260805nativegait1`;
+}
+
 async function modelAsset(classId, team, ducking = false) {
   return loadModelAsset(modelUrl(classId, team, ducking));
 }
@@ -620,7 +626,11 @@ async function loadModelAsset(url) {
     : url;
   if (!modelCache.has(assetUrl)) {
     modelCache.set(assetUrl, new Promise(resolve => {
-      loader.load(assetUrl, gltf => resolve(gltf.scene || null), undefined, () => resolve(null));
+      loader.load(assetUrl, gltf => {
+        const asset = gltf.scene || null;
+        if (asset) asset.userData.replayAnimations = gltf.animations || [];
+        resolve(asset);
+      }, undefined, () => resolve(null));
     }));
   }
   return modelCache.get(assetUrl);
@@ -730,10 +740,12 @@ function clonedPlayerModel(
   motion = null
 ) {
   const model = asset.clone(true);
+  const replayAnimations = asset.userData.replayAnimations || [];
+  model.userData.replayAnimations = replayAnimations;
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
-    if (motion) {
+    if (motion && !replayAnimations.length) {
       if (Array.isArray(child.material)) {
         child.material = child.material.map(material => {
           const copy = material.clone();
@@ -761,7 +773,24 @@ function clonedPlayerModel(
   // player by about 36 units. Only the legacy schema-2 fallback expects a
   // feet-at-origin visual because its render object keeps the old hull offset.
   if (alignFeetToOrigin) model.position.y = -bounds.min.y * scale;
+  else if (replayAnimations.length) model.position.y = -(bounds.min.y + size.y * 0.5) * scale;
   return model;
+}
+
+function applyPlayerMaterials(model, styledAsset) {
+  const materials = [];
+  styledAsset?.traverse(child => {
+    if (!child.isMesh) return;
+    const source = Array.isArray(child.material) ? child.material : [child.material];
+    materials.push(...source.filter(Boolean));
+  });
+  if (!materials.length) return;
+  let meshIndex = 0;
+  model.traverse(child => {
+    if (!child.isMesh) return;
+    child.material = materials[Math.min(meshIndex, materials.length - 1)].clone();
+    meshIndex += 1;
+  });
 }
 
 async function setPlayerModel(track, classId, team, modelId = 0, ducking = false) {
@@ -773,9 +802,13 @@ async function setPlayerModel(track, classId, team, modelId = 0, ducking = false
   track.mesh.userData.playerModelId = modelId;
   track.mesh.userData.modelPose = pose;
   const recordedUrl = catalogUrl(modelId, "player");
-  const asset = CLASS_MODELS[classId]
+  const styledAsset = CLASS_MODELS[classId]
     ? await modelAsset(classId, team, ducking)
     : recordedUrl ? await loadModelAsset(recordedUrl) : await modelAsset(0, team, ducking);
+  const animatedAsset = CLASS_MODELS[classId]
+    ? await loadModelAsset(animatedModelUrl(classId))
+    : null;
+  const asset = animatedAsset || styledAsset;
   if (!asset || track.mesh.userData.modelClass !== classId || track.mesh.userData.modelTeam !== team ||
       track.mesh.userData.playerModelId !== modelId || track.mesh.userData.modelPose !== pose) return;
   const targetHeight = ducking ? PLAYER_CROUCH_VISUAL_HEIGHT : PLAYER_STANDING_VISUAL_HEIGHT;
@@ -785,8 +818,20 @@ async function setPlayerModel(track, classId, team, modelId = 0, ducking = false
     targetHeight,
     track.motionUniforms
   );
+  if (animatedAsset && styledAsset) applyPlayerMaterials(model, styledAsset);
   track.modelVisual.clear();
   track.modelVisual.add(model);
+  track.animatedPlayerModel = model;
+  track.playerAnimationMixer = model.userData.replayAnimations?.length
+    ? new THREE.AnimationMixer(model)
+    : null;
+  track.playerAnimationActions = new Map();
+  if (track.playerAnimationMixer) {
+    for (const clip of model.userData.replayAnimations) {
+      const match = /^gait_(\d+)_/.exec(clip.name);
+      if (match) track.playerAnimationActions.set(Number(match[1]), track.playerAnimationMixer.clipAction(clip));
+    }
+  }
   track.weaponVisual.scale.setScalar(model.userData.replayScale || 1);
 }
 
@@ -1458,6 +1503,34 @@ function updatePlayerMotion(track, frame, crouched) {
   track.motionLastY = frame.y;
 }
 
+function updateNativePlayerGait(track, frame, crouched) {
+  const mixer = track.playerAnimationMixer;
+  const actions = track.playerAnimationActions;
+  if (!mixer || !actions?.size) return;
+  const horizontalSpeed = Math.hypot(frame.vx, frame.vy);
+  const grounded = track.motionAir < 0.5;
+  const moving = horizontalSpeed > 20 && grounded;
+  let gait = crouched ? 6 : Number(frame.gaitsequence);
+  if (gait !== 3 && gait !== 4 && gait !== 6) gait = horizontalSpeed < 170 ? 4 : 3;
+  const selected = moving ? actions.get(gait) : null;
+  for (const action of actions.values()) {
+    action.enabled = action === selected;
+    action.setEffectiveWeight(action === selected ? 1 : 0);
+  }
+  if (!selected) {
+    track.animatedPlayerModel?.traverse(child => {
+      if (child.morphTargetInfluences) child.morphTargetInfluences.fill(0);
+    });
+    return;
+  }
+  const duration = Math.max(selected.getClip().duration, 0.001);
+  const phase = ((track.motionPhase / (Math.PI * 2)) % 1 + 1) % 1;
+  selected.play();
+  selected.paused = true;
+  selected.time = phase * duration;
+  mixer.update(0);
+}
+
 function updatePlayers() {
   for (const track of state.players) {
     if (!track.mesh) continue;
@@ -1481,6 +1554,7 @@ function updatePlayers() {
     const crouched = frame.schemaVersion >= 3 && isDucking(frame);
     if (frame.alive) {
       updatePlayerMotion(track, frame, crouched);
+      updateNativePlayerGait(track, frame, crouched);
     } else {
       track.motionUniforms.walk.value = 0;
       track.motionUniforms.air.value = 0;
