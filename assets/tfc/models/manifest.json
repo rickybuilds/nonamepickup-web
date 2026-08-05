@@ -14050,6 +14050,46 @@
         "green": "1076e576adc6568c1e1aaa522c6f858650faf85819474bd9dfb3bd2198165fa9:green:(74, 222, 128):warm-v1"
       }
     },
+    "models/w_gauss.mdl": {
+      "url": "/assets/tfc/models/w_gauss.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "stayput",
+          "fps": 30.0,
+          "frames": 1,
+          "blends": 1
+        },
+        {
+          "index": 1,
+          "name": "onside",
+          "fps": 30.0,
+          "frames": 7,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "body",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "ce30ed52733e1968b15854a0cce5e3c87eac96cadb2e87407c5f3d8009d19b3b",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
     "models/w_grenade.mdl": {
       "url": "/assets/models/grenade.glb",
       "kind": "projectile",
@@ -14068,6 +14108,46 @@
         "attachments": false
       },
       "fallback": "legacy-replay-asset"
+    },
+    "models/w_rpg.mdl": {
+      "url": "/assets/tfc/models/w_rpg.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "stayput",
+          "fps": 30.0,
+          "frames": 1,
+          "blends": 1
+        },
+        {
+          "index": 1,
+          "name": "onside",
+          "fps": 30.0,
+          "frames": 61,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "body",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "a8642fff90c59240273e4c5dcd88541d9541ad92c88a8e82f467d83bb4a88755",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
     },
     "models/y_armor.mdl": {
       "url": "/assets/tfc/models/y_armor.glb",
