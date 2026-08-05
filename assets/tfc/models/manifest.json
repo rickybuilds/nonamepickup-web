@@ -536,6 +536,39 @@
         "attachments": false
       }
     },
+    "models/gib_hgrunt.mdl": {
+      "url": "/assets/tfc/models/gib_hgrunt.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 30.0,
+          "frames": 2,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "d4358211ce47fe1a04b14721471469e848526a8996aca077a654c6a5c7e0bde3",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
     "models/gasmask.mdl": {
       "url": "/assets/tfc/models/gasmask.glb",
       "kind": "entity",
@@ -560,6 +593,39 @@
       "boneControllers": 0,
       "attachments": 0,
       "sourceSha256": "bd26130fdb141c6172307ff43e68b66e21c41ba0fdeca686722cb04eb6b811ba",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/hgibs.mdl": {
+      "url": "/assets/tfc/models/hgibs.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle1",
+          "fps": 30.0,
+          "frames": 2,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "parts",
+          "models": 11,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "e45c5424488c43cd401446fdec0d5b9dc19387a899fd11137db2c01a8b13e81a",
       "glb": {
         "animations": false,
         "bodygroups": false,
@@ -633,6 +699,74 @@
       "boneControllers": 0,
       "attachments": 0,
       "sourceSha256": "f95dabe32944f2fb0c03fad6255bdf3f51febbfe1133da042c93f7951b693827",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
+    "models/miniturret.mdl": {
+      "url": "/assets/tfc/models/miniturret.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle_off",
+          "fps": 1.0,
+          "frames": 1,
+          "blends": 1
+        },
+        {
+          "index": 1,
+          "name": "fire",
+          "fps": 33.0,
+          "frames": 22,
+          "blends": 1
+        },
+        {
+          "index": 2,
+          "name": "spin",
+          "fps": 1.0,
+          "frames": 1,
+          "blends": 1
+        },
+        {
+          "index": 3,
+          "name": "deploy",
+          "fps": 30.0,
+          "frames": 31,
+          "blends": 1
+        },
+        {
+          "index": 4,
+          "name": "retire",
+          "fps": 10.0,
+          "frames": 31,
+          "blends": 1
+        },
+        {
+          "index": 5,
+          "name": "die",
+          "fps": 30.0,
+          "frames": 61,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 2,
+      "attachments": 1,
+      "sourceSha256": "0b2d2ea0ee3994209dff5b9aabcd4f0729bd575bf51d3d5f337656c7d8fb53eb",
       "glb": {
         "animations": false,
         "bodygroups": false,

@@ -2,8 +2,9 @@ import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 import {
   ReplayProjectileVisuals,
+  parseReplaySprite,
   replayProjectileDefinition
-} from "./replay-projectile-visuals.js?v=20260803rocketfx6";
+} from "./replay-projectile-visuals.js?v=20260805schema6sprites1";
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
@@ -58,12 +59,19 @@ const LIGHT_STYLE_PATTERNS = [
   "aaaaaaaazzzzzzzz", "mmamammmmammamamaaamammma", "abcdefghijklmnopqrrqponmlkjihgfedcba",
   "mmnnmmnnnmmnn"
 ];
-const TFC_MODEL_ASSET_VERSION = "20260803schema6scene1";
+const TFC_MODEL_ASSET_VERSION = "20260805schema6sprites1";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
 const skyLoader = new THREE.CubeTextureLoader();
 const projectileVisuals = new ReplayProjectileVisuals(loader);
 const modelCache = new Map();
+const recordedSpriteCache = new Map();
+const RECORDED_SPRITE_PATHS = new Map([
+  ["sprites/flare3.spr", "/assets/sprites/flare3.spr"],
+  ["sprites/glow01.spr", "/assets/sprites/glow01.spr"],
+  ["sprites/lgtning.spr", "/assets/sprites/lgtning.spr"],
+  ["sprites/xflare1.spr", "/assets/sprites/xflare1.spr"]
+]);
 let replayGlowTexture = null;
 
 const state = {
@@ -907,6 +915,39 @@ function createGlowSprite(color = 0xffffff, opacity = 0.8, size = 32) {
   return sprite;
 }
 
+async function loadRecordedSprite(recordedPath) {
+  const normalizedPath = String(recordedPath || "").trim().replace(/\\/g, "/").toLowerCase();
+  const url = RECORDED_SPRITE_PATHS.get(normalizedPath);
+  if (!url) return null;
+  if (!recordedSpriteCache.has(normalizedPath)) {
+    recordedSpriteCache.set(normalizedPath, fetch(`${url}?v=20260805schema6sprites1`)
+      .then(response => response.ok ? response.arrayBuffer() : null)
+      .then(buffer => buffer ? parseReplaySprite(buffer, normalizedPath) : null)
+      .catch(() => null));
+  }
+  return recordedSpriteCache.get(normalizedPath);
+}
+
+function createRecordedSprite(frames) {
+  const first = frames[0];
+  const width = Number(first?.image?.width) || 48;
+  const height = Number(first?.image?.height) || 48;
+  const material = new THREE.SpriteMaterial({
+    map: first,
+    color: 0xffffff,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false
+  });
+  material.userData.replayBaseColor = material.color.clone();
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(width, height, 1);
+  sprite.renderOrder = 35;
+  sprite.userData.replaySpriteFrames = frames;
+  return sprite;
+}
+
 function isNonVisualEntityClass(classname) {
   return /^trigger_/i.test(String(classname || ""));
 }
@@ -930,8 +971,14 @@ async function setEntityModel(track, modelId) {
   const url = catalogUrl(modelId, "entity");
   if (!url) {
     if (isSprite) {
-      track.visual.add(createGlowSprite(0xffffff, 0.8, 48));
-      track.mesh.userData.spriteFallback = true;
+      const frames = await loadRecordedSprite(recorded?.path);
+      if (track.mesh.userData.modelId !== modelId) return;
+      if (frames?.length) {
+        track.visual.add(createRecordedSprite(frames));
+      } else {
+        track.visual.add(createGlowSprite(0xffffff, 0.8, 48));
+        track.mesh.userData.spriteFallback = true;
+      }
       delete track.mesh.userData.renderSignature;
       return;
     }
@@ -1556,6 +1603,16 @@ function updateEntities() {
       THREE.MathUtils.degToRad(frame.roll)
     );
     void setEntityModel(track, frame.modelId);
+    track.visual.traverse(child => {
+      const frames = child.userData?.replaySpriteFrames;
+      if (!child.isSprite || !frames?.length) return;
+      const frameIndex = Math.abs(Math.floor(frame.frame || 0)) % frames.length;
+      const texture = frames[frameIndex];
+      if (child.material.map !== texture) {
+        child.material.map = texture;
+        child.material.needsUpdate = true;
+      }
+    });
     track.mesh.scale.setScalar(
       track.mesh.userData.diagnosticFallback || track.mesh.userData.spriteFallback
         ? 1
@@ -2976,7 +3033,7 @@ function connectLiveEvents(metadata, sequence) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json?v=20260803schema6scene1", { cache: "force-cache" });
+  const response = await fetch("/assets/tfc/models/manifest.json?v=20260805schema6sprites1", { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));

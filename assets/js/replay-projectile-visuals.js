@@ -124,7 +124,7 @@ function fallbackMesh(definition) {
   return new THREE.Mesh(new THREE.SphereGeometry(definition.radius, 16, 12), material);
 }
 
-function parseSprite(buffer, spriteKey) {
+export function parseReplaySprite(buffer, spriteKey) {
   const view = new DataView(buffer);
   if (view.byteLength < 42) throw new Error(`Invalid sprite: ${spriteKey}`);
   const signature = String.fromCharCode(...new Uint8Array(buffer, 0, 4));
@@ -263,7 +263,7 @@ export class ReplayProjectileVisuals {
     if (!this.sprites.has(key)) {
       this.sprites.set(key, fetch(`${SPRITE_PATHS.get(key)}?v=20260709spr1`)
         .then(response => response.ok ? response.arrayBuffer() : null)
-        .then(buffer => buffer ? parseSprite(buffer, key) : null)
+        .then(buffer => buffer ? parseReplaySprite(buffer, key) : null)
         .catch(() => null));
     }
     const frames = await this.sprites.get(key);

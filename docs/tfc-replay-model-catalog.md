@@ -22,6 +22,11 @@ metadata, bodygroups, skin count, controller/attachment counts, source SHA-256,
 and an explicit `glb` capability block. Upload validation uses this file as its
 allowlist; conversion never runs in the API or viewer.
 
+GoldSrc `.spr` assets are not converted to GLB. Explicitly allowlisted replay
+sprites are served from `assets/sprites` and decoded into animated browser
+textures at runtime. Unknown recorded sprite paths continue to use generated
+fallback geometry and never become client asset URLs.
+
 ## Converter behavior and limitations
 
 The exact converter is `scripts/convert_goldsrc_player_models.py`. It parses

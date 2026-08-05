@@ -24,7 +24,9 @@ allowlisted, validated, transported, parsed, retained, and rendered through a
 generic entity layer. The model catalog includes standard TFC backpack, pickup,
 armor, power-up, prop, and dropped-item studio models. Unknown safe generic
 assets remain visible as diagnostic fallback geometry instead of invalidating
-live playback; native sprite rendering remains pending. Schema-6 metadata uses
+live playback. Observed standard Schema-6 sprite assets use the existing raw
+GoldSrc sprite decoder; unregistered sprites retain the generated glow
+fallback. Schema-6 metadata uses
 `(stream, stream_id)` identity, ordered scene events use
 `(object_stream, object_id)`, pickup resource gains reach the event feed, and
 death/corpse/gib lifetimes drive the persistent player and generic scene
