@@ -93,6 +93,25 @@ function initializeSchema(db) {
     ON match_rounds(match_id, round_num);
 
 `);
+
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS coolest_dude_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coolest_dude_tags_created_at
+    ON coolest_dude_tags(created_at DESC, id DESC);
+
+  DELETE FROM coolest_dude_tags
+  WHERE id NOT IN (
+    SELECT id
+    FROM coolest_dude_tags
+    ORDER BY created_at DESC, id DESC
+    LIMIT 100
+  );
+  `);
 }
 
 function cleanupAnalytics(db, analyticsRetentionDays) {

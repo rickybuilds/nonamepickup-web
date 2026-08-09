@@ -20,6 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 
   <script src="assets/js/main.js?v=20260618i" defer></script>
+  <script src="assets/js/coolest-dude.js?v=20260808tags1" defer></script>
 </head>
 <body class="coolest-dude-page">
   <header class="site-header">
@@ -65,6 +66,30 @@
         width="680"
         height="1536"
       >
+
+      <section class="coolest-dude-tags" aria-labelledby="coolest-dude-tags-title">
+        <div class="coolest-dude-tags-head">
+          <div>
+            <p class="coolest-dude-tags-kicker">COMMUNITY TAGS</p>
+            <h2 id="coolest-dude-tags-title">Leave a tag for Botch</h2>
+          </div>
+          <span class="coolest-dude-tags-note">Positive vibes only</span>
+        </div>
+
+        <form id="coolest-dude-tag-form" class="coolest-dude-tag-form">
+          <label class="sr-only" for="coolest-dude-tag-input">Your tag for Botch</label>
+          <textarea id="coolest-dude-tag-input" name="message" maxlength="120" rows="3" placeholder="Write something kind..." required></textarea>
+          <div class="coolest-dude-form-foot">
+            <span id="coolest-dude-tag-count">0 / 120</span>
+            <button type="submit">Post tag</button>
+          </div>
+          <p id="coolest-dude-tag-status" class="coolest-dude-tag-status" aria-live="polite"></p>
+        </form>
+
+        <div id="coolest-dude-tags-list" class="coolest-dude-tags-list" aria-live="polite">
+          <p class="coolest-dude-tags-empty">Loading tags...</p>
+        </div>
+      </section>
     </section>
   </main>
 </body>
