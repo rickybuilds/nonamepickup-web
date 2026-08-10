@@ -477,7 +477,11 @@ function updateAssaultCannonVisual(track, frame, time) {
 
 function projectileSnapshot(track, time) {
   const frame = trackFrame(track, time);
-  if (!frame || value(frame, 1, false) === 0) return null;
+  // Projectile telemetry uses state 1 for an entity that is still present.
+  // Treat every other lifecycle state as removed so a pipe cannot remain
+  // visible after its detonation event while the impact plays at its last
+  // active position.
+  if (!frame || value(frame, 1, false) !== 1) return null;
   return {
     state: value(frame, 1, false),
     x: value(frame, 2), y: value(frame, 3), z: value(frame, 4),
