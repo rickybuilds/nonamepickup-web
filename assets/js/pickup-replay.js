@@ -630,7 +630,16 @@ function catalogUrl(modelId, expectedKind) {
   if (!modelId) return null;
   const recorded = state.renderModels.get(Number(modelId));
   if (!recorded || recorded.kind !== expectedKind) return null;
-  const catalog = state.modelCatalog.get(recorded.path);
+  const recordedPath = String(recorded.path || "").replace(/\\/g, "/").toLowerCase();
+  let catalog = state.modelCatalog.get(recordedPath);
+  // Some server builds report the resupply pickup under a slightly different
+  // backpack/medkit model name, although the visual asset is the same TFC
+  // world backpack. Keep those recordings on the real model instead of the
+  // diagnostic wireframe used for unresolved entities.
+  if (!catalog && expectedKind === "entity" &&
+      /(?:^|\/)models\/(?:backpack|backpack2|medpack|medkit)(?:2)?\.mdl$/i.test(recordedPath)) {
+    catalog = state.modelCatalog.get("models/backpack.mdl");
+  }
   return catalog && (
     catalog.kind === expectedKind || expectedKind === "entity" ||
     (expectedKind === "objective" && catalog.kind === "entity")
