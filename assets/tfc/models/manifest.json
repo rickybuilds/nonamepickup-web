@@ -70,7 +70,7 @@
       }
     },
     "models/w_medkit.mdl": {
-      "url": "/assets/tfc/models/p_medkit.glb",
+      "url": "/assets/tfc/models/w_medkit.glb",
       "kind": "entity"
     },
     "models/ball.mdl": {

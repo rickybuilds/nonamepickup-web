@@ -1013,14 +1013,6 @@ async function setEntityModel(track, modelId) {
       if (material?.color) material.userData.replayBaseColor = material.color.clone();
     }
   });
-  // The available medkit GLB preserves the held-model pivot, while the
-  // recorded item_healthkit origin is on the floor. Move only this pickup
-  // down so its lowest vertex rests at the entity origin.
-  if (classname === "item_healthkit" || /(?:^|\/)w_medkit\.mdl$/i.test(recorded?.path || "")) {
-    model.updateMatrixWorld(true);
-    const bounds = new THREE.Box3().setFromObject(model);
-    if (Number.isFinite(bounds.min.y)) model.position.y -= bounds.min.y;
-  }
   track.visual.clear();
   track.visual.add(model);
   delete track.mesh.userData.renderSignature;
