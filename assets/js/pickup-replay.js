@@ -2118,6 +2118,14 @@ function mapLightTriggeredOn(definition) {
   if (definition.linkedTriggeredBrushes.length) {
     return definition.linkedTriggeredBrushes.some(visual => visual.node.visible);
   }
+  if (definition.linkedButtonTracks.length) {
+    const buttonActive = definition.linkedButtonTracks.some(track =>
+      buttonActivationTimes(track).some(time =>
+        time <= state.playbackTime && time + definition.buttonPulseDuration >= state.playbackTime
+      )
+    );
+    return definition.startsOn ? !buttonActive : buttonActive;
+  }
   if (definition.linkedBeams.length) {
     return definition.linkedBeams.some(beam => beam.visible);
   }
@@ -2248,6 +2256,19 @@ function buildMapLights(gltf) {
     const linkedTriggeredBrushes = phantomButtonLight
       ? mapTriggeredBrushes.filter(visual => visual.family === phantomButtonLight[1])
       : [];
+    const activationTargets = entityActivationTargets(syncTargets, entities);
+    const linkedButtonTracks = state.brushes.filter(track => {
+      const brush = state.brushDefinitions.get(track.brushId);
+      return ["func_button", "func_rot_button"].includes(brush?.classname) &&
+        activationTargets.has(brush?.target);
+    });
+    const buttonPulseDuration = Math.max(
+      0,
+      ...entities
+        .filter(candidate => ["func_button", "func_rot_button"].includes(candidate?.classname) &&
+          activationTargets.has(candidate?.target))
+        .map(candidate => Number(candidate.wait) || 0)
+    );
 
     mapLightDefinitions.push({
       entityIndex, light, glow, baseIntensity,
@@ -2255,7 +2276,9 @@ function buildMapLights(gltf) {
       startsOn: !(Math.round(Number(entity.spawnflags) || 0) & 1),
       controllers: entityControllers(entity, activationGroups),
       linkedBeams,
-      linkedTriggeredBrushes
+      linkedTriggeredBrushes,
+      linkedButtonTracks,
+      buttonPulseDuration
     });
   }
   updateMapLights();
