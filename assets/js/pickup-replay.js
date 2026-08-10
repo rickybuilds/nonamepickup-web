@@ -1968,13 +1968,15 @@ function entityOutputs(entity, knownTargetnames) {
 
 function entityActivationTargets(targets, entities) {
   const reachable = new Set([...targets].filter(Boolean));
+  const knownTargetnames = new Set(entities.map(entity => entity?.targetname).filter(Boolean));
   let changed = true;
   while (changed) {
     changed = false;
     for (const entity of entities) {
-      const target = String(entity?.target || "");
       const targetname = String(entity?.targetname || "");
-      if (!target || !targetname || !reachable.has(target) || reachable.has(targetname)) continue;
+      if (!targetname || reachable.has(targetname)) continue;
+      const outputs = entityOutputs(entity, knownTargetnames);
+      if (![...outputs].some(output => reachable.has(output))) continue;
       reachable.add(targetname);
       changed = true;
     }
