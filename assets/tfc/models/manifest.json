@@ -69,6 +69,10 @@
         "attachments": false
       }
     },
+    "models/w_medkit.mdl": {
+      "url": "/assets/tfc/models/p_medkit.glb",
+      "kind": "entity"
+    },
     "models/ball.mdl": {
       "url": "/assets/tfc/models/ball.glb",
       "kind": "objective",

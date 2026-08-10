@@ -59,7 +59,7 @@ const LIGHT_STYLE_PATTERNS = [
   "aaaaaaaazzzzzzzz", "mmamammmmammamamaaamammma", "abcdefghijklmnopqrrqponmlkjihgfedcba",
   "mmnnmmnnnmmnn"
 ];
-const TFC_MODEL_ASSET_VERSION = "20260805schema6sprites1";
+const TFC_MODEL_ASSET_VERSION = "20260810medkit1";
 const freeKeys = new Set();
 const loader = new GLTFLoader();
 const skyLoader = new THREE.CubeTextureLoader();
