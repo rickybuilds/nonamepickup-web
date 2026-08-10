@@ -1966,6 +1966,22 @@ function entityOutputs(entity, knownTargetnames) {
   return outputs;
 }
 
+function entityActivationTargets(targets, entities) {
+  const reachable = new Set([...targets].filter(Boolean));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const entity of entities) {
+      const target = String(entity?.target || "");
+      const targetname = String(entity?.targetname || "");
+      if (!target || !targetname || !reachable.has(target) || reachable.has(targetname)) continue;
+      reachable.add(targetname);
+      changed = true;
+    }
+  }
+  return reachable;
+}
+
 function entitySyncTargets(entity, activationGroups) {
   const targetname = String(entity?.targetname || "");
   const targets = new Set(targetname ? [targetname] : []);
@@ -2522,11 +2538,16 @@ function buildMapBeams(gltf) {
     const syncTargets = new Set(
       (Array.isArray(definition.syncTargets) ? definition.syncTargets : [definition.targetname]).filter(Boolean)
     );
+    // Maps such as openfire_lowgrens route a laser toggle through trigger
+    // relays and info_tfgoal entities instead of a multi_manager. Resolve the
+    // target graph backwards so the recorded button becomes the controller.
+    const activationTargets = entityActivationTargets(syncTargets, entities);
     const controllingManagers = managers.filter(manager =>
       [...syncTargets].some(target => manager.outputs.has(target))
     );
     const triggerTargets = new Set(
-      controllingManagers.map(manager => manager.entity.targetname).filter(Boolean)
+      [...activationTargets,
+        ...controllingManagers.map(manager => manager.entity.targetname).filter(Boolean)]
     );
     const captureTriggered = entities.some(entity =>
       triggerTargets.has(entity?.target) &&
@@ -2540,6 +2561,11 @@ function buildMapBeams(gltf) {
           controllerPulseDuration = Math.max(controllerPulseDuration, Number(value) || 0);
         }
       }
+    }
+    for (const button of entities) {
+      if (!["func_button", "func_rot_button"].includes(button?.classname) ||
+          !activationTargets.has(button?.target)) continue;
+      controllerPulseDuration = Math.max(controllerPulseDuration, Number(button.wait) || 0);
     }
     const visual = new THREE.Group();
     visual.userData.startsOn = definition.startsOn !== false;
