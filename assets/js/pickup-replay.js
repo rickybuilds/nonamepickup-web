@@ -607,7 +607,7 @@ function modelUrl(classId, team, ducking = false) {
   const classic = info[0] === "civilian" ? info[1] : `${info[1]}2`;
   const teamSuffix = `_${teamInfo(team).name.toLowerCase()}`;
   const poseSuffix = ducking ? "_crouch" : "";
-  return `assets/models/player/${info[0]}/${classic}${teamSuffix}${poseSuffix}.glb?v=20260731crouch1`;
+  return `assets/tfc/models/player/variants/${info[0]}/${classic}${teamSuffix}${poseSuffix}.glb?v=20260810playerpaths1`;
 }
 
 async function modelAsset(classId, team, ducking = false) {
@@ -662,7 +662,7 @@ function objectiveTeam(definition, objectiveId) {
 
 function objectiveModelUrl(team) {
   const name = teamInfo(team).name.toLowerCase();
-  return `/assets/models/objectives/flag_${name}.glb?v=20260730pickup1`;
+  return `/assets/tfc/models/objectives/flag_${name}.glb?v=20260810modelpaths1`;
 }
 
 async function setObjectiveModel(track) {
@@ -3060,7 +3060,7 @@ function connectLiveEvents(metadata, sequence) {
 }
 
 async function loadTfcModelCatalog() {
-  const response = await fetch("/assets/tfc/models/manifest.json?v=20260805schema6sprites1", { cache: "force-cache" });
+  const response = await fetch(`/assets/tfc/models/manifest.json?v=${TFC_MODEL_ASSET_VERSION}`, { cache: "force-cache" });
   if (!response.ok) throw new Error(`TFC model catalog request failed (${response.status})`);
   const catalog = await response.json();
   return new Map(Object.entries(catalog.models || {}));

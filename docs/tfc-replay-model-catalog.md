@@ -16,6 +16,17 @@ client-only `v_*.mdl` viewmodels remain excluded. It preserves source-relative o
 `assets/tfc/models`, produces deterministic lowercase catalog keys and URLs,
 and reports missing or failed inputs. It does not copy or expose source MDLs.
 
+The replay catalog's player namespace is also the home for the viewer's
+prebuilt player variants: `assets/tfc/models/player/variants` contains the
+team-colored, crouch, and animated GLBs used by the replay and speedrun
+viewers. The direct `assets/tfc/models/player/<class>` files remain the
+canonical source-model fallbacks referenced by `manifest.json`.
+
+The older `assets/models` tree is retained only for shared legacy projectile,
+HUD, sprite, and compatibility assets. It is not a second player-model
+catalog. Replay-specific flag variants live under
+`assets/tfc/models/objectives` alongside the catalog assets.
+
 `assets/tfc/models/manifest.json` maps normalized paths such as
 `models/p_mini.mdl` to a record containing `url`, `kind`, native sequence
 metadata, bodygroups, skin count, controller/attachment counts, source SHA-256,

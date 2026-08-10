@@ -299,7 +299,7 @@ function playerModelInfo(replay) {
 function playerModelUrl(replay, style = state.playerModelStyle) {
   const info = playerModelInfo(replay);
   const suffix = style === "classic" && info.hasClassic ? "2" : "";
-  return `assets/models/player/${encodeURIComponent(info.folder)}/${encodeURIComponent(info.file + suffix)}.glb?v=${PLAYER_MODEL_ASSET_VERSION}`;
+  return `assets/tfc/models/player/variants/${encodeURIComponent(info.folder)}/${encodeURIComponent(info.file + suffix)}.glb?v=${PLAYER_MODEL_ASSET_VERSION}`;
 }
 
 function updatePrimaryPlayerVisibility() {
