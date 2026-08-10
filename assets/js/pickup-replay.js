@@ -2361,6 +2361,29 @@ function carriedObjectivePose(frame) {
   return { position, yaw: bodyYaw + Math.PI / 2 };
 }
 
+function droppedObjectivePosition(frame) {
+  const position = sourcePoint(frame.x, frame.y, frame.z);
+  if (!mapModel) return position;
+
+  scene.updateMatrixWorld(true);
+  const origin = world.localToWorld(position.clone());
+  origin.y += 64;
+  corpseGroundRay.set(origin, corpseDown);
+  corpseGroundRay.near = 0;
+  corpseGroundRay.far = 8192;
+  const hit = corpseGroundRay.intersectObject(mapModel, true).find(intersection =>
+    isReplayMapGroundMaterial(
+      intersection.object.material,
+      intersection.face?.materialIndex || 0
+    )
+  );
+  if (!hit) return position;
+
+  const grounded = objectiveRoot.worldToLocal(hit.point.clone());
+  grounded.y += 1;
+  return grounded;
+}
+
 function updateObjectives() {
   objectiveRoot.visible = state.showObjectives;
   if (!state.showObjectives) return;
@@ -2376,7 +2399,9 @@ function updateObjectives() {
       track.mesh.position.copy(pose.position);
       track.mesh.rotation.y = pose.yaw;
     } else {
-      track.mesh.position.copy(sourcePoint(frame.x, frame.y, frame.z));
+      track.mesh.position.copy(frame.state === 2
+        ? droppedObjectivePosition(frame)
+        : sourcePoint(frame.x, frame.y, frame.z));
       track.mesh.rotation.y = THREE.MathUtils.degToRad(frame.yaw);
     }
     const semantic = sceneMetadataAt("objective", track.objectiveId);
