@@ -1772,6 +1772,22 @@ function buildMapEntityBrushes(gltf) {
       node.visible = false;
       continue;
     }
+    if (node && entity?.classname === "func_illusionary") {
+      // Spawn exits and security fields are non-solid GoldSrc brush visuals.
+      // Their source texture is not always named like a laser, so material
+      // texture heuristics alone can leave the whole field opaque gray.
+      node.traverse(child => {
+        if (!child.isMesh) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of materials) {
+          if (!material) continue;
+          material.transparent = true;
+          material.opacity = Math.min(Number.isFinite(material.opacity) ? material.opacity : 1, 0.2);
+          material.depthWrite = false;
+          material.needsUpdate = true;
+        }
+      });
+    }
     // phantom_lg renders its security lasers as translucent illusionary
     // shield brushes rather than env_beam entities. Pair each team shield
     // with the recorded security button so it disappears for the map's
