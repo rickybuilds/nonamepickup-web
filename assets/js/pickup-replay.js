@@ -1919,7 +1919,9 @@ function updateMapBeams() {
       updateLightningStrike(visual);
       continue;
     }
-    if (visual.userData.controllerPulseDuration > 0 && buttonPulseActive(visual)) {
+    // A button's recorded position is authoritative even when the map omits
+    // a positive wait/pulse duration.
+    if (buttonPulseActive(visual)) {
       visual.visible = !visual.userData.startsOn;
       continue;
     }
