@@ -2091,6 +2091,12 @@ function buttonPulseActive(visual) {
     // pulse.
     const frame = brushSnapshot(track, now);
     if (frame?.active && !brushAtBase(track, frame)) return true;
+    const base = brushBaseTransform(track);
+    if (base && state.players.some(player => {
+      const playerFrame = playerSnapshot(player, now);
+      return playerFrame?.alive && (playerFrame.buttons & 32) &&
+        Math.hypot(playerFrame.x - base.x, playerFrame.y - base.y, playerFrame.z - base.z) < 128;
+    })) return true;
     return buttonActivationTimes(track).some(time => time <= now && time + duration >= now);
   });
 }
@@ -2573,6 +2579,11 @@ function buildMapBeams(gltf) {
     entity,
     outputs: entityOutputs(entity, knownTargetnames)
   }));
+  const demolish2 = String(state.metadata?.map || "").toLowerCase() === "demolish2_b6";
+  const buttonTracks = state.brushes.filter(track => {
+    const brush = state.brushDefinitions.get(track.brushId);
+    return ["func_button", "func_rot_button"].includes(brush?.classname);
+  });
   const up = new THREE.Vector3(0, 1, 0);
 
   for (const [beamIndex, definition] of definitions.entries()) {
@@ -2632,6 +2643,19 @@ function buildMapBeams(gltf) {
     visual.userData.syncTargets = syncTargets;
     visual.userData.midpoint = midpoint.clone();
     visual.userData.controllerTracks = beamControllerTracks(syncTargets, triggerTargets);
+    if (demolish2 && !visual.userData.controllerTracks.some(track => {
+      const brush = state.brushDefinitions.get(track.brushId);
+      return ["func_button", "func_rot_button"].includes(brush?.classname);
+    })) {
+      const nearestButton = buttonTracks.reduce((nearest, track) => {
+        const base = brushBaseTransform(track);
+        if (!base) return nearest;
+        const position = sourcePoint(base.x, base.y, base.z);
+        const distance = midpoint.distanceToSquared(position);
+        return !nearest || distance < nearest.distance ? { track, distance } : nearest;
+      }, null);
+      if (nearestButton) visual.userData.controllerTracks = [nearestButton.track];
+    }
     visual.userData.controllerPulseDuration = controllerPulseDuration;
     visual.userData.captureTriggered = captureTriggered;
     visual.userData.capturePulseDuration = controllerPulseDuration || 5;
