@@ -2002,14 +2002,12 @@ function beamControllerTracks(syncTargets, triggerTargets = new Set()) {
     const brush = state.brushDefinitions.get(track.brushId);
     return BEAM_CONTROLLER_CLASSES.has(brush?.classname) && syncTargets.has(brush?.targetname);
   });
-  if (exact.length) return exact;
-
   const buttons = state.brushes.filter(track => {
     const brush = state.brushDefinitions.get(track.brushId);
     return ["func_button", "func_rot_button"].includes(brush?.classname) &&
       triggerTargets.has(brush?.target);
   });
-  if (buttons.length) return buttons;
+  if (exact.length || buttons.length) return [...new Set([...exact, ...buttons])];
 
   // Some GoldSrc maps (including schtop) toggle a security system through a
   // multi_manager without directly naming its moving func_train. Associate
@@ -2085,6 +2083,12 @@ function buttonPulseActive(visual) {
   return visual.userData.controllerTracks.some(track => {
     const brush = state.brushDefinitions.get(track.brushId);
     if (!["func_button", "func_rot_button"].includes(brush?.classname)) return false;
+    // Some maps omit func_button "wait" and rely on the button's actual
+    // movement. Keep the beam disabled for the whole time the button is
+    // visibly pressed instead of reducing that activation to a zero-length
+    // pulse.
+    const frame = brushSnapshot(track, now);
+    if (frame?.active && !brushAtBase(track, frame)) return true;
     return buttonActivationTimes(track).some(time => time <= now && time + duration >= now);
   });
 }
