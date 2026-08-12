@@ -342,11 +342,28 @@
 
 @media (max-width: 900px) {
   .pickup-bottom-hud {
-    grid-template-columns: 1fr;
-    max-height: 19rem;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    height: min(21rem, calc(100dvh - env(safe-area-inset-top, 0px) - 1rem));
+    max-height: 21rem;
+    overflow: hidden;
   }
   .pickup-controls { grid-template-columns: 17rem minmax(0, 1fr); }
+  .pickup-roster-panel {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+  #pickup-roster {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
   .pickup-selected-player { top: 8.4rem; }
   .pickup-replay-stage .replay-free-roam-help { bottom: 20rem; }
 }
