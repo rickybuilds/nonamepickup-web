@@ -176,6 +176,7 @@
   font-weight: 800;
   letter-spacing: .02em;
   overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .home-hero-stats > div:last-child span {

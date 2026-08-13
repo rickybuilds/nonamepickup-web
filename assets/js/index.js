@@ -229,11 +229,14 @@
   function renderPeak24h(payload) {
     const records = Array.isArray(payload?.mostGames) ? payload.mostGames : [];
     const record = records[0] || null;
-    const names = [...new Set(records.map(playerName).filter(Boolean))];
-    const dates = [...new Set(records.map(row => String(row?.date || "")).filter(Boolean))];
+    const details = [...new Set(records.map(row => {
+      const name = playerName(row);
+      const date = String(row?.date || "");
+      return name && date ? `${name} - ${date}` : name || date;
+    }).filter(Boolean))];
     setText("hero-peak-24h", record ? compact(record.count) : "-");
     setText("hero-peak-24h-detail", record
-      ? `${names.join(" / ")} · ${dates.join(", ")}`
+      ? details.join("\n")
       : "No 24h record yet");
   }
 
