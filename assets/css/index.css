@@ -135,9 +135,9 @@
 
 .home-hero-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  max-width: 780px;
+  max-width: 1020px;
 }
 
 .home-hero-stats div {
@@ -175,6 +175,15 @@
   font-style: normal;
   font-weight: 800;
   letter-spacing: .02em;
+}
+
+.home-hero-stats > div:last-child span {
+  color: #ffbd5a;
+  text-shadow: 0 0 18px rgba(255, 138, 24, .34);
+}
+
+.home-hero-stats > div:last-child {
+  border-left-color: rgba(255, 138, 24, .75);
 }
 
 .hero-match-breakdown {

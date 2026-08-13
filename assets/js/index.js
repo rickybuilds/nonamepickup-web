@@ -226,6 +226,12 @@
     setText("hero-history-since", history.since);
   }
 
+  function renderPeak24h(payload) {
+    const record = Array.isArray(payload?.mostGames) ? payload.mostGames[0] : null;
+    setText("hero-peak-24h", record ? compact(record.count) : "-");
+    setText("hero-peak-24h-detail", record ? `${playerName(record)} · ${record.date}` : "No 24h record yet");
+  }
+
   function renderCards(players, top, mvps, streaks, maps) {
     const topActive = players?.topActive || null;
     const streak = streaks?.currentStreak || null;
@@ -332,7 +338,7 @@
   }
 
   function renderStaticData(payloads) {
-    const [homeJson, summaryJson, playersJson, topJson, mapsJson, mvpsJson, outcomesJson, streaksJson, leaderboardJson] = payloads;
+    const [homeJson, summaryJson, playersJson, topJson, mapsJson, mvpsJson, outcomesJson, streaksJson, leaderboardJson, peak24hJson] = payloads;
     const home = homeJson?.data || {};
     const summary = home.summary || summaryJson?.data || {};
     const players = playersJson?.data || {};
@@ -342,8 +348,10 @@
     const outcomes = outcomesJson?.data || {};
     const streaks = streaksJson?.data || {};
     const leaderboard = Array.isArray(leaderboardJson?.data) ? leaderboardJson.data : [];
+    const peak24h = peak24hJson?.data || {};
 
     renderHero(summary, players);
+    renderPeak24h(peak24h);
     renderStreakFlavor(leaderboard);
     renderCards(players, top, mvps, streaks, maps);
     renderNewswire(players, top, mvps, streaks, maps);
@@ -392,7 +400,8 @@
       "/api/stats/mvps?limit=10",
       "/api/stats/matchOutcomes",
       "/api/stats/streaks",
-      "/api/leaderboard?limit=2000&days=7"
+      "/api/leaderboard?limit=2000&days=7",
+      "/api/stats/mostGamesAndTies"
     ]);
 
     renderStaticData(payloads);

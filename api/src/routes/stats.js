@@ -5,6 +5,49 @@ const express = require("express");
 function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteError }) {
   const router = express.Router();
 
+  router.get("/stats/mostGamesAndTies", (req, res) => {
+    try {
+      const data = cached("stats_most_games_24h_v2", () => {
+        const rows = db.prepare(`
+          SELECT
+            rc.player_id AS id,
+            COALESCE(r.display_name, rc.player_id) AS player,
+            date(datetime(m.created_at, 'unixepoch', '-6 hours')) AS day,
+            COUNT(DISTINCT m.match_id) AS games
+          FROM rating_changes rc
+          JOIN matches m ON m.match_id = rc.match_id
+          LEFT JOIN ratings r ON r.player_id = rc.player_id
+          WHERE m.status = 'completed'
+          GROUP BY rc.player_id, day
+          HAVING games = (
+            SELECT MAX(cnt) FROM (
+              SELECT COUNT(DISTINCT m2.match_id) AS cnt
+              FROM rating_changes rc2
+              JOIN matches m2 ON m2.match_id = rc2.match_id
+              WHERE m2.status = 'completed'
+              GROUP BY rc2.player_id, date(datetime(m2.created_at, 'unixepoch', '-6 hours'))
+            )
+          )
+          ORDER BY games DESC, player COLLATE NOCASE
+        `).all();
+
+        return {
+          mostGames: rows.map(row => ({
+            id: row.id == null ? null : String(row.id),
+            player: row.player || "Unknown",
+            count: Number(row.games || 0),
+            date: row.day
+          }))
+        };
+      });
+
+      res.json({ ok: true, data });
+    } catch (e) {
+      logRouteError("[/api/stats/mostGamesAndTies]", e);
+      sendError(res, 500, "stats_mostGamesAndTies_failed");
+    }
+  });
+
   router.get("/stats/mvps", (req, res) => {
     try {
       const limit = Math.max(1, Math.min(100, Math.trunc(Number(req.query.limit) || 10)));
