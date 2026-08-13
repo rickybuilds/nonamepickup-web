@@ -227,9 +227,14 @@
   }
 
   function renderPeak24h(payload) {
-    const record = Array.isArray(payload?.mostGames) ? payload.mostGames[0] : null;
+    const records = Array.isArray(payload?.mostGames) ? payload.mostGames : [];
+    const record = records[0] || null;
+    const names = [...new Set(records.map(playerName).filter(Boolean))];
+    const dates = [...new Set(records.map(row => String(row?.date || "")).filter(Boolean))];
     setText("hero-peak-24h", record ? compact(record.count) : "-");
-    setText("hero-peak-24h-detail", record ? `${playerName(record)} · ${record.date}` : "No 24h record yet");
+    setText("hero-peak-24h-detail", record
+      ? `${names.join(" / ")} · ${dates.join(", ")}`
+      : "No 24h record yet");
   }
 
   function renderCards(players, top, mvps, streaks, maps) {
