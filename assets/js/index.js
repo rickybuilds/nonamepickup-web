@@ -231,7 +231,8 @@
     const record = records[0] || null;
     const details = [...new Set(records.map(row => {
       const name = playerName(row);
-      const date = String(row?.date || "");
+      const [year, month, day] = String(row?.date || "").split("-");
+      const date = year && month && day ? `${month}/${day}/${year}` : "";
       return name && date ? `${name} - ${date}` : name || date;
     }).filter(Boolean))];
     setText("hero-peak-24h", record ? compact(record.count) : "-");
