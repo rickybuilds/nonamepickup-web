@@ -6,6 +6,7 @@ const PLAYER_IDENTITIES_SQL = `
   SELECT
     pi.steam_id,
     pi.discord_id,
+    r.display_name AS discord_name,
     pi.current_name,
     pi.current_ip,
     pi.current_server,
@@ -23,6 +24,7 @@ const PLAYER_IDENTITIES_SQL = `
       WHERE sip.steam_id = pi.steam_id
     ) AS ip_count
   FROM player_identities pi
+  LEFT JOIN ratings r ON CAST(r.player_id AS TEXT) = CAST(pi.discord_id AS TEXT)
   ORDER BY pi.last_seen DESC
 `;
 
@@ -30,13 +32,15 @@ const PLAYER_IDENTITY_SQL = `
   SELECT
     steam_id,
     discord_id,
+    r.display_name AS discord_name,
     current_name,
     current_ip,
     current_server,
     first_seen,
     last_seen,
     connection_count
-  FROM player_identities
+  FROM player_identities pi
+  LEFT JOIN ratings r ON CAST(r.player_id AS TEXT) = CAST(pi.discord_id AS TEXT)
   WHERE steam_id = ?
 `;
 
@@ -80,13 +84,15 @@ const PLAYERS_BY_IP_SQL = `
     sip.steam_id,
     pi.current_name,
     pi.discord_id,
+    r.display_name AS discord_name,
     SUM(sip.times_seen) AS times_seen,
     MIN(sip.first_seen) AS first_seen,
     MAX(sip.last_seen) AS last_seen
   FROM steam_ip_history sip
   LEFT JOIN player_identities pi ON pi.steam_id = sip.steam_id
+  LEFT JOIN ratings r ON CAST(r.player_id AS TEXT) = CAST(pi.discord_id AS TEXT)
   WHERE sip.ip = ?
-  GROUP BY sip.steam_id, pi.current_name, pi.discord_id
+  GROUP BY sip.steam_id, pi.current_name, pi.discord_id, r.display_name
   ORDER BY last_seen DESC, times_seen DESC
 `;
 

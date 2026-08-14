@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
       player.current_name,
       player.steam_id,
       player.discord_id,
+      player.discord_name,
       player.current_ip
     ].map(value => String(value ?? "").toLowerCase()).join("\n");
   }
@@ -69,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     body.innerHTML = visible.map(player => {
       const steamId = text(player.steam_id);
       const discordId = text(player.discord_id, "Not linked");
+      const discordName = text(player.discord_name, "Not linked");
       const unlinked = player.discord_id == null || String(player.discord_id).trim() === "";
       return `
         <tr
@@ -80,6 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <td data-label="Player"><strong>${escapeHtml(text(player.current_name, "Unknown player"))}</strong></td>
           <td data-label="SteamID"><span class="identities-mono">${escapeHtml(steamId)}</span></td>
           <td data-label="Discord ID"><span class="${unlinked ? "identities-unlinked-label" : "identities-mono"}">${escapeHtml(discordId)}</span></td>
+          <td data-label="Discord Name">${escapeHtml(discordName)}</td>
           <td data-label="Current IP">${ipButton(player.current_ip, state.sharedIps[player.current_ip])}</td>
           <td data-label="Last Server Seen In">${escapeHtml(text(player.current_server))}</td>
           <td data-label="Connections">${number.format(Number(player.connection_count || 0))}</td>
@@ -142,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ["Player Name", text(player.current_name, "Unknown player")],
       ["SteamID", text(player.steam_id)],
       ["Discord ID", text(player.discord_id, "Not linked")],
+      ["Discord Name", text(player.discord_name, "Not linked")],
       ["Current IP", text(player.current_ip)],
       ["Last Server Seen In", text(player.current_server)],
       ["Connections", number.format(Number(player.connection_count || 0))],
@@ -212,6 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         { label: "SteamID", render: row => `<span class="identities-mono">${escapeHtml(text(row.steam_id))}</span>` },
         { label: "Discord ID", render: row => escapeHtml(text(row.discord_id, "Not linked")) },
+        { label: "Discord Name", render: row => escapeHtml(text(row.discord_name, "Not linked")) },
         { label: "Times Seen", render: row => number.format(Number(row.times_seen || 0)) },
         { label: "First Seen", render: row => escapeHtml(formatDate(row.first_seen)) },
         { label: "Last Seen", render: row => escapeHtml(formatDate(row.last_seen)) }
@@ -226,7 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
       error.hidden = false;
       error.textContent = "The player tracker could not be loaded right now.";
       document.getElementById("identities-status").textContent = "Player records unavailable";
-      body.innerHTML = `<tr><td colspan="10" class="identities-empty">Unable to load identities.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="11" class="identities-empty">Unable to load identities.</td></tr>`;
       return;
     }
 
