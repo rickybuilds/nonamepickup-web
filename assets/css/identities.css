@@ -472,9 +472,10 @@
 
 /* Tracker V2 */
 .identities-main {
-  width: min(calc(100% - 48px), 1500px) !important;
+  width: min(calc(100% - (var(--page-gutter-desktop) * 2)), var(--page-main-width)) !important;
+  max-width: var(--page-main-width) !important;
   margin: 0 auto;
-  padding: 28px 0 44px;
+  padding: var(--page-top-gap) 0 var(--page-bottom-gap) !important;
 }
 .tracker-shell { position: relative; }
 .tracker-heading { position: relative; }
