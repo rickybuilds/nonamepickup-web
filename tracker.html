@@ -5,149 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="NoName TFC player and connection history tracker.">
   <meta name="robots" content="noindex,nofollow">
-  <title>NoName TFC Pickups | Player Tracker</title>
+  <title>NoName TFC | Tracker</title>
 
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/identities.css?v=20260726a">
+  <link rel="stylesheet" href="assets/css/identities.css?v=20260815tracker2">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 
   <script src="assets/js/main.js?v=20260723kickedhero1" defer></script>
-  <script src="assets/js/identities.js?v=20260726a" defer></script>
+  <script src="assets/js/identities.js?v=20260815tracker2" defer></script>
 </head>
 
 <body class="identities-page speedruns-page">
   <header class="site-header">
     <div class="site-header-inner">
-      <div class="nn-logo" aria-label="NoName TFC">
-        <span class="logo-nn">NN</span>
-        <span class="logo-slash">//</span>
-        <span class="logo-tfc">TFC</span>
-      </div>
-
+      <div class="nn-logo" aria-label="NoName TFC"><span class="logo-nn">NN</span><span class="logo-slash">//</span><span class="logo-tfc">TFC</span></div>
       <nav class="site-nav" aria-label="Primary navigation">
-        <a href="index.html">Home</a>
-        <a href="speedruns.html">Speedruns</a>
-        <a href="live.html" class="nav-live">LIVE</a>
-        <a href="matches.html">Matches</a>
-        <a href="leaderboard.html">Leaderboard</a>
-        <a href="analytics.html">Analytics</a>
-        <a href="compare.html">Compare</a>
+        <a href="index.html">Home</a><a href="speedruns.html">Speedruns</a><a href="live.html" class="nav-live">LIVE</a><a href="matches.html">Matches</a><a href="leaderboard.html">Leaderboard</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare</a>
       </nav>
-
-      <input
-        id="global-search"
-        type="text"
-        autocomplete="off"
-        autocorrect="off"
-        autocapitalize="off"
-        spellcheck="false"
-        placeholder="Search players..."
-        aria-label="Search players"
-        class="site-search"
-      >
+      <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
     </div>
   </header>
 
-  <main class="identities-main speedrun-main">
-    <section class="identities-shell speedrun-shell">
-      <div class="speedrun-hero">
-        <div class="speedrun-hero-copy">
-          <p class="speedrun-kicker">CONNECTION HISTORY</p>
-          <h1>TFC Tracker</h1>
-          <p class="speedrun-subtitle">Search players by name, SteamID, Discord ID, or IP address across the TFC servers.</p>
-          <p id="identities-status" class="speedrun-updated" aria-live="polite">Loading player records...</p>
+  <main class="identities-main">
+    <section class="tracker-shell" aria-labelledby="tracker-title">
+      <header class="tracker-heading">
+        <div><p class="tracker-kicker">CONNECTION HISTORY</p><h1 id="tracker-title">TFC Tracker</h1><p class="tracker-subtitle">Search connection history across all NoName TFC servers</p><p id="identities-status" class="tracker-status" aria-live="polite">Loading player records...</p></div>
+        <div class="tracker-summary" aria-label="Player tracker totals">
+          <article class="tracker-stat"><span class="tracker-stat-icon" aria-hidden="true">◉</span><div><strong id="identities-total">—</strong><span>Known players</span></div></article>
+          <article class="tracker-stat"><span class="tracker-stat-icon" aria-hidden="true">↗</span><div><strong id="identities-connections">—</strong><span>Total connections</span></div></article>
+          <article class="tracker-stat"><span class="tracker-stat-icon" aria-hidden="true">◇</span><div><strong id="identities-unlinked">—</strong><span>Unlinked players</span></div></article>
+          <article class="tracker-stat"><span class="tracker-stat-icon" aria-hidden="true">◷</span><div><strong id="identities-updated">—</strong><span>Last updated</span></div></article>
         </div>
-
-        <section class="speedrun-summary" aria-label="Player tracker totals">
-          <article class="matches2-kpi">
-            <span>Known Players</span>
-            <strong id="identities-total">—</strong>
-          </article>
-          <article class="matches2-kpi">
-            <span>Unlinked Players</span>
-            <strong id="identities-unlinked">—</strong>
-          </article>
-          <article class="matches2-kpi">
-            <span>Connections</span>
-            <strong id="identities-connections">—</strong>
-          </article>
-        </section>
-      </div>
+      </header>
 
       <div id="identities-error" class="identities-error" role="alert" hidden></div>
 
-      <section class="identities-panel" aria-labelledby="identities-table-title">
-        <div class="identities-toolbar">
-          <div>
-            <p>PLAYER LOOKUP</p>
-            <h2 id="identities-table-title">All Player Records</h2>
-          </div>
-          <label class="identities-filter">
-            <span class="sr-only">Search player records</span>
-            <input
-              id="identities-filter"
-              type="search"
-              autocomplete="off"
-              placeholder="Name, SteamID, Discord ID, or IP..."
-            >
-          </label>
-          <span id="identities-visible-count">Loading players...</span>
+      <section class="tracker-workspace" aria-label="Tracker workspace">
+        <div class="tracker-view-tabs" role="tablist" aria-label="Tracker view"><button class="tracker-view-tab is-active" type="button" role="tab" aria-selected="true" data-view="players">Players</button><button class="tracker-view-tab" type="button" role="tab" aria-selected="false" data-view="map">Connection map</button></div>
+
+        <div id="tracker-players-view" class="tracker-view-panel" role="tabpanel">
+          <label class="tracker-search"><span class="tracker-search-icon" aria-hidden="true">⌕</span><span class="sr-only">Search player records</span><input id="identities-filter" type="search" autocomplete="off" placeholder="Search name, SteamID, Discord ID, alias, or IP address..."><kbd>⌘ K</kbd></label>
+          <div class="tracker-filters" role="tablist" aria-label="Player filters"><button class="tracker-filter is-active" type="button" data-filter="all">All <b data-count="all">—</b></button><button class="tracker-filter" type="button" data-filter="recent">Recently seen <b data-count="recent">—</b></button><button class="tracker-filter" type="button" data-filter="unlinked">Unlinked <b data-count="unlinked">—</b></button><button class="tracker-filter" type="button" data-filter="multiple_ips">Multiple IPs <b data-count="multiple_ips">—</b></button><button class="tracker-filter" type="button" data-filter="multiple_aliases">Multiple aliases <b data-count="multiple_aliases">—</b></button></div>
+
+          <section class="identities-panel" aria-labelledby="identities-table-title">
+            <div class="identities-toolbar"><div><p>PLAYER LOOKUP</p><h2 id="identities-table-title">Player records</h2></div><span id="identities-visible-count">Loading players...</span></div>
+            <div class="identities-table-wrap"><table class="identities-table"><thead><tr><th>Player</th><th>Identity</th><th>Last server</th><th>Connections</th><th>Last seen</th><th>History</th><th><span class="sr-only">Open</span></th></tr></thead><tbody id="identities-body"><tr><td colspan="7" class="identities-empty">Loading player identities...</td></tr></tbody></table></div>
+            <p id="identities-empty" class="identities-empty identities-no-results" hidden>No identities match that search.</p><nav id="identities-pagination" class="tracker-pagination" aria-label="Player pages"></nav>
+          </section>
         </div>
 
-        <div class="identities-table-wrap">
-          <table class="identities-table">
-            <thead>
-              <tr>
-                <th>Player</th>
-                <th>SteamID</th>
-                <th>Discord ID</th>
-                <th>Discord Name</th>
-                <th>Current IP</th>
-                <th>Last Server Seen In</th>
-                <th>Connections</th>
-                <th>First Seen</th>
-                <th>Last Seen</th>
-                <th>Alias Count</th>
-                <th>IP Count</th>
-              </tr>
-            </thead>
-            <tbody id="identities-body">
-              <tr><td colspan="11" class="identities-empty">Loading player identities...</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p id="identities-empty" class="identities-empty identities-no-results" hidden>No identities match that search.</p>
+        <div id="tracker-map-view" class="tracker-view-panel tracker-map-view" role="tabpanel" hidden><div class="tracker-map-empty"><div class="tracker-map-empty-art" aria-hidden="true"><span>◎</span><span>◌</span><span>·</span></div><p class="tracker-kicker">CONNECTION MAP</p><h2>Geographic data is not available yet</h2><p>This tracker currently stores IP history but no cached public-IP geolocation. The map will appear here after a safe, server-side geolocation cache is added.</p><button class="tracker-secondary-action" type="button" data-view-target="players">Back to players</button></div></div>
       </section>
     </section>
   </main>
 
-  <dialog id="identity-modal" class="identities-modal" aria-labelledby="identity-modal-title">
-    <div class="identities-modal-shell">
-      <header class="identities-modal-header">
-        <div>
-          <p>PLAYER LOOKUP</p>
-          <h2 id="identity-modal-title">Player Details</h2>
-        </div>
-        <button class="identities-modal-close" type="button" data-close-modal aria-label="Close player details">×</button>
-      </header>
-      <div id="identity-modal-content" class="identities-modal-content"></div>
-    </div>
-  </dialog>
+  <aside id="identity-drawer" class="identity-drawer" aria-labelledby="identity-drawer-title" aria-hidden="true" hidden><div class="identity-drawer-backdrop" data-close-drawer></div><section class="identity-drawer-panel"><header class="identity-drawer-header"><div class="identity-drawer-person"><span id="identity-drawer-avatar" class="identity-drawer-avatar">?</span><div><p class="tracker-kicker">PLAYER PROFILE</p><h2 id="identity-drawer-title">Player details</h2><span id="identity-drawer-discord" class="identity-drawer-discord">Loading...</span></div></div><button class="identity-drawer-close" type="button" data-close-drawer aria-label="Close player details">×</button></header><div id="identity-drawer-content" class="identity-drawer-content"><p class="identities-modal-loading">Select a player to inspect their history.</p></div></section></aside>
 
-  <dialog id="ip-modal" class="identities-modal identities-ip-modal" aria-labelledby="ip-modal-title">
-    <div class="identities-modal-shell">
-      <header class="identities-modal-header">
-        <div>
-          <p>IP LOOKUP</p>
-          <h2 id="ip-modal-title">IP History</h2>
-        </div>
-        <button class="identities-modal-close" type="button" data-close-modal aria-label="Close IP history">×</button>
-      </header>
-      <div id="ip-modal-content" class="identities-modal-content"></div>
-    </div>
-  </dialog>
+  <dialog id="ip-modal" class="identities-modal identities-ip-modal" aria-labelledby="ip-modal-title"><div class="identities-modal-shell"><header class="identities-modal-header"><div><p>IP LOOKUP</p><h2 id="ip-modal-title">Shared IP history</h2></div><button class="identities-modal-close" type="button" data-close-modal aria-label="Close IP history">×</button></header><div id="ip-modal-content" class="identities-modal-content"></div></div></dialog>
 </body>
 </html>
