@@ -112,6 +112,60 @@ const PLAYER_IDENTITIES_SUMMARY_SQL = `
   FROM player_identities pi
 `;
 
+const PLAYER_IDENTITY_MAP_SUMMARY_SQL = `
+  SELECT
+    COALESCE(SUM(sip.times_seen), 0) AS total_connections,
+    COALESCE(SUM(CASE WHEN geo.status = 'resolved' AND geo.latitude IS NOT NULL AND geo.longitude IS NOT NULL THEN sip.times_seen ELSE 0 END), 0) AS geolocated_connections,
+    COUNT(DISTINCT CASE WHEN geo.status = 'resolved' AND geo.latitude IS NOT NULL AND geo.longitude IS NOT NULL THEN sip.ip END) AS unique_geolocated_ips,
+    COUNT(DISTINCT CASE WHEN geo.status = 'resolved' AND geo.latitude IS NOT NULL AND geo.longitude IS NOT NULL THEN geo.country_code END) AS countries,
+    MAX(geo.looked_up_at) AS last_geoip_update
+  FROM steam_ip_history sip
+  LEFT JOIN ip_geolocation geo ON geo.ip = sip.ip
+  %WHERE%
+`;
+
+const PLAYER_IDENTITY_MAP_POINTS_SQL = `
+  SELECT
+    geo.country_code,
+    geo.country,
+    geo.region,
+    geo.city,
+    geo.latitude,
+    geo.longitude,
+    SUM(sip.times_seen) AS connections,
+    COUNT(DISTINCT sip.steam_id) AS unique_players,
+    COUNT(DISTINCT sip.ip) AS unique_ips,
+    MAX(sip.last_seen) AS last_seen
+  FROM steam_ip_history sip
+  INNER JOIN ip_geolocation geo
+    ON geo.ip = sip.ip
+   AND geo.status = 'resolved'
+   AND geo.latitude IS NOT NULL
+   AND geo.longitude IS NOT NULL
+  %WHERE%
+  GROUP BY geo.country_code, geo.country, geo.region, geo.city, geo.latitude, geo.longitude
+  ORDER BY connections DESC, unique_players DESC
+`;
+
+const PLAYER_IDENTITY_MAP_COUNTRIES_SQL = `
+  SELECT
+    geo.country_code,
+    geo.country,
+    SUM(sip.times_seen) AS connections,
+    COUNT(DISTINCT sip.steam_id) AS unique_players,
+    COUNT(DISTINCT sip.ip) AS unique_ips,
+    MAX(sip.last_seen) AS last_seen
+  FROM steam_ip_history sip
+  INNER JOIN ip_geolocation geo
+    ON geo.ip = sip.ip
+   AND geo.status = 'resolved'
+   AND geo.latitude IS NOT NULL
+   AND geo.longitude IS NOT NULL
+  %WHERE%
+  GROUP BY geo.country_code, geo.country
+  ORDER BY connections DESC, country ASC
+`;
+
 const PLAYER_IDENTITIES_PAGE_SELECT = `
   SELECT
     pi.steam_id,
@@ -197,6 +251,58 @@ function createPlayerIdentitiesRouter({
 }) {
   const router = express.Router();
 
+  router.get("/player-identities/map", (req, res) => {
+    const hasPlayerFilter = req.query.steamId !== undefined;
+    const steamId = hasPlayerFilter ? cleanString(req.query.steamId, 100) : "";
+    if (hasPlayerFilter && !steamId) return sendError(res, 400, "invalid_steam_id");
+
+    const where = steamId ? "WHERE sip.steam_id = ?" : "";
+    const params = steamId ? [steamId] : [];
+    try {
+      const summary = db.prepare(PLAYER_IDENTITY_MAP_SUMMARY_SQL.replace("%WHERE%", where)).get(...params) || {};
+      const points = db.prepare(PLAYER_IDENTITY_MAP_POINTS_SQL.replace("%WHERE%", where)).all(...params);
+      const geolocatedConnections = Number(summary.geolocated_connections || 0);
+      const countries = db.prepare(PLAYER_IDENTITY_MAP_COUNTRIES_SQL.replace("%WHERE%", where)).all(...params).map(country => ({
+        country_code: country.country_code,
+        country: country.country,
+        connections: Number(country.connections || 0),
+        unique_players: Number(country.unique_players || 0),
+        unique_ips: Number(country.unique_ips || 0),
+        percentage: geolocatedConnections ? (Number(country.connections || 0) / geolocatedConnections) * 100 : 0,
+        last_seen: country.last_seen || null
+      }));
+
+      res.json({
+        ok: true,
+        filter: { steam_id: steamId || null },
+        summary: {
+          countries: Number(summary.countries || 0),
+          unique_geolocated_ips: Number(summary.unique_geolocated_ips || 0),
+          geolocated_connections: geolocatedConnections,
+          ungeolocated_connections: Math.max(0, Number(summary.total_connections || 0) - geolocatedConnections),
+          total_connections: Number(summary.total_connections || 0),
+          last_geoip_update: summary.last_geoip_update || null
+        },
+        points: points.map(point => ({
+          country_code: point.country_code,
+          country: point.country,
+          region: point.region,
+          city: point.city,
+          latitude: Number(point.latitude),
+          longitude: Number(point.longitude),
+          connections: Number(point.connections || 0),
+          unique_players: Number(point.unique_players || 0),
+          unique_ips: Number(point.unique_ips || 0),
+          last_seen: point.last_seen || null
+        })),
+        countries
+      });
+    } catch (error) {
+      logRouteError("[/api/player-identities/map]", error);
+      sendError(res, 500, "player_identity_map_failed");
+    }
+  });
+
   router.get("/player-identities", (req, res) => {
     try {
       const query = cleanString(req.query.q, 120);
@@ -277,5 +383,8 @@ module.exports = {
   PLAYERS_BY_IP_SQL,
   PLAYER_IDENTITIES_SUMMARY_SQL,
   PLAYER_IDENTITIES_PAGE_SELECT,
-  playerIdentityPageQuery
+  playerIdentityPageQuery,
+  PLAYER_IDENTITY_MAP_SUMMARY_SQL,
+  PLAYER_IDENTITY_MAP_POINTS_SQL,
+  PLAYER_IDENTITY_MAP_COUNTRIES_SQL
 };

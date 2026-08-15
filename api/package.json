@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test test/*.test.js",
+    "backfill:tracker-geolocation": "node scripts/backfillTrackerGeolocation.js",
     "benchmark:pickup-replay": "node scripts/benchmarkPickupReplayWorker.js",
     "import:external-baselines": "node externalBaselineImport.js"
   },
@@ -18,6 +19,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "gamedig": "^5.3.3",
+    "maxmind": "^5.0.7",
     "mysql2": "^3.11.5",
     "node-fetch": "^2.7.0",
     "sqlite3": "^5.1.7"

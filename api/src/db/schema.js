@@ -30,6 +30,28 @@ function initializeSchema(db) {
 `);
 
   db.exec(`
+  CREATE TABLE IF NOT EXISTS ip_geolocation (
+    ip TEXT PRIMARY KEY,
+    country_code TEXT,
+    country TEXT,
+    region TEXT,
+    city TEXT,
+    latitude REAL,
+    longitude REAL,
+    timezone TEXT,
+    source TEXT NOT NULL DEFAULT 'dbip-lite-city',
+    database_version TEXT,
+    status TEXT NOT NULL DEFAULT 'no_match',
+    looked_up_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_ip_geolocation_status
+    ON ip_geolocation(status);
+  CREATE INDEX IF NOT EXISTS idx_ip_geolocation_country
+    ON ip_geolocation(country_code, status);
+`);
+
+  db.exec(`
   CREATE TABLE IF NOT EXISTS match_kill_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id TEXT NOT NULL,

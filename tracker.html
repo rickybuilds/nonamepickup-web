@@ -11,10 +11,12 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="assets/css/identities.css?v=20260815tracker3">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 
   <script src="assets/js/main.js?v=20260723kickedhero1" defer></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
   <script src="assets/js/identities.js?v=20260815tracker3" defer></script>
 </head>
 
@@ -57,7 +59,26 @@
           </section>
         </div>
 
-        <div id="tracker-map-view" class="tracker-view-panel tracker-map-view" role="tabpanel" hidden><div class="tracker-map-empty"><div class="tracker-map-empty-art" aria-hidden="true"><span>◎</span><span>◌</span><span>·</span></div><p class="tracker-kicker">CONNECTION MAP</p><h2>Geographic data is not available yet</h2><p>This tracker currently stores IP history but no cached public-IP geolocation. The map will appear here after a safe, server-side geolocation cache is added.</p><button class="tracker-secondary-action" type="button" data-view-target="players">Back to players</button></div></div>
+        <div id="tracker-map-view" class="tracker-view-panel tracker-map-view" role="tabpanel" hidden>
+          <header class="tracker-map-heading">
+            <div><p class="tracker-kicker">CONNECTION MAP</p><h2>See where players connect from across the world</h2><p>Aggregated public-IP locations with approximate city-level accuracy.</p></div>
+            <div id="map-filter-indicator" class="tracker-map-filter" hidden><span>PLAYER FILTER</span><strong id="map-filter-name"></strong><button type="button" data-clear-map>Clear</button></div>
+          </header>
+          <div class="tracker-map-summary" aria-label="Connection map totals">
+            <article class="tracker-map-stat"><span class="tracker-stat-icon" aria-hidden="true">◎</span><div><strong id="map-countries">—</strong><span>Countries</span></div></article>
+            <article class="tracker-map-stat"><span class="tracker-stat-icon" aria-hidden="true">⌖</span><div><strong id="map-unique-ips">—</strong><span>Unique IPs</span></div></article>
+            <article class="tracker-map-stat"><span class="tracker-stat-icon" aria-hidden="true">◇</span><div><strong id="map-total-connections">—</strong><span>Total connections</span></div></article>
+            <article class="tracker-map-stat"><span class="tracker-stat-icon" aria-hidden="true">◷</span><div><strong id="map-last-update">—</strong><span>Last GeoIP update</span></div></article>
+          </div>
+          <div class="tracker-map-layout">
+            <section class="tracker-map-card" aria-label="Global connection map">
+              <div class="tracker-map-card-heading"><div><p class="tracker-kicker">LIVE COVERAGE</p><h3>Connection footprint</h3></div><span id="map-coverage-note">Loading locations...</span></div>
+              <div class="tracker-map-canvas-wrap"><div id="connection-map" aria-label="Map of aggregated player connection locations"></div><div id="connection-map-status" class="tracker-map-status" role="status">Loading connection locations...</div><div class="tracker-map-legend" aria-label="Map legend"><span><i class="is-high"></i> 500+</span><span><i class="is-medium"></i> 100–499</span><span><i class="is-low"></i> 1–99</span></div></div>
+              <p class="tracker-map-meta">Locations are approximate and based on IP geolocation. Data source: <a href="https://db-ip.com" target="_blank" rel="noreferrer">DB-IP.com</a>. <span id="map-unlocated-note"></span></p>
+            </section>
+            <section class="tracker-map-card tracker-countries-panel" aria-labelledby="map-countries-title"><div class="tracker-map-card-heading"><div><p class="tracker-kicker">TOP LOCATIONS</p><h3 id="map-countries-title">Countries</h3></div><span id="map-countries-total">—</span></div><div id="map-countries-list" class="tracker-countries-list"><p class="tracker-map-placeholder">Loading countries...</p></div></section>
+          </div>
+        </div>
       </section>
     </section>
   </main>

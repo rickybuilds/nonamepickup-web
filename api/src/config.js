@@ -31,6 +31,8 @@ const CURRENT_RULESET = 2;
 const MIN_VALID_RUN_TIME_MS = positiveInt(process.env.MIN_VALID_RUN_TIME_MS, 2000, 1, 60 * 60 * 1000);
 // TODO(production): Set a dedicated random ANALYTICS_SALT; the fallback is predictable and ADMIN_KEY reuse couples secrets.
 const ANALYTICS_SALT = process.env.ANALYTICS_SALT || process.env.ADMIN_KEY || "tfcbot";
+const GEOIP_DB_PATH = process.env.GEOIP_DB_PATH || "";
+const GEOIP_DATABASE_VERSION = process.env.GEOIP_DATABASE_VERSION || "";
 const PICKUP_DB_HOST = process.env.PICKUP_DB_HOST || "127.0.0.1";
 const PICKUP_DB_PORT = positiveInt(process.env.PICKUP_DB_PORT, 3306, 1, 65535);
 const PICKUP_DB_NAME = process.env.PICKUP_DB_NAME || "pickup_4v4";
@@ -81,6 +83,8 @@ const config = {
   CURRENT_RULESET,
   MIN_VALID_RUN_TIME_MS,
   ANALYTICS_SALT,
+  GEOIP_DB_PATH,
+  GEOIP_DATABASE_VERSION,
   PICKUP_DB_HOST,
   PICKUP_DB_PORT,
   PICKUP_DB_NAME,
