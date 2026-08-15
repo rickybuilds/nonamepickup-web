@@ -30,9 +30,12 @@ const PLAYER_IDENTITIES_SQL = `
 
 const PLAYER_IDENTITY_SQL = `
   SELECT
-    steam_id,
-    discord_id,
+    pi.steam_id,
+    pi.discord_id,
     r.display_name AS discord_name,
+    sp.avatar,
+    sp.avatarmedium,
+    sp.avatarfull,
     current_name,
     current_ip,
     current_server,
@@ -41,7 +44,8 @@ const PLAYER_IDENTITY_SQL = `
     connection_count
   FROM player_identities pi
   LEFT JOIN ratings r ON CAST(r.player_id AS TEXT) = CAST(pi.discord_id AS TEXT)
-  WHERE steam_id = ?
+  LEFT JOIN steam_profiles sp ON sp.steam_id = pi.steam_id
+  WHERE pi.steam_id = ?
 `;
 
 const PLAYER_ALIASES_SQL = `
@@ -113,6 +117,9 @@ const PLAYER_IDENTITIES_PAGE_SELECT = `
     pi.steam_id,
     pi.discord_id,
     r.display_name AS discord_name,
+    sp.avatar,
+    sp.avatarmedium,
+    sp.avatarfull,
     pi.current_name,
     pi.current_ip,
     pi.current_server,
@@ -131,6 +138,7 @@ const PLAYER_IDENTITIES_PAGE_SELECT = `
     ) AS ip_count
   FROM player_identities pi
   LEFT JOIN ratings r ON CAST(r.player_id AS TEXT) = CAST(pi.discord_id AS TEXT)
+  LEFT JOIN steam_profiles sp ON sp.steam_id = pi.steam_id
 `;
 
 function playerIdentityPageQuery({ query, filter, page, limit }) {

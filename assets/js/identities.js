@@ -41,6 +41,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function initials(name) { return value(name, "?").charAt(0).toUpperCase(); }
   function isUnlinked(player) { return !player.discord_id || !String(player.discord_id).trim(); }
   function escape(valueToEscape) { return escapeHtml(String(valueToEscape ?? "")); }
+  function avatarImageMarkup(player) {
+    const imageUrl = player.avatarfull || player.avatarmedium || player.avatar || "";
+    return `<span class="tracker-avatar-fallback">${escape(initials(player.current_name || player.discord_name))}</span>${imageUrl ? `<img src="${escapeAttr(imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}`;
+  }
 
   function identityMarkup(player) {
     const steam = value(player.steam_id);
@@ -57,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     body.innerHTML = state.players.map(player => `
       <tr class="tracker-player-row" data-steam-id="${escapeAttr(value(player.steam_id))}" tabindex="0" aria-label="Open player details for ${escapeAttr(value(player.current_name, player.steam_id))}">
-        <td data-label="Player"><div class="tracker-player"><span class="tracker-avatar">${escape(initials(player.current_name))}</span><span><strong>${escape(value(player.current_name, "Unknown player"))}</strong><small>${escape(value(player.discord_name, "No linked Discord name"))}</small></span></div></td>
+        <td data-label="Player"><div class="tracker-player"><span class="tracker-avatar">${avatarImageMarkup(player)}</span><span><strong>${escape(value(player.current_name, "Unknown player"))}</strong><small>${escape(value(player.discord_name, "No linked Discord name"))}</small></span></div></td>
         <td data-label="Identity">${identityMarkup(player)}</td>
         <td data-label="Last server"><span class="tracker-server">${escape(value(player.current_server))}</span></td>
         <td data-label="Connections"><strong class="tracker-connection-count">${number.format(Number(player.connection_count || 0))}</strong><span class="tracker-sparkline" aria-hidden="true">▂▃▂▅▆▅▇</span></td>
@@ -145,7 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const aliases = Array.isArray(payload.aliases) ? payload.aliases : [];
     const ips = Array.isArray(payload.ips) ? payload.ips : [];
     document.getElementById("identity-drawer-title").textContent = value(player.current_name, player.steam_id);
-    document.getElementById("identity-drawer-avatar").textContent = initials(player.current_name);
+    document.getElementById("identity-drawer-avatar").innerHTML = avatarImageMarkup(player);
     document.getElementById("identity-drawer-discord").textContent = value(player.discord_name, "No linked Discord name");
     const profileLink = player.discord_id ? `<a class="tracker-profile-link" href="player.html?id=${encodeURIComponent(player.discord_id)}">View full player profile ↗</a>` : "";
     content.innerHTML = `
