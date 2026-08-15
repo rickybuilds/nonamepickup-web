@@ -3,7 +3,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const number = new Intl.NumberFormat("en-US");
   const state = { query: "", filter: "all", page: 1, limit: 10, total: 0, players: [], summary: null, requestId: 0 };
-  const mapState = { instance: null, layer: null, loadedKey: "", requestId: 0, steamId: null };
   const body = document.getElementById("identities-body");
   const filterInput = document.getElementById("identities-filter");
   const pagination = document.getElementById("identities-pagination");
@@ -45,117 +44,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function avatarImageMarkup(player) {
     const imageUrl = player.avatarfull || player.avatarmedium || player.avatar || "";
     return `<span class="tracker-avatar-fallback">${escape(initials(player.current_name || player.discord_name))}</span>${imageUrl ? `<img src="${escapeAttr(imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}`;
-  }
-
-  function mapLocationLabel(location) {
-    return [location.city, location.region, location.country].filter(item => item && String(item).trim()).join(", ") || "Approximate location";
-  }
-
-  function initConnectionMap() {
-    const node = document.getElementById("connection-map");
-    if (!node || !window.L || mapState.instance) return Boolean(mapState.instance);
-    mapState.instance = window.L.map(node, { worldCopyJump: true, minZoom: 1, maxZoom: 10, zoomControl: true }).setView([20, 0], 2);
-    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
-    }).addTo(mapState.instance);
-    mapState.layer = window.L.layerGroup().addTo(mapState.instance);
-    return true;
-  }
-
-  function mapStatus(message, visible = true, type = "loading") {
-    const node = document.getElementById("connection-map-status");
-    if (!node) return;
-    node.textContent = message;
-    node.className = `tracker-map-status is-${type}`;
-    node.hidden = !visible;
-  }
-
-  function updateMapSummary(summary) {
-    const total = Number(summary?.total_connections || 0);
-    const geolocated = Number(summary?.geolocated_connections || 0);
-    document.getElementById("map-countries").textContent = number.format(Number(summary?.countries || 0));
-    document.getElementById("map-unique-ips").textContent = number.format(Number(summary?.unique_geolocated_ips || 0));
-    document.getElementById("map-total-connections").textContent = number.format(total);
-    document.getElementById("map-last-update").textContent = summary?.last_geoip_update ? relativeDate(summary.last_geoip_update) : "—";
-    document.getElementById("map-coverage-note").textContent = geolocated ? `${number.format(geolocated)} connections mapped` : "No mapped connections";
-    document.getElementById("map-countries-total").textContent = `${number.format(Number(summary?.countries || 0))} countries`;
-    const missing = Number(summary?.ungeolocated_connections || 0);
-    document.getElementById("map-unlocated-note").textContent = missing ? `${number.format(missing)} connections remain unlocated.` : "All tracked connections have a resolved location.";
-}
-
-  function renderMapCountries(countries) {
-    const list = document.getElementById("map-countries-list");
-    if (!countries.length) {
-      list.innerHTML = `<p class="tracker-map-placeholder">No resolved locations are available for this view.</p>`;
-      return;
-    }
-    const maxConnections = Math.max(...countries.map(country => Number(country.connections || 0)), 1);
-    list.innerHTML = countries.slice(0, 8).map(country => {
-      const connections = Number(country.connections || 0);
-      const percentage = Number(country.percentage || 0);
-      const width = Math.max(4, Math.round((connections / maxConnections) * 100));
-      return `<div class="tracker-country-row"><div class="tracker-country-label"><strong>${escape(value(country.country, country.country_code || "Unknown"))}</strong><span>${number.format(connections)} connections</span></div><div class="tracker-country-bar"><i style="width:${width}%"></i></div><span class="tracker-country-percent">${percentage.toFixed(0)}%</span></div>`;
-    }).join("");
-  }
-
-  function mapPointColor(connections) {
-    if (connections >= 500) return "#ff4fa3";
-    if (connections >= 100) return "#a85cff";
-    return "#16c9ff";
-  }
-
-  function renderMapPoints(points) {
-    if (!mapState.layer) return;
-    mapState.layer.clearLayers();
-    if (!points.length) return;
-    const bounds = [];
-    points.forEach(point => {
-      const connections = Number(point.connections || 0);
-      const marker = window.L.circleMarker([Number(point.latitude), Number(point.longitude)], {
-        radius: Math.min(18, 5 + Math.log10(Math.max(1, connections)) * 3),
-        color: mapPointColor(connections),
-        weight: 1,
-        opacity: 0.9,
-        fillColor: mapPointColor(connections),
-        fillOpacity: 0.48
-      });
-      marker.bindPopup(`<div class="tracker-map-popup"><strong>${escape(mapLocationLabel(point))}</strong><span>${number.format(connections)} connections</span><span>${number.format(Number(point.unique_players || 0))} players · ${number.format(Number(point.unique_ips || 0))} IPs</span></div>`);
-      marker.addTo(mapState.layer);
-      bounds.push([Number(point.latitude), Number(point.longitude)]);
-    });
-    if (bounds.length === 1) mapState.instance.setView(bounds[0], 4);
-    else if (bounds.length > 1) mapState.instance.fitBounds(bounds, { padding: [28, 28], maxZoom: 5 });
-  }
-
-  async function loadConnectionMap(force = false) {
-    const key = mapState.steamId || "global";
-    if (!force && mapState.loadedKey === key) {
-      requestAnimationFrame(() => mapState.instance?.invalidateSize());
-      return;
-    }
-    if (!initConnectionMap()) {
-      mapStatus("The map library could not be loaded.", true, "error");
-      return;
-    }
-    const requestId = ++mapState.requestId;
-    mapStatus("Loading connection locations...", true, "loading");
-    const params = mapState.steamId ? `?steamId=${encodeURIComponent(mapState.steamId)}` : "";
-    const payload = await fetchJSON(`/api/player-identities/map${params}`);
-    if (requestId !== mapState.requestId) return;
-    if (!payload.ok || !payload.summary) {
-      mapStatus("Geographic data is not available yet.", true, "error");
-      return;
-    }
-    mapState.loadedKey = key;
-    updateMapSummary(payload.summary);
-    renderMapCountries(Array.isArray(payload.countries) ? payload.countries : []);
-    renderMapPoints(Array.isArray(payload.points) ? payload.points : []);
-    const filter = document.getElementById("map-filter-indicator");
-    filter.hidden = !mapState.steamId;
-    document.getElementById("map-filter-name").textContent = mapState.steamId || "";
-    mapStatus(payload.points?.length ? "" : "No resolved locations are available for this view.", !payload.points?.length, "empty");
-    requestAnimationFrame(() => mapState.instance?.invalidateSize());
   }
 
   function identityMarkup(player) {
@@ -250,23 +138,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function showDrawer() { drawer.hidden = false; drawer.setAttribute("aria-hidden", "false"); requestAnimationFrame(() => drawer.classList.add("is-open")); document.body.classList.add("drawer-open"); }
   function closeDrawer() { drawer.classList.remove("is-open"); drawer.setAttribute("aria-hidden", "true"); document.body.classList.remove("drawer-open"); setTimeout(() => { if (drawer.getAttribute("aria-hidden") === "true") drawer.hidden = true; }, 220); }
 
-  function renderConnectionLocations(mapPayload, steamId) {
-    const countries = Array.isArray(mapPayload?.countries) ? mapPayload.countries : [];
-    if (!mapPayload?.ok) return `<section class="drawer-section"><div class="drawer-section-heading"><div><p>CONNECTION LOCATIONS</p><h3>Geographic data</h3></div></div><p class="drawer-note">Geographic data is not available right now.</p></section>`;
-    if (!countries.length) return `<section class="drawer-section"><div class="drawer-section-heading"><div><p>CONNECTION LOCATIONS</p><h3>Geographic data</h3></div></div><p class="drawer-note">No geographic connection data is available for this player.</p></section>`;
-    const rows = countries.slice(0, 3).map(country => `<li><strong>${escape(value(country.country, country.country_code || "Unknown"))}</strong><span>${number.format(Number(country.connections || 0))} connections · ${Number(country.percentage || 0).toFixed(0)}%</span></li>`).join("");
-    return `<section class="drawer-section drawer-map-locations"><div class="drawer-section-heading"><div><p>CONNECTION LOCATIONS</p><h3>${number.format(Number(mapPayload.summary?.countries || countries.length))} countries</h3></div></div><ul>${rows}</ul><button type="button" class="tracker-secondary-action" data-view-target="map" data-map-steam-id="${escapeAttr(steamId)}">View on map</button></section>`;
-  }
-
   async function openIdentity(steamId) {
     if (!steamId) return;
     const content = document.getElementById("identity-drawer-content");
     content.innerHTML = `<p class="identities-modal-loading">Loading player history...</p>`;
     showDrawer();
-    const [payload, mapPayload] = await Promise.all([
-      fetchJSON(`/api/player-identities/${encodeURIComponent(steamId)}`),
-      fetchJSON(`/api/player-identities/map?steamId=${encodeURIComponent(steamId)}`)
-    ]);
+    const payload = await fetchJSON(`/api/player-identities/${encodeURIComponent(steamId)}`);
     if (!payload.ok || !payload.player) { content.innerHTML = `<p class="identities-modal-error">Player details could not be loaded.</p>`; return; }
     const player = payload.player;
     const aliases = Array.isArray(payload.aliases) ? payload.aliases : [];
@@ -281,7 +158,6 @@ document.addEventListener("DOMContentLoaded", () => {
       <section class="drawer-section"><div class="drawer-section-heading"><div><p>CURRENT / LAST CONNECTION</p><h3>${escape(value(player.current_server))}</h3></div><span class="drawer-live-dot"></span></div><div class="drawer-connection-card"><strong class="identities-mono">${escape(value(player.current_ip))}</strong><span>${escape(relativeDate(player.last_seen))}</span><time title="${escapeAttr(formatDate(player.last_seen))}">${escape(formatDate(player.last_seen))}</time></div></section>
       <section class="drawer-section"><div class="drawer-section-heading"><div><p>ALIAS HISTORY</p><h3>Aliases <small>${number.format(aliases.length)}</small></h3></div></div>${historyTable([{label:"Alias",render:row => `<strong>${escape(value(row.alias))}</strong>${value(row.alias) === value(player.current_name) ? `<em class="drawer-current-badge">CURRENT</em>` : ""}`},{label:"Seen",render:row => number.format(Number(row.times_seen || 0))},{label:"Last seen",render:row => escape(relativeDate(row.last_seen))}], aliases, "No alias history recorded.")}</section>
       <section class="drawer-section"><div class="drawer-section-heading"><div><p>IP HISTORY</p><h3>Known IPs <small>${number.format(ips.length)}</small></h3></div></div>${historyTable([{label:"IP",render:row => ipButton(row.ip, row.steam_id_count)},{label:"Connections",render:row => number.format(Number(row.times_seen || 0))},{label:"Last seen",render:row => escape(relativeDate(row.last_seen))}], ips, "No IP history recorded.")}</section>
-      ${renderConnectionLocations(mapPayload, steamId)}
       <section class="drawer-section drawer-timeline"><div class="drawer-section-heading"><div><p>CONNECTION TIMELINE</p><h3>Recent activity</h3></div></div><div class="drawer-timeline-item"><span></span><div><strong>${escape(value(player.current_server))}</strong><small>${escape(value(player.current_ip))}</small></div><time title="${escapeAttr(formatDate(player.last_seen))}">${escape(formatDate(player.last_seen))}</time></div><p class="drawer-note">Detailed connection events are not available in the current tracker data source.</p></section>
       ${profileLink ? `<div class="drawer-profile-action">${profileLink}</div>` : ""}
     `;
@@ -297,38 +173,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("ip-modal-content").innerHTML = payload.ok ? `<p class="identities-ip-summary"><strong>${number.format(players.length)}</strong> players have connected from this IP. This is a factual connection overlap, not an identity inference.</p>${historyTable([{label:"Player",render:row => `<button class="identities-player-link" type="button" data-steam-id="${escapeAttr(row.steam_id)}">${escape(value(row.current_name, "Unknown player"))}</button>`},{label:"Connections",render:row => number.format(Number(row.times_seen || 0))},{label:"Last seen",render:row => escape(relativeDate(row.last_seen))}], players, "No players were found for this IP.")}` : `<p class="identities-modal-error">Shared IP history could not be loaded.</p>`;
   }
 
-  function switchView(view, steamId = null) {
-    const map = view === "map";
-    if (map && steamId !== null) {
-      mapState.steamId = steamId || null;
-      mapState.loadedKey = "";
-    }
-    document.getElementById("tracker-players-view").hidden = map;
-    document.getElementById("tracker-map-view").hidden = !map;
-    document.querySelectorAll(".tracker-view-tab").forEach(tab => { const active = tab.dataset.view === view; tab.classList.toggle("is-active", active); tab.setAttribute("aria-selected", String(active)); });
-    if (map) {
-      loadConnectionMap();
-      requestAnimationFrame(() => mapState.instance?.invalidateSize());
-    }
-  }
-
   let searchTimer;
   filterInput.addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { state.query = filterInput.value; state.page = 1; void loadPlayers(); }, 220); });
   document.querySelectorAll(".tracker-filter").forEach(button => button.addEventListener("click", () => { document.querySelectorAll(".tracker-filter").forEach(item => item.classList.remove("is-active")); button.classList.add("is-active"); state.filter = button.dataset.filter; state.page = 1; void loadPlayers(); }));
-  document.querySelectorAll("[data-view], [data-view-target]").forEach(button => button.addEventListener("click", () => {
-    const view = button.dataset.view || button.dataset.viewTarget;
-    if (view === "map" && button.dataset.mapSteamId) closeDrawer();
-    switchView(view, button.dataset.mapSteamId ?? null);
-  }));
-  document.querySelector("[data-clear-map]")?.addEventListener("click", () => {
-    mapState.steamId = null;
-    mapState.loadedKey = "";
-    loadConnectionMap(true);
-  });
   pagination.addEventListener("click", event => { const button = event.target.closest("[data-page]"); if (!button || button.disabled) return; state.page = Number(button.dataset.page); void loadPlayers(); });
   body.addEventListener("click", event => { const ip = event.target.closest("[data-ip]"); if (ip) { event.stopPropagation(); void openIp(ip.dataset.ip); return; } const row = event.target.closest("[data-steam-id]"); if (row) void openIdentity(row.dataset.steamId); });
   body.addEventListener("keydown", event => { if (!["Enter", " "].includes(event.key) || event.target.closest("[data-ip]")) return; const row = event.target.closest("[data-steam-id]"); if (!row) return; event.preventDefault(); void openIdentity(row.dataset.steamId); });
-  document.getElementById("identity-drawer-content").addEventListener("click", event => { const ip = event.target.closest("[data-ip]"); if (ip) { void openIp(ip.dataset.ip); return; } const target = event.target.closest("[data-view-target]"); if (target) { closeDrawer(); switchView(target.dataset.viewTarget, target.dataset.mapSteamId ?? null); } });
+  document.getElementById("identity-drawer-content").addEventListener("click", event => { const ip = event.target.closest("[data-ip]"); if (ip) void openIp(ip.dataset.ip); });
   ipModal.addEventListener("click", event => { const player = event.target.closest("[data-steam-id]"); if (!player) return; ipModal.close(); void openIdentity(player.dataset.steamId); });
   document.querySelectorAll("[data-close-drawer]").forEach(button => button.addEventListener("click", closeDrawer));
   document.querySelectorAll("[data-close-modal]").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));

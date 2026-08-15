@@ -11,12 +11,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <link rel="stylesheet" href="assets/css/identities.css?v=20260815tracker3">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 
   <script src="assets/js/main.js?v=20260723kickedhero1" defer></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
   <script src="assets/js/identities.js?v=20260815tracker3" defer></script>
 </head>
 
@@ -46,8 +44,6 @@
       <div id="identities-error" class="identities-error" role="alert" hidden></div>
 
       <section class="tracker-workspace" aria-label="Tracker workspace">
-        <div class="tracker-view-tabs" role="tablist" aria-label="Tracker view"><button class="tracker-view-tab is-active" type="button" role="tab" aria-selected="true" data-view="players">Players</button><button class="tracker-view-tab" type="button" role="tab" aria-selected="false" data-view="map">Connection map</button></div>
-
         <div id="tracker-players-view" class="tracker-view-panel" role="tabpanel">
           <label class="tracker-search"><span class="tracker-search-icon" aria-hidden="true">⌕</span><span class="sr-only">Search player records</span><input id="identities-filter" type="search" autocomplete="off" placeholder="Search name, SteamID, Discord ID, alias, or IP address..."><kbd>⌘ K</kbd></label>
           <div class="tracker-filters" role="tablist" aria-label="Player filters"><button class="tracker-filter is-active" type="button" data-filter="all">All <b data-count="all">—</b></button><button class="tracker-filter" type="button" data-filter="recent">Recently seen <b data-count="recent">—</b></button><button class="tracker-filter" type="button" data-filter="unlinked">Unlinked <b data-count="unlinked">—</b></button><button class="tracker-filter" type="button" data-filter="multiple_ips">Multiple IPs <b data-count="multiple_ips">—</b></button><button class="tracker-filter" type="button" data-filter="multiple_aliases">Multiple aliases <b data-count="multiple_aliases">—</b></button></div>
@@ -59,26 +55,6 @@
           </section>
         </div>
 
-        <div id="tracker-map-view" class="tracker-view-panel tracker-map-view" role="tabpanel" hidden>
-          <header class="tracker-map-heading">
-            <div><p class="tracker-kicker">CONNECTION MAP</p><h2>See where players connect from across the world</h2><p>Aggregated public-IP locations with approximate city-level accuracy.</p></div>
-            <div id="map-filter-indicator" class="tracker-map-filter" hidden><span>PLAYER FILTER</span><strong id="map-filter-name"></strong><button type="button" data-clear-map>Clear</button></div>
-          </header>
-          <div class="tracker-map-summary" aria-label="Connection map totals">
-            <article class="tracker-map-stat"><span class="tracker-stat-icon" aria-hidden="true">◎</span><div><strong id="map-countries">—</strong><span>Countries</span></div></article>
-            <article class="tracker-map-stat"><span class="tracker-stat-icon" aria-hidden="true">⌖</span><div><strong id="map-unique-ips">—</strong><span>Unique IPs</span></div></article>
-            <article class="tracker-map-stat"><span class="tracker-stat-icon" aria-hidden="true">◇</span><div><strong id="map-total-connections">—</strong><span>Total connections</span></div></article>
-            <article class="tracker-map-stat"><span class="tracker-stat-icon" aria-hidden="true">◷</span><div><strong id="map-last-update">—</strong><span>Last GeoIP update</span></div></article>
-          </div>
-          <div class="tracker-map-layout">
-            <section class="tracker-map-card" aria-label="Global connection map">
-              <div class="tracker-map-card-heading"><div><p class="tracker-kicker">LIVE COVERAGE</p><h3>Connection footprint</h3></div><span id="map-coverage-note">Loading locations...</span></div>
-              <div class="tracker-map-canvas-wrap"><div id="connection-map" aria-label="Map of aggregated player connection locations"></div><div id="connection-map-status" class="tracker-map-status" role="status">Loading connection locations...</div><div class="tracker-map-legend" aria-label="Map legend"><span><i class="is-high"></i> 500+</span><span><i class="is-medium"></i> 100–499</span><span><i class="is-low"></i> 1–99</span></div></div>
-              <p class="tracker-map-meta">Locations are approximate and based on IP geolocation. Data source: <a href="https://db-ip.com" target="_blank" rel="noreferrer">DB-IP.com</a>. <span id="map-unlocated-note"></span></p>
-            </section>
-            <section class="tracker-map-card tracker-countries-panel" aria-labelledby="map-countries-title"><div class="tracker-map-card-heading"><div><p class="tracker-kicker">TOP LOCATIONS</p><h3 id="map-countries-title">Countries</h3></div><span id="map-countries-total">—</span></div><div id="map-countries-list" class="tracker-countries-list"><p class="tracker-map-placeholder">Loading countries...</p></div></section>
-          </div>
-        </div>
       </section>
     </section>
   </main>
