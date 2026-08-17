@@ -26,7 +26,9 @@ function createMatchesRouter({
       const rawLimit = positiveInt(req.query.limit, 100, 1, maxMatchLimit);
       const offset = nonNegativeInt(req.query.offset, 0, 1_000_000);
       const includePending = req.query.includePending === "1";
-      const whereClause = includePending ? "" : "WHERE status='completed'";
+      const whereClause = includePending
+        ? "WHERE match_type = 'pickup' AND player_format = '4v4' AND expected_players = 8"
+        : "WHERE status = 'completed' AND match_type = 'pickup' AND player_format = '4v4' AND expected_players = 8";
       const cacheKey = `matches:${rawLimit}:${offset}:${includePending ? 1 : 0}`;
 
       const payload = cachedFor(cacheKey, 1000, () => {
