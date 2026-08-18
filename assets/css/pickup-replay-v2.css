@@ -716,7 +716,7 @@
 .replay-v2 .pickup-bottom-hud {
   right: auto;
   bottom: 1rem;
-  left: 12.5%;
+  left: 10%;
   width: 75%;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, auto);
