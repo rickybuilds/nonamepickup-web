@@ -316,6 +316,54 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, .75);
 }
 
+.replay-v2 .replay-crosshair {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  left: 50%;
+  width: 1.35rem;
+  height: 1.35rem;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
+  transform: translate(-50%, -50%);
+}
+
+.replay-v2 .replay-crosshair::before,
+.replay-v2 .replay-crosshair::after,
+.replay-v2 .replay-crosshair span {
+  position: absolute;
+  display: block;
+  background: rgba(255, 255, 255, .92);
+  content: "";
+}
+
+.replay-v2 .replay-crosshair::before {
+  top: .58rem;
+  left: .05rem;
+  width: 1.25rem;
+  height: .12rem;
+}
+
+.replay-v2 .replay-crosshair::after {
+  top: .05rem;
+  left: .58rem;
+  width: .12rem;
+  height: 1.25rem;
+}
+
+.replay-v2 .replay-crosshair span {
+  top: .51rem;
+  left: .51rem;
+  width: .28rem;
+  height: .28rem;
+  border-radius: 50%;
+  background: #facc15;
+}
+
+.replay-v2 .replay-crosshair[hidden] {
+  display: none;
+}
+
 .replay-v2 .replay-hud-status,
 .replay-v2 .replay-hud-weapon {
   display: flex;
@@ -439,6 +487,11 @@
   display: grid;
   gap: .18rem;
   text-align: right;
+}
+
+.replay-v2 .replay-hud-ammo.is-hidden,
+.replay-v2 .replay-hud-ammo-icon.is-hidden {
+  display: none;
 }
 
 .replay-v2 .replay-hud-ammo strong {
