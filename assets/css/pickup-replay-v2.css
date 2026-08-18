@@ -301,12 +301,8 @@
 
 /* Calm viewer mode: keep the film visible and make the analysis chrome feel
    like a quiet instrument panel instead of a second application window. */
-.replay-v2 .site-header {
-  display: none;
-}
-
 .replay-v2 .replay-main {
-  height: 100vh;
+  height: calc(100vh - 74px);
 }
 
 .replay-v2 .pickup-topbar {
