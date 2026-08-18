@@ -1501,16 +1501,18 @@ function buildAnalysisEvents() {
     ...state.events.map((event, index) => ({ event, source: "events.csv", index })),
     ...state.sceneEvents.map((event, index) => ({ event, source: "scene_events.csv", index }))
   ];
-  const seen = new Set();
-  return raw
+  const normalized = raw
     .filter(item => isFlagPickupEvent(item.event))
-    .map(item => normalizeAnalysisEvent(item.event, item.source, item.index))
-    .filter(event => {
-      const key = event.type + "|" + event.timeMs + "|" + event.actorSession + "|" + event.targetSession;
-      if (seen.has(key) && event.source !== "scene_events.csv") return false;
-      seen.add(key);
-      return true;
-    })
+    .map(item => normalizeAnalysisEvent(item.event, item.source, item.index));
+  const pickups = new Map();
+  for (const event of normalized) {
+    const key = event.timeMs + "|" + event.actorSession + "|" + event.targetSession + "|" + event.playerName;
+    const existing = pickups.get(key);
+    if (!existing || (existing.type === "flag_entity_carried" && event.type === "flag_pickup")) {
+      pickups.set(key, event);
+    }
+  }
+  return [...pickups.values()]
     .sort((a, b) => a.time - b.time || a.id.localeCompare(b.id));
 }
 
@@ -1601,7 +1603,7 @@ function selectAnalysisEvent(event) {
   state.selectedAnalysisEvent = event.id;
   state.selectedAnalysisEventData = event;
   seekToAnalysisEvent(event);
-  document.querySelectorAll(".analysis-event-marker, .analysis-event-row").forEach(node => {
+  document.querySelectorAll(".analysis-event-marker, .analysis-event-row, .replay-flag-marker").forEach(node => {
     node.classList.toggle("selected", node.dataset.analysisId === event.id);
   });
 }
@@ -1615,58 +1617,39 @@ function renderAnalysisTimeline(force = false) {
   const markerLayer = $("analysis-markers");
   const list = $("analysis-event-list");
   const count = $("analysis-event-count");
-  if (!markerLayer || !list || !count) return;
+  const scrubMarkerLayer = $("replay-flag-markers");
+  if (!scrubMarkerLayer) return;
   if (!force && state.analysisRenderKey === state.analysisFilter + "|" + state.analysisPlayer + "|" + state.analysisEvents.length) {
     updateAnalysisPlayback();
     return;
   }
   state.analysisRenderKey = state.analysisFilter + "|" + state.analysisPlayer + "|" + state.analysisEvents.length;
-  count.textContent = events.length.toLocaleString() + " flag pickups";
-  markerLayer.innerHTML = "";
+  if (count) count.textContent = events.length.toLocaleString() + " flag pickups";
+  if (markerLayer) markerLayer.innerHTML = "";
+  if (list) list.innerHTML = "";
+  scrubMarkerLayer.innerHTML = "";
   for (const event of markerEvents) {
     const marker = document.createElement("button");
     marker.type = "button";
-    marker.className = "analysis-event-marker";
+    marker.className = "replay-flag-marker";
     marker.dataset.analysisId = event.id;
-    marker.title = formatTime(event.time) + " · " + event.label;
+    marker.title = formatTime(event.time) + " · Flag picked up" + (event.playerName ? " by " + event.playerName : "");
+    marker.setAttribute("aria-label", marker.title);
     marker.style.left = Math.min(100, Math.max(0, event.time / duration * 100)) + "%";
     marker.style.setProperty("--event-color", event.color);
     marker.addEventListener("click", () => selectAnalysisEvent(event));
-    markerLayer.appendChild(marker);
+    scrubMarkerLayer.appendChild(marker);
   }
-  list.innerHTML = "";
-  const currentIndex = events.findIndex(event => event.time >= state.playbackTime);
-  const start = Math.max(0, Math.min(
-    Math.max(0, events.length - ANALYSIS_MAX_ROWS),
-    (currentIndex < 0 ? events.length : currentIndex) - Math.floor(ANALYSIS_MAX_ROWS / 2)
-  ));
-  for (const event of events.slice(start, start + ANALYSIS_MAX_ROWS)) {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "analysis-event-row";
-    row.dataset.analysisId = event.id;
-    row.style.setProperty("--event-color", event.color);
-    const time = document.createElement("time");
-    time.textContent = formatTime(event.time);
-    const label = document.createElement("strong");
-    label.textContent = event.label;
-    const detail = document.createElement("span");
-    detail.textContent = event.playerName || event.details;
-    row.append(time, label, detail);
-    row.addEventListener("click", () => selectAnalysisEvent(event));
-    list.appendChild(row);
-  }
-  renderAnalysisDetail();
+  if (markerLayer) markerLayer.innerHTML = "";
   updateAnalysisPlayback();
 }
 
 function updateAnalysisPlayback() {
   const playhead = $("analysis-playhead");
   const current = $("analysis-current-time");
-  if (!playhead || !current) return;
   const duration = Math.max(.001, state.duration);
-  playhead.style.left = Math.min(100, Math.max(0, state.playbackTime / duration * 100)) + "%";
-  current.textContent = formatTime(state.playbackTime);
+  if (playhead) playhead.style.left = Math.min(100, Math.max(0, state.playbackTime / duration * 100)) + "%";
+  if (current) current.textContent = formatTime(state.playbackTime);
   const events = state.visibleAnalysisEvents || [];
   let active = null;
   for (const event of events) {
@@ -1676,7 +1659,7 @@ function updateAnalysisPlayback() {
   const activeId = active?.id || "";
   if (activeId === state.activeAnalysisEvent) return;
   state.activeAnalysisEvent = activeId;
-  document.querySelectorAll(".analysis-event-marker, .analysis-event-row").forEach(node => {
+  document.querySelectorAll(".analysis-event-marker, .analysis-event-row, .replay-flag-marker").forEach(node => {
     node.classList.toggle("active", Boolean(activeId) && node.dataset.analysisId === activeId);
   });
 }

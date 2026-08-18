@@ -66,39 +66,6 @@
         <div id="pickup-events"></div>
       </aside>
 
-
-      <aside class="replay-analysis-panel" aria-label="Replay analysis timeline">
-        <header class="analysis-panel-header">
-          <div>
-            <span>FILM ROOM TIMELINE</span>
-            <strong id="analysis-event-count">0 flag pickups</strong>
-          </div>
-          <span id="analysis-current-time">0:00.000</span>
-        </header>
-        <div class="analysis-toolbar">
-          <strong>FLAG PICKUPS ONLY</strong>
-          <span>Select an event to follow the carrier</span>
-        </div>
-        <div class="analysis-timeline" aria-label="Event timeline">
-          <div class="analysis-timeline-scale"><span>0:00</span><span>HALF</span><span>END</span></div>
-          <div class="analysis-track">
-            <div id="analysis-markers"></div>
-            <div id="analysis-playhead" aria-hidden="true"></div>
-          </div>
-        </div>
-        <div class="analysis-event-list-wrap">
-          <div id="analysis-event-list" class="analysis-event-list"></div>
-        </div>
-        <section class="analysis-detail" aria-live="polite">
-          <div>
-            <span id="analysis-detail-meta">Click an event to jump to the carrier</span>
-            <strong id="analysis-detail-title">Select an event</strong>
-          </div>
-          <p id="analysis-detail-copy">Selection starts five seconds before the pickup and switches to the relevant player POV.</p>
-          <button id="analysis-detail-seek" type="button" disabled>Seek to event</button>
-        </section>
-      </aside>
-
       <section class="pickup-selected-player" aria-label="Selected player">
         <div>
           <span id="pickup-selected-team" class="pickup-team-dot"></span>
@@ -124,7 +91,10 @@
           <div class="pickup-timeline-controls">
             <label class="replay-scrubber">
               <span id="replay-clock">0:00.000</span>
-              <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
+              <div class="replay-scrubber-track">
+                <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
+                <div id="replay-flag-markers" aria-label="Flag pickup markers"></div>
+              </div>
               <span id="replay-duration">0:00.000</span>
             </label>
             <div class="replay-speed" role="group" aria-label="Playback speed">
