@@ -120,6 +120,8 @@ const state = {
   lastTick: performance.now(),
   lastRosterSecond: -1,
   lastEventSecond: -1,
+  killFeedEvents: [],
+  lastKillFeedRenderKey: "",
   analysisEvents: [],
   visibleAnalysisEvents: [],
   analysisFilter: "all",
@@ -1386,6 +1388,106 @@ function eventDescription(event) {
   if (actor && target) return `${actor} ${label} ${target}`;
   if (actor) return `${actor} · ${label}${event.text ? ` · ${event.text}` : ""}`;
   return `${label}${event.text ? ` · ${event.text}` : ""}`;
+}
+
+function prettyWeaponName(value) {
+  const label = String(value || "").trim();
+  if (!label) return "";
+  return label
+    .replace(/^tf[_-]?/i, "")
+    .replace(/^weapon[_-]?/i, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function deathNoticeWeapon(raw) {
+  const direct = prettyWeaponName(raw?.text);
+  if (direct) return direct;
+  const time = Number(raw?.time) || 0;
+  const actorSession = Number(raw?.actorSession) || 0;
+  const targetSession = Number(raw?.targetSession) || 0;
+  const notice = state.sceneEvents.find(event =>
+    event.event === "death_notice" &&
+    Math.abs((Number(event.time) || 0) - time) < 0.1 &&
+    Number(event.actorSession) === actorSession &&
+    Number(event.targetSession) === targetSession &&
+    String(event.text || "").trim()
+  );
+  const noticeWeapon = prettyWeaponName(notice?.text);
+  if (noticeWeapon) return noticeWeapon;
+  const lastShot = [...state.events].reverse().find(event =>
+    event.event === "weapon_fire" &&
+    Number(event.actorSession) === actorSession &&
+    (Number(event.time) || 0) <= time &&
+    time - (Number(event.time) || 0) <= 1.5 &&
+    String(event.text || "").trim()
+  );
+  return prettyWeaponName(lastShot?.text);
+}
+
+function buildKillFeedEvents() {
+  const rows = [];
+  const seen = new Set();
+  const add = (raw, source) => {
+    if (String(raw?.event || "").toLowerCase() !== "death") return;
+    const time = Math.max(0, Number(raw?.time) || 0);
+    const actorSession = Number(raw?.actorSession) || 0;
+    const targetSession = Number(raw?.targetSession) || 0;
+    const key = Math.round(time * 1000) + "|" + actorSession + "|" + targetSession;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const actor = analysisRosterRow(actorSession);
+    const target = analysisRosterRow(targetSession);
+    const actorName = actor?.name || "Unknown player";
+    const targetName = target?.name || "Unknown player";
+    const suicide = actorSession > 0 && actorSession === targetSession;
+    const weapon = deathNoticeWeapon(raw);
+    const text = suicide
+      ? `${targetName} died from suicide`
+      : actorSession && targetSession
+        ? `${actorName} killed ${targetName}${weapon ? " with " + weapon : ""}`
+        : `${targetName} died`;
+    rows.push({
+      id: source + "-" + key,
+      time,
+      text,
+      suicide,
+      actorName,
+      targetName,
+      weapon
+    });
+  };
+  state.events.forEach((event, index) => add(event, "events-" + index));
+  state.sceneEvents.forEach((event, index) => add(event, "scene-" + index));
+  return rows.sort((a, b) => a.time - b.time || a.id.localeCompare(b.id));
+}
+
+function renderKillFeed(force = false) {
+  const feed = $("replay-kill-feed");
+  const container = $("replay-kill-events");
+  if (!feed || !container) return;
+  const current = state.playbackTime;
+  const recent = state.killFeedEvents
+    .filter(event => event.time <= current + 0.001 && event.time >= current - 12)
+    .slice(-6)
+    .reverse();
+  const key = Math.floor(current) + "|" + recent.map(event => event.id).join(",");
+  if (!force && key === state.lastKillFeedRenderKey) return;
+  state.lastKillFeedRenderKey = key;
+  container.innerHTML = "";
+  feed.hidden = recent.length === 0;
+  for (const event of recent) {
+    const item = document.createElement("article");
+    item.className = "replay-kill-event" + (event.suicide ? " suicide" : "");
+    const time = document.createElement("time");
+    time.textContent = formatTime(event.time);
+    const copy = document.createElement("p");
+    copy.textContent = event.text;
+    item.append(time, copy);
+    container.appendChild(item);
+  }
 }
 
 function pickupTimelineEvent(event) {
@@ -2767,6 +2869,25 @@ function selectedFrame() {
   return playerSnapshot(state.playerBySession.get(state.selectedSession), state.playbackTime);
 }
 
+function selectedFlagObjective() {
+  if (!state.selectedSession) return null;
+  return state.objectives.find(track => {
+    const definition = state.objectiveDefinitions.get(track.objectiveId);
+    const identity = [definition?.classname, definition?.model, definition?.targetname]
+      .filter(Boolean).join(" ").toLowerCase();
+    if (!/(flag|goal|ctf)/.test(identity)) return false;
+    return objectiveSnapshot(track, state.playbackTime)?.carrierSession === state.selectedSession;
+  }) || null;
+}
+
+function selectedWeaponName(frame) {
+  const model = state.renderModels.get(Number(frame?.weaponModelId));
+  const path = String(model?.path || "");
+  const file = path.split("/").pop()?.replace(/\.[^.]+$/, "") || "";
+  const fromModel = prettyWeaponName(file.replace(/^[vw]_/, ""));
+  return fromModel || (frame?.weapon ? `Weapon ${frame.weapon}` : "—");
+}
+
 function updateCamera() {
   if (state.cameraMode === "free") return;
   const frame = selectedFrame();
@@ -2789,13 +2910,17 @@ function updateCamera() {
 
 function updateSelectedStats() {
   const frame = selectedFrame();
+  const objective = $("pickup-selected-objective");
+  if (objective) objective.hidden = !selectedFlagObjective();
   if (!frame) return;
-  const speed = Math.hypot(frame.vx, frame.vy);
   $("pickup-selected-class").textContent = `${className(frame.classId)} · ${frame.alive ? "Alive" : "Dead"}`;
   $("pickup-stat-health").textContent = frame.health;
   $("pickup-stat-armor").textContent = frame.armor;
-  $("pickup-stat-speed").textContent = Math.round(speed);
-  $("pickup-stat-weapon").textContent = frame.weapon;
+  // Current ammo is not part of the v2 players.csv contract yet. Keep the
+  // HUD slot ready and honest until the recorder exposes magazine/inventory
+  // state instead of estimating it from pickup events.
+  $("pickup-stat-ammo").textContent = "—";
+  $("pickup-stat-weapon").textContent = selectedWeaponName(frame);
 }
 
 function updateScene() {
@@ -2814,6 +2939,7 @@ function updateScene() {
   updateMapLights();
   updateSelectedStats();
   renderEvents();
+  renderKillFeed();
   updateAnalysisPlayback();
   $("replay-clock").textContent = formatTime(state.playbackTime);
   if (document.activeElement !== $("replay-slider")) {
@@ -3315,6 +3441,8 @@ function trimLiveTelemetry() {
   }
   state.events = state.events.filter(event => event.time >= cutoff);
   state.sceneEvents = state.sceneEvents.filter(event => event.time >= cutoff);
+  state.killFeedEvents = buildKillFeedEvents();
+  state.lastKillFeedRenderKey = "";
   rebuildSceneIndexes();
 }
 
@@ -3344,6 +3472,8 @@ function installTelemetry(telemetry) {
   state.sceneMetadataRows = telemetry.entityMetadata || [];
   state.sceneEvents = telemetry.sceneEvents || [];
   state.events = telemetry.events;
+  state.killFeedEvents = buildKillFeedEvents();
+  state.lastKillFeedRenderKey = "";
   rebuildSceneIndexes();
   buildRoster();
   selectPlayer(state.roster[0]?.sessionId);
@@ -3389,6 +3519,8 @@ async function applyLiveDelta(telemetry) {
   state.sceneMetadataRows.push(...(telemetry.entityMetadata || []));
   state.sceneEvents.push(...(telemetry.sceneEvents || []));
   state.events.push(...telemetry.events);
+  state.killFeedEvents = buildKillFeedEvents();
+  state.lastKillFeedRenderKey = "";
   rebuildSceneIndexes();
   state.playerBySession = new Map(state.players.map(track => [track.sessionId, track]));
   state.liveEdge = Math.max(state.liveEdge, latestTelemetryTime(telemetry));
