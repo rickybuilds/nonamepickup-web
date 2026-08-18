@@ -61,6 +61,11 @@
         </div>
       </section>
 
+      <aside id="replay-kill-feed" class="replay-kill-feed" aria-label="Kill feed" hidden>
+        <header><span>COMBAT FEED</span></header>
+        <div id="replay-kill-events"></div>
+      </aside>
+
       <aside class="pickup-event-panel" aria-label="Round events">
         <header><span>EVENT FEED</span><strong id="pickup-event-count">0</strong></header>
         <div id="pickup-events"></div>
@@ -71,11 +76,12 @@
           <span id="pickup-selected-team" class="pickup-team-dot"></span>
           <strong id="pickup-selected-name">Select a player</strong>
           <small id="pickup-selected-class">—</small>
+          <span id="pickup-selected-objective" class="pickup-selected-objective" hidden>FLAG CARRIER</span>
         </div>
         <dl>
           <div><dt>HP</dt><dd id="pickup-stat-health">—</dd></div>
           <div><dt>Armor</dt><dd id="pickup-stat-armor">—</dd></div>
-          <div><dt>Speed</dt><dd id="pickup-stat-speed">—</dd></div>
+          <div><dt>Ammo</dt><dd id="pickup-stat-ammo">—</dd></div>
           <div><dt>Weapon</dt><dd id="pickup-stat-weapon">—</dd></div>
         </dl>
       </section>
