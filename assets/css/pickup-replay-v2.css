@@ -452,15 +452,37 @@
   bottom: 1rem;
   left: 12.5%;
   width: 75%;
-  grid-template-columns: minmax(38rem, 46rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, auto);
 }
 
 .replay-v2 .pickup-roster-panel {
   display: block;
+  grid-column: 1;
+  grid-row: 2;
 }
 
 .replay-v2 .pickup-controls {
   min-width: 0;
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .35rem;
+}
+
+.replay-v2 .pickup-timeline-controls {
+  grid-row: 1;
+}
+
+.replay-v2 .pickup-control-stack {
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  width: min(34rem, 100%);
+}
+
+.replay-v2 .pickup-control-stack .replay-button {
+  flex: 1 1 7.5rem;
 }
 
 .replay-v2 .pickup-timeline-controls .replay-scrubber-track {
@@ -544,5 +566,9 @@
 
   .replay-v2 .pickup-roster-panel {
     display: flex;
+  }
+
+  .replay-v2 .pickup-controls {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
