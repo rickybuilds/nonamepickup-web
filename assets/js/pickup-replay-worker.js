@@ -93,6 +93,11 @@ const PLAYERS_V3_COLUMNS = [...PLAYERS_V2_COLUMNS,
   "body_yaw", "body_roll", "controller0", "controller1", "controller2", "controller3",
   "blending0", "blending1"
 ];
+const PLAYERS_V7_COLUMNS = [...PLAYERS_V3_COLUMNS,
+  "weapon_name", "clip_ammo", "clip_max", "ammo_shells", "ammo_bullets",
+  "ammo_cells", "ammo_rockets", "gren1_type", "gren1_count", "gren2_type",
+  "gren2_count", "reload_state"
+];
 
 const number = value => {
   const parsed = Number(value);
@@ -175,9 +180,12 @@ async function loadRenderModels(url) {
 async function loadPlayers(url, schemaVersion, renderModels) {
   const tracks = new Map();
   const models = new Map(renderModels.map(model => [model.modelId, model]));
+  const legacyPlayerColumns = schemaVersion === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS;
+  const playerColumns = schemaVersion >= 7 ? PLAYERS_V7_COLUMNS : legacyPlayerColumns;
   await rows(url, (cols, i) => {
     const sessionId = number(cols[i.session_id]);
     if (!tracks.has(sessionId)) tracks.set(sessionId, new Float32Builder());
+    const track = tracks.get(sessionId);
     const values = [
       number(cols[i.time_ms]) / 1000,
       number(cols[i.x]), number(cols[i.y]), number(cols[i.z]),
@@ -205,14 +213,30 @@ async function loadPlayers(url, schemaVersion, renderModels) {
         number(cols[i.blending1])
       );
     }
-    tracks.get(sessionId).push(...values);
-  }, schemaVersion === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS);
-  return [...tracks].map(([sessionId, values]) => ({
-    sessionId,
-    schemaVersion,
-    stride: schemaVersion >= 3 ? 37 : 17,
-    frames: values.finish()
-  }));
+    if (schemaVersion >= 7) {
+      values.push(
+        number(cols[i.clip_ammo]), number(cols[i.clip_max]),
+        number(cols[i.ammo_shells]), number(cols[i.ammo_bullets]),
+        number(cols[i.ammo_cells]), number(cols[i.ammo_rockets]),
+        number(cols[i.gren1_type]), number(cols[i.gren1_count]),
+        number(cols[i.gren2_type]), number(cols[i.gren2_count]),
+        number(cols[i.reload_state])
+      );
+      (track.weaponNames || (track.weaponNames = [])).push(cols[i.weapon_name] || "unknown");
+    }
+    track.push(...values);
+  }, playerColumns);
+  return [...tracks].map(([sessionId, values]) => {
+    const track = {
+      sessionId,
+      schemaVersion,
+      stride: schemaVersion >= 3 ? 37 : 17,
+      frames: values.finish(),
+      weaponNames: schemaVersion >= 7 ? (tracks.get(sessionId).weaponNames || []) : []
+    };
+    if (schemaVersion >= 7) track.stride = 48;
+    return track;
+  });
 }
 
 function playerWeaponAt(players, sessionId, timeSeconds) {
@@ -704,7 +728,7 @@ function transferFor(payload) {
 }
 
 async function loadTelemetry(files, schemaVersion, progress = false, allowUnresolved = false) {
-  if (![2, 3, 4, 5, 6].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
+  if (![2, 3, 4, 5, 6, 7].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
   if (progress) self.postMessage({ type: "progress", label: "Loading roster…" });
   const roster = await loadRoster(sourceFor(files, "roster"));
   const renderModels = schemaVersion >= 3 ? await loadRenderModels(sourceFor(files, "renderModels")) : [];

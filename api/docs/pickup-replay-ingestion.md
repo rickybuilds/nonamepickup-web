@@ -1,6 +1,6 @@
 # Pickup replay ingestion
 
-`POST /api/pickup-replays` accepts one schema-version-2 through schema-version-6 TFC 4v4 round replay package. The
+`POST /api/pickup-replays` accepts one schema-version-2 through schema-version-7 TFC 4v4 round replay package. The
 route is upload-only. Replay storage is private and is not registered as an
 Express static directory.
 

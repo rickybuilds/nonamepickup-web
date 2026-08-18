@@ -657,7 +657,7 @@ test("manifest/header mismatch and unsupported future schema versions are reject
     error => error.code === "manifest_header_mismatch"
   );
   await assert.rejects(
-    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 6 }), renderModels: null })),
+    validateBuffer(t, archiveBuffer({ manifest: validManifest({ schema_version: 8 }), renderModels: null })),
     error => error.code === "unsupported_schema_version"
   );
 });

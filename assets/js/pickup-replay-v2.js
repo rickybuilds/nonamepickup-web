@@ -254,7 +254,8 @@ function playerSnapshot(track, time) {
   const frame = trackFrame(track, time);
   if (!frame) return null;
   const boundaryIndexes = track.schemaVersion >= 3
-    ? [10, 11, 12, 19, 20]
+    ? [10, 11, 12, 19, 20, ...(track.schemaVersion >= 7
+      ? [37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47] : [])]
     : [10, 11, 12];
   if (frame.nextOffset !== frame.offset && (
     frame.data[frame.nextOffset] - frame.data[frame.offset] > 0.25 ||
@@ -285,6 +286,20 @@ function playerSnapshot(track, time) {
     bodyPitch: angle(frame, 28), bodyYaw: angle(frame, 29), bodyRoll: angle(frame, 30),
     controller: [31, 32, 33, 34].map(index => value(frame, index, false)),
     blending: [35, 36].map(index => value(frame, index, false))
+  });
+  if (snapshot.schemaVersion >= 7) Object.assign(snapshot, {
+    weaponName: track.weaponNames?.[Math.floor(frame.offset / track.stride)] || "unknown",
+    clipAmmo: Math.round(value(frame, 37, false)),
+    clipMax: Math.round(value(frame, 38, false)),
+    ammoShells: Math.round(value(frame, 39, false)),
+    ammoBullets: Math.round(value(frame, 40, false)),
+    ammoCells: Math.round(value(frame, 41, false)),
+    ammoRockets: Math.round(value(frame, 42, false)),
+    gren1Type: Math.round(value(frame, 43, false)),
+    gren1Count: Math.round(value(frame, 44, false)),
+    gren2Type: Math.round(value(frame, 45, false)),
+    gren2Count: Math.round(value(frame, 46, false)),
+    reloadState: Math.round(value(frame, 47, false))
   });
   return snapshot;
 }
@@ -2881,11 +2896,42 @@ function selectedFlagObjective() {
 }
 
 function selectedWeaponName(frame) {
+  if (frame?.schemaVersion >= 7 && frame.weaponName && frame.weaponName !== "unknown") {
+    return frame.weaponName;
+  }
   const model = state.renderModels.get(Number(frame?.weaponModelId));
   const path = String(model?.path || "");
   const file = path.split("/").pop()?.replace(/\.[^.]+$/, "") || "";
   const fromModel = prettyWeaponName(file.replace(/^[pvw]_/, ""));
   return fromModel || (frame?.weapon ? `Weapon ${frame.weapon}` : "—");
+}
+
+function currentReserveAmmo(frame) {
+  if (!frame || frame.schemaVersion < 7) return -1;
+  switch (Number(frame.weapon)) {
+    case 6: case 7: case 8: case 9: case 20:
+      return frame.ammoShells;
+    case 10: case 11: case 21:
+      return frame.ammoBullets;
+    case 13: case 15: case 17:
+      return frame.ammoCells;
+    case 12: case 14: case 22:
+      return frame.ammoRockets;
+    default:
+      return -1;
+  }
+}
+
+function hudAmmoValue(value) {
+  return Number.isFinite(Number(value)) && Number(value) >= 0
+    ? String(Math.round(Number(value))) : "—";
+}
+
+function grenadeIconType(type) {
+  return ({
+    24: "caltrop", 25: "concussion", 26: "normal", 27: "nail",
+    28: "mirv", 29: "napalm", 30: "gas", 31: "emp"
+  })[Number(type)] || "unknown";
 }
 
 function updateCamera() {
@@ -2926,19 +2972,33 @@ function updateSelectedStats() {
     $("replay-hud-health").textContent = "—";
     $("replay-hud-armor").textContent = "—";
     $("replay-hud-weapon-name").textContent = "—";
+    $("replay-hud-ammo").textContent = "— / —";
+    $("replay-hud-gren1-count").textContent = "—";
+    $("replay-hud-gren2-count").textContent = "—";
     return;
   }
   $("pickup-selected-class").textContent = `${className(frame.classId)} · ${frame.alive ? "Alive" : "Dead"}`;
   $("pickup-stat-health").textContent = frame.health;
   $("pickup-stat-armor").textContent = frame.armor;
-  // Current ammo is not part of the v2 players.csv contract yet. Keep the
-  // HUD slot ready and honest until the recorder exposes magazine/inventory
-  // state instead of estimating it from pickup events.
-  $("pickup-stat-ammo").textContent = "—";
+  const reserve = currentReserveAmmo(frame);
+  const ammoText = frame.schemaVersion >= 7
+    ? `${hudAmmoValue(frame.clipAmmo)} / ${hudAmmoValue(reserve)}` : "— / —";
+  $("pickup-stat-ammo").textContent = ammoText;
   $("pickup-stat-weapon").textContent = selectedWeaponName(frame);
   $("replay-hud-health").textContent = frame.health;
   $("replay-hud-armor").textContent = frame.armor;
+  $("replay-hud-ammo").textContent = ammoText;
   $("replay-hud-weapon-name").textContent = selectedWeaponName(frame);
+  for (const [slot, type, count] of [
+    [1, frame.gren1Type, frame.gren1Count], [2, frame.gren2Type, frame.gren2Count]
+  ]) {
+    const icon = $(`replay-hud-gren${slot}-icon`);
+    if (icon) {
+      icon.dataset.type = grenadeIconType(type);
+      icon.title = type > 0 ? `Grenade ${slot}: ${grenadeIconType(type)}` : `Grenade ${slot}: empty`;
+    }
+    $(`replay-hud-gren${slot}-count`).textContent = hudAmmoValue(count);
+  }
 }
 
 function updateScene() {
@@ -3384,7 +3444,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260803schema6scene1");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260818schema7inventory1");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -3422,12 +3482,16 @@ function latestTelemetryTime(payload) {
 function appendFrames(existing, incoming) {
   if (!existing.frames.length) {
     existing.frames = incoming.frames;
+    if (incoming.weaponNames) existing.weaponNames = [...incoming.weaponNames];
     return;
   }
   const combined = new Float32Array(existing.frames.length + incoming.frames.length);
   combined.set(existing.frames);
   combined.set(incoming.frames, existing.frames.length);
   existing.frames = combined;
+  if (existing.weaponNames || incoming.weaponNames) {
+    existing.weaponNames = [...(existing.weaponNames || []), ...(incoming.weaponNames || [])];
+  }
 }
 
 function mergeTracks(target, incoming, idKey) {
@@ -3447,7 +3511,10 @@ function trimTrack(track, cutoff) {
   let first = 0;
   while (first < count && track.frames[first * track.stride] < cutoff) first += 1;
   const keepFrom = Math.max(0, first - 1);
-  if (keepFrom) track.frames = track.frames.slice(keepFrom * track.stride);
+  if (keepFrom) {
+    track.frames = track.frames.slice(keepFrom * track.stride);
+    if (track.weaponNames?.length) track.weaponNames = track.weaponNames.slice(keepFrom);
+  }
 }
 
 function trimLiveTelemetry() {
@@ -3562,7 +3629,7 @@ let liveWorkerPending = null;
 
 function ensureLiveWorker() {
   if (liveWorker) return;
-  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260803schema6scene1");
+  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260818schema7inventory1");
   liveWorker.onmessage = event => {
     if (event.data.type === "progress") return setStatus(event.data.label);
     if (!liveWorkerPending) return;

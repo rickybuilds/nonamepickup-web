@@ -54,6 +54,11 @@ const PLAYERS_V3_COLUMNS = Object.freeze([...PLAYERS_V2_COLUMNS,
   "body_yaw", "body_roll", "controller0", "controller1", "controller2", "controller3",
   "blending0", "blending1"
 ]);
+const PLAYERS_V7_COLUMNS = Object.freeze([...PLAYERS_V3_COLUMNS,
+  "weapon_name", "clip_ammo", "clip_max", "ammo_shells", "ammo_bullets",
+  "ammo_cells", "ammo_rockets", "gren1_type", "gren1_count", "gren2_type",
+  "gren2_count", "reload_state"
+]);
 const RENDER_MODEL_COLUMNS = Object.freeze(["model_id", "kind", "path", "first_seen_ms"]);
 const RENDER_MODEL_KINDS = new Set(["player", "weapon", "projectile", "objective", "buildable", "entity"]);
 const PROJECTILE_DEFS_V2_COLUMNS = Object.freeze([
@@ -290,6 +295,32 @@ function validateNumericRow(row, headers, excluded = new Set()) {
     if (excluded.has(header)) continue;
     if (row[header] === "" || !Number.isFinite(Number(row[header]))) {
       throw pickupError(422, "invalid_csv_number", { quarantine: true });
+    }
+  }
+}
+
+function validateInventoryRow(row) {
+  if (typeof row.weapon_name !== "string" ||
+      row.weapon_name.length > 64 || /[\0-\x1f\x7f]/.test(row.weapon_name)) {
+    throw pickupError(422, "invalid_inventory_field", { quarantine: true });
+  }
+  const fields = [
+    "clip_ammo", "clip_max", "ammo_shells", "ammo_bullets", "ammo_cells",
+    "ammo_rockets", "gren1_type", "gren1_count", "gren2_type", "gren2_count",
+    "reload_state"
+  ];
+  for (const field of fields) requiredInteger(row[field], "invalid_inventory_field", { min: -1 });
+  for (const [typeField, countField] of [["gren1_type", "gren1_count"], ["gren2_type", "gren2_count"]]) {
+    const type = Number(row[typeField]);
+    const count = Number(row[countField]);
+    if (count === 0 && type !== 0) {
+      throw pickupError(422, "invalid_grenade_slot", { quarantine: true });
+    }
+    if (count < 0 && type !== -1) {
+      throw pickupError(422, "invalid_grenade_slot", { quarantine: true });
+    }
+    if (count > 0 && type === 0) {
+      throw pickupError(422, "invalid_grenade_slot", { quarantine: true });
     }
   }
 }
@@ -642,9 +673,12 @@ async function validateArchive({
   await validateCsvStream(
     extractor.files.get("players.csv").path,
     "players",
-    manifest.schema_version === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS,
+    manifest.schema_version === 2 ? PLAYERS_V2_COLUMNS :
+      (manifest.schema_version >= 7 ? PLAYERS_V7_COLUMNS : PLAYERS_V3_COLUMNS),
     (row, headers) => {
-      validateNumericRow(row, headers);
+      validateNumericRow(row, headers, manifest.schema_version >= 7
+        ? new Set(["weapon_name"]) : new Set());
+      if (manifest.schema_version >= 7) validateInventoryRow(row);
       if (manifest.schema_version >= 3) {
         for (const [column, kind] of [["player_model_id", "player"], ["weapon_model_id", "weapon"]]) {
           const id = requiredInteger(row[column], "invalid_render_model_reference", { min: 0 });

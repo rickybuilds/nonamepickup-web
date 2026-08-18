@@ -39,7 +39,7 @@ function parseIngestMetadata(headers) {
   if (typeof sequenceText !== "string" || !/^[1-9]\d{0,9}$/.test(sequenceText)) {
     throw pickupError(400, "invalid_sequence");
   }
-  if (typeof schemaText !== "string" || !/^[23456]$/.test(schemaText)) {
+  if (typeof schemaText !== "string" || !/^[234567]$/.test(schemaText)) {
     throw pickupError(400, "invalid_schema_version");
   }
   return {

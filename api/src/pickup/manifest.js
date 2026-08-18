@@ -3,7 +3,7 @@
 const { pickupError } = require("./errors");
 
 const MIN_SCHEMA_VERSION = 2;
-const CURRENT_SCHEMA_VERSION = 6;
+const CURRENT_SCHEMA_VERSION = 7;
 
 function isPlainObject(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
