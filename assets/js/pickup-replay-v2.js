@@ -1456,6 +1456,21 @@ function isFlagPickupEvent(raw) {
   return true;
 }
 
+function flagCaptureCarrier(raw, index, source) {
+  if (source !== "events.csv") return 0;
+  const identity = [raw?.event, raw?.text].filter(Boolean).join(" ").toLowerCase();
+  if (/capture/.test(identity) && /flag|goal|ctf/.test(identity)) {
+    return Number(raw?.actorSession) || 0;
+  }
+  if (raw?.event !== "flag_entity_base" || !raw?.entity) return 0;
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    const previous = state.events[cursor];
+    if (previous.entity !== raw.entity || !String(previous.event).startsWith("flag_entity_")) continue;
+    return previous.event === "flag_entity_carried" ? Number(previous.actorSession) || 0 : 0;
+  }
+  return 0;
+}
+
 function flagPickupHeldAtLeastThreeSeconds(raw, source) {
   const pickupTime = Math.max(0, Number(raw?.time) || 0);
   let followupEvents = [];
@@ -1494,6 +1509,7 @@ function normalizeAnalysisEvent(raw, source, index) {
     ? actorName + " → " + targetName
     : actorName || targetName || "";
   const text = String(raw?.text || "").trim();
+  const isCapture = type === "flag_capture" || /capture/.test(type);
   const object = raw?.objectKind || raw?.objectStream || "";
   const quantities = [
     ["health", raw?.health], ["armor", raw?.armor], ["shells", raw?.shells],
@@ -1508,17 +1524,18 @@ function normalizeAnalysisEvent(raw, source, index) {
     timeMs: Math.round(time * 1000),
     category,
     type,
-    label: "Flag picked up",
+    label: isCapture ? "Flag captured" : "Flag picked up",
     actorSession: Number(raw?.actorSession) || 0,
     targetSession: Number(raw?.targetSession) || 0,
     playerName: actorName || targetName || "",
     team: teamInfo(teamNumber).name,
     teamNumber,
-    color: analysisColor(category, teamNumber),
+    color: isCapture ? "#facc15" : analysisColor(category, teamNumber),
     details: detailParts.join(" · ") || "No additional event metadata",
     source,
     raw,
-    isFlagPickup: true
+    isFlagPickup: !isCapture,
+    isFlagCapture: isCapture
   };
 }
 
@@ -1527,12 +1544,24 @@ function buildAnalysisEvents() {
     ...state.events.map((event, index) => ({ event, source: "events.csv", index })),
     ...state.sceneEvents.map((event, index) => ({ event, source: "scene_events.csv", index }))
   ];
-  const normalized = raw
-    .filter(item => isFlagPickupEvent(item.event) && flagPickupHeldAtLeastThreeSeconds(item.event, item.source))
+  const captures = state.events.map((event, index) => {
+    const carrier = flagCaptureCarrier(event, index, "events.csv");
+    if (!carrier) return null;
+    return {
+      event: { ...event, event: "flag_capture", actorSession: carrier },
+      source: "events.csv",
+      index: "capture-" + index
+    };
+  }).filter(Boolean);
+  const normalized = [...raw, ...captures]
+    .filter(item => item.event.event === "flag_capture" || (
+      isFlagPickupEvent(item.event) && flagPickupHeldAtLeastThreeSeconds(item.event, item.source)
+    ))
     .map(item => normalizeAnalysisEvent(item.event, item.source, item.index));
   const pickups = new Map();
   for (const event of normalized) {
-    const key = event.timeMs + "|" + event.actorSession + "|" + event.targetSession + "|" + event.playerName;
+    const key = event.timeMs + "|" + event.actorSession + "|" + event.targetSession + "|" +
+      event.playerName + "|" + (event.isFlagCapture ? "capture" : "pickup");
     const existing = pickups.get(key);
     if (!existing || (existing.type === "flag_entity_carried" && event.type === "flag_pickup")) {
       pickups.set(key, event);
@@ -1543,7 +1572,7 @@ function buildAnalysisEvents() {
 }
 
 function analysisMatches(event) {
-  return event.isFlagPickup === true;
+  return event.isFlagPickup === true || event.isFlagCapture === true;
 }
 
 function visibleAnalysisEvents() {
@@ -1556,7 +1585,7 @@ function analysisMarkerEvents(events) {
   const buckets = new Map();
   for (const event of events) {
     const bucket = Math.min(ANALYSIS_MAX_MARKERS - 1, Math.floor(event.time / duration * ANALYSIS_MAX_MARKERS));
-    const key = bucket + ":" + event.category;
+    const key = bucket + ":" + event.category + ":" + (event.isFlagCapture ? "capture" : "pickup");
     const existing = buckets.get(key);
     if (existing) {
       existing.count += 1;
@@ -1657,9 +1686,9 @@ function renderAnalysisTimeline(force = false) {
   for (const event of markerEvents) {
     const marker = document.createElement("button");
     marker.type = "button";
-    marker.className = "replay-flag-marker";
+    marker.className = "replay-flag-marker" + (event.isFlagCapture ? " replay-capture-marker" : "");
     marker.dataset.analysisId = event.id;
-    marker.title = formatTime(event.time) + " · Flag picked up" + (event.playerName ? " by " + event.playerName : "");
+    marker.title = formatTime(event.time) + " · " + event.label + (event.playerName ? " by " + event.playerName : "");
     marker.setAttribute("aria-label", marker.title);
     marker.style.left = Math.min(100, Math.max(0, event.time / duration * 100)) + "%";
     marker.style.setProperty("--event-color", event.color);

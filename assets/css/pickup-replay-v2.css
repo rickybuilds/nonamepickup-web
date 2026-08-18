@@ -548,6 +548,29 @@
   transform: translateX(-50%) scale(1.25);
 }
 
+.replay-capture-marker {
+  top: -.3rem;
+  color: #facc15;
+}
+
+.replay-capture-marker::before {
+  top: .02rem;
+  left: .02rem;
+  width: .95rem;
+  height: .95rem;
+  border: 1px solid #fff3a3;
+  border-radius: 50%;
+  color: #3b2f00;
+  background: #facc15;
+  content: "★";
+  font: 800 .62rem/.9rem Arial, sans-serif;
+  text-align: center;
+}
+
+.replay-capture-marker::after {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .replay-v2 .pickup-bottom-hud {
     right: .5rem;
