@@ -45,6 +45,9 @@
   <main class="replay-main">
     <section class="replay-stage pickup-replay-stage" aria-label="4v4 pickup replay viewer">
       <canvas id="replay-canvas"></canvas>
+      <div id="replay-crosshair" class="replay-crosshair" aria-hidden="true">
+        <span></span>
+      </div>
       <div id="replay-status" class="replay-status">Loading round metadata…</div>
 
       <section class="replay-topbar pickup-topbar" aria-label="Round details">
@@ -103,7 +106,7 @@
             <small>AMMO</small>
           </div>
           <strong id="replay-hud-weapon-name">—</strong>
-          <span class="replay-hud-ammo-icon" aria-hidden="true"></span>
+          <span id="replay-hud-ammo-icon" class="replay-hud-ammo-icon" aria-hidden="true"></span>
           <div class="replay-hud-grenades" aria-label="Grenades">
             <div class="replay-hud-grenade">
               <span id="replay-hud-gren1-icon" class="replay-hud-grenade-icon" data-type="unknown" aria-label="Grenade 1"></span>
