@@ -1456,6 +1456,32 @@ function isFlagPickupEvent(raw) {
   return true;
 }
 
+function flagPickupHeldAtLeastThreeSeconds(raw, source) {
+  const pickupTime = Math.max(0, Number(raw?.time) || 0);
+  let followupEvents = [];
+  let matchesFollowup = () => false;
+  if (source === "events.csv" && raw?.event === "flag_pickup") {
+    followupEvents = state.events;
+    const actor = Number(raw.actorSession) || 0;
+    const team = String(raw.text || "").toLowerCase();
+    matchesFollowup = event => event.event === "flag_release" &&
+      (!actor || Number(event.actorSession) === actor) &&
+      (!team || String(event.text || "").toLowerCase() === team);
+  } else if (source === "events.csv" && raw?.event === "flag_entity_carried") {
+    followupEvents = state.events;
+    const entity = Number(raw.entity) || 0;
+    matchesFollowup = event => ["flag_entity_dropped", "flag_entity_base"].includes(event.event) &&
+      (!entity || Number(event.entity) === entity);
+  } else {
+    return true;
+  }
+  const followup = followupEvents.find(event =>
+    (Number(event.time) || 0) > pickupTime && matchesFollowup(event)
+  );
+  const endTime = followup ? Number(followup.time) : state.duration;
+  return endTime - pickupTime >= 3;
+}
+
 function normalizeAnalysisEvent(raw, source, index) {
   const type = String(raw?.event || "event").toLowerCase();
   const time = Math.max(0, Number(raw?.time) || 0);
@@ -1502,7 +1528,7 @@ function buildAnalysisEvents() {
     ...state.sceneEvents.map((event, index) => ({ event, source: "scene_events.csv", index }))
   ];
   const normalized = raw
-    .filter(item => isFlagPickupEvent(item.event))
+    .filter(item => isFlagPickupEvent(item.event) && flagPickupHeldAtLeastThreeSeconds(item.event, item.source))
     .map(item => normalizeAnalysisEvent(item.event, item.source, item.index));
   const pickups = new Map();
   for (const event of normalized) {
