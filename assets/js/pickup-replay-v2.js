@@ -2940,9 +2940,12 @@ function hudAmmoDisplay(frame) {
   const clip = Number(frame.clipAmmo);
   const clipMax = Number(frame.clipMax);
   const reserve = Number(currentReserveAmmo(frame));
-  if (Number.isFinite(clip) && clip >= 0 && Number.isFinite(clipMax) && clipMax > 0) {
+  if (Number.isFinite(clipMax) && clipMax > 0) {
+    // Some TFC weapon paths do not expose the live clip value, but do expose
+    // the weapon's magazine capacity. Keep the HUD shape useful in that case.
+    const loaded = Number.isFinite(clip) && clip >= 0 ? clip : clipMax;
     const secondValue = Number.isFinite(reserve) && reserve >= 0 ? reserve : clipMax;
-    return { visible: true, text: `${Math.round(clip)} / ${Math.round(secondValue)}` };
+    return { visible: true, text: `${Math.round(loaded)} / ${Math.round(secondValue)}` };
   }
   const singleValue = Number.isFinite(reserve) && reserve >= 0
     ? reserve
