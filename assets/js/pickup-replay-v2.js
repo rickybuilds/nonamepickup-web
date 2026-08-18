@@ -1471,7 +1471,7 @@ function flagCaptureCarrier(raw, index, source) {
   return 0;
 }
 
-function flagPickupHeldAtLeastThreeSeconds(raw, source) {
+function flagPickupHeldMoreThanTwoSeconds(raw, source) {
   const pickupTime = Math.max(0, Number(raw?.time) || 0);
   let followupEvents = [];
   let matchesFollowup = () => false;
@@ -1494,7 +1494,7 @@ function flagPickupHeldAtLeastThreeSeconds(raw, source) {
     (Number(event.time) || 0) > pickupTime && matchesFollowup(event)
   );
   const endTime = followup ? Number(followup.time) : state.duration;
-  return endTime - pickupTime >= 3;
+  return endTime - pickupTime > 2;
 }
 
 function normalizeAnalysisEvent(raw, source, index) {
@@ -1555,7 +1555,7 @@ function buildAnalysisEvents() {
   }).filter(Boolean);
   const normalized = [...raw, ...captures]
     .filter(item => item.event.event === "flag_capture" || (
-      isFlagPickupEvent(item.event) && flagPickupHeldAtLeastThreeSeconds(item.event, item.source)
+      isFlagPickupEvent(item.event) && flagPickupHeldMoreThanTwoSeconds(item.event, item.source)
     ))
     .map(item => normalizeAnalysisEvent(item.event, item.source, item.index));
   const pickups = new Map();
