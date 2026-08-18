@@ -572,3 +572,64 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+@media (min-width: 901px) {
+  .replay-v2 .pickup-bottom-hud {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: .35rem;
+    padding: .35rem;
+  }
+
+  .replay-v2 .pickup-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: .25rem;
+  }
+
+  .replay-v2 .pickup-timeline-controls {
+    display: contents;
+  }
+
+  .replay-v2 .pickup-timeline-controls .replay-scrubber {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .replay-v2 .pickup-control-stack {
+    grid-column: 1;
+    grid-row: 2;
+    width: auto;
+    flex-wrap: nowrap;
+  }
+
+  .replay-v2 .pickup-timeline-controls .replay-speed {
+    grid-column: 2;
+    grid-row: 2;
+    width: 13rem;
+    margin: 0;
+    align-self: center;
+  }
+
+  .replay-v2 .pickup-control-stack .replay-button {
+    min-height: 1.8rem;
+    padding: 0 .55rem;
+    font-size: .6rem;
+  }
+
+  .replay-v2 .pickup-roster-panel > header {
+    padding-top: .35rem;
+    padding-bottom: .35rem;
+  }
+
+  .replay-v2 .pickup-player {
+    min-height: 1.75rem;
+    padding-top: .2rem;
+    padding-bottom: .2rem;
+  }
+
+  .replay-v2 .pickup-player-copy small {
+    margin-top: .06rem;
+  }
+}
