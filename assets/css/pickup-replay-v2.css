@@ -299,6 +299,205 @@
   }
 }
 
+/* Native-feeling spectator HUD: persistent status anchors in the two lower
+   corners, outside the replay dock. */
+.replay-v2 .replay-tfc-hud {
+  position: absolute;
+  z-index: 8;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+  color: #e5edf7;
+  font-family: Orbitron, sans-serif;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .75);
+}
+
+.replay-v2 .replay-hud-status,
+.replay-v2 .replay-hud-weapon {
+  display: flex;
+  align-items: flex-end;
+  gap: .72rem;
+}
+
+.replay-v2 .replay-hud-stat {
+  display: flex;
+  align-items: center;
+  gap: .28rem;
+}
+
+.replay-v2 .replay-hud-stat strong {
+  min-width: 2.5rem;
+  color: #f2b55b;
+  font: 800 1.35rem/1 Orbitron, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-hud-icon {
+  position: relative;
+  display: block;
+  width: 1.2rem;
+  height: 1.25rem;
+  color: #f2b55b;
+}
+
+.replay-v2 .replay-hud-health .replay-hud-icon::before,
+.replay-v2 .replay-hud-health .replay-hud-icon::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: currentColor;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.replay-v2 .replay-hud-health .replay-hud-icon::before {
+  width: .95rem;
+  height: .32rem;
+}
+
+.replay-v2 .replay-hud-health .replay-hud-icon::after {
+  width: .32rem;
+  height: .95rem;
+}
+
+.replay-v2 .replay-hud-armor .replay-hud-icon {
+  width: 1.05rem;
+  height: 1.15rem;
+  border: .18rem solid currentColor;
+  border-radius: .15rem .15rem .42rem .42rem;
+  clip-path: polygon(50% 0, 100% 17%, 87% 72%, 50% 100%, 13% 72%, 0 17%);
+}
+
+.replay-v2 .replay-hud-flag {
+  display: flex;
+  align-items: center;
+  gap: .32rem;
+  margin-left: .2rem;
+  color: #facc15;
+}
+
+.replay-v2 .replay-hud-flag[hidden] {
+  display: none;
+}
+
+.replay-v2 .replay-hud-flag strong {
+  max-width: 12rem;
+  overflow: hidden;
+  font: 800 .65rem/1 Orbitron, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .replay-hud-flag-icon {
+  position: relative;
+  display: block;
+  width: 1.25rem;
+  height: 1.35rem;
+  border-left: .14rem solid currentColor;
+  filter: drop-shadow(0 0 5px rgba(250, 204, 21, .7));
+}
+
+.replay-v2 .replay-hud-flag-icon::before {
+  position: absolute;
+  top: .08rem;
+  left: .08rem;
+  width: .88rem;
+  height: .58rem;
+  border-radius: 0 .14rem .14rem 0;
+  background: currentColor;
+  content: "";
+}
+
+.replay-v2 .replay-hud-weapon {
+  justify-content: flex-end;
+  gap: .62rem;
+  min-width: 13rem;
+  color: #f2b55b;
+}
+
+.replay-v2 .replay-hud-ammo {
+  display: grid;
+  gap: .18rem;
+  text-align: right;
+}
+
+.replay-v2 .replay-hud-ammo strong {
+  font: 800 1.4rem/1 Orbitron, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-hud-ammo small {
+  color: rgba(242, 181, 91, .72);
+  font: 700 .44rem/1 Orbitron, sans-serif;
+  letter-spacing: .1em;
+}
+
+.replay-v2 #replay-hud-weapon-name {
+  max-width: 9rem;
+  overflow: hidden;
+  font: 800 .7rem/1 Orbitron, sans-serif;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.replay-v2 .replay-hud-ammo-icon {
+  position: relative;
+  display: block;
+  width: 1rem;
+  height: 1.45rem;
+  border: .12rem solid currentColor;
+  border-radius: .5rem .5rem .18rem .18rem;
+  transform: skewY(-8deg);
+}
+
+.replay-v2 .replay-hud-ammo-icon::after {
+  position: absolute;
+  right: .12rem;
+  bottom: .14rem;
+  left: .12rem;
+  height: .18rem;
+  background: currentColor;
+  box-shadow: 0 -.36rem 0 currentColor;
+  content: "";
+}
+
+@media (max-width: 900px) {
+  .replay-v2 .replay-tfc-hud {
+    bottom: 21rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .replay-v2 .replay-tfc-hud {
+    right: .65rem;
+    bottom: 21.5rem;
+    left: .65rem;
+  }
+
+  .replay-v2 .replay-hud-status,
+  .replay-v2 .replay-hud-weapon {
+    gap: .35rem;
+  }
+
+  .replay-v2 .replay-hud-stat strong,
+  .replay-v2 .replay-hud-ammo strong {
+    font-size: .95rem;
+  }
+
+  .replay-v2 .replay-hud-weapon {
+    min-width: 0;
+  }
+
+  .replay-v2 #replay-hud-weapon-name {
+    max-width: 5rem;
+  }
+}
+
 /* Calm viewer mode: keep the film visible and make the analysis chrome feel
    like a quiet instrument panel instead of a second application window. */
 .replay-v2 .replay-main {
@@ -933,4 +1132,9 @@
     right: .5rem;
     width: calc(100% - 1rem);
   }
+}
+
+/* Keep the final presentation on the game-style lower HUD. */
+.replay-v2 .pickup-selected-player {
+  display: none;
 }
