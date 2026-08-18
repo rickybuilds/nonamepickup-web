@@ -380,14 +380,30 @@
   color: #facc15;
 }
 
+.replay-v2 .replay-flag-carrier-hud {
+  position: absolute;
+  z-index: 9;
+  top: 43%;
+  left: 1rem;
+  flex-direction: column;
+  gap: .35rem;
+  padding: .48rem .34rem .42rem;
+  border: 1px solid rgba(250, 204, 21, .45);
+  border-radius: 7px;
+  background: rgba(24, 20, 5, .7);
+  box-shadow: 0 0 18px rgba(250, 204, 21, .18);
+  transform: translateY(-50%);
+}
+
 .replay-v2 .replay-hud-flag[hidden] {
   display: none;
 }
 
 .replay-v2 .replay-hud-flag strong {
-  max-width: 12rem;
+  max-width: none;
   overflow: hidden;
-  font: 800 .65rem/1 Orbitron, sans-serif;
+  font: 800 .45rem/1 Orbitron, sans-serif;
+  letter-spacing: .08em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -473,6 +489,10 @@
 }
 
 @media (max-width: 620px) {
+  .replay-v2 .replay-flag-carrier-hud {
+    left: .5rem;
+  }
+
   .replay-v2 .replay-tfc-hud {
     right: .65rem;
     bottom: 21.5rem;
