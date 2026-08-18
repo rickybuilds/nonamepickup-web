@@ -452,11 +452,15 @@
   bottom: 1rem;
   left: 12.5%;
   width: 75%;
-  grid-template-columns: minmax(15rem, 17rem) minmax(0, 1fr);
+  grid-template-columns: minmax(38rem, 46rem) minmax(0, 1fr);
 }
 
 .replay-v2 .pickup-roster-panel {
   display: block;
+}
+
+.replay-v2 .pickup-controls {
+  min-width: 0;
 }
 
 .replay-v2 .pickup-timeline-controls .replay-scrubber-track {
