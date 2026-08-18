@@ -728,3 +728,7 @@
   padding: .2rem .35rem .16rem;
   font-size: .52rem;
 }
+
+.replay-v2 .pickup-roster-panel > header {
+  display: none;
+}
