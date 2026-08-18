@@ -2927,6 +2927,29 @@ function hudAmmoValue(value) {
     ? String(Math.round(Number(value))) : "—";
 }
 
+function isMeleeWeapon(frame) {
+  const identity = [frame?.weaponName, selectedWeaponName(frame)]
+    .filter(Boolean).join(" ").toLowerCase();
+  return /(spanner|wrench|knife|axe|crowbar|medkit|bioweapon)/.test(identity);
+}
+
+function hudAmmoDisplay(frame) {
+  if (!frame || frame.schemaVersion < 7 || isMeleeWeapon(frame)) {
+    return { visible: false, text: "" };
+  }
+  const clip = Number(frame.clipAmmo);
+  const clipMax = Number(frame.clipMax);
+  const reserve = Number(currentReserveAmmo(frame));
+  if (Number.isFinite(clip) && clip >= 0 && Number.isFinite(clipMax) && clipMax > 0) {
+    const secondValue = Number.isFinite(reserve) && reserve >= 0 ? reserve : clipMax;
+    return { visible: true, text: `${Math.round(clip)} / ${Math.round(secondValue)}` };
+  }
+  const singleValue = Number.isFinite(reserve) && reserve >= 0
+    ? reserve
+    : clip;
+  return { visible: true, text: hudAmmoValue(singleValue) };
+}
+
 function grenadeIconType(type) {
   return ({
     24: "caltrop", 25: "concussion", 26: "normal", 27: "nail",
@@ -2973,6 +2996,8 @@ function updateSelectedStats() {
     $("replay-hud-armor").textContent = "—";
     $("replay-hud-weapon-name").textContent = "—";
     $("replay-hud-ammo").textContent = "— / —";
+    $("replay-hud-ammo").classList.add("is-hidden");
+    $("replay-hud-ammo-icon").classList.add("is-hidden");
     $("replay-hud-gren1-count").textContent = "—";
     $("replay-hud-gren2-count").textContent = "—";
     return;
@@ -2981,13 +3006,15 @@ function updateSelectedStats() {
   $("pickup-stat-health").textContent = frame.health;
   $("pickup-stat-armor").textContent = frame.armor;
   const reserve = currentReserveAmmo(frame);
-  const ammoText = frame.schemaVersion >= 7
-    ? `${hudAmmoValue(frame.clipAmmo)} / ${hudAmmoValue(reserve)}` : "— / —";
+  const ammoDisplay = hudAmmoDisplay(frame);
+  const ammoText = ammoDisplay.text || "—";
   $("pickup-stat-ammo").textContent = ammoText;
   $("pickup-stat-weapon").textContent = selectedWeaponName(frame);
   $("replay-hud-health").textContent = frame.health;
   $("replay-hud-armor").textContent = frame.armor;
   $("replay-hud-ammo").textContent = ammoText;
+  $("replay-hud-ammo").classList.toggle("is-hidden", !ammoDisplay.visible);
+  $("replay-hud-ammo-icon").classList.toggle("is-hidden", !ammoDisplay.visible);
   $("replay-hud-weapon-name").textContent = selectedWeaponName(frame);
   for (const [slot, type, count] of [
     [1, frame.gren1Type, frame.gren1Count], [2, frame.gren2Type, frame.gren2Count]
@@ -3303,6 +3330,7 @@ function setCameraMode(mode) {
   $("replay-camera").textContent = `Camera: ${mode.toUpperCase()}`;
   $("replay-camera-label").textContent = mode.toUpperCase();
   $("pickup-free-help").hidden = mode !== "free";
+  $("replay-crosshair").hidden = mode === "free" || mode === "overview";
   if (mode === "free") {
     const frame = selectedFrame();
     if (frame) camera.position.copy(sourcePoint(frame.x, frame.y, frame.z).add(new THREE.Vector3(0, 180, 260)));
