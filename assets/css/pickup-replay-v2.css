@@ -1,0 +1,305 @@
+
+/* Replay Film Room v2 stays isolated from production pickup replay chrome. */
+.replay-v2 .pickup-event-panel {
+  display: none;
+}
+
+.replay-analysis-panel {
+  position: absolute;
+  z-index: 7;
+  top: 7rem;
+  right: 1rem;
+  bottom: 9.5rem;
+  width: min(23rem, 29vw);
+  display: grid;
+  grid-template-rows: auto auto auto minmax(7rem, 1fr) auto;
+  overflow: hidden;
+  color: #e5edf7;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(8, 13, 22, .96), rgba(7, 11, 18, .91));
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .36);
+  backdrop-filter: blur(16px);
+}
+
+.analysis-panel-header,
+.analysis-toolbar,
+.analysis-detail {
+  padding: .72rem .82rem;
+}
+
+.analysis-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .14);
+}
+
+.analysis-panel-header div {
+  display: grid;
+  gap: .25rem;
+  min-width: 0;
+}
+
+.analysis-panel-header span,
+.analysis-toolbar label > span,
+.analysis-detail-meta {
+  color: #7f8da3;
+  font: 700 .58rem/1 Orbitron, sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.analysis-panel-header strong {
+  color: #f8fafc;
+  font: 800 .83rem/1.1 Orbitron, sans-serif;
+}
+
+#analysis-current-time {
+  color: #facc15;
+  font-size: .65rem;
+  white-space: nowrap;
+}
+
+.analysis-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .12);
+}
+
+.analysis-toolbar label {
+  display: grid;
+  gap: .3rem;
+  min-width: 0;
+}
+
+.analysis-toolbar select {
+  width: 100%;
+  min-width: 0;
+  min-height: 1.95rem;
+  padding: 0 .45rem;
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 6px;
+  color: #e2e8f0;
+  background: #111827;
+  font: 600 .68rem Inter, sans-serif;
+}
+
+.analysis-timeline {
+  padding: .62rem .82rem .5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .12);
+}
+
+.analysis-timeline-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: .4rem;
+  color: #64748b;
+  font: 700 .52rem/1 Orbitron, sans-serif;
+  letter-spacing: .04em;
+}
+
+.analysis-track {
+  position: relative;
+  height: 2.15rem;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 5px;
+  background:
+    linear-gradient(90deg, transparent 49.8%, rgba(148, 163, 184, .18) 50%, transparent 50.2%),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, .12) 0 1px, transparent 1px 10%);
+  cursor: crosshair;
+}
+
+#analysis-markers,
+#analysis-playhead {
+  position: absolute;
+  inset: 0;
+}
+
+.analysis-event-marker {
+  position: absolute;
+  top: 50%;
+  width: .42rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--event-color) 80%, white);
+  border-radius: 99px;
+  background: var(--event-color);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--event-color) 65%, transparent);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.analysis-event-marker:hover,
+.analysis-event-marker.selected,
+.analysis-event-marker.active {
+  z-index: 2;
+  width: .64rem;
+  border-color: #fff;
+  box-shadow: 0 0 13px var(--event-color);
+}
+
+.analysis-event-marker.active {
+  height: 1.85rem;
+}
+
+#analysis-playhead {
+  z-index: 3;
+  inset: -0.18rem auto -0.18rem 0;
+  width: 1px;
+  background: #f8fafc;
+  box-shadow: 0 0 8px rgba(255, 255, 255, .9);
+  pointer-events: none;
+}
+
+.analysis-event-list-wrap {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.analysis-event-list {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.analysis-event-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, auto) minmax(0, 1fr);
+  gap: .4rem;
+  align-items: center;
+  min-width: 0;
+  padding: .45rem .82rem;
+  border: 0;
+  border-left: 2px solid var(--event-color);
+  border-bottom: 1px solid rgba(148, 163, 184, .08);
+  color: #cbd5e1;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.analysis-event-row:hover,
+.analysis-event-row.selected {
+  background: rgba(255, 255, 255, .07);
+}
+
+.analysis-event-row.active {
+  background: color-mix(in srgb, var(--event-color) 12%, transparent);
+}
+
+.analysis-event-row time {
+  color: #94a3b8;
+  font: 700 .58rem/1 Orbitron, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-event-row strong,
+.analysis-event-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-event-row strong {
+  color: #f8fafc;
+  font-size: .65rem;
+}
+
+.analysis-event-row span {
+  color: #7f8da3;
+  font-size: .6rem;
+}
+
+.analysis-detail {
+  border-top: 1px solid rgba(148, 163, 184, .14);
+  background: rgba(15, 23, 42, .42);
+}
+
+.analysis-detail > div {
+  display: grid;
+  gap: .28rem;
+}
+
+#analysis-detail-title {
+  overflow: hidden;
+  color: #f8fafc;
+  font: 800 .75rem/1.1 Orbitron, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#analysis-detail-copy {
+  margin: .45rem 0;
+  color: #a7b5c8;
+  font-size: .65rem;
+  line-height: 1.35;
+}
+
+#analysis-detail-seek {
+  min-height: 1.85rem;
+  padding: 0 .58rem;
+  border: 1px solid rgba(250, 204, 21, .42);
+  border-radius: 6px;
+  color: #fff8df;
+  background: rgba(245, 158, 11, .14);
+  font: 800 .62rem/1 Inter, sans-serif;
+  cursor: pointer;
+}
+
+#analysis-detail-seek:disabled {
+  cursor: default;
+  opacity: .42;
+}
+
+@media (max-width: 1250px) {
+  .replay-analysis-panel {
+    width: min(23rem, calc(100% - 2rem));
+  }
+}
+
+@media (max-width: 900px) {
+  .replay-analysis-panel {
+    top: auto;
+    right: .5rem;
+    bottom: 21rem;
+    left: .5rem;
+    width: auto;
+    height: 15rem;
+    grid-template-rows: auto auto auto minmax(4rem, 1fr) auto;
+  }
+
+  .analysis-event-row {
+    padding-top: .38rem;
+    padding-bottom: .38rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .replay-analysis-panel {
+    bottom: 21.3rem;
+    height: 14.5rem;
+  }
+
+  .analysis-panel-header,
+  .analysis-toolbar,
+  .analysis-detail,
+  .analysis-timeline {
+    padding-right: .62rem;
+    padding-left: .62rem;
+  }
+
+  .analysis-event-row {
+    grid-template-columns: 3.8rem minmax(0, auto) minmax(0, 1fr);
+    padding-right: .62rem;
+    padding-left: .62rem;
+  }
+
+  .analysis-event-row span {
+    display: none;
+  }
+}
+
