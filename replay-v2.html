@@ -71,27 +71,13 @@
         <header class="analysis-panel-header">
           <div>
             <span>FILM ROOM TIMELINE</span>
-            <strong id="analysis-event-count">0 events</strong>
+            <strong id="analysis-event-count">0 flag pickups</strong>
           </div>
           <span id="analysis-current-time">0:00.000</span>
         </header>
         <div class="analysis-toolbar">
-          <label>
-            <span>Category</span>
-            <select id="analysis-filter">
-              <option value="all">All events</option>
-              <option value="objectives">Objectives</option>
-              <option value="combat">Combat</option>
-              <option value="player">Player state</option>
-              <option value="scene">Scene / world</option>
-            </select>
-          </label>
-          <label>
-            <span>Player</span>
-            <select id="analysis-player-filter">
-              <option value="all">All players</option>
-            </select>
-          </label>
+          <strong>FLAG PICKUPS ONLY</strong>
+          <span>Select an event to follow the carrier</span>
         </div>
         <div class="analysis-timeline" aria-label="Event timeline">
           <div class="analysis-timeline-scale"><span>0:00</span><span>HALF</span><span>END</span></div>
@@ -105,10 +91,10 @@
         </div>
         <section class="analysis-detail" aria-live="polite">
           <div>
-            <span id="analysis-detail-meta">Click a marker or event row to inspect it</span>
+            <span id="analysis-detail-meta">Click an event to jump to the carrier</span>
             <strong id="analysis-detail-title">Select an event</strong>
           </div>
-          <p id="analysis-detail-copy">The detail panel will show the timestamp, source stream, and any player or object metadata available in the replay.</p>
+          <p id="analysis-detail-copy">Selection starts five seconds before the pickup and switches to the relevant player POV.</p>
           <button id="analysis-detail-seek" type="button" disabled>Seek to event</button>
         </section>
       </aside>
@@ -165,5 +151,3 @@
   </main>
 </body>
 </html>
-
-

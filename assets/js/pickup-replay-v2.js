@@ -1443,6 +1443,19 @@ function analysisColor(category, teamNumber) {
   return teamNumber ? teamInfo(teamNumber).css : ANALYSIS_CATEGORY_COLORS[category] || "#94a3b8";
 }
 
+function isFlagPickupEvent(raw) {
+  const identity = [raw?.event, raw?.text, raw?.objectKind, raw?.objectStream]
+    .filter(Boolean).join(" ").toLowerCase();
+  const isObjectivePickup = raw?.event === "pickup" && raw?.objectStream === "objective";
+  const isFlag = isObjectivePickup || /(flag|ctf|item_tfgoal|goalitem)/.test(identity);
+  const isPickup = /(carried|pickup|pick_up|picked|take|taken|touch|grab)/.test(identity);
+  if (!isFlag || !isPickup) return false;
+  if (raw?.event === "pickup") {
+    return raw?.objectStream === "objective" || /(flag|goal|objective)/.test(identity);
+  }
+  return true;
+}
+
 function normalizeAnalysisEvent(raw, source, index) {
   const type = String(raw?.event || "event").toLowerCase();
   const time = Math.max(0, Number(raw?.time) || 0);
@@ -1469,7 +1482,7 @@ function normalizeAnalysisEvent(raw, source, index) {
     timeMs: Math.round(time * 1000),
     category,
     type,
-    label: humanizeAnalysisType(type),
+    label: "Flag picked up",
     actorSession: Number(raw?.actorSession) || 0,
     targetSession: Number(raw?.targetSession) || 0,
     playerName: actorName || targetName || "",
@@ -1478,62 +1491,19 @@ function normalizeAnalysisEvent(raw, source, index) {
     color: analysisColor(category, teamNumber),
     details: detailParts.join(" · ") || "No additional event metadata",
     source,
-    raw
+    raw,
+    isFlagPickup: true
   };
-}
-
-function derivedPlayerAnalysisEvents() {
-  const derived = [];
-  for (const row of state.roster) {
-    if (Number(row.joinedMs) > 0) {
-      derived.push({
-        time: Number(row.joinedMs) / 1000,
-        event: "player_join",
-        actorSession: row.sessionId,
-        text: row.name
-      });
-    }
-  }
-  for (const track of state.players) {
-    const stride = Number(track.stride) || 0;
-    const frames = track.frames;
-    const count = stride ? Math.floor(frames.length / stride) : 0;
-    if (!count) continue;
-    let previousTeam = null;
-    let previousClass = null;
-    let previousAttack = false;
-    for (let index = 0; index < count; index += 1) {
-      const offset = index * stride;
-      const time = Number(frames[offset]) || 0;
-      const team = Math.round(frames[offset + 11] || 0);
-      const classId = Math.round(frames[offset + 12] || 0);
-      const buttons = Math.round(frames[offset + 14] || 0);
-      if (previousTeam != null && team !== previousTeam) {
-        derived.push({ time, event: "team_change", actorSession: track.sessionId, text: teamInfo(team).name });
-      }
-      if (previousClass != null && classId !== previousClass) {
-        derived.push({ time, event: "class_change", actorSession: track.sessionId, text: className(classId) });
-      }
-      const attack = (buttons & IN_ATTACK) !== 0;
-      if (attack && !previousAttack) {
-        derived.push({ time, event: "weapon_fire", actorSession: track.sessionId });
-      }
-      previousTeam = team;
-      previousClass = classId;
-      previousAttack = attack;
-    }
-  }
-  return derived;
 }
 
 function buildAnalysisEvents() {
   const raw = [
     ...state.events.map((event, index) => ({ event, source: "events.csv", index })),
-    ...state.sceneEvents.map((event, index) => ({ event, source: "scene_events.csv", index })),
-    ...derivedPlayerAnalysisEvents().map((event, index) => ({ event, source: "player state", index }))
+    ...state.sceneEvents.map((event, index) => ({ event, source: "scene_events.csv", index }))
   ];
   const seen = new Set();
   return raw
+    .filter(item => isFlagPickupEvent(item.event))
     .map(item => normalizeAnalysisEvent(item.event, item.source, item.index))
     .filter(event => {
       const key = event.type + "|" + event.timeMs + "|" + event.actorSession + "|" + event.targetSession;
@@ -1545,12 +1515,7 @@ function buildAnalysisEvents() {
 }
 
 function analysisMatches(event) {
-  if (state.analysisFilter !== "all" && event.category !== state.analysisFilter) return false;
-  if (state.analysisPlayer !== "all") {
-    const sessionId = Number(state.analysisPlayer);
-    if (event.actorSession !== sessionId && event.targetSession !== sessionId) return false;
-  }
-  return true;
+  return event.isFlagPickup === true;
 }
 
 function visibleAnalysisEvents() {
@@ -1590,13 +1555,13 @@ function renderAnalysisDetail(event = analysisEventAtId(state.selectedAnalysisEv
   if (!title || !meta || !copy || !seek) return;
   if (!event) {
     title.textContent = "Select an event";
-    meta.textContent = "Click a marker or event row to inspect it";
-    copy.textContent = "The detail panel will show the timestamp, source stream, and any player or object metadata available in the replay.";
+    meta.textContent = "Click an event to jump to the carrier";
+    copy.textContent = "Selection starts five seconds before the pickup and switches to the relevant player POV.";
     seek.disabled = true;
     return;
   }
   title.textContent = event.count > 1 ? event.label + " · " + event.count + " grouped" : event.label;
-  meta.textContent = formatTime(event.time) + " · " + event.category + " · " + event.source;
+  meta.textContent = formatTime(event.time) + " · flag pickup";
   copy.textContent = event.details;
   seek.disabled = false;
 }
@@ -1604,10 +1569,31 @@ function renderAnalysisDetail(event = analysisEventAtId(state.selectedAnalysisEv
 function seekToAnalysisEvent(event) {
   if (!event) return;
   const limit = LIVE_MODE ? state.liveEdge : state.duration;
-  state.playbackTime = Math.min(limit, Math.max(0, event.time));
+  const focusSession = analysisFocusSession(event);
+  state.playbackTime = Math.min(limit, Math.max(0, event.time - 5));
   if (LIVE_MODE) state.followLive = false;
+  if (focusSession && state.playerBySession.has(Number(focusSession))) {
+    selectPlayer(focusSession);
+    setCameraMode("pov");
+  }
   updateScene();
   renderAnalysisDetail(event);
+}
+
+function analysisFocusSession(event) {
+  const explicitSession = Number(event.actorSession || event.targetSession);
+  if (explicitSession) return explicitSession;
+  const objectId = Number(event.raw?.objectId);
+  const entityId = Number(event.raw?.entity);
+  if (!objectId && !entityId) return 0;
+  for (const track of state.objectives) {
+    const definition = state.objectiveDefinitions.get(track.objectiveId);
+    if (objectId && track.objectiveId !== objectId) continue;
+    if (entityId && Number(definition?.entity) !== entityId) continue;
+    const snapshot = objectiveSnapshot(track, event.time);
+    if (snapshot?.carrierSession) return snapshot.carrierSession;
+  }
+  return 0;
 }
 
 function selectAnalysisEvent(event) {
@@ -1629,14 +1615,13 @@ function renderAnalysisTimeline(force = false) {
   const markerLayer = $("analysis-markers");
   const list = $("analysis-event-list");
   const count = $("analysis-event-count");
-  const playerFilter = $("analysis-player-filter");
-  if (!markerLayer || !list || !count || !playerFilter) return;
+  if (!markerLayer || !list || !count) return;
   if (!force && state.analysisRenderKey === state.analysisFilter + "|" + state.analysisPlayer + "|" + state.analysisEvents.length) {
     updateAnalysisPlayback();
     return;
   }
   state.analysisRenderKey = state.analysisFilter + "|" + state.analysisPlayer + "|" + state.analysisEvents.length;
-  count.textContent = events.length.toLocaleString() + " events";
+  count.textContent = events.length.toLocaleString() + " flag pickups";
   markerLayer.innerHTML = "";
   for (const event of markerEvents) {
     const marker = document.createElement("button");
@@ -1671,18 +1656,6 @@ function renderAnalysisTimeline(force = false) {
     row.addEventListener("click", () => selectAnalysisEvent(event));
     list.appendChild(row);
   }
-  playerFilter.innerHTML = "";
-  const allPlayers = document.createElement("option");
-  allPlayers.value = "all";
-  allPlayers.textContent = "All players";
-  playerFilter.appendChild(allPlayers);
-  for (const row of state.roster) {
-    const option = document.createElement("option");
-    option.value = String(row.sessionId);
-    option.textContent = row.name || "Player " + row.sessionId;
-    playerFilter.appendChild(option);
-  }
-  playerFilter.value = state.analysisPlayer;
   renderAnalysisDetail();
   updateAnalysisPlayback();
 }
@@ -1709,14 +1682,6 @@ function updateAnalysisPlayback() {
 }
 
 function wireAnalysisControls() {
-  $("analysis-filter")?.addEventListener("change", event => {
-    state.analysisFilter = event.target.value;
-    renderAnalysisTimeline(true);
-  });
-  $("analysis-player-filter")?.addEventListener("change", event => {
-    state.analysisPlayer = event.target.value;
-    renderAnalysisTimeline(true);
-  });
   $("analysis-detail-seek")?.addEventListener("click", () => {
     seekToAnalysisEvent(analysisEventAtId(state.selectedAnalysisEvent));
   });
