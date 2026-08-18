@@ -2917,9 +2917,10 @@ function updateSelectedStats() {
   if (hudFlag) hudFlag.hidden = !flagTrack;
   if (flagTrack) {
     const carrier = state.roster.find(row => row.sessionId === state.selectedSession);
-    $("replay-hud-flag-label").textContent = carrier?.name
-      ? `FLAG · ${carrier.name}`
-      : "FLAG";
+    const carrierLabel = carrier?.name ? `Flag carrier: ${carrier.name}` : "Flag carrier";
+    hudFlag.setAttribute("aria-label", carrierLabel);
+    hudFlag.title = carrierLabel;
+    $("replay-hud-flag-label").textContent = "FLAG";
   }
   if (!frame) {
     $("replay-hud-health").textContent = "—";
