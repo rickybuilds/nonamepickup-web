@@ -732,3 +732,205 @@
 .replay-v2 .pickup-roster-panel > header {
   display: none;
 }
+
+/* The selected POV card restores the small HUD readout from the original
+   replay while leaving the map and bottom controls unobstructed. */
+.replay-v2 .pickup-selected-player {
+  position: absolute;
+  z-index: 8;
+  top: 4.35rem;
+  right: auto;
+  bottom: auto;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  width: min(31rem, calc(100% - 2rem));
+  min-height: 3rem;
+  padding: .48rem .72rem;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 12px;
+  background: linear-gradient(110deg, rgba(9, 13, 23, .94), rgba(16, 22, 36, .88));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+  transform: none;
+  backdrop-filter: blur(12px);
+}
+
+.replay-v2 .pickup-selected-player > div:first-child {
+  display: grid;
+  grid-template-columns: .55rem minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: .52rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.replay-v2 .pickup-selected-player .pickup-team-dot {
+  grid-row: 1 / 4;
+  width: .55rem;
+  height: .55rem;
+  margin: 0;
+  background: var(--team-color, #4da3ff);
+  box-shadow: 0 0 8px var(--team-color, #4da3ff);
+}
+
+.replay-v2 .pickup-selected-player strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f8fafc;
+  font: 800 .78rem/1 Orbitron, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .pickup-selected-player small {
+  overflow: hidden;
+  color: #8b9bb0;
+  font: 700 .55rem/1.2 Orbitron, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .pickup-selected-objective {
+  grid-column: 2;
+  color: #facc15;
+  font: 800 .46rem/1 Orbitron, sans-serif;
+  letter-spacing: .08em;
+  text-shadow: 0 0 8px rgba(250, 204, 21, .42);
+}
+
+.replay-v2 .pickup-selected-objective[hidden] {
+  display: none;
+}
+
+.replay-v2 .pickup-selected-player dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(3.5rem, auto));
+  gap: .85rem;
+  margin: 0;
+}
+
+.replay-v2 .pickup-selected-player dl div {
+  display: grid;
+  gap: .18rem;
+  min-width: 0;
+  text-align: right;
+}
+
+.replay-v2 .pickup-selected-player dt {
+  color: #73839a;
+  font: 700 .48rem/1 Orbitron, sans-serif;
+  text-transform: uppercase;
+}
+
+.replay-v2 .pickup-selected-player dd {
+  margin: 0;
+  color: #e5edf7;
+  font: 800 .7rem/1 Orbitron, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-kill-feed {
+  position: absolute;
+  z-index: 7;
+  top: .9rem;
+  right: 1rem;
+  width: min(24rem, calc(100% - 2rem));
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 9px;
+  background: rgba(7, 11, 18, .86);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .24);
+  backdrop-filter: blur(12px);
+}
+
+.replay-v2 .replay-kill-feed[hidden] {
+  display: none;
+}
+
+.replay-v2 .replay-kill-feed header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .42rem .62rem .34rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .12);
+  color: #94a3b8;
+  font: 800 .52rem/1 Orbitron, sans-serif;
+  letter-spacing: .08em;
+}
+
+.replay-v2 .replay-kill-event {
+  display: grid;
+  grid-template-columns: 3.8rem minmax(0, 1fr);
+  gap: .5rem;
+  align-items: center;
+  padding: .4rem .62rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .08);
+}
+
+.replay-v2 .replay-kill-event:last-child {
+  border-bottom: 0;
+}
+
+.replay-v2 .replay-kill-event time {
+  color: #718198;
+  font: 700 .52rem/1 Orbitron, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-kill-event p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #e5edf7;
+  font: 700 .6rem/1.25 Inter, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .replay-kill-event:not(.suicide) p::before {
+  display: inline-block;
+  width: .38rem;
+  height: .38rem;
+  margin-right: .42rem;
+  border-radius: 50%;
+  background: #fb7185;
+  box-shadow: 0 0 7px rgba(251, 113, 133, .72);
+  content: "";
+}
+
+.replay-v2 .replay-kill-event.suicide p {
+  color: #facc15;
+}
+
+.replay-v2 .replay-kill-event.suicide p::before {
+  display: inline-block;
+  width: .38rem;
+  height: .38rem;
+  margin-right: .42rem;
+  border-radius: 50%;
+  background: #facc15;
+  box-shadow: 0 0 7px rgba(250, 204, 21, .72);
+  content: "";
+}
+
+@media (max-width: 620px) {
+  .replay-v2 .pickup-selected-player {
+    top: 3.65rem;
+    right: auto;
+    left: .5rem;
+    width: calc(100% - 1rem);
+  }
+
+  .replay-v2 .pickup-selected-player dl {
+    gap: .42rem;
+  }
+
+  .replay-v2 .replay-kill-feed {
+    top: .5rem;
+    right: .5rem;
+    width: calc(100% - 1rem);
+  }
+}
