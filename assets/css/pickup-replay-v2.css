@@ -717,7 +717,7 @@
   right: auto;
   bottom: 1rem;
   left: 10%;
-  width: 75%;
+  width: 68%;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, auto);
 }
@@ -920,6 +920,38 @@
 
   .replay-v2 .pickup-player-copy small {
     margin-top: .06rem;
+  }
+}
+
+/* Final desktop dock trim: keep the playback controls readable without
+   letting the film-room chrome dominate the map. */
+@media (min-width: 901px) {
+  .replay-v2 .pickup-bottom-hud {
+    width: 68%;
+    padding: .25rem;
+    gap: .2rem;
+  }
+
+  .replay-v2 .pickup-controls {
+    gap: .18rem;
+  }
+
+  .replay-v2 .pickup-timeline-controls .replay-scrubber-track,
+  .replay-v2 .pickup-timeline-controls .replay-scrubber-track input {
+    height: 1.12rem;
+  }
+
+  .replay-v2 .pickup-control-stack .replay-button {
+    min-height: 1.55rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: .56rem;
+  }
+
+  .replay-v2 .pickup-player {
+    min-height: 1.45rem;
+    padding-top: .1rem;
+    padding-bottom: .1rem;
   }
 }
 
