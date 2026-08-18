@@ -2884,7 +2884,7 @@ function selectedWeaponName(frame) {
   const model = state.renderModels.get(Number(frame?.weaponModelId));
   const path = String(model?.path || "");
   const file = path.split("/").pop()?.replace(/\.[^.]+$/, "") || "";
-  const fromModel = prettyWeaponName(file.replace(/^[vw]_/, ""));
+  const fromModel = prettyWeaponName(file.replace(/^[pvw]_/, ""));
   return fromModel || (frame?.weapon ? `Weapon ${frame.weapon}` : "—");
 }
 
@@ -2911,8 +2911,22 @@ function updateCamera() {
 function updateSelectedStats() {
   const frame = selectedFrame();
   const objective = $("pickup-selected-objective");
-  if (objective) objective.hidden = !selectedFlagObjective();
-  if (!frame) return;
+  const flagTrack = selectedFlagObjective();
+  if (objective) objective.hidden = !flagTrack;
+  const hudFlag = $("replay-hud-flag");
+  if (hudFlag) hudFlag.hidden = !flagTrack;
+  if (flagTrack) {
+    const carrier = state.roster.find(row => row.sessionId === state.selectedSession);
+    $("replay-hud-flag-label").textContent = carrier?.name
+      ? `FLAG · ${carrier.name}`
+      : "FLAG";
+  }
+  if (!frame) {
+    $("replay-hud-health").textContent = "—";
+    $("replay-hud-armor").textContent = "—";
+    $("replay-hud-weapon-name").textContent = "—";
+    return;
+  }
   $("pickup-selected-class").textContent = `${className(frame.classId)} · ${frame.alive ? "Alive" : "Dead"}`;
   $("pickup-stat-health").textContent = frame.health;
   $("pickup-stat-armor").textContent = frame.armor;
@@ -2921,6 +2935,9 @@ function updateSelectedStats() {
   // state instead of estimating it from pickup events.
   $("pickup-stat-ammo").textContent = "—";
   $("pickup-stat-weapon").textContent = selectedWeaponName(frame);
+  $("replay-hud-health").textContent = frame.health;
+  $("replay-hud-armor").textContent = frame.armor;
+  $("replay-hud-weapon-name").textContent = selectedWeaponName(frame);
 }
 
 function updateScene() {
