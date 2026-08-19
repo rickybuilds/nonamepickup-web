@@ -313,6 +313,7 @@ async function forward(state) {
       log(`finalized ${config.serverId}:${state.matchId}:${state.round} at sequence ${state.sequence}`);
     }
   } catch (error) {
+    if (error.message === "live_file_truncated") resetState(state, error.message);
     log(`forward failed for ${config.serverId}:${state.matchId}:${state.round}: ${error.message}`);
   } finally {
     state.posting = false;
