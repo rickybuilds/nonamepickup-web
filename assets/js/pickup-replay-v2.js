@@ -284,6 +284,8 @@ function updateClipEditor() {
 function setClipEditorOpen(open) {
   if (LIVE_MODE) return;
   state.clipEditorOpen = Boolean(open);
+  const editor = $("replay-clip-editor");
+  if (editor) editor.hidden = !state.clipEditorOpen;
   const toggle = $("replay-clip-toggle");
   if (toggle) {
     toggle.setAttribute("aria-expanded", String(state.clipEditorOpen));
