@@ -113,6 +113,7 @@ const state = {
   clipLoop: false,
   clipEditorOpen: false,
   clipEditorOffset: { x: 0, y: 0 },
+  clipExport: null,
   speed: 1,
   playing: true,
   liveReady: false,
@@ -282,6 +283,13 @@ function updateClipEditor() {
     loop.classList.toggle("active", state.clipLoop);
     loop.textContent = state.clipLoop ? "Looping" : "Loop clip";
   }
+  const download = $("replay-clip-download");
+  if (download) {
+    download.disabled = Boolean(state.clipExport);
+    download.textContent = state.clipExport
+      ? `Recording ${formatTime(Math.max(0, state.playbackTime - state.clipStart))}`
+      : "Download .webm";
+  }
 }
 
 function dragClipSelection(selection) {
@@ -371,6 +379,74 @@ function copyClipLink() {
   } else {
     window.prompt("Copy clip link", url.toString());
   }
+}
+
+function clipFileName() {
+  const raw = state.clipTitle.trim() || `tfc-clip-${state.metadata?.matchId || "replay"}`;
+  return raw.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 80) || "tfc-clip";
+}
+
+function finishClipExport() {
+  const exportState = state.clipExport;
+  if (!exportState || exportState.stopping) return;
+  exportState.stopping = true;
+  exportState.recorder.stop();
+}
+
+function startClipExport() {
+  if (LIVE_MODE || state.clipExport || !(state.clipEnd > state.clipStart)) return;
+  if (!canvas.captureStream || typeof MediaRecorder === "undefined") {
+    window.alert("This browser cannot export WebM clips. Try Chrome or Edge.");
+    return;
+  }
+  const mimeType = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm"
+  ].find(type => MediaRecorder.isTypeSupported?.(type)) || "";
+  if (!mimeType) {
+    window.alert("This browser does not support WebM clip export.");
+    return;
+  }
+
+  const stream = canvas.captureStream(60);
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+  const chunks = [];
+  const previous = {
+    playbackTime: state.playbackTime,
+    playing: state.playing,
+    speed: state.speed,
+    clipLoop: state.clipLoop
+  };
+  state.clipExport = { recorder, stream, chunks, previous, stopping: false };
+  recorder.addEventListener("dataavailable", event => {
+    if (event.data?.size) chunks.push(event.data);
+  });
+  recorder.addEventListener("stop", () => {
+    const blob = new Blob(chunks, { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${clipFileName()}.webm`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    stream.getTracks().forEach(track => track.stop());
+    state.playbackTime = previous.playbackTime;
+    state.speed = previous.speed;
+    state.clipLoop = previous.clipLoop;
+    state.clipExport = null;
+    setPlaying(previous.playing);
+    updateScene();
+  });
+
+  state.playbackTime = state.clipStart;
+  state.speed = 1;
+  state.clipLoop = false;
+  setPlaying(true);
+  updateScene();
+  recorder.start(250);
 }
 
 function dragClipHandle(handle, side) {
@@ -3643,6 +3719,7 @@ function wireControls() {
     updateScene();
   });
   $("replay-clip-copy")?.addEventListener("click", copyClipLink);
+  $("replay-clip-download")?.addEventListener("click", startClipExport);
   dragClipSelection($("replay-clip-selection"));
   dragClipHandle($("replay-clip-start-handle"), "start");
   dragClipHandle($("replay-clip-end-handle"), "end");
@@ -3719,6 +3796,7 @@ function tick(now) {
   updateScene();
   updateFreeCamera(delta);
   renderer.render(scene, camera);
+  if (state.clipExport && state.playbackTime >= state.clipEnd) finishClipExport();
   requestAnimationFrame(tick);
 }
 

@@ -437,6 +437,11 @@
   white-space: nowrap;
 }
 
+.replay-v2 .replay-clip-editor .replay-button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
 .replay-v2 .replay-clip-editor-actions {
   flex-wrap: wrap;
   color: rgba(229, 237, 247, .72);
