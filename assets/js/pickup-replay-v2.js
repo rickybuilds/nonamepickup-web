@@ -111,6 +111,7 @@ const state = {
   clipEnd: 0,
   clipTitle: "",
   clipLoop: false,
+  clipEditorOpen: false,
   speed: 1,
   playing: true,
   liveReady: false,
@@ -250,7 +251,12 @@ function setClipBounds(start, end) {
 function updateClipEditor() {
   const editor = $("replay-clip-editor");
   if (!editor || LIVE_MODE || !(state.duration > 0)) return;
-  editor.hidden = false;
+  editor.hidden = !state.clipEditorOpen;
+  const toggle = $("replay-clip-toggle");
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", String(state.clipEditorOpen));
+    toggle.classList.toggle("active", state.clipEditorOpen);
+  }
   const duration = Math.max(0.001, state.duration);
   const startPercent = Math.min(100, Math.max(0, state.clipStart / duration * 100));
   const endPercent = Math.min(100, Math.max(0, state.clipEnd / duration * 100));
@@ -273,6 +279,17 @@ function updateClipEditor() {
     loop.classList.toggle("active", state.clipLoop);
     loop.textContent = state.clipLoop ? "Looping" : "Loop clip";
   }
+}
+
+function setClipEditorOpen(open) {
+  if (LIVE_MODE) return;
+  state.clipEditorOpen = Boolean(open);
+  const toggle = $("replay-clip-toggle");
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", String(state.clipEditorOpen));
+    toggle.classList.toggle("active", state.clipEditorOpen);
+  }
+  updateClipEditor();
 }
 
 function setClipStartAt(time) {
@@ -3539,6 +3556,8 @@ function wireControls() {
   });
   const clipTitle = $("replay-clip-title");
   clipTitle?.addEventListener("input", event => { state.clipTitle = event.target.value; });
+  $("replay-clip-toggle")?.addEventListener("click", () => setClipEditorOpen(!state.clipEditorOpen));
+  $("replay-clip-close")?.addEventListener("click", () => setClipEditorOpen(false));
   $("replay-clip-set-start")?.addEventListener("click", () => setClipStartAt(state.playbackTime));
   $("replay-clip-set-end")?.addEventListener("click", () => setClipEndAt(state.playbackTime));
   $("replay-clip-reset")?.addEventListener("click", resetClip);
@@ -4013,7 +4032,10 @@ async function init() {
     const requestedClip = clipQuery();
     setClipBounds(requestedClip.start ?? 0, requestedClip.end ?? Math.min(state.duration, CLIP_MAX_SECONDS));
     state.clipTitle = requestedClip.title;
-    if (requestedClip.start != null || requestedClip.end != null) state.playbackTime = state.clipStart;
+    if (requestedClip.start != null || requestedClip.end != null) {
+      state.playbackTime = state.clipStart;
+      state.clipEditorOpen = true;
+    }
     $("replay-title").textContent = `${metadata.map} · ${metadata.matchId} / Round ${metadata.round}`;
     $("replay-subtitle").textContent = LIVE_SIMULATION
       ? `${metadata.sourceServer || "recorded server"} · simulated ${state.feedSpeed}x telemetry delivery`

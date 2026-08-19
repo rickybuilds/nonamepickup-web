@@ -336,13 +336,20 @@
 }
 
 .replay-v2 .replay-clip-editor {
+  position: fixed;
+  z-index: 30;
+  bottom: clamp(8.5rem, 22vh, 13rem);
+  left: 50%;
+  width: min(42rem, calc(100vw - 2rem));
+  margin: 0;
+  transform: translateX(-50%);
   display: grid;
   gap: .38rem;
-  margin-top: .35rem;
   padding: .45rem .55rem;
   border: 1px solid rgba(242, 181, 91, .3);
   border-radius: .4rem;
   background: rgba(8, 12, 18, .88);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, .45);
 }
 
 .replay-v2 .replay-clip-editor[hidden] {
@@ -373,6 +380,26 @@
   font: 500 .5rem/1 Inter, sans-serif;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.replay-v2 .replay-clip-close {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-left: auto;
+  padding: 0;
+  color: rgba(229, 237, 247, .7);
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 50%;
+  background: rgba(15, 23, 42, .8);
+  font: 700 .9rem/1 Inter, sans-serif;
+  cursor: pointer;
+}
+
+.replay-v2 .replay-clip-close:hover,
+.replay-v2 .replay-clip-close:focus-visible {
+  color: #fff;
+  border-color: rgba(242, 181, 91, .7);
+  outline: 0;
 }
 
 .replay-v2 .replay-clip-editor-fields input {
@@ -410,6 +437,12 @@
 }
 
 @media (max-width: 620px) {
+  .replay-v2 .replay-clip-editor {
+    bottom: min(15rem, 38vh);
+    max-height: calc(100vh - 6rem);
+    overflow: auto;
+  }
+
   .replay-v2 .replay-clip-editor-fields {
     flex-wrap: wrap;
   }
@@ -821,6 +854,12 @@
 .replay-v2 .pickup-control-stack .replay-button {
   min-height: 1.95rem;
   font-size: .62rem;
+}
+
+.replay-v2 .pickup-control-stack .replay-clip-toggle {
+  flex: 0 0 4.75rem !important;
+  color: #f2b55b;
+  border-color: rgba(242, 181, 91, .38);
 }
 
 .replay-v2 .pickup-timeline-controls .replay-scrubber {
