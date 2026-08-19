@@ -394,24 +394,94 @@ function renderClipExportFrame() {
   const width = target.width;
   const height = target.height;
   const scale = Math.max(1, width / 1280);
-  const margin = 22 * scale;
   const frame = selectedFrame();
   const metadata = state.metadata || {};
+  const amber = "#f2b55b";
+  const pale = "#f8fafc";
+  const muted = "#94a3b8";
+  const margin = 16 * scale;
+  const baseline = height - 17 * scale;
+  const drawText = (text, x, y, size, color = pale, align = "left", weight = 800, family = "Orbitron") => {
+    context.font = `${weight} ${size * scale}px ${family}, sans-serif`;
+    context.fillStyle = color;
+    context.textAlign = align;
+    context.fillText(String(text), x, y);
+  };
+  const drawPlus = (x, y) => {
+    context.fillStyle = amber;
+    context.fillRect(x, y + 8 * scale, 18 * scale, 5 * scale);
+    context.fillRect(x + 6.5 * scale, y, 5 * scale, 21 * scale);
+  };
+  const drawShield = (x, y) => {
+    context.beginPath();
+    context.moveTo(x + 10 * scale, y);
+    context.lineTo(x + 20 * scale, y + 4 * scale);
+    context.lineTo(x + 17 * scale, y + 18 * scale);
+    context.lineTo(x + 10 * scale, y + 23 * scale);
+    context.lineTo(x + 3 * scale, y + 18 * scale);
+    context.lineTo(x, y + 4 * scale);
+    context.closePath();
+    context.strokeStyle = amber;
+    context.lineWidth = 3 * scale;
+    context.stroke();
+  };
+  const drawAmmoIcon = (x, y) => {
+    context.save();
+    context.strokeStyle = amber;
+    context.lineWidth = 2 * scale;
+    context.beginPath();
+    context.roundRect(x, y, 15 * scale, 24 * scale, 6 * scale);
+    context.stroke();
+    context.fillStyle = amber;
+    context.fillRect(x + 3 * scale, y + 15 * scale, 9 * scale, 3 * scale);
+    context.fillRect(x + 3 * scale, y + 9 * scale, 9 * scale, 3 * scale);
+    context.restore();
+  };
+  const drawGrenadeIcon = (x, y, type) => {
+    context.save();
+    context.strokeStyle = type > 0 ? amber : "rgba(242, 181, 91, .45)";
+    context.lineWidth = 2 * scale;
+    context.beginPath();
+    context.ellipse(x + 8 * scale, y + 13 * scale, 7 * scale, 10 * scale, .2, 0, Math.PI * 2);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(x + 5 * scale, y + 3 * scale);
+    context.lineTo(x + 5 * scale, y);
+    context.lineTo(x + 11 * scale, y);
+    context.lineTo(x + 11 * scale, y + 3 * scale);
+    context.stroke();
+    context.restore();
+  };
+  const drawFlag = (x, y) => {
+    context.save();
+    context.strokeStyle = "#facc15";
+    context.fillStyle = "#facc15";
+    context.lineWidth = 3 * scale;
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x, y + 28 * scale);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(x + 2 * scale, y + 2 * scale);
+    context.lineTo(x + 22 * scale, y + 5 * scale);
+    context.lineTo(x + 2 * scale, y + 13 * scale);
+    context.closePath();
+    context.fill();
+    context.restore();
+  };
   context.clearRect(0, 0, width, height);
   context.drawImage(canvas, 0, 0, width, height);
   context.save();
   context.textBaseline = "top";
-  context.fillStyle = "rgba(5, 8, 14, .78)";
-  context.fillRect(margin, margin, 330 * scale, 52 * scale);
-  context.fillStyle = "#dbeafe";
-  context.font = `700 ${11 * scale}px Orbitron, sans-serif`;
-  context.fillText("4V4 REPLAY", margin + 12 * scale, margin + 9 * scale);
-  context.fillStyle = "#f8fafc";
-  context.font = `800 ${16 * scale}px Orbitron, sans-serif`;
-  context.fillText(
+  context.shadowColor = "rgba(0, 0, 0, .9)";
+  context.shadowBlur = 5 * scale;
+  context.shadowOffsetY = 2 * scale;
+  drawText("4V4 REPLAY", margin, margin, 10, "#dbeafe", "left", 700);
+  drawText(
     `${metadata.matchId || "REPLAY"} · ROUND ${metadata.round || "—"}`,
-    margin + 12 * scale,
-    margin + 26 * scale
+    margin,
+    margin + 16 * scale,
+    15
   );
 
   if (!frame) {
@@ -419,44 +489,52 @@ function renderClipExportFrame() {
     return;
   }
 
-  const roster = state.roster.find(row => row.sessionId === state.selectedSession);
-  const teamColor = teamInfo(frame.team).css;
   const ammo = hudAmmoDisplay(frame);
   const weapon = selectedWeaponName(frame);
-  const hudWidth = 330 * scale;
-  const hudHeight = 112 * scale;
-  const hudX = width - hudWidth - margin;
-  const hudY = height - hudHeight - margin;
-  context.fillStyle = "rgba(5, 8, 14, .78)";
-  context.fillRect(hudX, hudY, hudWidth, hudHeight);
-  context.fillStyle = teamColor;
-  context.fillRect(hudX, hudY, 5 * scale, hudHeight);
-  context.fillStyle = "#f8fafc";
-  context.font = `800 ${15 * scale}px Orbitron, sans-serif`;
-  context.fillText(roster?.name || "PLAYER", hudX + 16 * scale, hudY + 10 * scale);
-  context.fillStyle = "#94a3b8";
-  context.font = `600 ${10 * scale}px Inter, sans-serif`;
-  context.fillText(className(frame.classId).toUpperCase(), hudX + 16 * scale, hudY + 32 * scale);
-  context.fillStyle = "#f2b55b";
-  context.font = `800 ${18 * scale}px Orbitron, sans-serif`;
-  context.fillText(`HP ${hudAmmoValue(frame.health)}   ARM ${hudAmmoValue(frame.armor)}`, hudX + 16 * scale, hudY + 51 * scale);
-  context.fillStyle = "#f8fafc";
-  context.font = `800 ${12 * scale}px Orbitron, sans-serif`;
-  context.fillText(weapon.toUpperCase(), hudX + 16 * scale, hudY + 78 * scale);
-  context.fillStyle = "#f2b55b";
-  context.font = `800 ${16 * scale}px Orbitron, sans-serif`;
-  context.fillText(ammo.visible ? ammo.text : "—", hudX + 210 * scale, hudY + 75 * scale);
-  context.fillStyle = "#cbd5e1";
-  context.font = `700 ${10 * scale}px Inter, sans-serif`;
-  context.fillText(
-    `G1 ${hudAmmoValue(frame.gren1Count)}   G2 ${hudAmmoValue(frame.gren2Count)}`,
-    hudX + 16 * scale,
-    hudY + 96 * scale
-  );
+
+  drawPlus(margin, baseline - 21 * scale);
+  drawText(hudAmmoValue(frame.health), margin + 27 * scale, baseline - 4 * scale, 20, amber, "left", 800);
+  drawShield(margin + 83 * scale, baseline - 22 * scale);
+  drawText(hudAmmoValue(frame.armor), margin + 111 * scale, baseline - 4 * scale, 20, amber, "left", 800);
+
+  let right = width - margin;
+  const drawGrenadeSlot = (type, count) => {
+    const countText = hudAmmoValue(count);
+    drawText(countText, right, baseline - 4 * scale, 13, amber, "right", 800);
+    right -= 25 * scale;
+    drawGrenadeIcon(right - 17 * scale, baseline - 24 * scale, Number(type));
+    right -= 31 * scale;
+  };
+  drawGrenadeSlot(frame.gren2Type, frame.gren2Count);
+  drawGrenadeSlot(frame.gren1Type, frame.gren1Count);
+  drawAmmoIcon(right - 15 * scale, baseline - 23 * scale);
+  right -= 32 * scale;
+  drawText(weapon.toUpperCase(), right, baseline - 5 * scale, 12, amber, "right", 800);
+  right -= Math.max(74, context.measureText(weapon.toUpperCase()).width / scale) * scale;
+  if (ammo.visible) {
+    drawText(ammo.text, right, baseline - 23 * scale, 18, amber, "right", 800);
+    drawText("AMMO", right, baseline - 4 * scale, 7, "rgba(242, 181, 91, .82)", "right", 700);
+  }
+
   if (selectedFlagObjective()) {
-    context.fillStyle = "#facc15";
-    context.font = `800 ${10 * scale}px Orbitron, sans-serif`;
-    context.fillText("FLAG CARRIER", hudX + 210 * scale, hudY + 97 * scale);
+    drawFlag(margin, height * .43);
+    drawText("FLAG", margin + 28 * scale, height * .43 + 10 * scale, 9, "#facc15", "left", 800);
+  }
+
+  const recent = state.killFeedEvents
+    .filter(event => event.time <= state.playbackTime + 0.001 && event.time >= state.playbackTime - 12)
+    .slice(-5);
+  if (recent.length) {
+    drawText("COMBAT FEED", width - margin, margin + 3 * scale, 8, muted, "right", 800);
+    recent.forEach((event, index) => {
+      const color = event.suicide ? "#facc15" : "#fb7185";
+      const y = margin + (20 + index * 19) * scale;
+      context.fillStyle = color;
+      context.beginPath();
+      context.arc(width - 260 * scale, y + 5 * scale, 3 * scale, 0, Math.PI * 2);
+      context.fill();
+      drawText(`${formatTime(event.time)}  ${event.text}`, width - 250 * scale, y, 8, color, "left", 800, "Inter");
+    });
   }
   context.restore();
 }
