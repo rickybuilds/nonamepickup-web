@@ -301,7 +301,7 @@
 
 .replay-v2 .replay-clip-selection {
   position: absolute;
-  z-index: 1;
+  z-index: 3;
   top: .31rem;
   bottom: .31rem;
   min-width: .25rem;
@@ -309,7 +309,14 @@
   border-radius: .2rem;
   background: rgba(255, 176, 64, .22);
   box-shadow: 0 0 .45rem rgba(255, 176, 64, .22);
-  pointer-events: none;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.replay-v2 .replay-clip-selection:active {
+  cursor: grabbing;
 }
 
 .replay-v2 .replay-clip-handle {
@@ -326,6 +333,8 @@
   box-shadow: 0 0 .45rem rgba(0, 0, 0, .65);
   cursor: ew-resize;
   transform: translateX(-50%);
+  touch-action: none;
+  user-select: none;
 }
 
 .replay-v2 .replay-clip-handle:hover,

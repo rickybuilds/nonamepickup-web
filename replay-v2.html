@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260713freeroam5">
   <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260731hud5">
-  <link rel="stylesheet" href="assets/css/pickup-replay-v2.css?v=20260819clip3">
+  <link rel="stylesheet" href="assets/css/pickup-replay-v2.css?v=20260819clip4">
   <script src="assets/js/main.js?v=20260618i" defer></script>
   <script type="importmap">
     {
@@ -19,7 +19,7 @@
       }
     }
   </script>
-  <script type="module" src="assets/js/pickup-replay-v2.js?v=20260819clip3"></script>
+  <script type="module" src="assets/js/pickup-replay-v2.js?v=20260819clip4"></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -154,26 +154,6 @@
           </div>
         </section>
 
-        <div id="replay-clip-editor" class="replay-clip-editor" role="dialog" aria-label="Clip editor" hidden>
-          <div class="replay-clip-editor-heading">
-            <span>CLIP</span>
-            <strong id="replay-clip-duration">0:00.000</strong>
-            <small>1–60 seconds</small>
-            <button id="replay-clip-close" type="button" class="replay-clip-close" aria-label="Close clip editor">×</button>
-          </div>
-          <div class="replay-clip-editor-fields">
-            <input id="replay-clip-title" type="text" maxlength="80" placeholder="Name this clip" aria-label="Clip title">
-            <button id="replay-clip-set-start" type="button" class="replay-button secondary">Set start</button>
-            <button id="replay-clip-set-end" type="button" class="replay-button secondary">Set end</button>
-          </div>
-          <div class="replay-clip-editor-actions">
-            <span><b id="replay-clip-start-time">0:00.000</b> → <b id="replay-clip-end-time">0:00.000</b></span>
-            <button id="replay-clip-reset" type="button" class="replay-button secondary">Reset</button>
-            <button id="replay-clip-loop" type="button" class="replay-button secondary">Loop clip</button>
-            <button id="replay-clip-copy" type="button" class="replay-button">Copy clip link</button>
-          </div>
-        </div>
-
         <aside class="pickup-roster-panel" aria-label="Round roster">
           <header>
             <span>PLAYERS</span>
@@ -182,6 +162,26 @@
           <div id="pickup-roster"></div>
         </aside>
       </section>
+
+      <div id="replay-clip-editor" class="replay-clip-editor" role="dialog" aria-label="Clip editor" hidden>
+        <div class="replay-clip-editor-heading">
+          <span>CLIP</span>
+          <strong id="replay-clip-duration">0:00.000</strong>
+          <small>1–60 seconds</small>
+          <button id="replay-clip-close" type="button" class="replay-clip-close" aria-label="Close clip editor">×</button>
+        </div>
+        <div class="replay-clip-editor-fields">
+          <input id="replay-clip-title" type="text" maxlength="80" placeholder="Name this clip" aria-label="Clip title">
+          <button id="replay-clip-set-start" type="button" class="replay-button secondary">Set start</button>
+          <button id="replay-clip-set-end" type="button" class="replay-button secondary">Set end</button>
+        </div>
+        <div class="replay-clip-editor-actions">
+          <span><b id="replay-clip-start-time">0:00.000</b> → <b id="replay-clip-end-time">0:00.000</b></span>
+          <button id="replay-clip-reset" type="button" class="replay-button secondary">Reset</button>
+          <button id="replay-clip-loop" type="button" class="replay-button secondary">Loop clip</button>
+          <button id="replay-clip-copy" type="button" class="replay-button">Copy clip link</button>
+        </div>
+      </div>
 
       <div id="pickup-free-help" class="replay-free-roam-help" hidden>
         <strong>FREE ROAM</strong><span>Click to capture mouse · WASD move · Q/E down/up · Esc release</span>
