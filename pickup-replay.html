@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260713freeroam5">
   <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260731hud5">
+  <link rel="stylesheet" href="assets/css/pickup-replay-v2.css?v=20260819promoted1">
   <script src="assets/js/main.js?v=20260618i" defer></script>
   <script type="importmap">
     {
@@ -18,11 +19,11 @@
       }
     }
   </script>
-  <script type="module" src="assets/js/pickup-replay.js?v=20260810demolishbutton2"></script>
+  <script type="module" src="assets/js/pickup-replay-v2.js?v=20260819promoted1"></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body class="bg-[#0a0c10] replay-page pickup-replay-page replay-playing">
+<body class="bg-[#0a0c10] replay-page pickup-replay-page replay-v2 replay-playing">
   <header class="site-header">
     <div class="site-header-inner">
       <div class="nn-logo" aria-label="NoName TFC">
@@ -44,11 +45,14 @@
   <main class="replay-main">
     <section class="replay-stage pickup-replay-stage" aria-label="4v4 pickup replay viewer">
       <canvas id="replay-canvas"></canvas>
+      <div id="replay-crosshair" class="replay-crosshair" aria-hidden="true">
+        <span></span>
+      </div>
       <div id="replay-status" class="replay-status">Loading round metadata…</div>
 
       <section class="replay-topbar pickup-topbar" aria-label="Round details">
         <div>
-          <p class="speedrun-kicker">4V4 REPLAY VIEWER</p>
+          <p class="speedrun-kicker">4V4 REPLAY</p>
           <h1 id="replay-title">Pickup Replay</h1>
         </div>
         <div class="pickup-round-summary">
@@ -60,6 +64,11 @@
         </div>
       </section>
 
+      <aside id="replay-kill-feed" class="replay-kill-feed" aria-label="Kill feed" hidden>
+        <header><span>COMBAT FEED</span></header>
+        <div id="replay-kill-events"></div>
+      </aside>
+
       <aside class="pickup-event-panel" aria-label="Round events">
         <header><span>EVENT FEED</span><strong id="pickup-event-count">0</strong></header>
         <div id="pickup-events"></div>
@@ -70,14 +79,51 @@
           <span id="pickup-selected-team" class="pickup-team-dot"></span>
           <strong id="pickup-selected-name">Select a player</strong>
           <small id="pickup-selected-class">—</small>
+          <span id="pickup-selected-objective" class="pickup-selected-objective" hidden>FLAG CARRIER</span>
         </div>
         <dl>
           <div><dt>HP</dt><dd id="pickup-stat-health">—</dd></div>
           <div><dt>Armor</dt><dd id="pickup-stat-armor">—</dd></div>
-          <div><dt>Speed</dt><dd id="pickup-stat-speed">—</dd></div>
+          <div><dt>Ammo</dt><dd id="pickup-stat-ammo">—</dd></div>
           <div><dt>Weapon</dt><dd id="pickup-stat-weapon">—</dd></div>
         </dl>
       </section>
+
+      <section class="replay-tfc-hud" aria-label="In-game HUD">
+        <div class="replay-hud-status">
+          <div class="replay-hud-stat replay-hud-health">
+            <span class="replay-hud-icon" aria-hidden="true"></span>
+            <strong id="replay-hud-health">—</strong>
+          </div>
+          <div class="replay-hud-stat replay-hud-armor">
+            <span class="replay-hud-icon" aria-hidden="true"></span>
+            <strong id="replay-hud-armor">—</strong>
+          </div>
+        </div>
+        <div class="replay-hud-weapon">
+          <div class="replay-hud-ammo">
+            <strong id="replay-hud-ammo">— / —</strong>
+            <small>AMMO</small>
+          </div>
+          <strong id="replay-hud-weapon-name">—</strong>
+          <span id="replay-hud-ammo-icon" class="replay-hud-ammo-icon" aria-hidden="true"></span>
+          <div class="replay-hud-grenades" aria-label="Grenades">
+            <div class="replay-hud-grenade">
+              <span id="replay-hud-gren1-icon" class="replay-hud-grenade-icon" data-type="unknown" aria-label="Grenade 1"></span>
+              <strong id="replay-hud-gren1-count">—</strong>
+            </div>
+            <div class="replay-hud-grenade">
+              <span id="replay-hud-gren2-icon" class="replay-hud-grenade-icon" data-type="unknown" aria-label="Grenade 2"></span>
+              <strong id="replay-hud-gren2-count">—</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside id="replay-hud-flag" class="replay-hud-flag replay-flag-carrier-hud" aria-label="Flag carrier" hidden>
+        <span class="replay-hud-flag-icon" aria-hidden="true"></span>
+        <strong id="replay-hud-flag-label">FLAG</strong>
+      </aside>
 
       <section class="pickup-bottom-hud" aria-label="Replay controls and players">
         <section class="replay-controls pickup-controls" aria-label="Playback controls">
@@ -90,7 +136,10 @@
           <div class="pickup-timeline-controls">
             <label class="replay-scrubber">
               <span id="replay-clock">0:00.000</span>
-              <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
+              <div class="replay-scrubber-track">
+                <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
+                <div id="replay-flag-markers" aria-label="Flag pickup markers"></div>
+              </div>
               <span id="replay-duration">0:00.000</span>
             </label>
             <div class="replay-speed" role="group" aria-label="Playback speed">
