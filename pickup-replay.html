@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260713freeroam5">
   <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260731hud5">
-  <link rel="stylesheet" href="assets/css/pickup-replay-v2.css?v=20260819promoted1">
+  <link rel="stylesheet" href="assets/css/pickup-replay-v2.css?v=20260819clip1">
   <script src="assets/js/main.js?v=20260618i" defer></script>
   <script type="importmap">
     {
@@ -19,7 +19,7 @@
       }
     }
   </script>
-  <script type="module" src="assets/js/pickup-replay-v2.js?v=20260819promoted1"></script>
+  <script type="module" src="assets/js/pickup-replay-v2.js?v=20260819clip1"></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -139,6 +139,9 @@
               <div class="replay-scrubber-track">
                 <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
                 <div id="replay-flag-markers" aria-label="Flag pickup markers"></div>
+                <div id="replay-clip-selection" class="replay-clip-selection" aria-hidden="true"></div>
+                <button id="replay-clip-start-handle" class="replay-clip-handle replay-clip-start-handle" type="button" aria-label="Clip start"></button>
+                <button id="replay-clip-end-handle" class="replay-clip-handle replay-clip-end-handle" type="button" aria-label="Clip end"></button>
               </div>
               <span id="replay-duration">0:00.000</span>
             </label>
@@ -146,6 +149,24 @@
               <button type="button" data-speed="0.5">0.5x</button>
               <button type="button" data-speed="1" class="active">1x</button>
               <button type="button" data-speed="4">4x</button>
+            </div>
+            <div id="replay-clip-editor" class="replay-clip-editor" hidden>
+              <div class="replay-clip-editor-heading">
+                <span>CLIP</span>
+                <strong id="replay-clip-duration">0:00.000</strong>
+                <small>1–60 seconds</small>
+              </div>
+              <div class="replay-clip-editor-fields">
+                <input id="replay-clip-title" type="text" maxlength="80" placeholder="Name this clip" aria-label="Clip title">
+                <button id="replay-clip-set-start" type="button" class="replay-button secondary">Set start</button>
+                <button id="replay-clip-set-end" type="button" class="replay-button secondary">Set end</button>
+              </div>
+              <div class="replay-clip-editor-actions">
+                <span><b id="replay-clip-start-time">0:00.000</b> → <b id="replay-clip-end-time">0:00.000</b></span>
+                <button id="replay-clip-reset" type="button" class="replay-button secondary">Reset</button>
+                <button id="replay-clip-loop" type="button" class="replay-button secondary">Loop clip</button>
+                <button id="replay-clip-copy" type="button" class="replay-button">Copy clip link</button>
+              </div>
             </div>
           </div>
         </section>

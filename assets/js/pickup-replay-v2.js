@@ -18,6 +18,8 @@ const LIVE_SIMULATION = LIVE_PAGE && !LIVE_SERVER_ID;
 const LIVE_MODE = LIVE_REAL || LIVE_SIMULATION;
 const LIVE_BUFFER_SECONDS = 120;
 const LIVE_TARGET_LATENCY_SECONDS = LIVE_REAL ? 1.25 : 0.35;
+const CLIP_MIN_SECONDS = 1;
+const CLIP_MAX_SECONDS = 60;
 const TEAM = {
   1: { name: "Blue", css: "#4da3ff", color: 0x4da3ff },
   2: { name: "Red", css: "#ff5d6c", color: 0xff5d6c },
@@ -105,6 +107,10 @@ const state = {
   origin: { x: 0, y: 0, z: 0 },
   playbackTime: 0,
   duration: 0,
+  clipStart: 0,
+  clipEnd: 0,
+  clipTitle: "",
+  clipLoop: false,
   speed: 1,
   playing: true,
   liveReady: false,
@@ -202,6 +208,135 @@ function formatTime(seconds) {
   const whole = Math.floor(safe % 60);
   const millis = Math.floor((safe - Math.floor(safe)) * 1000);
   return `${minutes}:${String(whole).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
+}
+
+function clipQuery() {
+  const query = new URLSearchParams(location.search);
+  const rawStart = query.get("clipStart");
+  const rawEnd = query.get("clipEnd");
+  const start = rawStart == null ? null : Number(rawStart);
+  const end = rawEnd == null ? null : Number(rawEnd);
+  return {
+    start: Number.isFinite(start) ? start : null,
+    end: Number.isFinite(end) ? end : null,
+    title: query.get("clipTitle") || ""
+  };
+}
+
+function setClipBounds(start, end) {
+  if (!(state.duration > 0)) return;
+  const minimum = Math.min(CLIP_MIN_SECONDS, state.duration);
+  const maximum = Math.min(CLIP_MAX_SECONDS, state.duration);
+  const requestedStart = Number(start);
+  const requestedEnd = Number(end);
+  let clipStart = THREE.MathUtils.clamp(
+    Number.isFinite(requestedStart) ? requestedStart : 0,
+    0,
+    Math.max(0, state.duration - minimum)
+  );
+  let clipEnd = THREE.MathUtils.clamp(
+    Number.isFinite(requestedEnd) ? requestedEnd : Math.min(state.duration, clipStart + maximum),
+    clipStart + minimum,
+    Math.min(state.duration, clipStart + maximum)
+  );
+  if (clipEnd - clipStart < minimum) {
+    clipEnd = Math.min(state.duration, clipStart + minimum);
+    clipStart = Math.max(0, clipEnd - minimum);
+  }
+  state.clipStart = clipStart;
+  state.clipEnd = clipEnd;
+}
+
+function updateClipEditor() {
+  const editor = $("replay-clip-editor");
+  if (!editor || LIVE_MODE || !(state.duration > 0)) return;
+  editor.hidden = false;
+  const duration = Math.max(0.001, state.duration);
+  const startPercent = Math.min(100, Math.max(0, state.clipStart / duration * 100));
+  const endPercent = Math.min(100, Math.max(0, state.clipEnd / duration * 100));
+  const selection = $("replay-clip-selection");
+  const startHandle = $("replay-clip-start-handle");
+  const endHandle = $("replay-clip-end-handle");
+  if (selection) {
+    selection.style.left = `${startPercent}%`;
+    selection.style.right = `${100 - endPercent}%`;
+  }
+  if (startHandle) startHandle.style.left = `${startPercent}%`;
+  if (endHandle) endHandle.style.left = `${endPercent}%`;
+  $("replay-clip-duration").textContent = formatTime(state.clipEnd - state.clipStart);
+  $("replay-clip-start-time").textContent = formatTime(state.clipStart);
+  $("replay-clip-end-time").textContent = formatTime(state.clipEnd);
+  const title = $("replay-clip-title");
+  if (title && document.activeElement !== title) title.value = state.clipTitle;
+  const loop = $("replay-clip-loop");
+  if (loop) {
+    loop.classList.toggle("active", state.clipLoop);
+    loop.textContent = state.clipLoop ? "Looping" : "Loop clip";
+  }
+}
+
+function setClipStartAt(time) {
+  const start = THREE.MathUtils.clamp(Number(time) || 0, 0, state.duration);
+  const end = start + Math.min(CLIP_MAX_SECONDS, Math.max(CLIP_MIN_SECONDS, state.clipEnd - start));
+  setClipBounds(start, Math.min(state.duration, end));
+  updateClipEditor();
+}
+
+function setClipEndAt(time) {
+  const end = THREE.MathUtils.clamp(Number(time) || 0, 0, state.duration);
+  const start = Math.max(0, end - Math.min(CLIP_MAX_SECONDS, Math.max(CLIP_MIN_SECONDS, end - state.clipStart)));
+  setClipBounds(start, end);
+  updateClipEditor();
+}
+
+function resetClip() {
+  setClipBounds(0, Math.min(state.duration, CLIP_MAX_SECONDS));
+  state.clipLoop = false;
+  updateClipEditor();
+}
+
+function copyClipLink() {
+  const url = new URL(location.href);
+  url.searchParams.set("clipStart", state.clipStart.toFixed(3));
+  url.searchParams.set("clipEnd", state.clipEnd.toFixed(3));
+  if (state.clipTitle.trim()) url.searchParams.set("clipTitle", state.clipTitle.trim());
+  else url.searchParams.delete("clipTitle");
+  const button = $("replay-clip-copy");
+  const original = button?.textContent || "Copy clip link";
+  const done = () => {
+    if (!button) return;
+    button.textContent = "Copied";
+    window.setTimeout(() => { button.textContent = original; }, 1400);
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url.toString()).then(done).catch(() => {
+      window.prompt("Copy clip link", url.toString());
+    });
+  } else {
+    window.prompt("Copy clip link", url.toString());
+  }
+}
+
+function dragClipHandle(handle, side) {
+  if (!handle || LIVE_MODE) return;
+  handle.addEventListener("pointerdown", event => {
+    event.preventDefault();
+    const track = $("replay-scrubber-track");
+    if (!track) return;
+    const move = moveEvent => {
+      const bounds = track.getBoundingClientRect();
+      const ratio = bounds.width ? THREE.MathUtils.clamp((moveEvent.clientX - bounds.left) / bounds.width, 0, 1) : 0;
+      const time = ratio * state.duration;
+      if (side === "start") setClipStartAt(time);
+      else setClipEndAt(time);
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop, { once: true });
+  });
 }
 
 function sourcePoint(x, y, z) {
@@ -3048,6 +3183,7 @@ function updateScene() {
   renderEvents();
   renderKillFeed();
   updateAnalysisPlayback();
+  updateClipEditor();
   $("replay-clock").textContent = formatTime(state.playbackTime);
   if (document.activeElement !== $("replay-slider")) {
     $("replay-slider").value = String(Math.round(state.playbackTime * 1000));
@@ -3401,6 +3537,22 @@ function wireControls() {
     if (LIVE_MODE) state.followLive = false;
     updateScene();
   });
+  const clipTitle = $("replay-clip-title");
+  clipTitle?.addEventListener("input", event => { state.clipTitle = event.target.value; });
+  $("replay-clip-set-start")?.addEventListener("click", () => setClipStartAt(state.playbackTime));
+  $("replay-clip-set-end")?.addEventListener("click", () => setClipEndAt(state.playbackTime));
+  $("replay-clip-reset")?.addEventListener("click", resetClip);
+  $("replay-clip-loop")?.addEventListener("click", () => {
+    state.clipLoop = !state.clipLoop;
+    if (state.clipLoop && (state.playbackTime < state.clipStart || state.playbackTime >= state.clipEnd)) {
+      state.playbackTime = state.clipStart;
+    }
+    updateClipEditor();
+    updateScene();
+  });
+  $("replay-clip-copy")?.addEventListener("click", copyClipLink);
+  dragClipHandle($("replay-clip-start-handle"), "start");
+  dragClipHandle($("replay-clip-end-handle"), "end");
   canvas.addEventListener("click", () => {
     if (state.cameraMode === "free") canvas.requestPointerLock?.();
   });
@@ -3415,6 +3567,8 @@ function wireControls() {
       event.preventDefault();
       setPlaying(!state.playing);
     }
+    if (event.code === "KeyI" && !LIVE_MODE) setClipStartAt(state.playbackTime);
+    if (event.code === "KeyO" && !LIVE_MODE) setClipEndAt(state.playbackTime);
     freeKeys.add(event.code);
   });
   window.addEventListener("keyup", event => freeKeys.delete(event.code));
@@ -3461,7 +3615,9 @@ function tick(now) {
     }
   } else if (state.playing) {
     state.playbackTime += delta * state.speed;
-    if (state.playbackTime >= state.duration) {
+    if (state.clipLoop && state.clipEnd > state.clipStart && state.playbackTime >= state.clipEnd) {
+      state.playbackTime = state.clipStart;
+    } else if (state.playbackTime >= state.duration) {
       state.playbackTime = state.duration;
       setPlaying(false);
     }
@@ -3854,6 +4010,10 @@ async function init() {
     if (!response.ok) throw new Error(metadata.error || `Replay request failed (${response.status})`);
     state.metadata = metadata;
     state.duration = metadata.durationMs / 1000;
+    const requestedClip = clipQuery();
+    setClipBounds(requestedClip.start ?? 0, requestedClip.end ?? Math.min(state.duration, CLIP_MAX_SECONDS));
+    state.clipTitle = requestedClip.title;
+    if (requestedClip.start != null || requestedClip.end != null) state.playbackTime = state.clipStart;
     $("replay-title").textContent = `${metadata.map} · ${metadata.matchId} / Round ${metadata.round}`;
     $("replay-subtitle").textContent = LIVE_SIMULATION
       ? `${metadata.sourceServer || "recorded server"} · simulated ${state.feedSpeed}x telemetry delivery`

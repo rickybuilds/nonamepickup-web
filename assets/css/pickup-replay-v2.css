@@ -1,5 +1,5 @@
 
-/* Replay Film Room v2 stays isolated from production pickup replay chrome. */
+/* Replay v2 stays isolated from production pickup replay chrome. */
 .replay-v2 .pickup-event-panel {
   display: none;
 }
@@ -296,6 +296,126 @@
 
   .analysis-event-row span {
     display: none;
+  }
+}
+
+.replay-v2 .replay-clip-selection {
+  position: absolute;
+  z-index: 1;
+  top: .31rem;
+  bottom: .31rem;
+  min-width: .25rem;
+  border: 1px solid rgba(255, 191, 91, .9);
+  border-radius: .2rem;
+  background: rgba(255, 176, 64, .22);
+  box-shadow: 0 0 .45rem rgba(255, 176, 64, .22);
+  pointer-events: none;
+}
+
+.replay-v2 .replay-clip-handle {
+  position: absolute;
+  z-index: 5;
+  top: .08rem;
+  width: .7rem;
+  height: 1.18rem;
+  margin: 0;
+  padding: 0;
+  border: 2px solid #fff1cf;
+  border-radius: .18rem;
+  background: #f2b55b;
+  box-shadow: 0 0 .45rem rgba(0, 0, 0, .65);
+  cursor: ew-resize;
+  transform: translateX(-50%);
+}
+
+.replay-v2 .replay-clip-handle:hover,
+.replay-v2 .replay-clip-handle:focus-visible {
+  background: #ffd48e;
+  outline: 2px solid rgba(255, 255, 255, .85);
+  outline-offset: 2px;
+}
+
+.replay-v2 .replay-clip-editor {
+  display: grid;
+  gap: .38rem;
+  margin-top: .35rem;
+  padding: .45rem .55rem;
+  border: 1px solid rgba(242, 181, 91, .3);
+  border-radius: .4rem;
+  background: rgba(8, 12, 18, .88);
+}
+
+.replay-v2 .replay-clip-editor[hidden] {
+  display: none;
+}
+
+.replay-v2 .replay-clip-editor-heading,
+.replay-v2 .replay-clip-editor-fields,
+.replay-v2 .replay-clip-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.replay-v2 .replay-clip-editor-heading {
+  color: #f2b55b;
+  font: 700 .53rem/1 Orbitron, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.replay-v2 .replay-clip-editor-heading strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-clip-editor-heading small {
+  color: rgba(229, 237, 247, .5);
+  font: 500 .5rem/1 Inter, sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.replay-v2 .replay-clip-editor-fields input {
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 1.95rem;
+  padding: 0 .55rem;
+  color: #f7fafc;
+  border: 1px solid rgba(148, 163, 184, .3);
+  border-radius: .3rem;
+  background: rgba(15, 23, 42, .85);
+  font: 600 .62rem/1 Inter, sans-serif;
+}
+
+.replay-v2 .replay-clip-editor .replay-button {
+  min-height: 1.95rem;
+  padding: .35rem .55rem;
+  font-size: .53rem;
+  white-space: nowrap;
+}
+
+.replay-v2 .replay-clip-editor-actions {
+  flex-wrap: wrap;
+  color: rgba(229, 237, 247, .72);
+  font: 500 .55rem/1 Inter, sans-serif;
+}
+
+.replay-v2 .replay-clip-editor-actions > span {
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-clip-editor-actions b {
+  color: #f2b55b;
+}
+
+@media (max-width: 620px) {
+  .replay-v2 .replay-clip-editor-fields {
+    flex-wrap: wrap;
+  }
+
+  .replay-v2 .replay-clip-editor-fields input {
+    flex-basis: 100%;
   }
 }
 
@@ -977,7 +1097,7 @@
 }
 
 /* Final desktop dock trim: keep the playback controls readable without
-   letting the film-room chrome dominate the map. */
+   letting the replay chrome dominate the map. */
 @media (min-width: 901px) {
   .replay-v2 .pickup-bottom-hud {
     width: 68%;
