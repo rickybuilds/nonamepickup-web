@@ -112,6 +112,7 @@ const state = {
   clipTitle: "",
   clipLoop: false,
   clipEditorOpen: false,
+  clipEditorOffset: { x: 0, y: 0 },
   speed: 1,
   playing: true,
   liveReady: false,
@@ -252,6 +253,8 @@ function updateClipEditor() {
   const editor = $("replay-clip-editor");
   if (!editor || LIVE_MODE || !(state.duration > 0)) return;
   editor.hidden = !state.clipEditorOpen;
+  editor.style.setProperty("--clip-offset-x", `${state.clipEditorOffset.x}px`);
+  editor.style.setProperty("--clip-offset-y", `${state.clipEditorOffset.y}px`);
   const toggle = $("replay-clip-toggle");
   if (toggle) {
     toggle.setAttribute("aria-expanded", String(state.clipEditorOpen));
@@ -376,6 +379,7 @@ function dragClipHandle(handle, side) {
     event.preventDefault();
     const track = $("replay-scrubber-track");
     if (!track) return;
+    handle.setPointerCapture?.(event.pointerId);
     const move = moveEvent => {
       const bounds = track.getBoundingClientRect();
       const ratio = bounds.width ? THREE.MathUtils.clamp((moveEvent.clientX - bounds.left) / bounds.width, 0, 1) : 0;
@@ -383,12 +387,45 @@ function dragClipHandle(handle, side) {
       if (side === "start") setClipStartAt(time);
       else setClipEndAt(time);
     };
-    const stop = () => {
+    const stop = stopEvent => {
+      handle.releasePointerCapture?.(stopEvent.pointerId);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
     };
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop, { once: true });
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+  });
+}
+
+function dragClipEditor(editor) {
+  const heading = editor?.querySelector(".replay-clip-editor-heading");
+  if (!editor || !heading || LIVE_MODE) return;
+  heading.addEventListener("pointerdown", event => {
+    if (event.target.closest("button, input, select, textarea")) return;
+    event.preventDefault();
+    heading.setPointerCapture?.(event.pointerId);
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const initial = { ...state.clipEditorOffset };
+    const move = moveEvent => {
+      const maxX = Math.max(0, (window.innerWidth - editor.offsetWidth) / 2);
+      const maxY = Math.max(0, window.innerHeight - editor.offsetHeight - 12);
+      state.clipEditorOffset.x = THREE.MathUtils.clamp(initial.x + moveEvent.clientX - startX, -maxX, maxX);
+      state.clipEditorOffset.y = THREE.MathUtils.clamp(initial.y + moveEvent.clientY - startY, -maxY, maxY);
+      editor.style.setProperty("--clip-offset-x", `${state.clipEditorOffset.x}px`);
+      editor.style.setProperty("--clip-offset-y", `${state.clipEditorOffset.y}px`);
+    };
+    const stop = stopEvent => {
+      heading.releasePointerCapture?.(stopEvent.pointerId);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
   });
 }
 
@@ -3609,6 +3646,7 @@ function wireControls() {
   dragClipSelection($("replay-clip-selection"));
   dragClipHandle($("replay-clip-start-handle"), "start");
   dragClipHandle($("replay-clip-end-handle"), "end");
+  dragClipEditor($("replay-clip-editor"));
   canvas.addEventListener("click", () => {
     if (state.cameraMode === "free") canvas.requestPointerLock?.();
   });
