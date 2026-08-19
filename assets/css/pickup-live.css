@@ -3,6 +3,12 @@
   --pickup-live-soft: rgba(251, 63, 79, .16);
 }
 
+/* The v2 replay stylesheet hides its analysis-era event panel. Live keeps
+   the compact rolling feed because it is the viewer's real-time signal. */
+.pickup-live-viewer-page .pickup-event-panel {
+  display: grid;
+}
+
 .pickup-live-kicker {
   display: flex;
   align-items: center;

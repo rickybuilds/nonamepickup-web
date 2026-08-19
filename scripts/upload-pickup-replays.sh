@@ -119,6 +119,49 @@ safe_remove_after_retention() {
   log "retention complete; removed verified local round $(basename "$(dirname "$round_real")")/$(basename "$round_real")"
 }
 
+safe_remove_orphan_archive_after_retention() {
+  local receipt="$1"
+  (( PICKUP_DELETE_AFTER_DAYS > 0 )) || return 0
+
+  local now receipt_time minimum_age
+  now="$(date +%s)"
+  receipt_time="$(stat -c '%Y' -- "$receipt")"
+  minimum_age=$((PICKUP_DELETE_AFTER_DAYS * 86400))
+  (( now - receipt_time >= minimum_age )) || return 0
+
+  local verified quarantined archive archive_real match_id round_pad raw_round
+  verified="$(jq -r '.verifiedByUploader // false' "$receipt")"
+  quarantined="$(jq -r '.quarantined // false' "$receipt")"
+  if [[ "$verified" != "true" && "$quarantined" != "true" ]]; then
+    return 0
+  fi
+
+  archive="$(jq -r '.localArchive // empty' "$receipt")"
+  archive_real="$(readlink -f -- "$archive" 2>/dev/null || true)"
+  [[ -n "$archive_real" ]] || return 0
+  [[ "$archive_real" == "$spool_root"/archives/*/round-*.tar.zst ]] || {
+    log "retention cleanup refused an unsafe orphan archive path"
+    return 1
+  }
+  [[ -f "$archive_real" ]] || return 0
+
+  match_id="$(basename "$(dirname "$receipt")")"
+  round_pad="$(basename "$receipt" .json)"
+  [[ "$match_id" =~ ^[A-Za-z0-9_-]{1,64}$ ]] || {
+    log "retention cleanup refused an unsafe orphan match ID"
+    return 1
+  }
+  [[ "$round_pad" =~ ^round-[0-9]{1,4}$ ]] || {
+    log "retention cleanup refused an unsafe orphan round name"
+    return 1
+  }
+  raw_round="$replay_root/$match_id/$round_pad"
+  [[ -d "$raw_round" ]] && return 0
+
+  rm -f -- "$archive_real"
+  log "retention complete; removed orphan local archive $match_id/$round_pad"
+}
+
 process_round() {
   local round_dir="$1"
   local complete_marker="$round_dir/complete.ready"
@@ -326,6 +369,15 @@ while IFS= read -r -d '' round_dir; do
     failures=$((failures + 1))
   fi
 done < <(find "$replay_root" -mindepth 2 -maxdepth 2 -type d -name 'round-*' -print0)
+
+# A previous retention run may have removed the raw round while leaving its
+# verified archive behind. Sweep those archive-only receipts so the spool does
+# not grow forever when the source replay tree is already clean.
+while IFS= read -r -d '' receipt; do
+  if ! safe_remove_orphan_archive_after_retention "$receipt"; then
+    failures=$((failures + 1))
+  fi
+done < <(find "$spool_root/receipts" -mindepth 2 -maxdepth 2 -type f -name 'round-*.json' -print0)
 
 if (( failures > 0 )); then
   log "$failures finalized round(s) need retry or operator attention"

@@ -97,7 +97,43 @@ async function exists(file) {
   }
 }
 
+async function firstLine(file) {
+  const handle = await fs.open(file, "r");
+  try {
+    const buffer = Buffer.alloc(16 * 1024);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    return buffer.subarray(0, bytesRead).toString("utf8").split(/\r?\n/, 1)[0];
+  } finally {
+    await handle.close();
+  }
+}
+
+async function hasSchema7Players(directory) {
+  const part = path.join(directory, "players.csv.part");
+  const final = path.join(directory, "players.csv");
+  const file = await exists(part) ? part : await exists(final) ? final : null;
+  if (!file) return false;
+
+  try {
+    const columns = new Set((await firstLine(file)).split(",").map(column => column.trim()));
+    return [
+      "weapon_name",
+      "clip_ammo",
+      "ammo_shells",
+      "ammo_bullets",
+      "ammo_cells",
+      "ammo_rockets",
+      "reload_state"
+    ].every(column => columns.has(column));
+  } catch {
+    // The recorder can expose the file before its header is fully written.
+    // The next collection pass will retry and promote the stream to schema 7.
+    return false;
+  }
+}
+
 async function schemaVersion(directory) {
+  if (await hasSchema7Players(directory)) return 7;
   if (await exists(path.join(directory, "entity_meta.csv.part")) || await exists(path.join(directory, "entity_meta.csv"))) return 6;
   if (await exists(path.join(directory, "entity_defs.csv.part")) || await exists(path.join(directory, "entity_defs.csv"))) return 5;
   if (await exists(path.join(directory, "brush_defs.csv.part")) || await exists(path.join(directory, "brush_defs.csv"))) return 4;
@@ -168,7 +204,11 @@ async function finalized(directory) {
 }
 
 async function collect(state) {
-  state.schemaVersion = Math.max(state.schemaVersion, await schemaVersion(state.directory));
+  const detectedSchemaVersion = await schemaVersion(state.directory);
+  if (detectedSchemaVersion > state.schemaVersion) {
+    state.schemaVersion = detectedSchemaVersion;
+    log(`promoted ${config.serverId}:${state.matchId}:${state.round} to schema ${state.schemaVersion}`);
+  }
   const files = {};
   const nextOffsets = new Map(state.offsets);
   for (const fileName of FILE_ORDER) {
