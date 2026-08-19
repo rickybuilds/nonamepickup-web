@@ -386,6 +386,81 @@ function clipFileName() {
   return raw.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 80) || "tfc-clip";
 }
 
+function renderClipExportFrame() {
+  const exportState = state.clipExport;
+  if (!exportState) return;
+  const target = exportState.canvas;
+  const context = exportState.context;
+  const width = target.width;
+  const height = target.height;
+  const scale = Math.max(1, width / 1280);
+  const margin = 22 * scale;
+  const frame = selectedFrame();
+  const metadata = state.metadata || {};
+  context.clearRect(0, 0, width, height);
+  context.drawImage(canvas, 0, 0, width, height);
+  context.save();
+  context.textBaseline = "top";
+  context.fillStyle = "rgba(5, 8, 14, .78)";
+  context.fillRect(margin, margin, 330 * scale, 52 * scale);
+  context.fillStyle = "#dbeafe";
+  context.font = `700 ${11 * scale}px Orbitron, sans-serif`;
+  context.fillText("4V4 REPLAY", margin + 12 * scale, margin + 9 * scale);
+  context.fillStyle = "#f8fafc";
+  context.font = `800 ${16 * scale}px Orbitron, sans-serif`;
+  context.fillText(
+    `${metadata.matchId || "REPLAY"} · ROUND ${metadata.round || "—"}`,
+    margin + 12 * scale,
+    margin + 26 * scale
+  );
+
+  if (!frame) {
+    context.restore();
+    return;
+  }
+
+  const roster = state.roster.find(row => row.sessionId === state.selectedSession);
+  const teamColor = teamInfo(frame.team).css;
+  const ammo = hudAmmoDisplay(frame);
+  const weapon = selectedWeaponName(frame);
+  const hudWidth = 330 * scale;
+  const hudHeight = 112 * scale;
+  const hudX = width - hudWidth - margin;
+  const hudY = height - hudHeight - margin;
+  context.fillStyle = "rgba(5, 8, 14, .78)";
+  context.fillRect(hudX, hudY, hudWidth, hudHeight);
+  context.fillStyle = teamColor;
+  context.fillRect(hudX, hudY, 5 * scale, hudHeight);
+  context.fillStyle = "#f8fafc";
+  context.font = `800 ${15 * scale}px Orbitron, sans-serif`;
+  context.fillText(roster?.name || "PLAYER", hudX + 16 * scale, hudY + 10 * scale);
+  context.fillStyle = "#94a3b8";
+  context.font = `600 ${10 * scale}px Inter, sans-serif`;
+  context.fillText(className(frame.classId).toUpperCase(), hudX + 16 * scale, hudY + 32 * scale);
+  context.fillStyle = "#f2b55b";
+  context.font = `800 ${18 * scale}px Orbitron, sans-serif`;
+  context.fillText(`HP ${hudAmmoValue(frame.health)}   ARM ${hudAmmoValue(frame.armor)}`, hudX + 16 * scale, hudY + 51 * scale);
+  context.fillStyle = "#f8fafc";
+  context.font = `800 ${12 * scale}px Orbitron, sans-serif`;
+  context.fillText(weapon.toUpperCase(), hudX + 16 * scale, hudY + 78 * scale);
+  context.fillStyle = "#f2b55b";
+  context.font = `800 ${16 * scale}px Orbitron, sans-serif`;
+  context.fillText(ammo.visible ? ammo.text : "—", hudX + 210 * scale, hudY + 75 * scale);
+  context.fillStyle = "#cbd5e1";
+  context.font = `700 ${10 * scale}px Inter, sans-serif`;
+  context.fillText(
+    `G1 ${hudAmmoValue(frame.gren1Count)}   G2 ${hudAmmoValue(frame.gren2Count)}`,
+    hudX + 16 * scale,
+    hudY + 96 * scale
+  );
+  if (selectedFlagObjective()) {
+    context.fillStyle = "#facc15";
+    context.font = `800 ${10 * scale}px Orbitron, sans-serif`;
+    context.fillText("FLAG CARRIER", hudX + 210 * scale, hudY + 97 * scale);
+  }
+  context.restore();
+}
+
 function finishClipExport() {
   const exportState = state.clipExport;
   if (!exportState || exportState.stopping) return;
@@ -409,7 +484,11 @@ function startClipExport() {
     return;
   }
 
-  const stream = canvas.captureStream(60);
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = canvas.width;
+  exportCanvas.height = canvas.height;
+  const exportContext = exportCanvas.getContext("2d");
+  const stream = exportCanvas.captureStream(60);
   const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
   const chunks = [];
   const previous = {
@@ -418,7 +497,10 @@ function startClipExport() {
     speed: state.speed,
     clipLoop: state.clipLoop
   };
-  state.clipExport = { recorder, stream, chunks, previous, stopping: false };
+  state.clipExport = {
+    recorder, stream, chunks, previous, stopping: false,
+    canvas: exportCanvas, context: exportContext
+  };
   recorder.addEventListener("dataavailable", event => {
     if (event.data?.size) chunks.push(event.data);
   });
@@ -446,6 +528,7 @@ function startClipExport() {
   state.clipLoop = false;
   setPlaying(true);
   updateScene();
+  renderClipExportFrame();
   recorder.start(250);
 }
 
@@ -1787,8 +1870,7 @@ function renderKillFeed(force = false) {
   const current = state.playbackTime;
   const recent = state.killFeedEvents
     .filter(event => event.time <= current + 0.001 && event.time >= current - 12)
-    .slice(-6)
-    .reverse();
+    .slice(-6);
   const key = Math.floor(current) + "|" + recent.map(event => event.id).join(",");
   if (!force && key === state.lastKillFeedRenderKey) return;
   state.lastKillFeedRenderKey = key;
@@ -3796,6 +3878,7 @@ function tick(now) {
   updateScene();
   updateFreeCamera(delta);
   renderer.render(scene, camera);
+  renderClipExportFrame();
   if (state.clipExport && state.playbackTime >= state.clipEnd) finishClipExport();
   requestAnimationFrame(tick);
 }
