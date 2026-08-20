@@ -108,14 +108,16 @@ async function firstLine(file) {
   }
 }
 
-async function hasSchema7Players(directory) {
+async function playerSchemaVersion(directory) {
   const part = path.join(directory, "players.csv.part");
   const final = path.join(directory, "players.csv");
   const file = await exists(part) ? part : await exists(final) ? final : null;
-  if (!file) return false;
+  if (!file) return null;
 
   try {
     const columns = new Set((await firstLine(file)).split(",").map(column => column.trim()));
+    const required = ["snapshot", "time_ms", "session_id", "slot", "alive", "team", "class"];
+    if (!required.every(column => columns.has(column))) return null;
     return [
       "weapon_name",
       "clip_ammo",
@@ -124,21 +126,21 @@ async function hasSchema7Players(directory) {
       "ammo_cells",
       "ammo_rockets",
       "reload_state"
-    ].every(column => columns.has(column));
+    ].every(column => columns.has(column)) ? 7 : 2;
   } catch {
-    // The recorder can expose the file before its header is fully written.
-    // The next collection pass will retry and promote the stream to schema 7.
-    return false;
+    return null;
   }
 }
 
 async function schemaVersion(directory) {
-  if (await hasSchema7Players(directory)) return 7;
+  const playersVersion = await playerSchemaVersion(directory);
+  if (playersVersion === null) return null;
+  if (playersVersion === 7) return 7;
   if (await exists(path.join(directory, "entity_meta.csv.part")) || await exists(path.join(directory, "entity_meta.csv"))) return 6;
   if (await exists(path.join(directory, "entity_defs.csv.part")) || await exists(path.join(directory, "entity_defs.csv"))) return 5;
   if (await exists(path.join(directory, "brush_defs.csv.part")) || await exists(path.join(directory, "brush_defs.csv"))) return 4;
   if (await exists(path.join(directory, "render_models.csv.part")) || await exists(path.join(directory, "render_models.csv"))) return 3;
-  return 2;
+  return playersVersion;
 }
 
 async function discover() {
@@ -162,6 +164,7 @@ async function discover() {
       if (!active || finalized) continue;
       const state = createState(match.name, round, directory);
       state.schemaVersion = await schemaVersion(directory);
+      if (!state.schemaVersion) continue;
       streams.set(key, state);
       log(`discovered ${config.serverId}:${match.name}:${round} schema ${state.schemaVersion}`);
     }
@@ -205,7 +208,15 @@ async function finalized(directory) {
 
 async function collect(state) {
   const detectedSchemaVersion = await schemaVersion(state.directory);
+  if (!detectedSchemaVersion) {
+    return {
+      body: { files: {}, final: false },
+      nextOffsets: new Map(state.offsets),
+      shouldPost: false
+    };
+  }
   if (detectedSchemaVersion > state.schemaVersion) {
+    resetState(state, "schema_upgrade");
     state.schemaVersion = detectedSchemaVersion;
     log(`promoted ${config.serverId}:${state.matchId}:${state.round} to schema ${state.schemaVersion}`);
   }
