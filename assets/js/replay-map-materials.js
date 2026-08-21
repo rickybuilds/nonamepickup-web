@@ -14,13 +14,13 @@ export function replayMapMaterialOpacity(name) {
   ) {
     return 0.20;
   }
-  // GoldSrc light-fixture textures are non-solid surfaces. The fry_baked_lg
-  // GLB contains three large baked ~light primitives that otherwise become
-  // opaque dark occluders in free roam; callers hide these faces outright.
-  if (/~light/.test(texture)) return 0;
+  // GoldSrc light-fixture textures are non-solid overlays. Keep the fixtures
+  // visible, but prevent their baked faces from writing depth and blocking
+  // the free-roam camera.
+  if (/~light/.test(texture)) return 0.72;
   // fry_baked_lg also bakes the light-volume fade faces as regular opaque
-  // materials. They are visual overlays, not structural map surfaces.
-  if (texture === "fade" || texture === "fade2") return 0;
+  // materials. Preserve a faint visual hint without making them occluders.
+  if (texture === "fade" || texture === "fade2") return 0.08;
   return 1;
 }
 
