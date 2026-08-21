@@ -227,24 +227,27 @@ function clipQuery() {
 }
 
 function setClipBounds(start, end) {
-  if (!(state.duration > 0)) return;
-  const minimum = Math.min(CLIP_MIN_SECONDS, state.duration);
-  const maximum = Math.min(CLIP_MAX_SECONDS, state.duration);
+  const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
+  const timelineEnd = LIVE_MODE ? state.liveEdge : state.duration;
+  if (!(timelineEnd > timelineStart)) return;
+  const timelineLength = timelineEnd - timelineStart;
+  const minimum = Math.min(CLIP_MIN_SECONDS, timelineLength);
+  const maximum = Math.min(CLIP_MAX_SECONDS, timelineLength);
   const requestedStart = Number(start);
   const requestedEnd = Number(end);
   let clipStart = THREE.MathUtils.clamp(
     Number.isFinite(requestedStart) ? requestedStart : 0,
-    0,
-    Math.max(0, state.duration - minimum)
+    timelineStart,
+    Math.max(timelineStart, timelineEnd - minimum)
   );
   let clipEnd = THREE.MathUtils.clamp(
-    Number.isFinite(requestedEnd) ? requestedEnd : Math.min(state.duration, clipStart + maximum),
+    Number.isFinite(requestedEnd) ? requestedEnd : Math.min(timelineEnd, clipStart + maximum),
     clipStart + minimum,
-    Math.min(state.duration, clipStart + maximum)
+    Math.min(timelineEnd, clipStart + maximum)
   );
   if (clipEnd - clipStart < minimum) {
-    clipEnd = Math.min(state.duration, clipStart + minimum);
-    clipStart = Math.max(0, clipEnd - minimum);
+    clipEnd = Math.min(timelineEnd, clipStart + minimum);
+    clipStart = Math.max(timelineStart, clipEnd - minimum);
   }
   state.clipStart = clipStart;
   state.clipEnd = clipEnd;
@@ -252,7 +255,7 @@ function setClipBounds(start, end) {
 
 function updateClipEditor() {
   const editor = $("replay-clip-editor");
-  if (!editor || LIVE_MODE || !(state.duration > 0)) return;
+  if (!editor || !(state.duration > 0)) return;
   editor.hidden = !state.clipEditorOpen;
   editor.style.setProperty("--clip-offset-x", `${state.clipEditorOffset.x}px`);
   editor.style.setProperty("--clip-offset-y", `${state.clipEditorOffset.y}px`);
@@ -261,9 +264,11 @@ function updateClipEditor() {
     toggle.setAttribute("aria-expanded", String(state.clipEditorOpen));
     toggle.classList.toggle("active", state.clipEditorOpen);
   }
-  const duration = Math.max(0.001, state.duration);
-  const startPercent = Math.min(100, Math.max(0, state.clipStart / duration * 100));
-  const endPercent = Math.min(100, Math.max(0, state.clipEnd / duration * 100));
+  const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
+  const timelineEnd = LIVE_MODE ? state.liveEdge : state.duration;
+  const duration = Math.max(0.001, timelineEnd - timelineStart);
+  const startPercent = Math.min(100, Math.max(0, (state.clipStart - timelineStart) / duration * 100));
+  const endPercent = Math.min(100, Math.max(0, (state.clipEnd - timelineStart) / duration * 100));
   const selection = $("replay-clip-selection");
   const startHandle = $("replay-clip-start-handle");
   const endHandle = $("replay-clip-end-handle");
@@ -293,7 +298,7 @@ function updateClipEditor() {
 }
 
 function dragClipSelection(selection) {
-  if (!selection || LIVE_MODE) return;
+  if (!selection) return;
   selection.addEventListener("pointerdown", event => {
     event.preventDefault();
     const track = $("replay-scrubber-track");
@@ -305,11 +310,13 @@ function dragClipSelection(selection) {
     const initialX = event.clientX;
     selection.setPointerCapture?.(event.pointerId);
     const move = moveEvent => {
-      const delta = (moveEvent.clientX - initialX) / width * state.duration;
+      const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
+      const timelineEnd = LIVE_MODE ? state.liveEdge : state.duration;
+      const delta = (moveEvent.clientX - initialX) / width * (timelineEnd - timelineStart);
       const start = THREE.MathUtils.clamp(
         initialStart + delta,
-        0,
-        Math.max(0, state.duration - clipLength)
+        timelineStart,
+        Math.max(timelineStart, timelineEnd - clipLength)
       );
       setClipBounds(start, start + clipLength);
       updateClipEditor();
@@ -327,8 +334,8 @@ function dragClipSelection(selection) {
 }
 
 function setClipEditorOpen(open) {
-  if (LIVE_MODE) return;
   state.clipEditorOpen = Boolean(open);
+  if (LIVE_MODE && state.clipEditorOpen) state.followLive = false;
   const editor = $("replay-clip-editor");
   if (editor) editor.hidden = !state.clipEditorOpen;
   const toggle = $("replay-clip-toggle");
@@ -340,21 +347,27 @@ function setClipEditorOpen(open) {
 }
 
 function setClipStartAt(time) {
-  const start = THREE.MathUtils.clamp(Number(time) || 0, 0, state.duration);
+  const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
+  const timelineEnd = LIVE_MODE ? state.liveEdge : state.duration;
+  const start = THREE.MathUtils.clamp(Number(time) || 0, timelineStart, timelineEnd);
   const end = start + Math.min(CLIP_MAX_SECONDS, Math.max(CLIP_MIN_SECONDS, state.clipEnd - start));
-  setClipBounds(start, Math.min(state.duration, end));
+  setClipBounds(start, Math.min(timelineEnd, end));
   updateClipEditor();
 }
 
 function setClipEndAt(time) {
-  const end = THREE.MathUtils.clamp(Number(time) || 0, 0, state.duration);
-  const start = Math.max(0, end - Math.min(CLIP_MAX_SECONDS, Math.max(CLIP_MIN_SECONDS, end - state.clipStart)));
+  const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
+  const timelineEnd = LIVE_MODE ? state.liveEdge : state.duration;
+  const end = THREE.MathUtils.clamp(Number(time) || 0, timelineStart, timelineEnd);
+  const start = Math.max(timelineStart, end - Math.min(CLIP_MAX_SECONDS, Math.max(CLIP_MIN_SECONDS, end - state.clipStart)));
   setClipBounds(start, end);
   updateClipEditor();
 }
 
 function resetClip() {
-  setClipBounds(0, Math.min(state.duration, CLIP_MAX_SECONDS));
+  const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
+  const timelineEnd = LIVE_MODE ? state.liveEdge : state.duration;
+  setClipBounds(timelineStart, Math.min(timelineEnd, timelineStart + CLIP_MAX_SECONDS));
   state.clipLoop = false;
   updateClipEditor();
 }
@@ -547,7 +560,7 @@ function finishClipExport() {
 }
 
 function startClipExport() {
-  if (LIVE_MODE || state.clipExport || !(state.clipEnd > state.clipStart)) return;
+  if (state.clipExport || !(state.clipEnd > state.clipStart)) return;
   if (!canvas.captureStream || typeof MediaRecorder === "undefined") {
     window.alert("This browser cannot export WebM clips. Try Chrome or Edge.");
     return;
@@ -604,6 +617,7 @@ function startClipExport() {
   state.playbackTime = state.clipStart;
   state.speed = 1;
   state.clipLoop = false;
+  if (LIVE_MODE) state.followLive = false;
   setPlaying(true);
   updateScene();
   renderClipExportFrame();
@@ -611,7 +625,7 @@ function startClipExport() {
 }
 
 function dragClipHandle(handle, side) {
-  if (!handle || LIVE_MODE) return;
+  if (!handle) return;
   handle.addEventListener("pointerdown", event => {
     event.preventDefault();
     const track = $("replay-scrubber-track");
@@ -620,7 +634,9 @@ function dragClipHandle(handle, side) {
     const move = moveEvent => {
       const bounds = track.getBoundingClientRect();
       const ratio = bounds.width ? THREE.MathUtils.clamp((moveEvent.clientX - bounds.left) / bounds.width, 0, 1) : 0;
-      const time = ratio * state.duration;
+      const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
+      const timelineEnd = LIVE_MODE ? state.liveEdge : state.duration;
+      const time = timelineStart + ratio * (timelineEnd - timelineStart);
       if (side === "start") setClipStartAt(time);
       else setClipEndAt(time);
     };
@@ -638,7 +654,7 @@ function dragClipHandle(handle, side) {
 
 function dragClipEditor(editor) {
   const heading = editor?.querySelector(".replay-clip-editor-heading");
-  if (!editor || !heading || LIVE_MODE) return;
+  if (!editor || !heading) return;
   heading.addEventListener("pointerdown", event => {
     if (event.target.closest("button, input, select, textarea")) return;
     event.preventDefault();
@@ -3541,6 +3557,7 @@ function updateLiveHud() {
   const delay = liveDelaySeconds();
   const slider = $("replay-slider");
   const minimum = Math.max(0, state.liveEdge - state.liveBufferSeconds);
+  if (state.duration > 0) setClipBounds(state.clipStart, state.clipEnd);
   slider.min = String(Math.round(minimum * 1000));
   slider.max = String(Math.max(1, Math.round(state.liveEdge * 1000)));
   $("pickup-live-buffer-label").textContent = minimum > 0
@@ -3872,6 +3889,7 @@ function wireControls() {
   $("replay-clip-reset")?.addEventListener("click", resetClip);
   $("replay-clip-loop")?.addEventListener("click", () => {
     state.clipLoop = !state.clipLoop;
+    if (LIVE_MODE && state.clipLoop) state.followLive = false;
     if (state.clipLoop && (state.playbackTime < state.clipStart || state.playbackTime >= state.clipEnd)) {
       state.playbackTime = state.clipStart;
     }
@@ -3935,7 +3953,10 @@ function tick(now) {
           : Math.min(target, state.playbackTime + delta * 1.05);
       } else if (state.playing) {
         state.playbackTime = Math.min(state.liveEdge, state.playbackTime + delta * state.speed);
-        if (!state.liveEnded && state.playbackTime >= state.liveEdge - LIVE_TARGET_LATENCY_SECONDS) {
+        if (state.clipLoop && state.clipEnd > state.clipStart && state.playbackTime >= state.clipEnd) {
+          state.playbackTime = state.clipStart;
+          state.followLive = false;
+        } else if (!state.liveEnded && state.playbackTime >= state.liveEdge - LIVE_TARGET_LATENCY_SECONDS) {
           state.followLive = true;
         } else if (state.liveEnded && state.playbackTime >= state.liveEdge) {
           setPlaying(false);
@@ -4316,6 +4337,10 @@ async function initRealLive() {
   state.liveEnded = Boolean(snapshot.final);
   state.liveReady = true;
   state.followLive = !state.liveEnded;
+  const requestedClip = clipQuery();
+  setClipBounds(requestedClip.start ?? Math.max(0, state.liveEdge - Math.min(state.liveBufferSeconds, CLIP_MAX_SECONDS)), requestedClip.end ?? state.liveEdge);
+  state.clipTitle = requestedClip.title;
+  if (requestedClip.start != null || requestedClip.end != null) state.clipEditorOpen = true;
   state.playbackTime = Math.max(0, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
   setPlaying(true);
   updateLiveHud();
@@ -4375,8 +4400,9 @@ async function init() {
       const requestedFeedSpeed = Number(new URLSearchParams(location.search).get("feedSpeed"));
       state.feedSpeed = Number.isFinite(requestedFeedSpeed)
         ? THREE.MathUtils.clamp(requestedFeedSpeed, 0.25, 16)
-        : 1;
+      : 1;
       state.liveEdge = Math.min(state.duration, LIVE_TARGET_LATENCY_SECONDS);
+      setClipBounds(requestedClip.start ?? Math.max(0, state.liveEdge - Math.min(state.liveBufferSeconds, CLIP_MAX_SECONDS)), requestedClip.end ?? state.liveEdge);
       state.playbackTime = Math.max(0, state.liveEdge - LIVE_TARGET_LATENCY_SECONDS);
       state.liveReady = true;
       state.followLive = true;
