@@ -303,7 +303,7 @@ function dragClipSelection(selection) {
     if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    const track = $("replay-scrubber-track");
+    const track = $("replay-scrubber-track") || document.querySelector(".replay-scrubber-track");
     if (!track) return;
     const bounds = track.getBoundingClientRect();
     const width = bounds.width || 1;
@@ -635,7 +635,7 @@ function dragClipHandle(handle, side) {
     if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
-    const track = $("replay-scrubber-track");
+    const track = $("replay-scrubber-track") || document.querySelector(".replay-scrubber-track");
     if (!track) return;
     const pointerId = event.pointerId;
     handle.setPointerCapture?.(pointerId);

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260713freeroam5">
   <link rel="stylesheet" href="assets/css/pickup-replay.css?v=20260731hud5">
-  <link rel="stylesheet" href="assets/css/pickup-replay-v2.css?v=20260821clipdrag1">
+  <link rel="stylesheet" href="assets/css/pickup-replay-v2.css?v=20260821clipdrag2">
   <script src="assets/js/main.js?v=20260618i" defer></script>
   <script type="importmap">
     {
@@ -19,7 +19,7 @@
       }
     }
   </script>
-  <script type="module" src="assets/js/pickup-replay-v2.js?v=20260821clipdrag1"></script>
+  <script type="module" src="assets/js/pickup-replay-v2.js?v=20260821clipdrag2"></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -137,7 +137,7 @@
           <div class="pickup-timeline-controls">
             <label class="replay-scrubber">
               <span id="replay-clock">0:00.000</span>
-              <div class="replay-scrubber-track">
+              <div id="replay-scrubber-track" class="replay-scrubber-track">
                 <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
                 <div id="replay-flag-markers" aria-label="Flag pickup markers"></div>
                 <div id="replay-clip-selection" class="replay-clip-selection" aria-hidden="true"></div>
