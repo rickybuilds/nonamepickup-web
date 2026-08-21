@@ -8,7 +8,7 @@ import {
 import {
   configureReplayMapMaterial,
   isReplayMapGroundMaterial
-} from "./replay-map-materials.js?v=20260821lightfixtures4";
+} from "./replay-map-materials.js?v=20260821lightfixtures5";
 
 const $ = id => document.getElementById(id);
 const LIVE_PAGE = document.body?.classList.contains("pickup-live-viewer-page") || false;

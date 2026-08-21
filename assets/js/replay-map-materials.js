@@ -5,12 +5,8 @@ const normalizedTextureName = name => String(name || "")
 
 export function replayMapMaterialOpacity(name) {
   const texture = normalizedTextureName(name);
-  if (
-    texture.startsWith("!") ||
-    /^(water|slime|lava|toxic|liquid)(?:$|[_\d-])/.test(texture)
-  ) {
-    return 0.45;
-  }
+  if (texture === "!c2a5") return 0.12;
+  if (/^(water|slime|lava|toxic|liquid)(?:$|[_\d-])/.test(texture)) return 0.45;
   if (
     /(?:^|[_-])(laser|forcefield|force_field|energy)/.test(texture) ||
     /^(?:(?:e7|tsi)?beam)\d/.test(texture) ||
