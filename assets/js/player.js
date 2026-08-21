@@ -137,7 +137,7 @@ function eloTierRank(elo){
   if(e>=1051)return"3";
   if(e>=721)return"2";
   if(e>=300)return"1";
-  return"-";
+  return"NR";
 }
 
 function relativeTime(ts){
@@ -326,7 +326,7 @@ async function loadPlayerV3(){
   setText("player2-record",ratings.record||"-");
   setText("player2-win-pct",(ratings.win_pct??0)+"%");
 
-  setText("kpi-rank",ratings.hidden?"Hidden":(ratings.rank?("#"+fmt(ratings.rank)):"-"));
+  setText("kpi-rank",ratings.hidden?"Hidden":(ratings.rank?("#"+fmt(ratings.rank)):"NR"));
   const eloWindow=formatEloWindow(ratings);
   const eloWindowEl=document.getElementById("kpi-elo-window");
   if(eloWindowEl){
