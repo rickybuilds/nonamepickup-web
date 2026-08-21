@@ -22,6 +22,9 @@ export function replayMapMaterialOpacity(name) {
   // GLB contains three large baked ~light primitives that otherwise become
   // opaque dark occluders in free roam; callers hide these faces outright.
   if (/~light/.test(texture)) return 0;
+  // fry_baked_lg also bakes the light-volume fade faces as regular opaque
+  // materials. They are visual overlays, not structural map surfaces.
+  if (texture === "fade" || texture === "fade2") return 0;
   return 1;
 }
 
