@@ -18,10 +18,11 @@ export function replayMapMaterialOpacity(name) {
   ) {
     return 0.20;
   }
-  // GoldSrc light-fixture textures are emissive, non-solid surfaces. Keep
-  // them visible in the replay map, but do not let their baked polygons turn
-  // into opaque dark occluders when free-roaming through the fixture area.
-  if (/~light/.test(texture)) return 0.28;
+  // GoldSrc light-fixture textures are non-solid surfaces. The fry_baked_lg
+  // GLB contains three large baked ~light primitives that otherwise become
+  // opaque dark occluders in free roam; the actual surrounding map geometry
+  // remains visible when these fixture faces are omitted.
+  if (/~light/.test(texture)) return 0;
   return 1;
 }
 
