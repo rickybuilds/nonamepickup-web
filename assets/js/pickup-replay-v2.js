@@ -2320,33 +2320,6 @@ function wireAnalysisControls() {
 }
 
 
-function renderEvents(force = false) {
-  const second = Math.floor(state.playbackTime);
-  if (!force && second === state.lastEventSecond) return;
-  state.lastEventSecond = second;
-  const eventFeed = timelineEvents();
-  const nearby = eventFeed
-    .filter(event => event.time <= state.playbackTime + 1 && event.time >= state.playbackTime - 18)
-    .slice(-24)
-    .reverse();
-  const container = $("pickup-events");
-  container.innerHTML = "";
-  for (const event of nearby) {
-    const item = document.createElement("article");
-    item.className = `pickup-event${Math.abs(event.time - state.playbackTime) < 0.6 ? " active" : ""}`;
-    const time = document.createElement("time");
-    time.textContent = formatTime(event.time);
-    const copy = document.createElement("p");
-    copy.textContent = eventDescription(event);
-    item.append(time, copy);
-    container.appendChild(item);
-  }
-  const visibleEventCount = LIVE_MODE
-    ? eventFeed.filter(event => event.time <= state.liveEdge).length
-    : eventFeed.length;
-  $("pickup-event-count").textContent = visibleEventCount.toLocaleString();
-}
-
 function selectPlayer(sessionId) {
   if (!state.playerBySession.has(Number(sessionId))) return;
   state.selectedSession = Number(sessionId);
@@ -3522,7 +3495,6 @@ function updateScene() {
   updateCamera();
   updateMapLights();
   updateSelectedStats();
-  renderEvents();
   renderKillFeed();
   updateAnalysisPlayback();
   updateClipEditor();
@@ -4103,7 +4075,6 @@ function installTelemetry(telemetry) {
   buildRoster();
   selectPlayer(state.roster[0]?.sessionId);
   setupWorld();
-  renderEvents(true);
   renderAnalysisTimeline(true);
 }
 
@@ -4161,7 +4132,6 @@ async function applyLiveDelta(telemetry) {
   }
   buildVisuals();
   bindBrushNodes();
-  renderEvents(true);
   renderAnalysisTimeline(true);
 }
 
