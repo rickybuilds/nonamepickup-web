@@ -18,6 +18,10 @@ export function replayMapMaterialOpacity(name) {
   ) {
     return 0.20;
   }
+  // GoldSrc light-fixture textures are emissive, non-solid surfaces. Keep
+  // them visible in the replay map, but do not let their baked polygons turn
+  // into opaque dark occluders when free-roaming through the fixture area.
+  if (/~light/.test(texture)) return 0.28;
   return 1;
 }
 
