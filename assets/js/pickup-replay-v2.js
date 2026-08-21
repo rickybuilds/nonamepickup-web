@@ -300,7 +300,9 @@ function updateClipEditor() {
 function dragClipSelection(selection) {
   if (!selection) return;
   selection.addEventListener("pointerdown", event => {
+    if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
+    event.stopPropagation();
     const track = $("replay-scrubber-track");
     if (!track) return;
     const bounds = track.getBoundingClientRect();
@@ -308,8 +310,10 @@ function dragClipSelection(selection) {
     const initialStart = state.clipStart;
     const clipLength = state.clipEnd - state.clipStart;
     const initialX = event.clientX;
-    selection.setPointerCapture?.(event.pointerId);
+    const pointerId = event.pointerId;
+    selection.setPointerCapture?.(pointerId);
     const move = moveEvent => {
+      if (moveEvent.pointerId !== pointerId) return;
       const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
       const timelineEnd = LIVE_MODE ? state.liveEdge : state.duration;
       const delta = (moveEvent.clientX - initialX) / width * (timelineEnd - timelineStart);
@@ -322,14 +326,15 @@ function dragClipSelection(selection) {
       updateClipEditor();
     };
     const stop = stopEvent => {
-      selection.releasePointerCapture?.(stopEvent.pointerId);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
+      if (stopEvent.pointerId !== pointerId) return;
+      selection.releasePointerCapture?.(pointerId);
+      selection.removeEventListener("pointermove", move);
+      selection.removeEventListener("pointerup", stop);
+      selection.removeEventListener("pointercancel", stop);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
+    selection.addEventListener("pointermove", move);
+    selection.addEventListener("pointerup", stop);
+    selection.addEventListener("pointercancel", stop);
   });
 }
 
@@ -627,11 +632,15 @@ function startClipExport() {
 function dragClipHandle(handle, side) {
   if (!handle) return;
   handle.addEventListener("pointerdown", event => {
+    if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
+    event.stopPropagation();
     const track = $("replay-scrubber-track");
     if (!track) return;
-    handle.setPointerCapture?.(event.pointerId);
+    const pointerId = event.pointerId;
+    handle.setPointerCapture?.(pointerId);
     const move = moveEvent => {
+      if (moveEvent.pointerId !== pointerId) return;
       const bounds = track.getBoundingClientRect();
       const ratio = bounds.width ? THREE.MathUtils.clamp((moveEvent.clientX - bounds.left) / bounds.width, 0, 1) : 0;
       const timelineStart = LIVE_MODE ? Math.max(0, state.liveEdge - state.liveBufferSeconds) : 0;
@@ -641,14 +650,15 @@ function dragClipHandle(handle, side) {
       else setClipEndAt(time);
     };
     const stop = stopEvent => {
-      handle.releasePointerCapture?.(stopEvent.pointerId);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
+      if (stopEvent.pointerId !== pointerId) return;
+      handle.releasePointerCapture?.(pointerId);
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", stop);
+      handle.removeEventListener("pointercancel", stop);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
   });
 }
 
