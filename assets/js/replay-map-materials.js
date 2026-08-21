@@ -20,8 +20,7 @@ export function replayMapMaterialOpacity(name) {
   }
   // GoldSrc light-fixture textures are non-solid surfaces. The fry_baked_lg
   // GLB contains three large baked ~light primitives that otherwise become
-  // opaque dark occluders in free roam; the actual surrounding map geometry
-  // remains visible when these fixture faces are omitted.
+  // opaque dark occluders in free roam; callers hide these faces outright.
   if (/~light/.test(texture)) return 0;
   return 1;
 }
@@ -30,6 +29,14 @@ export function configureReplayMapMaterial(material, doubleSide) {
   if (!material) return;
   material.side = doubleSide;
   const targetOpacity = replayMapMaterialOpacity(material.name);
+  if (targetOpacity === 0) {
+    material.visible = false;
+    material.transparent = true;
+    material.opacity = 0;
+    material.depthWrite = false;
+    material.needsUpdate = true;
+    return;
+  }
   if (targetOpacity < 1) {
     material.transparent = true;
     material.opacity = Math.min(Number.isFinite(material.opacity) ? material.opacity : 1, targetOpacity);
