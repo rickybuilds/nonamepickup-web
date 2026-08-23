@@ -25,8 +25,11 @@ const HAS_REQUESTED_CLIP = PAGE_QUERY.has("clipStart") && PAGE_QUERY.has("clipEn
 const EXPLICIT_DIRECT_EXPORT = /^(1|true|yes)$/i.test(
   PAGE_QUERY.get("clipExport") || PAGE_QUERY.get("headless") || ""
 );
+// The production renderer launches Chrome directly with --headless=new, not
+// through WebDriver, so navigator.webdriver is false in that exact path.
+const HEADLESS_CHROME = /\bHeadlessChrome\//i.test(navigator.userAgent);
 const DIRECT_CLIP_EXPORT = !LIVE_MODE && HAS_REQUESTED_CLIP &&
-  (EXPLICIT_DIRECT_EXPORT || navigator.webdriver === true);
+  (EXPLICIT_DIRECT_EXPORT || navigator.webdriver === true || HEADLESS_CHROME);
 const DIRECT_EXPORT_FPS = Math.min(60, Math.max(1, Number(PAGE_QUERY.get("clipFps")) || 10));
 const WEBM_MUXER_URL = "https://cdn.jsdelivr.net/npm/webm-muxer@5.1.4/build/webm-muxer.mjs";
 const LIVE_BUFFER_SECONDS = 120;
@@ -4767,7 +4770,9 @@ async function initRealLive() {
 async function init() {
   markReplayTiming("replay-init-start", {
     direct: DIRECT_CLIP_EXPORT,
-    webdriver: navigator.webdriver === true
+    webdriver: navigator.webdriver === true,
+    headlessChrome: HEADLESS_CHROME,
+    explicitDirectExport: EXPLICIT_DIRECT_EXPORT
   });
   wireControls();
   resize();
