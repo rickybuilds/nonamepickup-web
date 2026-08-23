@@ -114,6 +114,7 @@ const state = {
   clipEditorOpen: false,
   clipEditorOffset: { x: 0, y: 0 },
   clipExport: null,
+  sceneReady: false,
   speed: 1,
   playing: true,
   liveReady: false,
@@ -290,7 +291,7 @@ function updateClipEditor() {
   }
   const download = $("replay-clip-download");
   if (download) {
-    download.disabled = Boolean(state.clipExport);
+    download.disabled = Boolean(state.clipExport) || !state.sceneReady;
     download.textContent = state.clipExport
       ? `Recording ${formatTime(Math.max(0, state.playbackTime - state.clipStart))}`
       : "Download .webm";
@@ -3761,6 +3762,8 @@ function loadMap() {
     updateMapBeams();
     buildMapLights(gltf);
     if (grid) grid.visible = false;
+    state.sceneReady = true;
+    updateScene();
   }, undefined, () => {
     if (grid) grid.visible = true;
   });
