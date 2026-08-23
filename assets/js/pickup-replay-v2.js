@@ -40,6 +40,11 @@ const DIRECT_EXPORT_WIDTH = Number.isFinite(REQUESTED_EXPORT_WIDTH) && REQUESTED
   ? Math.min(1920, Math.max(320, REQUESTED_EXPORT_WIDTH)) : 0;
 const DIRECT_EXPORT_HEIGHT = Number.isFinite(REQUESTED_EXPORT_HEIGHT) && REQUESTED_EXPORT_HEIGHT > 0
   ? Math.min(1080, Math.max(240, REQUESTED_EXPORT_HEIGHT)) : 0;
+const RAW_FRAME_STREAM_PORT = Number(PAGE_QUERY.get("clipStreamPort"));
+const RAW_FRAME_STREAM_TOKEN = PAGE_QUERY.get("clipStreamToken") || "";
+const RAW_FRAME_STREAM = FAST_DIRECT_EXPORT &&
+  Number.isInteger(RAW_FRAME_STREAM_PORT) && RAW_FRAME_STREAM_PORT > 0 &&
+  RAW_FRAME_STREAM_PORT <= 65535 && /^[a-f0-9]{32,128}$/i.test(RAW_FRAME_STREAM_TOKEN);
 const WEBM_MUXER_URL = "https://cdn.jsdelivr.net/npm/webm-muxer@5.1.4/build/webm-muxer.mjs";
 const LIVE_BUFFER_SECONDS = 120;
 const LIVE_TARGET_LATENCY_SECONDS = LIVE_REAL ? 1.25 : 0.35;
@@ -739,6 +744,131 @@ function canvasJpegBlob(sourceCanvas) {
   });
 }
 
+function nextSocketMessage(socket) {
+  return new Promise((resolve, reject) => {
+    const onMessage = event => {
+      cleanup();
+      resolve(String(event.data || ""));
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("Raw replay frame connection failed."));
+    };
+    const cleanup = () => {
+      socket.removeEventListener("message", onMessage);
+      socket.removeEventListener("error", onError);
+    };
+    socket.addEventListener("message", onMessage, { once: true });
+    socket.addEventListener("error", onError, { once: true });
+  });
+}
+
+async function startRawFrameExport() {
+  const { exportCanvas, exportContext } = createClipExportCanvas();
+  const previous = {
+    playbackTime: state.playbackTime,
+    playing: state.playing,
+    speed: state.speed,
+    clipLoop: state.clipLoop
+  };
+  const exportState = {
+    mode: "raw-frames",
+    canvas: exportCanvas,
+    context: exportContext,
+    previous,
+    frames: 0,
+    renderCpuMs: 0,
+    rawBytes: 0,
+    failed: false
+  };
+  state.clipExport = exportState;
+  useExportRenderResolution(exportState);
+  replayTiming.exportPasses += 1;
+  state.clipLoop = false;
+  if (LIVE_MODE) state.followLive = false;
+  setPlaying(false);
+  updateClipEditor();
+  markReplayTiming("media-recorder-skipped", { reason: "native-ffmpeg-raw-frame-export" });
+  markReplayTiming("export-render-start", {
+    mode: exportState.mode,
+    clipStart: state.clipStart,
+    clipEnd: state.clipEnd,
+    fps: DIRECT_EXPORT_FPS
+  });
+
+  let socket;
+  try {
+    socket = new WebSocket(
+      `ws://127.0.0.1:${RAW_FRAME_STREAM_PORT}/?token=${encodeURIComponent(RAW_FRAME_STREAM_TOKEN)}`
+    );
+    socket.binaryType = "arraybuffer";
+    const readyMessage = nextSocketMessage(socket);
+    await new Promise((resolve, reject) => {
+      socket.addEventListener("open", resolve, { once: true });
+      socket.addEventListener("error", () => reject(new Error("Could not open raw replay frame stream.")), { once: true });
+    });
+    if (await readyMessage !== "ready") throw new Error("Raw replay frame receiver was not ready.");
+    const clipDuration = state.clipEnd - state.clipStart;
+    const frameStep = 1 / DIRECT_EXPORT_FPS;
+    const frameCount = Math.ceil(clipDuration * DIRECT_EXPORT_FPS);
+    const startAck = nextSocketMessage(socket);
+    socket.send(JSON.stringify({
+      type: "start",
+      width: exportCanvas.width,
+      height: exportCanvas.height,
+      fps: DIRECT_EXPORT_FPS,
+      frames: frameCount + 1
+    }));
+    if (await startAck !== "start") throw new Error("Raw replay frame receiver rejected the stream.");
+    markReplayTiming("raw-frame-stream-start", {
+      width: exportCanvas.width,
+      height: exportCanvas.height,
+      fps: DIRECT_EXPORT_FPS
+    });
+
+    for (let index = 0; index <= frameCount; index += 1) {
+      const offset = Math.min(clipDuration, index * frameStep);
+      state.playbackTime = state.clipStart + offset;
+      const renderStarted = performance.now();
+      updateScene();
+      renderer.render(scene, camera);
+      renderClipExportFrame();
+      const pixels = exportContext.getImageData(
+        0, 0, exportCanvas.width, exportCanvas.height
+      ).data;
+      exportState.renderCpuMs += performance.now() - renderStarted;
+      const frameAck = nextSocketMessage(socket);
+      socket.send(pixels.buffer);
+      if (await frameAck !== "frame") throw new Error("Raw replay frame receiver rejected a frame.");
+      exportState.frames += 1;
+      exportState.rawBytes += pixels.byteLength;
+    }
+
+    markReplayTiming("raw-frame-stream-end", {
+      frames: exportState.frames,
+      bytes: exportState.rawBytes
+    });
+    markReplayTiming("export-render-end", {
+      mode: exportState.mode,
+      frames: exportState.frames,
+      renderCpuMs: Math.round(exportState.renderCpuMs * 100) / 100,
+      playbackTime: state.playbackTime
+    });
+    const completion = nextSocketMessage(socket);
+    socket.send(JSON.stringify({ type: "end", frames: exportState.frames }));
+    if (await completion !== "complete") throw new Error("Native replay encoding did not complete.");
+    markReplayTiming("raw-frame-encode-complete", { frames: exportState.frames });
+    socket.close();
+    restoreAfterClipExport(exportState);
+  } catch (error) {
+    exportState.failed = true;
+    try { socket?.close(); } catch {}
+    markReplayTiming("export-error", { mode: exportState.mode, message: error.message || String(error) });
+    restoreAfterClipExport(exportState);
+    setStatus(error.message || "Raw replay frame export failed.");
+  }
+}
+
 function useExportRenderResolution(exportState) {
   if (canvas.width === exportState.canvas.width && canvas.height === exportState.canvas.height) return;
   exportState.previous.rendererWidth = canvas.width;
@@ -1134,6 +1264,10 @@ async function startDeterministicClipExport(mimeType) {
 
 function startClipExport() {
   if (state.clipExport || !(state.clipEnd > state.clipStart)) return;
+  if (RAW_FRAME_STREAM) {
+    void startRawFrameExport();
+    return;
+  }
   if (FAST_DIRECT_EXPORT && typeof HTMLCanvasElement.prototype.toBlob === "function") {
     void startMjpegFrameExport();
     return;
@@ -4479,7 +4613,7 @@ function endPreviewTimingIfNeeded() {
 function tick(now) {
   const delta = Math.min(0.1, (now - state.lastTick) / 1000);
   state.lastTick = now;
-  if (["deterministic", "webcodecs", "mjpeg-frames"].includes(state.clipExport?.mode) ||
+  if (["deterministic", "webcodecs", "mjpeg-frames", "raw-frames"].includes(state.clipExport?.mode) ||
       (DIRECT_CLIP_EXPORT && !state.sceneReady)) {
     requestAnimationFrame(tick);
     return;
