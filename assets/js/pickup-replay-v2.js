@@ -4073,7 +4073,15 @@ function installTelemetry(telemetry) {
   state.lastKillFeedRenderKey = "";
   rebuildSceneIndexes();
   buildRoster();
-  selectPlayer(state.roster[0]?.sessionId);
+  const requestedSession = Number(
+    new URLSearchParams(location.search).get("playerSession")
+  );
+  const initialSession =
+    Number.isSafeInteger(requestedSession) &&
+    state.playerBySession.has(requestedSession)
+      ? requestedSession
+      : state.roster[0]?.sessionId;
+  selectPlayer(initialSession);
   setupWorld();
   renderAnalysisTimeline(true);
 }
