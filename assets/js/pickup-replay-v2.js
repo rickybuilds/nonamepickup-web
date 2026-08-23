@@ -34,6 +34,12 @@ const FAST_DIRECT_EXPORT = DIRECT_CLIP_EXPORT && /^(1|true|yes)$/i.test(
   PAGE_QUERY.get("clipFast") || ""
 );
 const DIRECT_EXPORT_FPS = Math.min(60, Math.max(1, Number(PAGE_QUERY.get("clipFps")) || 10));
+const REQUESTED_EXPORT_WIDTH = Number(PAGE_QUERY.get("clipWidth"));
+const REQUESTED_EXPORT_HEIGHT = Number(PAGE_QUERY.get("clipHeight"));
+const DIRECT_EXPORT_WIDTH = Number.isFinite(REQUESTED_EXPORT_WIDTH) && REQUESTED_EXPORT_WIDTH > 0
+  ? Math.min(1920, Math.max(320, REQUESTED_EXPORT_WIDTH)) : 0;
+const DIRECT_EXPORT_HEIGHT = Number.isFinite(REQUESTED_EXPORT_HEIGHT) && REQUESTED_EXPORT_HEIGHT > 0
+  ? Math.min(1080, Math.max(240, REQUESTED_EXPORT_HEIGHT)) : 0;
 const WEBM_MUXER_URL = "https://cdn.jsdelivr.net/npm/webm-muxer@5.1.4/build/webm-muxer.mjs";
 const LIVE_BUFFER_SECONDS = 120;
 const LIVE_TARGET_LATENCY_SECONDS = LIVE_REAL ? 1.25 : 0.35;
@@ -655,13 +661,18 @@ function clipExportMimeType() {
 
 function createClipExportCanvas() {
   const exportCanvas = document.createElement("canvas");
-  exportCanvas.width = canvas.width;
-  exportCanvas.height = canvas.height;
+  exportCanvas.width = DIRECT_EXPORT_WIDTH || canvas.width;
+  exportCanvas.height = DIRECT_EXPORT_HEIGHT || canvas.height;
   return { exportCanvas, exportContext: exportCanvas.getContext("2d") };
 }
 
 function restoreAfterClipExport(exportState) {
   const { previous } = exportState;
+  if (previous.rendererWidth && previous.rendererHeight) {
+    renderer.setSize(previous.rendererWidth, previous.rendererHeight, false);
+    camera.aspect = previous.cameraAspect;
+    camera.updateProjectionMatrix();
+  }
   state.playbackTime = previous.playbackTime;
   state.speed = previous.speed;
   state.clipLoop = previous.clipLoop;
@@ -704,6 +715,38 @@ function downloadClipBlob(blob, mimeType, mode) {
   markReplayTiming("webm-download", { mode, bytes: blob.size, fileName: anchor.download });
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function downloadFrameStreamBlob(blob, mode) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${clipFileName()}.mjpg`;
+  document.body.appendChild(anchor);
+  markReplayTiming("frame-stream-finalized", { mode, bytes: blob.size, mimeType: blob.type });
+  anchor.click();
+  markReplayTiming("frame-stream-download", { mode, bytes: blob.size, fileName: anchor.download });
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function canvasJpegBlob(sourceCanvas) {
+  return new Promise((resolve, reject) => {
+    sourceCanvas.toBlob(blob => {
+      if (blob?.size) resolve(blob);
+      else reject(new Error("Could not encode replay frame as JPEG."));
+    }, "image/jpeg", 0.93);
+  });
+}
+
+function useExportRenderResolution(exportState) {
+  if (canvas.width === exportState.canvas.width && canvas.height === exportState.canvas.height) return;
+  exportState.previous.rendererWidth = canvas.width;
+  exportState.previous.rendererHeight = canvas.height;
+  exportState.previous.cameraAspect = camera.aspect;
+  renderer.setSize(exportState.canvas.width, exportState.canvas.height, false);
+  camera.aspect = exportState.canvas.width / exportState.canvas.height;
+  camera.updateProjectionMatrix();
 }
 
 function prepareClipRecorder({ exportCanvas, exportContext, stream, mimeType, mode }) {
@@ -775,6 +818,87 @@ function supportsDeterministicClipExport() {
 
 function supportsWebCodecsClipExport() {
   return typeof window.VideoEncoder === "function" && typeof window.VideoFrame === "function";
+}
+
+async function startMjpegFrameExport() {
+  const { exportCanvas, exportContext } = createClipExportCanvas();
+  const previous = {
+    playbackTime: state.playbackTime,
+    playing: state.playing,
+    speed: state.speed,
+    clipLoop: state.clipLoop
+  };
+  const exportState = {
+    mode: "mjpeg-frames",
+    canvas: exportCanvas,
+    context: exportContext,
+    previous,
+    frames: 0,
+    renderCpuMs: 0,
+    jpegBytes: 0,
+    failed: false
+  };
+  state.clipExport = exportState;
+  useExportRenderResolution(exportState);
+  replayTiming.exportPasses += 1;
+  state.clipLoop = false;
+  if (LIVE_MODE) state.followLive = false;
+  setPlaying(false);
+  updateClipEditor();
+  markReplayTiming("media-recorder-skipped", { reason: "native-ffmpeg-frame-export" });
+  markReplayTiming("export-render-start", {
+    mode: exportState.mode,
+    clipStart: state.clipStart,
+    clipEnd: state.clipEnd,
+    fps: DIRECT_EXPORT_FPS
+  });
+  markReplayTiming("frame-stream-start", {
+    width: exportCanvas.width,
+    height: exportCanvas.height,
+    fps: DIRECT_EXPORT_FPS,
+    format: "mjpeg"
+  });
+
+  try {
+    const chunks = [];
+    const clipDuration = state.clipEnd - state.clipStart;
+    const frameStep = 1 / DIRECT_EXPORT_FPS;
+    const frameCount = Math.ceil(clipDuration * DIRECT_EXPORT_FPS);
+    for (let index = 0; index <= frameCount; index += 1) {
+      const offset = Math.min(clipDuration, index * frameStep);
+      state.playbackTime = state.clipStart + offset;
+      const renderStarted = performance.now();
+      updateScene();
+      renderer.render(scene, camera);
+      renderClipExportFrame();
+      exportState.renderCpuMs += performance.now() - renderStarted;
+      const jpeg = await canvasJpegBlob(exportCanvas);
+      chunks.push(jpeg);
+      exportState.jpegBytes += jpeg.size;
+      exportState.frames += 1;
+    }
+    markReplayTiming("frame-stream-end", {
+      frames: exportState.frames,
+      bytes: exportState.jpegBytes
+    });
+    markReplayTiming("export-render-end", {
+      mode: exportState.mode,
+      frames: exportState.frames,
+      renderCpuMs: Math.round(exportState.renderCpuMs * 100) / 100,
+      playbackTime: state.playbackTime
+    });
+    downloadFrameStreamBlob(
+      new Blob(chunks, { type: "video/x-motion-jpeg" }),
+      exportState.mode
+    );
+    restoreAfterClipExport(exportState);
+  } catch (error) {
+    exportState.failed = true;
+    markReplayTiming("export-error", { mode: exportState.mode, message: error.message || String(error) });
+    restoreAfterClipExport(exportState);
+    if (supportsWebCodecsClipExport()) void startWebCodecsClipExport();
+    else setStatus(error.message || "Replay frame export failed.");
+  }
 }
 
 async function startWebCodecsClipExport() {
@@ -1010,6 +1134,10 @@ async function startDeterministicClipExport(mimeType) {
 
 function startClipExport() {
   if (state.clipExport || !(state.clipEnd > state.clipStart)) return;
+  if (FAST_DIRECT_EXPORT && typeof HTMLCanvasElement.prototype.toBlob === "function") {
+    void startMjpegFrameExport();
+    return;
+  }
   if (DIRECT_CLIP_EXPORT && supportsWebCodecsClipExport()) {
     void startWebCodecsClipExport();
     return;
@@ -4351,7 +4479,7 @@ function endPreviewTimingIfNeeded() {
 function tick(now) {
   const delta = Math.min(0.1, (now - state.lastTick) / 1000);
   state.lastTick = now;
-  if (["deterministic", "webcodecs"].includes(state.clipExport?.mode) ||
+  if (["deterministic", "webcodecs", "mjpeg-frames"].includes(state.clipExport?.mode) ||
       (DIRECT_CLIP_EXPORT && !state.sceneReady)) {
     requestAnimationFrame(tick);
     return;
