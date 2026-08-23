@@ -798,6 +798,7 @@ async function startRawFrameExport() {
 
   let socket;
   try {
+    markReplayTiming("raw-frame-connect-start", { port: RAW_FRAME_STREAM_PORT });
     socket = new WebSocket(
       `ws://127.0.0.1:${RAW_FRAME_STREAM_PORT}/?token=${encodeURIComponent(RAW_FRAME_STREAM_TOKEN)}`
     );
