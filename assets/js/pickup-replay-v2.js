@@ -11,11 +11,24 @@ import {
 } from "./replay-map-materials.js?v=20260821lightfixtures6";
 
 const $ = id => document.getElementById(id);
+const PAGE_QUERY = new URLSearchParams(location.search);
 const LIVE_PAGE = document.body?.classList.contains("pickup-live-viewer-page") || false;
-const LIVE_SERVER_ID = new URLSearchParams(location.search).get("server") || "";
+const LIVE_SERVER_ID = PAGE_QUERY.get("server") || "";
 const LIVE_REAL = LIVE_PAGE && /^[A-Za-z0-9_.-]{1,64}$/.test(LIVE_SERVER_ID);
 const LIVE_SIMULATION = LIVE_PAGE && !LIVE_SERVER_ID;
 const LIVE_MODE = LIVE_REAL || LIVE_SIMULATION;
+const REQUESTED_CLIP_START = Number(PAGE_QUERY.get("clipStart"));
+const REQUESTED_CLIP_END = Number(PAGE_QUERY.get("clipEnd"));
+const HAS_REQUESTED_CLIP = PAGE_QUERY.has("clipStart") && PAGE_QUERY.has("clipEnd") &&
+  Number.isFinite(REQUESTED_CLIP_START) &&
+  Number.isFinite(REQUESTED_CLIP_END) && REQUESTED_CLIP_END > REQUESTED_CLIP_START;
+const EXPLICIT_DIRECT_EXPORT = /^(1|true|yes)$/i.test(
+  PAGE_QUERY.get("clipExport") || PAGE_QUERY.get("headless") || ""
+);
+const DIRECT_CLIP_EXPORT = !LIVE_MODE && HAS_REQUESTED_CLIP &&
+  (EXPLICIT_DIRECT_EXPORT || navigator.webdriver === true);
+const DIRECT_EXPORT_FPS = Math.min(60, Math.max(1, Number(PAGE_QUERY.get("clipFps")) || 10));
+const WEBM_MUXER_URL = "https://cdn.jsdelivr.net/npm/webm-muxer@5.1.4/build/webm-muxer.mjs";
 const LIVE_BUFFER_SECONDS = 120;
 const LIVE_TARGET_LATENCY_SECONDS = LIVE_REAL ? 1.25 : 0.35;
 const CLIP_MIN_SECONDS = 1;
@@ -114,6 +127,9 @@ const state = {
   clipEditorOpen: false,
   clipEditorOffset: { x: 0, y: 0 },
   clipExport: null,
+  clipPreviewActive: false,
+  clipPreviewComplete: false,
+  directIdleFrameRendered: false,
   sceneReady: false,
   speed: 1,
   playing: true,
@@ -185,6 +201,18 @@ let liveWorker = null;
 let liveEventSource = null;
 let liveBatchQueue = Promise.resolve();
 let liveQueuedSequence = 0;
+const replayTimingOrigin = performance.now();
+const replayTiming = {
+  mode: DIRECT_CLIP_EXPORT ? "direct" : "interactive",
+  direct: DIRECT_CLIP_EXPORT,
+  requestedClipSeconds: HAS_REQUESTED_CLIP ? REQUESTED_CLIP_END - REQUESTED_CLIP_START : null,
+  previewPasses: 0,
+  exportPasses: 0,
+  events: []
+};
+window.__replayClipTiming = replayTiming;
+window.__replayClipReady = false;
+document.documentElement.dataset.replayClipMode = replayTiming.mode;
 const corpseGroundRay = new THREE.Raycaster();
 const corpseDown = new THREE.Vector3(0, -1, 0);
 const acRaycaster = new THREE.Raycaster();
@@ -204,6 +232,33 @@ function setStatus(message) {
   if (!element) return;
   element.textContent = message;
   element.hidden = !message;
+}
+
+function markReplayTiming(name, details = {}) {
+  const memory = performance.memory?.usedJSHeapSize;
+  const event = {
+    name,
+    atMs: Math.round((performance.now() - replayTimingOrigin) * 100) / 100,
+    ...(Number.isFinite(memory) ? { jsHeapMb: Math.round(memory / 1048576 * 100) / 100 } : {}),
+    ...details
+  };
+  replayTiming.events.push(event);
+  document.documentElement.dataset.replayClipTiming = JSON.stringify(replayTiming);
+  console.info("[pickup-replay:timing]", JSON.stringify(event));
+  return event;
+}
+
+function markEditorReady() {
+  if (window.__replayClipReady) return;
+  window.__replayClipReady = true;
+  const editor = $("replay-clip-editor");
+  if (editor) editor.dataset.exportReady = "true";
+  markReplayTiming("editor-ready", {
+    playbackTime: state.playbackTime,
+    clipStart: state.clipStart,
+    clipEnd: state.clipEnd
+  });
+  updateClipEditor();
 }
 
 function formatTime(seconds) {
@@ -257,7 +312,7 @@ function setClipBounds(start, end) {
 function updateClipEditor() {
   const editor = $("replay-clip-editor");
   if (!editor || !(state.duration > 0)) return;
-  editor.hidden = !state.clipEditorOpen;
+  editor.hidden = !state.clipEditorOpen || (DIRECT_CLIP_EXPORT && !state.sceneReady);
   editor.style.setProperty("--clip-offset-x", `${state.clipEditorOffset.x}px`);
   editor.style.setProperty("--clip-offset-y", `${state.clipEditorOffset.y}px`);
   const toggle = $("replay-clip-toggle");
@@ -562,30 +617,80 @@ function finishClipExport() {
   const exportState = state.clipExport;
   if (!exportState || exportState.stopping) return;
   exportState.stopping = true;
-  exportState.recorder.stop();
+  if (!exportState.renderEnded) {
+    exportState.renderEnded = true;
+    markReplayTiming("export-render-end", {
+      mode: exportState.mode,
+      frames: exportState.frames || 0,
+      playbackTime: state.playbackTime
+    });
+  }
+  markReplayTiming("media-recorder-stop", { mode: exportState.mode });
+  if (exportState.recorder.state !== "inactive") exportState.recorder.stop();
 }
 
-function startClipExport() {
-  if (state.clipExport || !(state.clipEnd > state.clipStart)) return;
-  if (!canvas.captureStream || typeof MediaRecorder === "undefined") {
-    window.alert("This browser cannot export WebM clips. Try Chrome or Edge.");
-    return;
-  }
-  const mimeType = [
+function clipExportMimeType() {
+  return [
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
     "video/webm"
   ].find(type => MediaRecorder.isTypeSupported?.(type)) || "";
-  if (!mimeType) {
-    window.alert("This browser does not support WebM clip export.");
-    return;
-  }
+}
 
+function createClipExportCanvas() {
   const exportCanvas = document.createElement("canvas");
   exportCanvas.width = canvas.width;
   exportCanvas.height = canvas.height;
-  const exportContext = exportCanvas.getContext("2d");
-  const stream = exportCanvas.captureStream(60);
+  return { exportCanvas, exportContext: exportCanvas.getContext("2d") };
+}
+
+function restoreAfterClipExport(exportState) {
+  const { previous } = exportState;
+  state.playbackTime = previous.playbackTime;
+  state.speed = previous.speed;
+  state.clipLoop = previous.clipLoop;
+  state.clipExport = null;
+  state.directIdleFrameRendered = false;
+  setPlaying(previous.playing);
+  updateScene();
+  updateClipEditor();
+}
+
+function downloadClipBlob(blob, mimeType, mode) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${clipFileName()}.webm`;
+  document.body.appendChild(anchor);
+  let probe = $("replay-clip-export-result");
+  if (!probe) {
+    probe = document.createElement("video");
+    probe.id = "replay-clip-export-result";
+    probe.hidden = true;
+    probe.preload = "metadata";
+    probe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(probe);
+  }
+  const reportDuration = () => {
+    const duration = Number.isFinite(probe.duration) ? probe.duration : probe.currentTime;
+    if (!(duration > 0)) return;
+    probe.dataset.duration = String(duration);
+    markReplayTiming("webm-duration", { mode, duration });
+  };
+  probe.addEventListener("loadedmetadata", () => {
+    if (Number.isFinite(probe.duration)) reportDuration();
+    else probe.currentTime = 1e101;
+  }, { once: true });
+  probe.addEventListener("timeupdate", reportDuration, { once: true });
+  probe.src = url;
+  markReplayTiming("webm-finalized", { mode, bytes: blob.size, mimeType });
+  anchor.click();
+  markReplayTiming("webm-download", { mode, bytes: blob.size, fileName: anchor.download });
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function prepareClipRecorder({ exportCanvas, exportContext, stream, mimeType, mode }) {
   const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
   const chunks = [];
   const previous = {
@@ -596,28 +701,39 @@ function startClipExport() {
   };
   state.clipExport = {
     recorder, stream, chunks, previous, stopping: false,
-    canvas: exportCanvas, context: exportContext
+    canvas: exportCanvas, context: exportContext, mode,
+    frames: 0, renderCpuMs: 0, recorderTransitionMs: 0, renderEnded: false, failed: false
   };
+  const exportState = state.clipExport;
   recorder.addEventListener("dataavailable", event => {
     if (event.data?.size) chunks.push(event.data);
   });
   recorder.addEventListener("stop", () => {
+    markReplayTiming("media-recorder-stopped", { mode, chunks: chunks.length });
+    markReplayTiming("webm-finalization-start", { mode });
     const blob = new Blob(chunks, { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${clipFileName()}.webm`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (!exportState.failed) downloadClipBlob(blob, mimeType, mode);
     stream.getTracks().forEach(track => track.stop());
-    state.playbackTime = previous.playbackTime;
-    state.speed = previous.speed;
-    state.clipLoop = previous.clipLoop;
-    state.clipExport = null;
-    setPlaying(previous.playing);
-    updateScene();
+    restoreAfterClipExport(exportState);
+  });
+  recorder.addEventListener("error", event => {
+    exportState.failed = true;
+    markReplayTiming("export-error", { mode, message: event.error?.message || "MediaRecorder error" });
+  });
+  replayTiming.exportPasses += 1;
+  updateClipEditor();
+  return exportState;
+}
+
+function startRealtimeClipExport(mimeType) {
+  if (!canvas.captureStream) {
+    window.alert("This browser cannot export WebM clips. Try Chrome or Edge.");
+    return;
+  }
+  const { exportCanvas, exportContext } = createClipExportCanvas();
+  const stream = exportCanvas.captureStream(60);
+  const exportState = prepareClipRecorder({
+    exportCanvas, exportContext, stream, mimeType, mode: "realtime"
   });
 
   state.playbackTime = state.clipStart;
@@ -627,7 +743,270 @@ function startClipExport() {
   setPlaying(true);
   updateScene();
   renderClipExportFrame();
-  recorder.start(250);
+  exportState.recorder.start(250);
+  markReplayTiming("media-recorder-start", { mode: exportState.mode, mimeType });
+  markReplayTiming("export-render-start", {
+    mode: exportState.mode,
+    clipStart: state.clipStart,
+    clipEnd: state.clipEnd
+  });
+}
+
+function supportsDeterministicClipExport() {
+  return typeof window.MediaStreamTrackGenerator === "function" &&
+    typeof window.VideoFrame === "function";
+}
+
+function supportsWebCodecsClipExport() {
+  return typeof window.VideoEncoder === "function" && typeof window.VideoFrame === "function";
+}
+
+async function startWebCodecsClipExport() {
+  const { exportCanvas, exportContext } = createClipExportCanvas();
+  const previous = {
+    playbackTime: state.playbackTime,
+    playing: state.playing,
+    speed: state.speed,
+    clipLoop: state.clipLoop
+  };
+  const exportState = {
+    mode: "webcodecs",
+    canvas: exportCanvas,
+    context: exportContext,
+    previous,
+    frames: 0,
+    renderCpuMs: 0,
+    failed: false
+  };
+  state.clipExport = exportState;
+  replayTiming.exportPasses += 1;
+  state.clipLoop = false;
+  if (LIVE_MODE) state.followLive = false;
+  setPlaying(false);
+  updateClipEditor();
+  markReplayTiming("media-recorder-skipped", { reason: "webcodecs-direct-export" });
+  markReplayTiming("export-render-start", {
+    mode: exportState.mode,
+    clipStart: state.clipStart,
+    clipEnd: state.clipEnd,
+    fps: DIRECT_EXPORT_FPS
+  });
+
+  let encoder = null;
+  try {
+    const { Muxer, ArrayBufferTarget } = await import(WEBM_MUXER_URL);
+    const width = exportCanvas.width;
+    const height = exportCanvas.height;
+    const encoderConfig = {
+      codec: "vp09.00.10.08",
+      width,
+      height,
+      bitrate: 8_000_000,
+      framerate: DIRECT_EXPORT_FPS,
+      latencyMode: "quality"
+    };
+    const support = await VideoEncoder.isConfigSupported(encoderConfig);
+    if (!support.supported) throw new Error("VP9 WebCodecs encoding is not supported.");
+    const target = new ArrayBufferTarget();
+    const muxer = new Muxer({
+      target,
+      video: { codec: "V_VP9", width, height, frameRate: DIRECT_EXPORT_FPS },
+      firstTimestampBehavior: "offset"
+    });
+    let encoderError = null;
+    encoder = new VideoEncoder({
+      output: (chunk, metadata) => muxer.addVideoChunk(chunk, metadata),
+      error: error => { encoderError = error; }
+    });
+    encoder.configure(support.config || encoderConfig);
+    markReplayTiming("webcodecs-start", {
+      codec: encoderConfig.codec,
+      width,
+      height,
+      fps: DIRECT_EXPORT_FPS
+    });
+
+    const clipDuration = state.clipEnd - state.clipStart;
+    const frameStep = 1 / DIRECT_EXPORT_FPS;
+    const frameCount = Math.ceil(clipDuration * DIRECT_EXPORT_FPS);
+    for (let index = 0; index <= frameCount; index += 1) {
+      const offset = Math.min(clipDuration, index * frameStep);
+      const nextOffset = Math.min(clipDuration, (index + 1) * frameStep);
+      state.playbackTime = state.clipStart + offset;
+      const renderStarted = performance.now();
+      updateScene();
+      renderer.render(scene, camera);
+      renderClipExportFrame();
+      exportState.renderCpuMs += performance.now() - renderStarted;
+      const frame = new VideoFrame(exportCanvas, {
+        timestamp: Math.round(offset * 1_000_000),
+        duration: Math.max(1, Math.round((nextOffset - offset) * 1_000_000))
+      });
+      encoder.encode(frame, { keyFrame: index % Math.max(1, DIRECT_EXPORT_FPS * 2) === 0 });
+      frame.close();
+      exportState.frames += 1;
+      while (encoder.encodeQueueSize > 4) {
+        await new Promise(resolve => window.setTimeout(resolve, 0));
+        if (encoderError) throw encoderError;
+      }
+    }
+    await encoder.flush();
+    if (encoderError) throw encoderError;
+    encoder.close();
+    encoder = null;
+    muxer.finalize();
+    markReplayTiming("webcodecs-end", { frames: exportState.frames });
+    markReplayTiming("export-render-end", {
+      mode: exportState.mode,
+      frames: exportState.frames,
+      renderCpuMs: Math.round(exportState.renderCpuMs * 100) / 100,
+      playbackTime: state.playbackTime
+    });
+    markReplayTiming("webm-finalization-start", { mode: exportState.mode });
+    const blob = new Blob([target.buffer], { type: "video/webm;codecs=vp9" });
+    downloadClipBlob(blob, "video/webm;codecs=vp9", exportState.mode);
+    restoreAfterClipExport(exportState);
+  } catch (error) {
+    exportState.failed = true;
+    try { encoder?.close(); } catch {}
+    markReplayTiming("export-error", { mode: exportState.mode, message: error.message || String(error) });
+    restoreAfterClipExport(exportState);
+    const fallbackMimeType = typeof MediaRecorder === "undefined" ? "" : clipExportMimeType();
+    if (fallbackMimeType && supportsDeterministicClipExport()) {
+      void startDeterministicClipExport(fallbackMimeType);
+    } else if (fallbackMimeType) {
+      startRealtimeClipExport(fallbackMimeType);
+    } else {
+      setStatus(error.message || "WebM export failed.");
+    }
+  }
+}
+
+async function startDeterministicClipExport(mimeType) {
+  const { exportCanvas, exportContext } = createClipExportCanvas();
+  const generator = new MediaStreamTrackGenerator({ kind: "video" });
+  const writer = generator.writable.getWriter();
+  const stream = new MediaStream([generator]);
+  const exportState = prepareClipRecorder({
+    exportCanvas, exportContext, stream, mimeType, mode: "deterministic"
+  });
+  exportState.writer = writer;
+  exportState.fps = DIRECT_EXPORT_FPS;
+  state.clipLoop = false;
+  if (LIVE_MODE) state.followLive = false;
+  setPlaying(false);
+  markReplayTiming("export-render-start", {
+    mode: exportState.mode,
+    clipStart: state.clipStart,
+    clipEnd: state.clipEnd,
+    fps: DIRECT_EXPORT_FPS
+  });
+
+  try {
+    const clipDuration = state.clipEnd - state.clipStart;
+    const frameStep = 1 / DIRECT_EXPORT_FPS;
+    const lastFrame = Math.ceil(clipDuration * DIRECT_EXPORT_FPS);
+    const wait = milliseconds => new Promise(resolve => window.setTimeout(resolve, milliseconds));
+    const changeRecorderState = (eventName, change) => new Promise((resolve, reject) => {
+      const changeStarted = performance.now();
+      const onError = event => {
+        exportState.recorder.removeEventListener(eventName, onChange);
+        reject(event.error || new Error(`MediaRecorder ${eventName} failed`));
+      };
+      const onChange = () => {
+        exportState.recorder.removeEventListener("error", onError);
+        resolve(performance.now() - changeStarted);
+      };
+      exportState.recorder.addEventListener(eventName, onChange, { once: true });
+      exportState.recorder.addEventListener("error", onError, { once: true });
+      change();
+    });
+    state.playbackTime = state.clipStart;
+    let renderStarted = performance.now();
+    updateScene();
+    renderer.render(scene, camera);
+    renderClipExportFrame();
+    exportState.renderCpuMs += performance.now() - renderStarted;
+    const firstFrame = new VideoFrame(exportCanvas, {
+      timestamp: 0,
+      duration: Math.round(frameStep * 1_000_000)
+    });
+    exportState.recorder.start(250);
+    markReplayTiming("media-recorder-start", {
+      mode: exportState.mode,
+      mimeType,
+      fps: DIRECT_EXPORT_FPS
+    });
+    await changeRecorderState("pause", () => exportState.recorder.pause());
+    await writer.write(firstFrame);
+    firstFrame.close();
+    exportState.frames = 1;
+    let previousResumeDelay = await changeRecorderState("resume", () => exportState.recorder.resume());
+    exportState.recorderTransitionMs += previousResumeDelay;
+    for (let index = 1; index <= lastFrame; index += 1) {
+      if (state.clipExport !== exportState) return;
+      const previousOffset = Math.min(clipDuration, (index - 1) * frameStep);
+      const offset = Math.min(clipDuration, index * frameStep);
+      const nextOffset = Math.min(clipDuration, (index + 1) * frameStep);
+      const intervalMs = (offset - previousOffset) * 1000;
+      const finalResumeAllowance = index === lastFrame ? previousResumeDelay : 0;
+      await wait(Math.max(0, intervalMs - previousResumeDelay - finalResumeAllowance));
+      await changeRecorderState("pause", () => exportState.recorder.pause());
+      state.playbackTime = state.clipStart + offset;
+      renderStarted = performance.now();
+      updateScene();
+      renderer.render(scene, camera);
+      renderClipExportFrame();
+      exportState.renderCpuMs += performance.now() - renderStarted;
+      const frame = new VideoFrame(exportCanvas, {
+        timestamp: Math.round(offset * 1_000_000),
+        duration: Math.max(1, Math.round((nextOffset - offset || frameStep) * 1_000_000))
+      });
+      await writer.write(frame);
+      frame.close();
+      exportState.frames += 1;
+      previousResumeDelay = await changeRecorderState("resume", () => exportState.recorder.resume());
+      exportState.recorderTransitionMs += previousResumeDelay;
+      if (index % 4 === 3) await new Promise(resolve => window.setTimeout(resolve, 0));
+    }
+    exportState.renderEnded = true;
+    markReplayTiming("export-render-end", {
+      mode: exportState.mode,
+      frames: exportState.frames,
+      renderCpuMs: Math.round(exportState.renderCpuMs * 100) / 100,
+      recorderTransitionMs: Math.round(exportState.recorderTransitionMs * 100) / 100,
+      playbackTime: state.playbackTime
+    });
+    await writer.close();
+    window.setTimeout(finishClipExport, 0);
+  } catch (error) {
+    exportState.failed = true;
+    markReplayTiming("export-error", { mode: exportState.mode, message: error.message || String(error) });
+    try { await writer.abort(error); } catch {}
+    finishClipExport();
+  }
+}
+
+function startClipExport() {
+  if (state.clipExport || !(state.clipEnd > state.clipStart)) return;
+  if (DIRECT_CLIP_EXPORT && supportsWebCodecsClipExport()) {
+    void startWebCodecsClipExport();
+    return;
+  }
+  if (typeof MediaRecorder === "undefined") {
+    window.alert("This browser cannot export WebM clips. Try Chrome or Edge.");
+    return;
+  }
+  const mimeType = clipExportMimeType();
+  if (!mimeType) {
+    window.alert("This browser does not support WebM clip export.");
+    return;
+  }
+  if (DIRECT_CLIP_EXPORT && supportsDeterministicClipExport()) {
+    void startDeterministicClipExport(mimeType);
+    return;
+  }
+  startRealtimeClipExport(mimeType);
 }
 
 function dragClipHandle(handle, side) {
@@ -3740,6 +4119,7 @@ function buildMapBeams(gltf) {
 }
 
 function loadMap() {
+  markReplayTiming("map-load-start", { map: state.metadata?.map || "" });
   loader.load(mapAssetUrl(state.metadata.map), gltf => {
     mapModel = gltf.scene;
     mapModel.position.copy(sourcePoint(0, 0, 0));
@@ -3763,9 +4143,12 @@ function loadMap() {
     buildMapLights(gltf);
     if (grid) grid.visible = false;
     state.sceneReady = true;
+    markReplayTiming("map-load-end", { map: state.metadata?.map || "" });
     updateScene();
+    markEditorReady();
   }, undefined, () => {
     if (grid) grid.visible = true;
+    markReplayTiming("map-load-error", { map: state.metadata?.map || "" });
   });
 }
 
@@ -3918,9 +4301,40 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 
+function beginPreviewTimingIfNeeded() {
+  if (!HAS_REQUESTED_CLIP || DIRECT_CLIP_EXPORT || state.clipExport ||
+      state.clipPreviewActive || state.clipPreviewComplete ||
+      !(state.clipEnd > state.clipStart)) return;
+  if (state.playbackTime < state.clipStart || state.playbackTime >= state.clipEnd) return;
+  state.clipPreviewActive = true;
+  replayTiming.previewPasses += 1;
+  markReplayTiming("preview-render-start", {
+    pass: replayTiming.previewPasses,
+    clipStart: state.clipStart,
+    clipEnd: state.clipEnd,
+    sceneReady: state.sceneReady
+  });
+}
+
+function endPreviewTimingIfNeeded() {
+  if (!state.clipPreviewActive || state.playbackTime < state.clipEnd) return;
+  state.clipPreviewActive = false;
+  state.clipPreviewComplete = true;
+  markReplayTiming("preview-render-end", {
+    pass: replayTiming.previewPasses,
+    playbackTime: state.playbackTime,
+    sceneReady: state.sceneReady
+  });
+}
+
 function tick(now) {
   const delta = Math.min(0.1, (now - state.lastTick) / 1000);
   state.lastTick = now;
+  if (["deterministic", "webcodecs"].includes(state.clipExport?.mode) ||
+      (DIRECT_CLIP_EXPORT && !state.sceneReady)) {
+    requestAnimationFrame(tick);
+    return;
+  }
   if (LIVE_MODE) {
     if (state.liveReady) {
       if (LIVE_SIMULATION && !state.liveEnded) {
@@ -3959,11 +4373,21 @@ function tick(now) {
       setPlaying(false);
     }
   }
-  updateScene();
-  updateFreeCamera(delta);
-  renderer.render(scene, camera);
-  renderClipExportFrame();
-  if (state.clipExport && state.playbackTime >= state.clipEnd) finishClipExport();
+  beginPreviewTimingIfNeeded();
+  const directIdle = DIRECT_CLIP_EXPORT && state.sceneReady && !state.clipExport &&
+    !state.playing && state.directIdleFrameRendered;
+  if (!directIdle) {
+    updateScene();
+    updateFreeCamera(delta);
+    renderer.render(scene, camera);
+    renderClipExportFrame();
+    if (state.clipExport) state.clipExport.frames += 1;
+    if (DIRECT_CLIP_EXPORT && state.sceneReady && !state.clipExport && !state.playing) {
+      state.directIdleFrameRendered = true;
+    }
+  }
+  endPreviewTimingIfNeeded();
+  if (state.clipExport?.recorder && state.playbackTime >= state.clipEnd) finishClipExport();
   requestAnimationFrame(tick);
 }
 
@@ -4341,6 +4765,10 @@ async function initRealLive() {
 }
 
 async function init() {
+  markReplayTiming("replay-init-start", {
+    direct: DIRECT_CLIP_EXPORT,
+    webdriver: navigator.webdriver === true
+  });
   wireControls();
   resize();
   requestAnimationFrame(tick);
@@ -4351,12 +4779,17 @@ async function init() {
       return;
     }
     const identity = queryIdentity();
+    markReplayTiming("replay-data-load-start", identity);
     const response = await fetch(
       `/api/pickup-replays/viewer/${encodeURIComponent(identity.matchId)}/${identity.round}`,
       { cache: "no-store" }
     );
     const metadata = await response.json();
     if (!response.ok) throw new Error(metadata.error || `Replay request failed (${response.status})`);
+    markReplayTiming("replay-metadata-loaded", {
+      durationMs: metadata.durationMs,
+      snapshots: metadata.snapshots
+    });
     state.metadata = metadata;
     state.duration = metadata.durationMs / 1000;
     const requestedClip = clipQuery();
@@ -4365,6 +4798,10 @@ async function init() {
     if (requestedClip.start != null || requestedClip.end != null) {
       state.playbackTime = state.clipStart;
       state.clipEditorOpen = true;
+      if (DIRECT_CLIP_EXPORT) {
+        setPlaying(false);
+        markReplayTiming("preview-render-skipped", { reason: "direct-export" });
+      }
     }
     $("replay-title").textContent = `${metadata.map} · ${metadata.matchId} / Round ${metadata.round}`;
     $("replay-subtitle").textContent = LIVE_SIMULATION
@@ -4383,10 +4820,18 @@ async function init() {
       loadTelemetry(metadata.files),
       loadTfcModelCatalog()
     ]);
+    markReplayTiming("replay-telemetry-loaded", {
+      players: telemetry.players?.length || 0,
+      projectiles: telemetry.projectiles?.length || 0
+    });
     setStatus("Loading projectile models and effects…");
     await projectileVisuals.preload(telemetry.projectileDefinitions);
     state.modelCatalog = modelCatalog;
     installTelemetry(telemetry);
+    markReplayTiming("replay-data-load-end", {
+      selectedSession: state.selectedSession,
+      playerSession: PAGE_QUERY.get("playerSession")
+    });
     if (LIVE_SIMULATION) {
       const requestedFeedSpeed = Number(new URLSearchParams(location.search).get("feedSpeed"));
       state.feedSpeed = Number.isFinite(requestedFeedSpeed)
