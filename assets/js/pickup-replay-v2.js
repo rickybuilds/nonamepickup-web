@@ -30,6 +30,9 @@ const EXPLICIT_DIRECT_EXPORT = /^(1|true|yes)$/i.test(
 const HEADLESS_CHROME = /\bHeadlessChrome\//i.test(navigator.userAgent);
 const DIRECT_CLIP_EXPORT = !LIVE_MODE && HAS_REQUESTED_CLIP &&
   (EXPLICIT_DIRECT_EXPORT || navigator.webdriver === true || HEADLESS_CHROME);
+const FAST_DIRECT_EXPORT = DIRECT_CLIP_EXPORT && /^(1|true|yes)$/i.test(
+  PAGE_QUERY.get("clipFast") || ""
+);
 const DIRECT_EXPORT_FPS = Math.min(60, Math.max(1, Number(PAGE_QUERY.get("clipFps")) || 10));
 const WEBM_MUXER_URL = "https://cdn.jsdelivr.net/npm/webm-muxer@5.1.4/build/webm-muxer.mjs";
 const LIVE_BUFFER_SECONDS = 120;
@@ -168,7 +171,12 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070a0f);
 scene.fog = new THREE.Fog(0x070a0f, 3000, 15000);
 const camera = new THREE.PerspectiveCamera(90, 1, 1, 50000);
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: !FAST_DIRECT_EXPORT,
+  preserveDrawingBuffer: !DIRECT_CLIP_EXPORT,
+  powerPreference: FAST_DIRECT_EXPORT ? "low-power" : "high-performance"
+});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.LinearToneMapping;
@@ -633,11 +641,16 @@ function finishClipExport() {
 }
 
 function clipExportMimeType() {
-  return [
+  const preferredTypes = FAST_DIRECT_EXPORT ? [
+    "video/webm;codecs=vp8",
+    "video/webm;codecs=vp9",
+    "video/webm"
+  ] : [
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
     "video/webm"
-  ].find(type => MediaRecorder.isTypeSupported?.(type)) || "";
+  ];
+  return preferredTypes.find(type => MediaRecorder.isTypeSupported?.(type)) || "";
 }
 
 function createClipExportCanvas() {
@@ -734,7 +747,7 @@ function startRealtimeClipExport(mimeType) {
     return;
   }
   const { exportCanvas, exportContext } = createClipExportCanvas();
-  const stream = exportCanvas.captureStream(60);
+  const stream = exportCanvas.captureStream(FAST_DIRECT_EXPORT ? DIRECT_EXPORT_FPS : 60);
   const exportState = prepareClipRecorder({
     exportCanvas, exportContext, stream, mimeType, mode: "realtime"
   });
@@ -800,20 +813,25 @@ async function startWebCodecsClipExport() {
     const { Muxer, ArrayBufferTarget } = await import(WEBM_MUXER_URL);
     const width = exportCanvas.width;
     const height = exportCanvas.height;
+    const encoderCodec = FAST_DIRECT_EXPORT ? "vp8" : "vp09.00.10.08";
+    const muxerCodec = FAST_DIRECT_EXPORT ? "V_VP8" : "V_VP9";
+    const mimeType = FAST_DIRECT_EXPORT
+      ? "video/webm;codecs=vp8"
+      : "video/webm;codecs=vp9";
     const encoderConfig = {
-      codec: "vp09.00.10.08",
+      codec: encoderCodec,
       width,
       height,
-      bitrate: 8_000_000,
+      bitrate: FAST_DIRECT_EXPORT ? 2_000_000 : 8_000_000,
       framerate: DIRECT_EXPORT_FPS,
-      latencyMode: "quality"
+      latencyMode: FAST_DIRECT_EXPORT ? "realtime" : "quality"
     };
     const support = await VideoEncoder.isConfigSupported(encoderConfig);
     if (!support.supported) throw new Error("VP9 WebCodecs encoding is not supported.");
     const target = new ArrayBufferTarget();
     const muxer = new Muxer({
       target,
-      video: { codec: "V_VP9", width, height, frameRate: DIRECT_EXPORT_FPS },
+      video: { codec: muxerCodec, width, height, frameRate: DIRECT_EXPORT_FPS },
       firstTimestampBehavior: "offset"
     });
     let encoderError = null;
@@ -866,8 +884,8 @@ async function startWebCodecsClipExport() {
       playbackTime: state.playbackTime
     });
     markReplayTiming("webm-finalization-start", { mode: exportState.mode });
-    const blob = new Blob([target.buffer], { type: "video/webm;codecs=vp9" });
-    downloadClipBlob(blob, "video/webm;codecs=vp9", exportState.mode);
+    const blob = new Blob([target.buffer], { type: mimeType });
+    downloadClipBlob(blob, mimeType, exportState.mode);
     restoreAfterClipExport(exportState);
   } catch (error) {
     exportState.failed = true;
@@ -4396,7 +4414,7 @@ function tick(now) {
 
 function loadTelemetry(files) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260818schema7inventory1");
+    const worker = new Worker("/assets/js/pickup-replay-worker.js?v=20260823clipwindow1");
     worker.onmessage = event => {
       if (event.data.type === "progress") setStatus(event.data.label);
       if (event.data.type === "error") {
@@ -4412,7 +4430,11 @@ function loadTelemetry(files) {
       worker.terminate();
       reject(new Error(event.message || "Replay worker failed."));
     };
-    worker.postMessage({ files, schemaVersion: state.metadata?.manifest?.schema_version });
+    worker.postMessage({
+      files,
+      schemaVersion: state.metadata?.manifest?.schema_version,
+      timeLimitSeconds: DIRECT_CLIP_EXPORT ? state.clipEnd + 1 : null
+    });
   });
 }
 
@@ -4587,7 +4609,7 @@ let liveWorkerPending = null;
 
 function ensureLiveWorker() {
   if (liveWorker) return;
-  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260818schema7inventory1");
+  liveWorker = new Worker("/assets/js/pickup-replay-worker.js?v=20260823clipwindow1");
   liveWorker.onmessage = event => {
     if (event.data.type === "progress") return setStatus(event.data.label);
     if (!liveWorkerPending) return;
@@ -4770,6 +4792,7 @@ async function initRealLive() {
 async function init() {
   markReplayTiming("replay-init-start", {
     direct: DIRECT_CLIP_EXPORT,
+    fastDirectExport: FAST_DIRECT_EXPORT,
     webdriver: navigator.webdriver === true,
     headlessChrome: HEADLESS_CHROME,
     explicitDirectExport: EXPLICIT_DIRECT_EXPORT

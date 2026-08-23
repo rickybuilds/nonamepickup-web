@@ -33,6 +33,7 @@ async function rows(source, callback, expectedHeaders = null) {
   let headers = null;
   let index = null;
   let rowNumber = 0;
+  let stopped = false;
   const consume = line => {
     const fields = csvFields(line.replace(/\r$/, ""));
     if (!headers) {
@@ -45,12 +46,12 @@ async function rows(source, callback, expectedHeaders = null) {
       return;
     }
     if (fields.length !== headers.length) throw new Error(`Telemetry CSV row ${rowNumber + 1} has the wrong width.`);
-    if (line.length) callback(fields, index);
+    if (line.length && callback(fields, index) === false) stopped = true;
     rowNumber += 1;
   };
   const consumePending = () => {
     let boundary;
-    while ((boundary = pending.indexOf("\n")) >= 0) {
+    while (!stopped && (boundary = pending.indexOf("\n")) >= 0) {
       consume(pending.slice(0, boundary));
       pending = pending.slice(boundary + 1);
     }
@@ -65,14 +66,23 @@ async function rows(source, callback, expectedHeaders = null) {
     if (!reader) throw new Error("Streaming telemetry is unavailable.");
     const decoder = new TextDecoder();
     while (true) {
+      if (stopped) {
+        await reader.cancel();
+        break;
+      }
       const { value, done } = await reader.read();
       pending += decoder.decode(value || new Uint8Array(), { stream: !done });
       consumePending();
       if (done) break;
     }
   }
-  if (pending) consume(pending);
+  if (pending && !stopped) consume(pending);
   if (!headers) throw new Error("Telemetry CSV is empty.");
+}
+
+function beyondTimeLimit(cols, index, timeLimitSeconds) {
+  return Number.isFinite(timeLimitSeconds) &&
+    number(cols[index.time_ms]) / 1000 > timeLimitSeconds;
 }
 
 function validateHeaders(headers, expectedHeaders) {
@@ -177,12 +187,13 @@ async function loadRenderModels(url) {
   return models;
 }
 
-async function loadPlayers(url, schemaVersion, renderModels) {
+async function loadPlayers(url, schemaVersion, renderModels, timeLimitSeconds = null) {
   const tracks = new Map();
   const models = new Map(renderModels.map(model => [model.modelId, model]));
   const legacyPlayerColumns = schemaVersion === 2 ? PLAYERS_V2_COLUMNS : PLAYERS_V3_COLUMNS;
   const playerColumns = schemaVersion >= 7 ? PLAYERS_V7_COLUMNS : legacyPlayerColumns;
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const sessionId = number(cols[i.session_id]);
     if (!tracks.has(sessionId)) tracks.set(sessionId, new Float32Builder());
     const track = tracks.get(sessionId);
@@ -282,9 +293,10 @@ async function loadProjectileDefinitions(url, schemaVersion, renderModels) {
   return definitions;
 }
 
-async function loadProjectiles(url) {
+async function loadProjectiles(url, timeLimitSeconds = null) {
   const tracks = new Map();
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const projectileId = number(cols[i.projectile_id]);
     if (!tracks.has(projectileId)) tracks.set(projectileId, new Float32Builder());
     tracks.get(projectileId).push(
@@ -326,9 +338,10 @@ async function loadObjectiveDefinitions(url, schemaVersion, renderModels) {
   return definitions;
 }
 
-async function loadObjectives(url) {
+async function loadObjectives(url, timeLimitSeconds = null) {
   const tracks = new Map();
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const objectiveId = number(cols[i.objective_id]);
     if (!tracks.has(objectiveId)) tracks.set(objectiveId, new Float32Builder());
     tracks.get(objectiveId).push(
@@ -379,11 +392,12 @@ async function loadBuildableDefinitions(url) {
   return definitions;
 }
 
-async function loadBuildables(url, definitions, renderModels, allowUnresolved = false) {
+async function loadBuildables(url, definitions, renderModels, allowUnresolved = false, timeLimitSeconds = null) {
   const tracks = new Map();
   const ids = new Set(definitions.map(definition => definition.buildableId));
   const models = new Map(renderModels.map(model => [model.modelId, model]));
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const buildableId = number(cols[i.buildable_id]);
     const modelId = number(cols[i.model_id]);
     if (!ids.has(buildableId) || !Number.isSafeInteger(modelId) || modelId < 0 ||
@@ -452,10 +466,11 @@ async function loadBrushDefinitions(url) {
   return definitions;
 }
 
-async function loadBrushes(url, definitions) {
+async function loadBrushes(url, definitions, timeLimitSeconds = null) {
   const tracks = new Map();
   const ids = new Set(definitions.map(definition => definition.brushId));
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const brushId = number(cols[i.brush_id]);
     if (!ids.has(brushId)) throw new Error("Brush state references an invalid definition.");
     if (!tracks.has(brushId)) tracks.set(brushId, new Float32Builder());
@@ -543,12 +558,13 @@ async function loadEntityDefinitions(url, renderModels) {
   return definitions;
 }
 
-async function loadEntities(url, definitions, renderModels, allowUnresolved = false) {
+async function loadEntities(url, definitions, renderModels, allowUnresolved = false, timeLimitSeconds = null) {
   const tracks = new Map();
   const lastTimes = new Map();
   const ids = new Set(definitions.map(definition => definition.entityId));
   const models = new Map(renderModels.map(model => [model.modelId, model]));
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const entityId = number(cols[i.entity_id]);
     const modelId = number(cols[i.model_id]);
     if (!ids.has(entityId) || !Number.isSafeInteger(modelId) || modelId < 0 ||
@@ -578,9 +594,10 @@ async function loadEntities(url, definitions, renderModels, allowUnresolved = fa
   return [...tracks].map(([entityId, values]) => ({ entityId, stride: 45, frames: values.finish() }));
 }
 
-async function loadEntityCensus(url) {
+async function loadEntityCensus(url, timeLimitSeconds = null) {
   const census = [];
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     census.push({
       time: number(cols[i.time_ms]) / 1000,
       entity: number(cols[i.entity]),
@@ -600,9 +617,10 @@ async function loadEntityCensus(url) {
   return census;
 }
 
-async function loadEntityMetadata(url) {
+async function loadEntityMetadata(url, timeLimitSeconds = null) {
   const metadata = [];
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const stream = cols[i.stream] || "";
     const streamId = number(cols[i.stream_id]);
     const kind = cols[i.kind] || "";
@@ -626,10 +644,11 @@ async function loadEntityMetadata(url) {
   return metadata;
 }
 
-async function loadSceneEvents(url) {
+async function loadSceneEvents(url, timeLimitSeconds = null) {
   const output = [];
   let previousSequence = 0;
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const sequence = number(cols[i.seq]);
     const event = cols[i.event] || "";
     const objectStream = cols[i.object_stream] || "";
@@ -665,10 +684,11 @@ async function loadSceneEvents(url) {
   return output;
 }
 
-async function loadEvents(url) {
+async function loadEvents(url, timeLimitSeconds = null) {
   const output = [];
   let lastTime = -Infinity;
   await rows(url, (cols, i) => {
+    if (beyondTimeLimit(cols, i, timeLimitSeconds)) return false;
     const recordedTime = number(cols[i.time_ms]) / 1000;
     const time = Math.max(lastTime, recordedTime);
     lastTime = time;
@@ -727,13 +747,21 @@ function transferFor(payload) {
   ];
 }
 
-async function loadTelemetry(files, schemaVersion, progress = false, allowUnresolved = false) {
+async function loadTelemetry(
+  files,
+  schemaVersion,
+  progress = false,
+  allowUnresolved = false,
+  timeLimitSeconds = null
+) {
   if (![2, 3, 4, 5, 6, 7].includes(schemaVersion)) throw new Error("Unsupported replay schema version.");
   if (progress) self.postMessage({ type: "progress", label: "Loading roster…" });
   const roster = await loadRoster(sourceFor(files, "roster"));
   const renderModels = schemaVersion >= 3 ? await loadRenderModels(sourceFor(files, "renderModels")) : [];
   if (progress) self.postMessage({ type: "progress", label: "Loading player snapshots…" });
-  const players = await loadPlayers(sourceFor(files, "players"), schemaVersion, renderModels);
+  const players = await loadPlayers(
+    sourceFor(files, "players"), schemaVersion, renderModels, timeLimitSeconds
+  );
   if (progress) self.postMessage({ type: "progress", label: "Loading projectile telemetry…" });
   const projectileDefinitions = await loadProjectileDefinitions(
     sourceFor(files, "projectileDefs"), schemaVersion, renderModels
@@ -741,31 +769,35 @@ async function loadTelemetry(files, schemaVersion, progress = false, allowUnreso
   for (const definition of projectileDefinitions) {
     definition.ownerWeapon = playerWeaponAt(players, definition.ownerSession, definition.spawnedMs / 1000);
   }
-  const projectiles = await loadProjectiles(sourceFor(files, "projectiles"));
+  const projectiles = await loadProjectiles(sourceFor(files, "projectiles"), timeLimitSeconds);
   if (progress) self.postMessage({ type: "progress", label: "Loading objectives and events…" });
   const objectiveDefinitions = await loadObjectiveDefinitions(
     sourceFor(files, "objectiveDefs"), schemaVersion, renderModels
   );
-  const objectives = await loadObjectives(sourceFor(files, "objectives"));
+  const objectives = await loadObjectives(sourceFor(files, "objectives"), timeLimitSeconds);
   const buildableDefinitions = schemaVersion >= 3
     ? await loadBuildableDefinitions(sourceFor(files, "buildableDefs")) : [];
   const buildables = schemaVersion >= 3
-    ? await loadBuildables(sourceFor(files, "buildables"), buildableDefinitions, renderModels, allowUnresolved) : [];
+    ? await loadBuildables(
+      sourceFor(files, "buildables"), buildableDefinitions, renderModels, allowUnresolved, timeLimitSeconds
+    ) : [];
   const brushDefinitions = schemaVersion >= 4
     ? await loadBrushDefinitions(sourceFor(files, "brushDefs")) : [];
   const brushes = schemaVersion >= 4
-    ? await loadBrushes(sourceFor(files, "brushes"), brushDefinitions) : [];
+    ? await loadBrushes(sourceFor(files, "brushes"), brushDefinitions, timeLimitSeconds) : [];
   const entityDefinitions = schemaVersion >= 5
     ? await loadEntityDefinitions(sourceFor(files, "entityDefs"), renderModels) : [];
   const entities = schemaVersion >= 5
-    ? await loadEntities(sourceFor(files, "entities"), entityDefinitions, renderModels, allowUnresolved) : [];
+    ? await loadEntities(
+      sourceFor(files, "entities"), entityDefinitions, renderModels, allowUnresolved, timeLimitSeconds
+    ) : [];
   const entityCensus = schemaVersion >= 5
-    ? await loadEntityCensus(sourceFor(files, "entityCensus")) : [];
+    ? await loadEntityCensus(sourceFor(files, "entityCensus"), timeLimitSeconds) : [];
   const entityMetadata = schemaVersion >= 6
-    ? await loadEntityMetadata(sourceFor(files, "entityMeta")) : [];
+    ? await loadEntityMetadata(sourceFor(files, "entityMeta"), timeLimitSeconds) : [];
   const sceneEvents = schemaVersion >= 6
-    ? await loadSceneEvents(sourceFor(files, "sceneEvents")) : [];
-  const events = await loadEvents(sourceFor(files, "events"));
+    ? await loadSceneEvents(sourceFor(files, "sceneEvents"), timeLimitSeconds) : [];
+  const events = await loadEvents(sourceFor(files, "events"), timeLimitSeconds);
   return {
     roster, renderModels, players, projectileDefinitions, projectiles,
     objectiveDefinitions, objectives, buildableDefinitions, buildables,
@@ -901,7 +933,12 @@ async function handleMessage(message) {
   try {
     if (message.type === "live-reset") return await loadLiveSnapshot(message);
     if (message.type === "live-append") return await loadLiveAppend(message);
-    const payload = await loadTelemetry(message.files, Number(message.schemaVersion), true);
+    const timeLimitSeconds = Number.isFinite(message.timeLimitSeconds)
+      ? Number(message.timeLimitSeconds)
+      : null;
+    const payload = await loadTelemetry(
+      message.files, Number(message.schemaVersion), true, false, timeLimitSeconds
+    );
     self.postMessage({ type: "complete", payload }, transferFor(payload));
   } catch (error) {
     self.postMessage({
