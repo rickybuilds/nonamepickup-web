@@ -301,7 +301,7 @@
 
 .replay-v2 .replay-clip-selection {
   position: absolute;
-  z-index: 3;
+  z-index: 6;
   top: .31rem;
   bottom: .31rem;
   min-width: .25rem;
@@ -321,7 +321,7 @@
 
 .replay-v2 .replay-clip-handle {
   position: absolute;
-  z-index: 5;
+  z-index: 7;
   top: .08rem;
   width: 1.05rem;
   height: 1.18rem;
