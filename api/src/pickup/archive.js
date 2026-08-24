@@ -150,6 +150,7 @@ const SCENE_EVENT_STREAMS = new Map([
   ["objective_remove", new Set(["objective"])],
   ["pickup", new Set(["entity", "objective", "buildable"])]
 ]);
+const MAX_SCENE_TIME_REORDER_MS = 500;
 const DEFAULT_MODEL_CATALOG = path.resolve(__dirname, "../../../assets/tfc/models/manifest.json");
 
 function exactHeaders(actual, expected, code) {
@@ -935,7 +936,7 @@ async function validateArchive({
         }
         requiredInteger(row.int_value1, "invalid_scene_integer");
         requiredInteger(row.int_value2, "invalid_scene_integer");
-        if (sequence <= previousSequence || time + 100 < previousSceneTime ||
+        if (sequence <= previousSequence || time + MAX_SCENE_TIME_REORDER_MS < previousSceneTime ||
             !SCENE_EVENT_NAMES.has(row.event) ||
             !/^(player|entity|objective|buildable)$/.test(row.object_stream) ||
             !SCENE_EVENT_STREAMS.get(row.event)?.has(row.object_stream) ||
