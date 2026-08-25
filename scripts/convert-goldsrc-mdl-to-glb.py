@@ -1052,7 +1052,9 @@ def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_f
 
     glb_path.parent.mkdir(parents=True, exist_ok=True)
     node_rotation = None
-    if pitch_x:
+    if pitch_x and turn_y:
+        node_rotation = [0.0, 0.7071067811865476, 0.7071067811865476, 0.0]
+    elif pitch_x:
         node_rotation = [-0.7071067811865476, 0.0, 0.0, 0.7071067811865476]
     elif turn_y:
         node_rotation = [0.0, 1.0, 0.0, 0.0]
