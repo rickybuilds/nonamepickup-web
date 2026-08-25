@@ -581,7 +581,7 @@ def resolve_texture(texture_list, mesh, skin_family):
     }
 
 
-def decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms, model_name):
+def decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms, model_name, flip_u=False):
     tris = []
     offset = mesh["triindex"]
     ensure_range(data, offset, 2, f"{model_name}.meshTriStart")
@@ -633,7 +633,7 @@ def decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms,
             if texture.get("flags", 0) & STUDIO_NF_CHROME:
                 uv = chrome_uv_from_normal(to_three_normal(normal))
             else:
-                uv = texture_uv(tex_s, tex_t, texture)
+                uv = texture_uv(tex_s, tex_t, texture, flip_u=flip_u)
             verts.append({
                 "position": to_three(position),
                 "normal": to_three_normal(normal),
@@ -731,12 +731,13 @@ def chrome_uv_from_normal(normal):
     return (safe_float(u), safe_float(v))
 
 
-def texture_uv(tex_s, tex_t, texture):
+def texture_uv(tex_s, tex_t, texture, flip_u=False):
     width = max(1, texture.get("width") or 1)
     height = max(1, texture.get("height") or 1)
     # Sample on texel centers to better match GoldSrc's indexed texture lookup.
+    u = safe_float((tex_s + 0.5) / width)
     return (
-        safe_float((tex_s + 0.5) / width),
+        safe_float(1.0 - u) if flip_u else u,
         safe_float(1.0 - ((tex_t + 0.5) / height)),
     )
 
@@ -752,7 +753,7 @@ def pick_skin_family(skin_families, preferred_index=None):
     return 0, skin_families[0]
 
 
-def build_primitives(data, header, textures, skin_families, bone_transforms, debug_enabled=False, preferred_skin_family=None):
+def build_primitives(data, header, textures, skin_families, bone_transforms, debug_enabled=False, preferred_skin_family=None, flip_u=False):
     primitives = {}
     bodyparts = parse_bodyparts(data, header)
     selected_skin_family_index, selected_skin_family = pick_skin_family(skin_families, preferred_skin_family)
@@ -781,7 +782,7 @@ def build_primitives(data, header, textures, skin_families, bone_transforms, deb
                     "normals": [],
                     "uvs": [],
                 })
-                tris, mesh_debug = decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms, model["name"])
+                tris, mesh_debug = decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms, model["name"], flip_u=flip_u)
                 if debug_enabled:
                     debug_info["meshes"].append({
                         "bodypart": bodypart["name"],
@@ -1008,7 +1009,7 @@ def inspect_mdl(path, preferred_skin_family=None):
     }
 
 
-def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_family=None):
+def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_family=None, flip_u=False):
     data = mdl_path.read_bytes()
     header = parse_header(data)
     bones = parse_bones(data, header)
@@ -1023,6 +1024,7 @@ def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_f
         bone_transforms,
         debug_enabled=debug_enabled,
         preferred_skin_family=preferred_skin_family,
+        flip_u=flip_u,
     )
 
     if not primitives or not any(primitive["positions"] for primitive in primitives.values()):
@@ -1057,6 +1059,7 @@ def main():
     parser.add_argument("--dump-header", action="store_true", help="Print parsed header/bodypart/model offsets for debugging.")
     parser.add_argument("--debug", action="store_true", help="Print mesh triangle-command/debug statistics in the conversion result.")
     parser.add_argument("--skin-family", type=int, default=None, help="Preferred skin family index to export when the MDL contains multiple families.")
+    parser.add_argument("--flip-u", action="store_true", help="Mirror the model texture horizontally in the generated GLB.")
     args = parser.parse_args()
 
     if args.dump_header:
@@ -1067,7 +1070,7 @@ def main():
     if args.glb is None:
         raise SystemExit("Output .glb path is required unless --dump-header is used by itself.")
 
-    result = convert_mdl_to_glb(args.mdl, args.glb, debug_enabled=args.debug, preferred_skin_family=args.skin_family)
+    result = convert_mdl_to_glb(args.mdl, args.glb, debug_enabled=args.debug, preferred_skin_family=args.skin_family, flip_u=args.flip_u)
     print(json.dumps(result, indent=2))
 
 
