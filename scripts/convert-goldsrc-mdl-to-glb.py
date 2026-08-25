@@ -581,7 +581,7 @@ def resolve_texture(texture_list, mesh, skin_family):
     }
 
 
-def decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms, model_name, flip_u=False):
+def decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms, model_name, flip_u=False, reverse_winding=False):
     tris = []
     offset = mesh["triindex"]
     ensure_range(data, offset, 2, f"{model_name}.meshTriStart")
@@ -645,13 +645,14 @@ def decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms,
 
         if is_fan:
             for index in range(1, len(verts) - 1):
-                tris.append(orient_triangle((verts[0], verts[index], verts[index + 1])))
+                tri = orient_triangle((verts[0], verts[index], verts[index + 1]))
+                tris.append(reverse_triangle(tri) if reverse_winding else tri)
                 exported_triangle_count += 1
         else:
             for index in range(len(verts) - 2):
                 tri = (verts[index], verts[index + 1], verts[index + 2]) if index % 2 == 0 else (verts[index + 1], verts[index], verts[index + 2])
                 tri = orient_triangle(tri)
-                tris.append(tri)
+                tris.append(reverse_triangle(tri) if reverse_winding else tri)
                 exported_triangle_count += 1
 
     if mesh["numtris"] > 0 and exported_triangle_count != mesh["numtris"]:
@@ -664,6 +665,10 @@ def decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms,
         "exportedTriangleCount": exported_triangle_count,
         "vertexIndexRange": [0 if min_vertex_index is None else min_vertex_index, 0 if max_vertex_index is None else max_vertex_index],
     }
+
+
+def reverse_triangle(tri):
+    return tuple({**vertex, "normal": tuple(-value for value in vertex["normal"])} for vertex in (tri[0], tri[2], tri[1]))
 
 
 def ensure_normal(tri):
@@ -753,7 +758,7 @@ def pick_skin_family(skin_families, preferred_index=None):
     return 0, skin_families[0]
 
 
-def build_primitives(data, header, textures, skin_families, bone_transforms, debug_enabled=False, preferred_skin_family=None, flip_u=False):
+def build_primitives(data, header, textures, skin_families, bone_transforms, debug_enabled=False, preferred_skin_family=None, flip_u=False, reverse_winding=False):
     primitives = {}
     bodyparts = parse_bodyparts(data, header)
     selected_skin_family_index, selected_skin_family = pick_skin_family(skin_families, preferred_skin_family)
@@ -782,7 +787,7 @@ def build_primitives(data, header, textures, skin_families, bone_transforms, deb
                     "normals": [],
                     "uvs": [],
                 })
-                tris, mesh_debug = decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms, model["name"], flip_u=flip_u)
+                tris, mesh_debug = decode_tri_commands(data, mesh, texture, vertices, normals, bone_transforms, model["name"], flip_u=flip_u, reverse_winding=reverse_winding)
                 if debug_enabled:
                     debug_info["meshes"].append({
                         "bodypart": bodypart["name"],
@@ -1012,7 +1017,7 @@ def inspect_mdl(path, preferred_skin_family=None):
     }
 
 
-def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_family=None, flip_u=False, turn_y=False, pitch_x=False):
+def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_family=None, flip_u=False, turn_y=False, pitch_x=False, reverse_winding=False):
     data = mdl_path.read_bytes()
     header = parse_header(data)
     bones = parse_bones(data, header)
@@ -1028,6 +1033,7 @@ def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_f
         debug_enabled=debug_enabled,
         preferred_skin_family=preferred_skin_family,
         flip_u=flip_u,
+        reverse_winding=reverse_winding,
     )
 
     if not primitives or not any(primitive["positions"] for primitive in primitives.values()):
@@ -1070,6 +1076,7 @@ def main():
     parser.add_argument("--flip-u", action="store_true", help="Mirror the model texture horizontally in the generated GLB.")
     parser.add_argument("--turn-y", action="store_true", help="Rotate the generated model 180 degrees around its Y axis.")
     parser.add_argument("--pitch-x", action="store_true", help="Rotate the generated model -90 degrees around its X axis.")
+    parser.add_argument("--reverse-winding", action="store_true", help="Reverse triangle winding and normals in the generated GLB.")
     args = parser.parse_args()
 
     if args.dump_header:
@@ -1080,7 +1087,7 @@ def main():
     if args.glb is None:
         raise SystemExit("Output .glb path is required unless --dump-header is used by itself.")
 
-    result = convert_mdl_to_glb(args.mdl, args.glb, debug_enabled=args.debug, preferred_skin_family=args.skin_family, flip_u=args.flip_u, turn_y=args.turn_y, pitch_x=args.pitch_x)
+    result = convert_mdl_to_glb(args.mdl, args.glb, debug_enabled=args.debug, preferred_skin_family=args.skin_family, flip_u=args.flip_u, turn_y=args.turn_y, pitch_x=args.pitch_x, reverse_winding=args.reverse_winding)
     print(json.dumps(result, indent=2))
 
 
