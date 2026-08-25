@@ -2205,7 +2205,7 @@ async function setEntityModel(track, modelId) {
     model.rotation.x = -Math.PI / 2;
     // The converted reference pose is vertically inverted relative to the
     // in-game world model; flip it in the visible plane to match the source.
-    model.rotation.z = -Math.PI / 2;
+    model.rotation.z = -Math.PI / 3;
   }
   model.traverse(child => {
     if (!child.isMesh) return;
