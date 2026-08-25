@@ -2199,6 +2199,7 @@ async function setEntityModel(track, modelId) {
   const asset = await loadModelAsset(url);
   if (!asset || track.mesh.userData.modelId !== modelId) return;
   const model = asset.clone(true);
+  const recordedPath = String(recorded?.path || "").replace(/\\/g, "/").toLowerCase();
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
@@ -2206,6 +2207,13 @@ async function setEntityModel(track, modelId) {
     else if (child.material) child.material = child.material.clone();
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     for (const material of materials) {
+      if (recordedPath === "models/aimpack.mdl" && material?.map) {
+        material.map = material.map.clone();
+        material.map.wrapS = THREE.RepeatWrapping;
+        material.map.repeat.x = -1;
+        material.map.offset.x = 1;
+        material.map.needsUpdate = true;
+      }
       if (material?.color) material.userData.replayBaseColor = material.color.clone();
     }
   });
