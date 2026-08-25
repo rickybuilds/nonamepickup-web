@@ -2193,7 +2193,7 @@ async function setEntityModel(track, modelId) {
   model.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
   model.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.PI);
   model.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), Math.PI);
-  model.position.y += 16;
+  model.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.PI);
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
