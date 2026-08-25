@@ -2189,6 +2189,7 @@ async function setEntityModel(track, modelId) {
   const asset = await loadModelAsset(url);
   if (!asset || track.mesh.userData.modelId !== modelId) return;
   const model = cloneSkinnedModel(asset);
+  model.rotateZ(Math.PI / 2);
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
