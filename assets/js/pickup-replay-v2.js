@@ -2203,6 +2203,9 @@ async function setEntityModel(track, modelId) {
   if (recordedPath === "models/aimpack.mdl") {
     // The GoldSrc pack is authored flat; pitch it upright around the X axis.
     model.rotation.x = -Math.PI / 2;
+    // The converted reference pose is vertically inverted relative to the
+    // in-game world model; flip it in the visible plane to match the source.
+    model.rotation.z = Math.PI;
   }
   model.traverse(child => {
     if (!child.isMesh) return;
