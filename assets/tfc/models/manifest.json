@@ -70,7 +70,7 @@
       }
     },
     "models/aimpack.mdl": {
-      "url": "/assets/tfc/models/aimpack-noesis.gltf",
+      "url": "/assets/tfc/models/aimpack-noesis.glb",
       "kind": "entity",
       "animations": [
         {
@@ -14223,3 +14223,4 @@
   "missing": [],
   "failures": []
 }
+
