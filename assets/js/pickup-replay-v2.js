@@ -2199,14 +2199,6 @@ async function setEntityModel(track, modelId) {
   const asset = await loadModelAsset(url);
   if (!asset || track.mesh.userData.modelId !== modelId) return;
   const model = asset.clone(true);
-  const recordedPath = String(recorded?.path || "").replace(/\\/g, "/").toLowerCase();
-  if (recordedPath === "models/aimpack.mdl") {
-    // The GoldSrc pack is authored flat; pitch it upright around the X axis.
-    model.rotation.x = Math.PI;
-    // The converted reference pose is vertically inverted relative to the
-    // in-game world model; flip it in the visible plane to match the source.
-    model.rotation.z = Math.PI / 2;
-  }
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
