@@ -1861,12 +1861,6 @@ async function setObjectiveModel(track) {
   );
   if (!asset || track.mesh.userData.hasObjectiveModel) return;
   const model = asset.clone(true);
-  const recordedPath = String(recorded?.path || "").replace(/\\/g, "/").toLowerCase();
-  if (recordedPath === "models/aimpack.mdl") {
-    // aimpack's authored forward axis points toward 9 o'clock in the map;
-    // turn it onto the flag-room's 12 o'clock axis.
-    model.rotation.y = Math.PI / 2;
-  }
   model.traverse(child => {
     if (child.isMesh) child.frustumCulled = false;
   });
@@ -2205,6 +2199,12 @@ async function setEntityModel(track, modelId) {
   const asset = await loadModelAsset(url);
   if (!asset || track.mesh.userData.modelId !== modelId) return;
   const model = asset.clone(true);
+  const recordedPath = String(recorded?.path || "").replace(/\\/g, "/").toLowerCase();
+  if (recordedPath === "models/aimpack.mdl") {
+    // aimpack's authored forward axis points toward 9 o'clock in the map;
+    // turn it onto the flag-room's 12 o'clock axis.
+    model.rotation.y = Math.PI / 2;
+  }
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
