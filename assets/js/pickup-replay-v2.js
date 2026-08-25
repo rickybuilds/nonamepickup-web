@@ -2070,6 +2070,15 @@ async function setBuildableModel(track, modelId, team) {
     else if (child.material) child.material = child.material.clone();
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     for (const material of materials) {
+      if (recordedPath === "models/aimpack.mdl" && material?.map) {
+        // The converted aimpack texture is horizontally mirrored; correct its
+        // UVs without mirroring the mesh or changing its collision-facing side.
+        material.map = material.map.clone();
+        material.map.wrapS = THREE.RepeatWrapping;
+        material.map.repeat.x = -1;
+        material.map.offset.x = 1;
+        material.map.needsUpdate = true;
+      }
       if (material?.color) material.userData.replayBaseColor = material.color.clone();
     }
   });
