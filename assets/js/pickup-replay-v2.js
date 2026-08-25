@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
+import { clone as cloneSkinnedModel } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/utils/SkeletonUtils.js";
 import {
   ReplayProjectileVisuals,
   parseReplaySprite,
@@ -2187,7 +2188,7 @@ async function setEntityModel(track, modelId) {
   }
   const asset = await loadModelAsset(url);
   if (!asset || track.mesh.userData.modelId !== modelId) return;
-  const model = asset.clone(true);
+  const model = cloneSkinnedModel(asset);
   model.traverse(child => {
     if (!child.isMesh) return;
     child.frustumCulled = false;
