@@ -1814,7 +1814,7 @@ function catalogUrl(modelId, expectedKind) {
     const recordedPath = String(recorded.path || "").replace(/\\/g, "/").toLowerCase();
     if (expectedKind === "entity" &&
         /(?:^|\/)models\/(?:aimpack|backpack|backpack2|medpack|medkit)(?:2)?\.mdl$/i.test(recordedPath)) {
-      return null;
+      return state.modelCatalog.get("models/aimpack.mdl")?.url || "/assets/tfc/models/aimpack.glb";
     }
     let catalog = state.modelCatalog.get(recordedPath);
   // Some server builds report the resupply pickup under a slightly different
