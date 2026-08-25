@@ -2159,7 +2159,13 @@ async function setEntityModel(track, modelId) {
   // Static env_glow entities are already represented by buildMapLights. Do
   // not draw a second generic object at the same origin.
   if (classname === "env_glow") return;
-  const url = catalogUrl(modelId, "entity");
+  // Backpacks are a semantic entity, but older/custom AMXX builds can report
+  // different model filenames (or omit the matching catalog row). The TFC
+  // world backpack is the canonical visual for all of those recordings, so
+  // prefer it before falling back to the diagnostic wireframe.
+  const url = semantic?.kind === "backpack"
+    ? (state.modelCatalog.get("models/backpack.mdl")?.url || "/assets/tfc/models/backpack.glb")
+    : catalogUrl(modelId, "entity");
   if (!url) {
     if (isSprite) {
       const frames = await loadRecordedSprite(recorded?.path);
