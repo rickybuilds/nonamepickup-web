@@ -69,6 +69,39 @@
         "attachments": false
       }
     },
+    "models/aimpack.mdl": {
+      "url": "/assets/tfc/models/aimpack.glb",
+      "kind": "entity",
+      "animations": [
+        {
+          "index": 0,
+          "name": "idle",
+          "fps": 10.0,
+          "frames": 1,
+          "blends": 1
+        }
+      ],
+      "bodygroups": [
+        {
+          "index": 0,
+          "name": "studio",
+          "models": 1,
+          "base": 1
+        }
+      ],
+      "skins": 1,
+      "boneControllers": 0,
+      "attachments": 0,
+      "sourceSha256": "08c3f84ae88487f11dc9bc6ede06214903a01b5ac9585c57db6d90f397b9474d",
+      "glb": {
+        "animations": false,
+        "bodygroups": false,
+        "skins": "baked-family-0",
+        "boneControllers": false,
+        "sequenceBlending": false,
+        "attachments": false
+      }
+    },
     "models/w_medkit.mdl": {
       "url": "/assets/tfc/models/w_medkit.glb",
       "kind": "entity"
