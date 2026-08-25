@@ -2190,6 +2190,7 @@ async function setEntityModel(track, modelId) {
   if (!asset || track.mesh.userData.modelId !== modelId) return;
   const model = cloneSkinnedModel(asset);
   model.rotateOnWorldAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+  model.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
   model.position.y += 16;
   model.traverse(child => {
     if (!child.isMesh) return;
