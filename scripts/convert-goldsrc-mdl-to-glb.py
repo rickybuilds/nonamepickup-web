@@ -834,7 +834,7 @@ def validate_written_glb(path):
     validate_glb_json_text(json_text)
 
 
-def write_glb(path, primitives_by_texture, stats):
+def write_glb(path, primitives_by_texture, stats, node_rotation=None):
     bin_chunks = []
     buffer_views = []
     accessors = []
@@ -923,11 +923,14 @@ def write_glb(path, primitives_by_texture, stats):
         raise MdlFormatError("No renderable mesh primitives were produced.")
 
     bin_blob = b"".join(bin_chunks)
+    node = {"mesh": 0, "name": stats.get("modelName", "GoldSrc MDL")}
+    if node_rotation is not None:
+        node["rotation"] = node_rotation
     gltf = {
         "asset": {"version": "2.0", "generator": "Website-NNPugs GoldSrc MDL converter"},
         "scene": 0,
         "scenes": [{"nodes": [0]}],
-        "nodes": [{"mesh": 0, "name": stats.get("modelName", "GoldSrc MDL")}],
+        "nodes": [node],
         "meshes": [{"name": stats.get("modelName", "GoldSrc MDL"), "primitives": mesh_primitives}],
         "buffers": [{"byteLength": len(bin_blob)}],
         "bufferViews": buffer_views,
@@ -1009,7 +1012,7 @@ def inspect_mdl(path, preferred_skin_family=None):
     }
 
 
-def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_family=None, flip_u=False):
+def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_family=None, flip_u=False, turn_y=False):
     data = mdl_path.read_bytes()
     header = parse_header(data)
     bones = parse_bones(data, header)
@@ -1048,7 +1051,7 @@ def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_f
         stats["debug"] = debug_info
 
     glb_path.parent.mkdir(parents=True, exist_ok=True)
-    write_glb(glb_path, primitives, stats)
+    write_glb(glb_path, primitives, stats, node_rotation=[0.0, 1.0, 0.0, 0.0] if turn_y else None)
     return {"output": str(glb_path), "bytes": os.path.getsize(glb_path), **stats}
 
 
@@ -1060,6 +1063,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Print mesh triangle-command/debug statistics in the conversion result.")
     parser.add_argument("--skin-family", type=int, default=None, help="Preferred skin family index to export when the MDL contains multiple families.")
     parser.add_argument("--flip-u", action="store_true", help="Mirror the model texture horizontally in the generated GLB.")
+    parser.add_argument("--turn-y", action="store_true", help="Rotate the generated model 180 degrees around its Y axis.")
     args = parser.parse_args()
 
     if args.dump_header:
@@ -1070,7 +1074,7 @@ def main():
     if args.glb is None:
         raise SystemExit("Output .glb path is required unless --dump-header is used by itself.")
 
-    result = convert_mdl_to_glb(args.mdl, args.glb, debug_enabled=args.debug, preferred_skin_family=args.skin_family, flip_u=args.flip_u)
+    result = convert_mdl_to_glb(args.mdl, args.glb, debug_enabled=args.debug, preferred_skin_family=args.skin_family, flip_u=args.flip_u, turn_y=args.turn_y)
     print(json.dumps(result, indent=2))
 
 
