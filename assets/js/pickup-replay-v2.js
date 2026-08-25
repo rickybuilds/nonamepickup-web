@@ -2172,8 +2172,11 @@ async function setEntityModel(track, modelId) {
   // different model filenames (or omit the matching catalog row). The TFC
   // world backpack is the canonical visual for all of those recordings, so
   // prefer it before falling back to the diagnostic wireframe.
-  const url = semantic?.kind === "backpack"
-    ? (state.modelCatalog.get("models/backpack.mdl")?.url || "/assets/tfc/models/backpack.glb")
+  const recordedPath = String(recorded?.path || "").replace(/\\/g, "/").toLowerCase();
+  const url = /(?:^|\/)models\/aimpack\.mdl$/i.test(recordedPath)
+    ? (state.modelCatalog.get("models/aimpack.mdl")?.url || "/assets/tfc/models/aimpack.glb")
+    : semantic?.kind === "backpack"
+      ? (state.modelCatalog.get("models/backpack.mdl")?.url || "/assets/tfc/models/backpack.glb")
     : catalogUrl(modelId, "entity");
   if (!url) {
     if (isSprite) {
