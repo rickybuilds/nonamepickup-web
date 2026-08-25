@@ -1012,7 +1012,7 @@ def inspect_mdl(path, preferred_skin_family=None):
     }
 
 
-def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_family=None, flip_u=False, turn_y=False):
+def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_family=None, flip_u=False, turn_y=False, pitch_x=False):
     data = mdl_path.read_bytes()
     header = parse_header(data)
     bones = parse_bones(data, header)
@@ -1051,7 +1051,12 @@ def convert_mdl_to_glb(mdl_path, glb_path, debug_enabled=False, preferred_skin_f
         stats["debug"] = debug_info
 
     glb_path.parent.mkdir(parents=True, exist_ok=True)
-    write_glb(glb_path, primitives, stats, node_rotation=[0.0, 1.0, 0.0, 0.0] if turn_y else None)
+    node_rotation = None
+    if pitch_x:
+        node_rotation = [-0.7071067811865476, 0.0, 0.0, 0.7071067811865476]
+    elif turn_y:
+        node_rotation = [0.0, 1.0, 0.0, 0.0]
+    write_glb(glb_path, primitives, stats, node_rotation=node_rotation)
     return {"output": str(glb_path), "bytes": os.path.getsize(glb_path), **stats}
 
 
@@ -1064,6 +1069,7 @@ def main():
     parser.add_argument("--skin-family", type=int, default=None, help="Preferred skin family index to export when the MDL contains multiple families.")
     parser.add_argument("--flip-u", action="store_true", help="Mirror the model texture horizontally in the generated GLB.")
     parser.add_argument("--turn-y", action="store_true", help="Rotate the generated model 180 degrees around its Y axis.")
+    parser.add_argument("--pitch-x", action="store_true", help="Rotate the generated model -90 degrees around its X axis.")
     args = parser.parse_args()
 
     if args.dump_header:
@@ -1074,7 +1080,7 @@ def main():
     if args.glb is None:
         raise SystemExit("Output .glb path is required unless --dump-header is used by itself.")
 
-    result = convert_mdl_to_glb(args.mdl, args.glb, debug_enabled=args.debug, preferred_skin_family=args.skin_family, flip_u=args.flip_u, turn_y=args.turn_y)
+    result = convert_mdl_to_glb(args.mdl, args.glb, debug_enabled=args.debug, preferred_skin_family=args.skin_family, flip_u=args.flip_u, turn_y=args.turn_y, pitch_x=args.pitch_x)
     print(json.dumps(result, indent=2))
 
 
