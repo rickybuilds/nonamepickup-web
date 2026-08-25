@@ -2206,6 +2206,9 @@ async function setEntityModel(track, modelId) {
     // The converted reference pose is vertically inverted relative to the
     // in-game world model; flip it in the visible plane to match the source.
     model.rotation.z = Math.PI;
+    // Face the rendered front toward the viewer; the converted pose otherwise
+    // exposes the pack's rear straps.
+    model.rotation.y = Math.PI;
   }
   model.traverse(child => {
     if (!child.isMesh) return;
