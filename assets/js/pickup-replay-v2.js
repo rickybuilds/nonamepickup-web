@@ -2202,7 +2202,7 @@ async function setEntityModel(track, modelId) {
   const recordedPath = String(recorded?.path || "").replace(/\\/g, "/").toLowerCase();
   if (recordedPath === "models/aimpack.mdl") {
     // The GoldSrc pack is authored flat; pitch it upright around the X axis.
-    model.rotation.x = Math.PI / 2;
+    model.rotation.x = -Math.PI / 2;
   }
   model.traverse(child => {
     if (!child.isMesh) return;
