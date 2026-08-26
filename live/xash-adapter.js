@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826d";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826k";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826l";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -81,24 +81,21 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       filesystem,
       menu: resolve(config.runtimeLibraries.menu),
       client: resolve(config.runtimeLibraries.client),
+      // TFC has no in-browser server library. Keep Host_Main from preloading
+      // dlls/hl_emscripten_wasm32.wasm (or a mismatched tfc_*.wasm).
       server: null,
       render: {
         gles3compat: resolve(config.runtimeLibraries.renderer)
       }
     },
     module: {
-      noInitialRun: true,
-      preRun(module) {
-        // Host_Main is invoked when dylibs finish loading, still inside init().
-        // Game files have to be on the VFS before that or startup configs fail.
-        mountGameAssets(module.FS, gameFiles, extras);
-      },
       print(message) {
         console.info("[live/xash]", message);
       },
       printErr(message) {
         console.error("[live/xash]", message);
       },
+      // Override the wrapper default so the HL server dylib is not preloaded.
       dynamicLibraries: [
         "filesystem_stdio.wasm",
         "libref_webgl2.wasm",
@@ -118,7 +115,9 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   window.addEventListener("unhandledrejection", onAbort);
   try {
     await engine.init();
-    if (engine.em?.Module) engine.em.Module.noInitialRun = false;
+    const fs = engine.em?.FS || engine.em?.Module?.FS;
+    if (!fs) throw new Error("The Xash3D runtime did not expose a filesystem.");
+    mountGameAssets(fs, gameFiles, extras);
     if (!engine.running) engine.main();
     await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {

@@ -8,8 +8,8 @@ export const LIVE_CONFIG = Object.freeze({
     xash: "./runtime/xash.wasm",
     filesystem: "./runtime/filesystem_stdio.wasm",
     renderer: "./runtime/libref_webgl2.wasm",
-    menu: "./runtime/cl_dlls/menu-stock_emscripten_wasm32.wasm",
-    client: "./runtime/cl_dlls/client_emscripten_wasm32.wasm?v=20260826k",
+    menu: "./runtime/cl_dlls/menu_emscripten_wasm32.wasm?v=20260826l",
+    client: "./runtime/cl_dlls/client_emscripten_wasm32.wasm?v=20260826l",
     server: "./runtime/dlls/tfc_emscripten_wasm32.wasm"
   }),
   serverModulePath: "dlls/tfc_emscripten_wasm32.wasm",
