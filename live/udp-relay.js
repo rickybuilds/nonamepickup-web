@@ -34,6 +34,24 @@ function packetKind(data) {
   return "sequenced";
 }
 
+function normalizeLegacyHltvAccept(data, server) {
+  // Valve HLTV BUILD 3378 accepts spectators with a fixed-width
+  // `B0000000000000000` packet. Native GoldSrc understands it, but Xash3D-
+  // FWGS expects the later tokenized S2C_CONNECTION representation.
+  const isLegacyAccept = data.length === 21
+    && data[0] === 255 && data[1] === 255 && data[2] === 255 && data[3] === 255
+    && data[4] === 66
+    && data.subarray(5).every(byte => byte === 48);
+  if (!isLegacyAccept) return data;
+
+  const response = new TextEncoder().encode(`B 0 "${server.host}:${server.port}" 0 3378\n`);
+  const normalized = new Uint8Array(4 + response.length);
+  normalized.set([255, 255, 255, 255]);
+  normalized.set(response, 4);
+  console.info("[live/relay] normalized the legacy HLTV acceptance packet for Xash3D.");
+  return normalized;
+}
+
 function describeConnectAuth(data) {
   const text = new TextDecoder("latin1").decode(data);
   const quoted = [...text.matchAll(/"([^"]*)"/g)];
@@ -153,7 +171,7 @@ export class UdpWebSocketRelay {
     this.socket.binaryType = "arraybuffer";
     this.socket.addEventListener("message", event => {
       this.receivedPackets += 1;
-      const inbound = new Uint8Array(event.data);
+      const inbound = normalizeLegacyHltvAccept(new Uint8Array(event.data), this.server);
       if (this.receivedPackets <= 12) {
         console.info(`[live/relay] UDP receive #${this.receivedPackets}: ${packetKind(inbound)}, ${inbound.byteLength} bytes`);
       }
