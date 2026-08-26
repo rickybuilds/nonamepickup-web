@@ -112,13 +112,40 @@ export async function loadGameAssets(manifestPath, onStatus = () => {}) {
   return files;
 }
 
-export function mountGameAssets(FS, files, extras) {
+export function mountGameAssets(FS, files, extras, valveExtras) {
   FS.mkdirTree("/rodir");
   for (const file of files) {
     const path = `/rodir/${file.path}`;
     FS.mkdirTree(path.slice(0, path.lastIndexOf("/")));
     FS.writeFile(path, file.data);
   }
-  if (extras) FS.writeFile("/rodir/tfc/tf15client-extras.pk3", extras);
+  if (extras) {
+    FS.mkdirTree("/rodir/tfc");
+    FS.writeFile("/rodir/tfc/extras.pk3", extras);
+    FS.writeFile("/rodir/tfc/tf15client-extras.pk3", extras);
+  }
+  if (valveExtras) {
+    FS.mkdirTree("/rodir/valve");
+    FS.writeFile("/rodir/valve/extras.pk3", valveExtras);
+  }
+  try {
+    const liblist = "!// Team Fortress Classes Game .dll Listing File\n" +
+      "// Load order is determined by file order.\n" +
+      "game \"Team Fortress\"\n" +
+      "url_info \"www.teamfortressclassic.com\"\n" +
+      "url_dl \"\"\n" +
+      "version \"1.5\"\n" +
+      "size \"37000000\"\n" +
+      "svonly \"0\"\n" +
+      "cldll \"0\"\n" +
+      "type \"multiplayer_only\"\n" +
+      "nomodels \"1\"\n" +
+      "mpentity \"info_tfdetect\"\n" +
+      "gamedll \"dlls\\tfc.dll\"\n" +
+      "gamedll_linux \"addons/metamod/dlls/metamod.so\"\n" +
+      "gamedll_osx \"dlls/tfc.dylib\"\n" +
+      "secure \"1\"\n";
+    FS.writeFile("/rodir/tfc/liblist.gam", new TextEncoder().encode(liblist));
+  } catch {}
   FS.chdir("/rodir");
 }

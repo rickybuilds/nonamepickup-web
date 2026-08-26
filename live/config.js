@@ -2,15 +2,16 @@ export const LIVE_CONFIG = Object.freeze({
   runtimeModule: "./runtime/xash3d-fwgs.js",
   gameDirectory: "tfc",
   gameAssetsManifest: "./runtime/game-assets.json",
-  extrasArchive: "./runtime/tf15client-extras.pk3",
+  extrasArchive: "./runtime/tf15client-extras.pk3?v=20260826m",
+  valveExtrasArchive: "./runtime/valve-extras.pk3?v=20260826m",
   relayPath: "/api/live/relay",
   runtimeLibraries: Object.freeze({
-    xash: "./runtime/xash.wasm",
-    filesystem: "./runtime/filesystem_stdio.wasm",
-    renderer: "./runtime/libref_webgl2.wasm",
-    menu: "./runtime/cl_dlls/menu_emscripten_wasm32.wasm?v=20260826l",
-    client: "./runtime/cl_dlls/client_emscripten_wasm32.wasm?v=20260826l",
-    server: "./runtime/dlls/tfc_emscripten_wasm32.wasm"
+    xash: "./runtime/xash.wasm?v=20260826m",
+    filesystem: "./runtime/filesystem_stdio.wasm?v=20260826m",
+    renderer: "./runtime/libref_webgl2.wasm?v=20260826m",
+    menu: "./runtime/cl_dlls/menu_emscripten_wasm32.wasm?v=20260826m",
+    client: "./runtime/cl_dlls/client_emscripten_wasm32.wasm?v=20260826m",
+    server: null
   }),
   serverModulePath: "dlls/tfc_emscripten_wasm32.wasm",
   playerName: "NoName Spectator",

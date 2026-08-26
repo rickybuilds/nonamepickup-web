@@ -1,5 +1,5 @@
-import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826d";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826l";
+import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826m";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826m";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -57,12 +57,16 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   await relay.open();
 
   const resolve = value => new URL(value, location.href).href;
-  const [gameFiles, extrasResponse] = await Promise.all([
+  const [gameFiles, extrasResponse, valveExtrasResponse] = await Promise.all([
     loadGameAssets(config.gameAssetsManifest, onStatus),
-    fetch(resolve(config.extrasArchive), { cache: "force-cache" })
+    fetch(resolve(config.extrasArchive), { cache: "force-cache" }),
+    config.valveExtrasArchive ? fetch(resolve(config.valveExtrasArchive), { cache: "force-cache" }) : Promise.resolve(null)
   ]);
   if (!extrasResponse.ok) throw new Error("The TF15 client asset archive is unavailable.");
   const extras = new Uint8Array(await extrasResponse.arrayBuffer());
+  const valveExtras = valveExtrasResponse && valveExtrasResponse.ok
+    ? new Uint8Array(await valveExtrasResponse.arrayBuffer())
+    : null;
 
   onStatus("Starting Xash3D…");
   const browserAlert = window.alert;
@@ -117,7 +121,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     await engine.init();
     const fs = engine.em?.FS || engine.em?.Module?.FS;
     if (!fs) throw new Error("The Xash3D runtime did not expose a filesystem.");
-    mountGameAssets(fs, gameFiles, extras);
+    mountGameAssets(fs, gameFiles, extras, valveExtras);
     if (!engine.running) engine.main();
     await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {
