@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826d";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826g";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826h";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -99,7 +99,26 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   engine.net = relay.net;
 
   ensureEngineShape(engine);
-  await engine.init();
+  let abortError = null;
+  const onAbort = event => {
+    abortError = event.reason instanceof Error ? event.reason : new Error(String(event.reason || "wasm abort"));
+  };
+  window.addEventListener("unhandledrejection", onAbort);
+  try {
+    await engine.init();
+    await new Promise(resolveReady => window.setTimeout(resolveReady, 50));
+    if (engine.exited || abortError) {
+      throw abortError || new Error("The Xash3D engine exited while loading the TFC client.");
+    }
+  } catch (cause) {
+    const detail = String(cause?.message || cause || "");
+    if (!detail || detail === "Infinity") {
+      throw new Error("The TFC client aborted while loading VGUI.", { cause });
+    }
+    throw cause;
+  } finally {
+    window.removeEventListener("unhandledrejection", onAbort);
+  }
   sizeCanvas(canvas);
   engine.main();
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));

@@ -1,5 +1,5 @@
-import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826e";
-import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826g";
+import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826h";
+import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826h";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
@@ -16,6 +16,14 @@ const exitButton = $("exit-button");
 
 let xashClient = null;
 let activeServerKey = null;
+
+function launchErrorMessage(error) {
+  const raw = error == null ? "" : String(error.message || error);
+  if (!raw || raw === "Infinity" || raw === "undefined") {
+    return "The TFC client aborted while loading VGUI. Rebuild is required.";
+  }
+  return raw;
+}
 
 function setStatus(message, state = "") {
   status.className = `live-status${state ? ` ${state}` : ""}`;
@@ -100,8 +108,7 @@ async function launch() {
     console.error("[live/xash] launch failed", error);
     clientRoot.classList.remove("running");
     launcher.classList.remove("hidden");
-    const detail = error?.message || String(error || "");
-    setStatus(detail && detail !== "Infinity" ? detail : "The browser client failed to start.", "error");
+    setStatus(launchErrorMessage(error), "error");
     launchButton.disabled = false;
   }
 }
