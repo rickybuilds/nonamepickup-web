@@ -29,6 +29,11 @@ function selNumber(value, places = 0) {
     : "—";
 }
 
+function selWhole(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(Math.round(number)) : "—";
+}
+
 function selSigned(value, places = 0) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "—";
@@ -193,7 +198,7 @@ function selRenderPlayers() {
   selPlayerRows.innerHTML = selState.replay.players.filter(player => player.name.toLowerCase().includes(query)).map(player => `
     <tr data-player-id="${selEscape(player.id)}" class="${selState.selectedPlayer === player.id ? "selected" : ""}">
       <td><span class="sel-player-name">${selEscape(player.name)}</span><span class="sel-player-games">${player.games} selected games</span></td>
-      <td class="sel-elo">${selNumber(player.start, 1)}</td>
+      <td class="sel-elo">${selWhole(player.start)}</td>
       <td class="sel-elo">${selNumber(player.actual, 1)}</td>
       <td class="${selTone(player.actual - player.start)}">${selSigned(player.actual - player.start, 1)}</td>
     </tr>
@@ -210,7 +215,7 @@ function selMatchRows(game) {
   return game.players.slice().sort((a, b) => a.team.localeCompare(b.team) || (a.rank || 99) - (b.rank || 99)).map(player => `
     <tr>
       <td><i class="sel-team-tag ${player.team.toLowerCase()}"></i><span class="sel-player-name">${selEscape(player.name)}</span></td>
-      <td>${selNumber(player.before, 1)}</td>
+      <td>${selWhole(player.before)}</td>
       <td>${Number.isFinite(player.nn_score) ? selNumber(player.nn_score, 2) : "—"}</td>
       <td>${Number.isFinite(player.rank) ? `#${player.rank}` : "—"}</td>
       <td class="${selTone(player.actual_delta)}">${selSigned(player.actual_delta, 1)}</td>
