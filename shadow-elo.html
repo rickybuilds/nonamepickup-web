@@ -36,13 +36,11 @@
     <div class="sel-hero-copy">
       <p class="sel-kicker">NN RATING LAB / HISTORICAL ELO SIMULATOR</p>
       <h1>Replay the past.<br><span>See today's Elo.</span></h1>
-      <p>Go back to the oldest game in the selected window, restore every player's Elo from that point, then replay each real game through today using 15–35% or 20–30% team-pool splits.</p>
+      <p>Go back to the oldest game in the selected window, restore every player's Elo from that point, then replay each real game through today using the actual 20–30% team-pool split.</p>
     </div>
-    <div class="sel-pool-demo" aria-label="Allocation comparison example">
-      <div class="sel-pool-head"><span>Example team pool</span><strong>+64 Elo</strong></div>
-      <div class="sel-pool-row"><span><i class="sel-dot actual"></i>Actual V1</span><b>25% each</b></div>
-      <div class="sel-pool-row"><span><i class="sel-dot wide"></i>Wide</span><b>15–35%</b></div>
-      <div class="sel-pool-row"><span><i class="sel-dot gentle"></i>Gentle</span><b>20–30%</b></div>
+    <div class="sel-pool-demo" aria-label="Current allocation example">
+      <div class="sel-pool-head"><span>Current team pool</span><strong>+64 Elo</strong></div>
+      <div class="sel-pool-row"><span><i class="sel-dot actual"></i>Actual allocation</span><b>20–30% share</b></div>
       <p>Every replay preserves each game's real team Elo pool.</p>
     </div>
   </section>
@@ -76,6 +74,7 @@
       <p class="sel-chart-note">Select a player in the table to spotlight their line. Everyone begins at their recorded Elo before the oldest game.</p>
     </section>
 
+    <div class="sel-results-grid">
     <section class="sel-card">
       <div class="sel-card-head sel-table-head">
         <div><p class="sel-card-kicker">SIMULATED ELO TODAY</p><h2>Where players would be now</h2></div>
@@ -83,7 +82,7 @@
       </div>
       <div class="sel-table-scroll">
         <table class="sel-table">
-          <thead><tr><th>Player</th><th>Starting</th><th>Actual V1</th><th>Wide 15–35</th><th>vs V1</th><th>Gentle 20–30</th><th>vs V1</th></tr></thead>
+          <thead><tr><th>Player</th><th>Starting</th><th>Actual 20–30%</th><th>Change</th></tr></thead>
           <tbody id="sel-player-rows"></tbody>
         </table>
       </div>
@@ -96,6 +95,7 @@
       </div>
       <div id="sel-matches" class="sel-matches"></div>
     </section>
+    </div>
 
     <section id="sel-validation" class="sel-card sel-validation" hidden></section>
 

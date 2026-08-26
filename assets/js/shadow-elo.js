@@ -15,7 +15,7 @@ const selContent = document.getElementById("sel-content");
 const selRefresh = document.getElementById("sel-refresh");
 const selPlayerRows = document.getElementById("sel-player-rows");
 const selFilter = document.getElementById("sel-player-filter");
-const SEL_SCENARIOS = ["actual", "wide", "gentle"];
+const SEL_SCENARIOS = ["actual"];
 const SEL_COLORS = ["#38bdf8", "#a78bfa", "#4ade80", "#fbbf24", "#fb7185", "#60a5fa", "#f472b6", "#22d3ee", "#fb923c", "#818cf8", "#34d399", "#e879f9"];
 
 function selEscape(value) {
@@ -62,28 +62,6 @@ function selRows(source) {
     if (typeof value === "number") return { player_id: key, delta: value };
     return { ...(selObject(value) || {}), player_id: selPlayerId(value, key) };
   });
-}
-
-function selScenarioSource(payload, scenario) {
-  const aliases = scenario === "wide"
-    ? ["wide", "wide_15_35", "15_35", "15-35", "shadow_wide"]
-    : ["gentle", "gentle_20_30", "20_30", "20-30", "shadow_gentle"];
-  const containers = [payload, payload?.scenarios, payload?.allocations, payload?.shadow, payload?.shadow_results, payload?.results, payload?.results?.scenarios].filter(Boolean);
-  for (const container of containers) {
-    for (const alias of aliases) if (container[alias] != null) return container[alias];
-    const found = Object.keys(container).find(key => aliases.some(alias => key.toLowerCase().replace(/%/g, "").includes(alias.replace(/-/g, "_"))));
-    if (found) return container[found];
-  }
-  return null;
-}
-
-function selDelta(row) {
-  if (typeof row === "number") return row;
-  for (const key of ["delta", "elo_delta", "shadow_delta", "delta_elo", "allocated_delta", "allocation"]) {
-    const value = Number(row?.[key]);
-    if (Number.isFinite(value)) return value;
-  }
-  return null;
 }
 
 function selNullableNumber(value) {
@@ -141,26 +119,10 @@ function selNormalizeSnapshot(snapshot, index) {
   const blueIds = new Set(selParseIds(snapshot.blue_ids));
   const redIds = new Set(selParseIds(snapshot.red_ids));
   const extra = selEnrichment(payload);
-  const scenarioMap = source => {
-    const map = new Map();
-    for (const row of selRows(source)) {
-      const id = selPlayerId(row);
-      const name = String(row?.display_name || row?.player || row?.name || "").trim().toLowerCase();
-      if (id) map.set(id, row);
-      if (name) map.set(`name:${name}`, row);
-    }
-    return map;
-  };
-  const wide = scenarioMap(selScenarioSource(payload, "wide"));
-  const gentle = scenarioMap(selScenarioSource(payload, "gentle"));
-
   const players = (snapshot.v1_changes || []).map(change => {
     const id = selPlayerId(change);
     const details = extra.get(id) || {};
     const displayName = change.display_name || details.display_name || details.player || details.name || id;
-    const nameKey = `name:${String(displayName).trim().toLowerCase()}`;
-    const wideRow = wide.get(id) || wide.get(nameKey);
-    const gentleRow = gentle.get(id) || gentle.get(nameKey);
     const team = blueIds.has(id) ? "BLUE" : redIds.has(id) ? "RED" : String(details.team || details.team_name || "").toUpperCase();
     return {
       id,
@@ -169,20 +131,12 @@ function selNormalizeSnapshot(snapshot, index) {
       before: selNullableNumber(change.before),
       after: selNullableNumber(change.after),
       actual_delta: Number(change.delta || 0),
-      wide_delta: selDelta(wideRow),
-      gentle_delta: selDelta(gentleRow),
-      wide_pct: Number(wideRow?.allocation_pct ?? wideRow?.share_pct ?? wideRow?.percentage),
-      gentle_pct: Number(gentleRow?.allocation_pct ?? gentleRow?.share_pct ?? gentleRow?.percentage),
       nn_score: Number(details.nn_score),
       rank: Number(details.rank)
     };
   });
 
   const fallback = selIsFallback(payload);
-  for (const player of players) {
-    if (!Number.isFinite(player.wide_delta)) player.wide_delta = fallback ? player.actual_delta : null;
-    if (!Number.isFinite(player.gentle_delta)) player.gentle_delta = fallback ? player.actual_delta : null;
-  }
 
   return {
     ...snapshot,
@@ -190,7 +144,7 @@ function selNormalizeSnapshot(snapshot, index) {
     players,
     pools: selPools(payload, players),
     fallback,
-    incomplete: players.some(player => player.wide_delta == null || player.gentle_delta == null)
+    incomplete: false
   };
 }
 
@@ -205,9 +159,9 @@ function selBuildReplay(snapshots) {
         const start = Number.isFinite(row.before) ? row.before : Number(row.after) - row.actual_delta;
         const emptyPath = Array(game.sequence).fill(null);
         players.set(row.id, {
-          id: row.id, name: row.name, start, actual: start, wide: start, gentle: start,
+          id: row.id, name: row.name, start, actual: start,
           games: 0, joinedAt: game.sequence,
-          paths: { actual: [...emptyPath], wide: [...emptyPath], gentle: [...emptyPath] }
+          paths: { actual: [...emptyPath] }
         });
       }
       const player = players.get(row.id);
@@ -219,8 +173,6 @@ function selBuildReplay(snapshots) {
       if (row) {
         player.games += 1;
         player.actual += row.actual_delta;
-        player.wide += Number.isFinite(row.wide_delta) ? row.wide_delta : row.actual_delta;
-        player.gentle += Number.isFinite(row.gentle_delta) ? row.gentle_delta : row.actual_delta;
       }
       for (const scenario of SEL_SCENARIOS) {
         if (game.sequence < player.joinedAt) player.paths[scenario].push(null);
@@ -231,8 +183,6 @@ function selBuildReplay(snapshots) {
 
   for (const player of players.values()) {
     player.paths.actual[0] = player.start;
-    player.paths.wide[0] = player.start;
-    player.paths.gentle[0] = player.start;
   }
 
   const playerList = [...players.values()].sort((a, b) => b.actual - a.actual || a.name.localeCompare(b.name));
@@ -240,18 +190,14 @@ function selBuildReplay(snapshots) {
 }
 
 function selRenderKpis(replay) {
-  const shifts = replay.players.flatMap(player => [
-    { name: player.name, scenario: "Wide", value: player.wide - player.actual },
-    { name: player.name, scenario: "Gentle", value: player.gentle - player.actual }
-  ]).sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
-  const largest = shifts[0];
+  const topPlayer = replay.players[0];
   const fallbacks = replay.summary?.fallback_matches ?? replay.games.filter(game => game.fallback).length;
   const discrepancies = replay.summary?.validation_discrepancies ?? replay.validation?.length ?? 0;
   document.getElementById("sel-kpis").innerHTML = `
     <article class="sel-kpi"><span>Actual games replayed</span><strong>${replay.games.length}</strong><small>Oldest through today</small></article>
     <article class="sel-kpi accent"><span>Players compared</span><strong>${replay.players.length}</strong><small>Real V1 starting Elo</small></article>
     <article class="sel-kpi ${fallbacks ? "warn" : "good"}"><span>Equal-share fallbacks</span><strong>${fallbacks}</strong><small>${discrepancies} V1 validation discrepancies</small></article>
-    <article class="sel-kpi"><span>Largest ending shift</span><strong>${largest ? selSigned(largest.value, 1) : "—"}</strong><small>${largest ? `${selEscape(largest.name)} · ${largest.scenario}` : "No simulated movement"}</small></article>
+    <article class="sel-kpi"><span>Top actual Elo</span><strong>${topPlayer ? selNumber(topPlayer.actual, 1) : "—"}</strong><small>${topPlayer ? selEscape(topPlayer.name) : "No replayed players"}</small></article>
   `;
 }
 
@@ -263,9 +209,7 @@ function selRenderChart() {
   if (!player) return;
   document.getElementById("sel-chart-player").textContent = player.name;
   const datasets = [
-    { key: "actual", label: "Actual V1", color: "#4d8fff" },
-    { key: "wide", label: "Wide 15%-35%", color: "#a78bfa" },
-    { key: "gentle", label: "Gentle 20%-30%", color: "#4ade80" }
+    { key: "actual", label: "Actual 20%-30%", color: "#4d8fff" }
   ].map(series => ({
     label: series.label,
     data: player.paths[series.key],
@@ -304,12 +248,9 @@ function selRenderPlayers() {
       <td><span class="sel-player-name">${selEscape(player.name)}</span><span class="sel-player-games">${player.games} selected games</span></td>
       <td class="sel-elo">${selNumber(player.start, 1)}</td>
       <td class="sel-elo">${selNumber(player.actual, 1)}</td>
-      <td class="sel-elo">${selNumber(player.wide, 1)}</td>
-      <td class="${selTone(player.wide - player.actual)}">${selSigned(player.wide - player.actual, 1)}</td>
-      <td class="sel-elo">${selNumber(player.gentle, 1)}</td>
-      <td class="${selTone(player.gentle - player.actual)}">${selSigned(player.gentle - player.actual, 1)}</td>
+      <td class="${selTone(player.actual - player.start)}">${selSigned(player.actual - player.start, 1)}</td>
     </tr>
-  `).join("") || `<tr><td colspan="7">No matching players.</td></tr>`;
+  `).join("") || `<tr><td colspan="4">No matching players.</td></tr>`;
 }
 
 function selFormatDate(timestamp) {
@@ -326,8 +267,6 @@ function selMatchRows(game) {
       <td>${Number.isFinite(player.nn_score) ? selNumber(player.nn_score, 2) : "—"}</td>
       <td>${Number.isFinite(player.rank) ? `#${player.rank}` : "—"}</td>
       <td class="${selTone(player.actual_delta)}">${selSigned(player.actual_delta, 1)}</td>
-      <td class="${selTone(player.wide_delta)}">${selSigned(player.wide_delta, 1)} <small>${selNumber(Number(player.wide_share || 0) * 100, 1)}%</small></td>
-      <td class="${selTone(player.gentle_delta)}">${selSigned(player.gentle_delta, 1)} <small>${selNumber(Number(player.gentle_share || 0) * 100, 1)}%</small></td>
     </tr>
   `).join("");
 }
@@ -347,7 +286,7 @@ function selRenderMatches(replay) {
       <div class="sel-match-body">
         ${game.fallback ? `<p class="sel-fallback-reason"><strong>Equal-share fallback:</strong> ${selEscape((game.fallback_reasons || []).join(", ").replaceAll("_", " "))}</p>` : ""}
         <div class="sel-table-scroll"><table class="sel-match-table">
-        <thead><tr><th>Player</th><th>Starting Elo</th><th>NN score</th><th>Team rank</th><th>Actual V1</th><th>Wide 15–35</th><th>Gentle 20–30</th></tr></thead>
+        <thead><tr><th>Player</th><th>Starting Elo</th><th>NN score</th><th>Team rank</th><th>Actual 20–30%</th></tr></thead>
         <tbody>${selMatchRows(game)}</tbody>
       </table></div></div>
     </details>
