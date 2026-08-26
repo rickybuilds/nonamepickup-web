@@ -1,13 +1,14 @@
 "use strict";
 
 const dgram = require("dgram");
-const { WebSocket, WebSocketServer } = require("ws");
 
 const MAX_PACKET_BYTES = 65_507;
 const MAX_PACKETS_PER_SECOND = 256;
 const MAX_BYTES_PER_SECOND = 512 * 1024;
 const MAX_CONNECTIONS = 64;
 const MAX_CONNECTIONS_PER_IP = 4;
+const MAX_PENDING_UDP_PACKETS = 16;
+const RELAY_PATH = "/api/live/relay";
 
 const TARGETS = Object.freeze({
   east: Object.freeze({ host: "108.61.128.120", port: 27015 }),
@@ -27,23 +28,53 @@ function rejectUpgrade(socket, status, message) {
   socket.destroy();
 }
 
+function firstHeader(value) {
+  return String(value || "").split(",", 1)[0].trim().toLowerCase();
+}
+
 function requestIp(request) {
-  const forwarded = String(request.headers["x-forwarded-for"] || "").split(",", 1)[0].trim();
-  return forwarded || request.socket.remoteAddress || "unknown";
+  return firstHeader(request.headers["x-forwarded-for"]) || request.socket.remoteAddress || "unknown";
+}
+
+function hostCandidates(request) {
+  return [
+    firstHeader(request.headers["x-forwarded-host"]),
+    firstHeader(request.headers.host)
+  ].filter(Boolean);
 }
 
 function isSameOrigin(request) {
   const origin = request.headers.origin;
   if (!origin) return false;
-  const host = String(request.headers["x-forwarded-host"] || request.headers.host || "").split(",", 1)[0].trim();
-  const protocol = String(request.headers["x-forwarded-proto"] || (request.socket.encrypted ? "https" : "http"))
-    .split(",", 1)[0]
-    .trim();
-  return origin === `${protocol}://${host}`;
+  let originUrl;
+  try {
+    originUrl = new URL(origin);
+  } catch {
+    return false;
+  }
+  const originHost = originUrl.host.toLowerCase();
+  const originHostname = originUrl.hostname.toLowerCase();
+  return hostCandidates(request).some(candidate => {
+    const hostname = candidate.replace(/:\d+$/, "");
+    return candidate === originHost || hostname === originHostname;
+  });
+}
+
+function registerRelayStatusRoute(app, path = RELAY_PATH) {
+  if (!app) return;
+  app.get(path, (_req, res) => {
+    res.json({
+      ok: true,
+      transport: "websocket",
+      path,
+      targets: Object.keys(TARGETS)
+    });
+  });
 }
 
 function attachUdpRelay(server, options = {}) {
-  const path = options.path || "/api/live/relay";
+  const { WebSocket, WebSocketServer } = require("ws");
+  const path = options.path || RELAY_PATH;
   const webSockets = new WebSocketServer({ noServer: true, maxPayload: MAX_PACKET_BYTES, perMessageDeflate: false });
   const connectionsByIp = new Map();
   let connections = 0;
@@ -55,7 +86,15 @@ function attachUdpRelay(server, options = {}) {
     const target = TARGETS[url.searchParams.get("server") || ""];
     const ip = requestIp(request);
     if (!target) return rejectUpgrade(socket, "400 Bad Request", "Unknown TFC relay target.");
-    if (!isSameOrigin(request)) return rejectUpgrade(socket, "403 Forbidden", "Relay origin rejected.");
+    if (!isSameOrigin(request)) {
+      console.warn("[live-relay] origin rejected", {
+        origin: request.headers.origin || "",
+        host: request.headers.host || "",
+        forwardedHost: request.headers["x-forwarded-host"] || "",
+        forwardedProto: request.headers["x-forwarded-proto"] || ""
+      });
+      return rejectUpgrade(socket, "403 Forbidden", "Relay origin rejected.");
+    }
     if (connections >= MAX_CONNECTIONS || (connectionsByIp.get(ip) || 0) >= MAX_CONNECTIONS_PER_IP) {
       return rejectUpgrade(socket, "503 Service Unavailable", "TFC relay capacity reached.");
     }
@@ -68,6 +107,8 @@ function attachUdpRelay(server, options = {}) {
     const { ip, target, serverKey } = request.liveRelay;
     const udp = dgram.createSocket("udp4");
     let closed = false;
+    let udpReady = false;
+    const pending = [];
     let windowStarted = Date.now();
     let packets = 0;
     let bytes = 0;
@@ -82,6 +123,7 @@ function attachUdpRelay(server, options = {}) {
       const remaining = (connectionsByIp.get(ip) || 1) - 1;
       if (remaining > 0) connectionsByIp.set(ip, remaining);
       else connectionsByIp.delete(ip);
+      pending.length = 0;
       try { udp.close(); } catch {}
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
     };
@@ -93,10 +135,15 @@ function attachUdpRelay(server, options = {}) {
       console.error(`[live-relay] ${serverKey} UDP error:`, error.message);
       close();
     });
-    udp.connect(target.port, target.host);
+    udp.connect(target.port, target.host, () => {
+      udpReady = true;
+      for (const packet of pending) udp.send(packet);
+      pending.length = 0;
+    });
 
     ws.on("message", (message, isBinary) => {
-      if (!isBinary || message.length < 1 || message.length > MAX_PACKET_BYTES) return close();
+      const payload = Buffer.isBuffer(message) ? message : Buffer.concat(Array.isArray(message) ? message : [message]);
+      if (!isBinary || payload.length < 1 || payload.length > MAX_PACKET_BYTES) return close();
       const now = Date.now();
       if (now - windowStarted >= 1000) {
         windowStarted = now;
@@ -104,9 +151,14 @@ function attachUdpRelay(server, options = {}) {
         bytes = 0;
       }
       packets += 1;
-      bytes += message.length;
+      bytes += payload.length;
       if (packets > MAX_PACKETS_PER_SECOND || bytes > MAX_BYTES_PER_SECOND) return close();
-      udp.send(message);
+      if (!udpReady) {
+        if (pending.length >= MAX_PENDING_UDP_PACKETS) return close();
+        pending.push(payload);
+        return;
+      }
+      udp.send(payload);
     });
     ws.on("error", close);
     ws.on("close", close);
@@ -120,4 +172,4 @@ function attachUdpRelay(server, options = {}) {
   };
 }
 
-module.exports = { attachUdpRelay };
+module.exports = { attachUdpRelay, registerRelayStatusRoute, TARGETS, RELAY_PATH };

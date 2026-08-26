@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826d";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826d";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826f";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {

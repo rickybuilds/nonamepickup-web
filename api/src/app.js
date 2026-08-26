@@ -12,6 +12,7 @@ const { registerErrorHandlers } = require("./middleware/errors");
 const { checkSpeedrunDatabase } = require("./db/mariadb");
 const { createPickupReplaysRouter, createPickupReplayViewerRouter } = require("./routes/pickupReplays");
 const { createPickupLiveIngestRouter, createPickupLiveViewerRouter } = require("./routes/pickupLive");
+const { registerRelayStatusRoute } = require("./live/udpRelay");
 
 function createApp({
   db,
@@ -294,6 +295,8 @@ function createApp({
       sendError(res, 500, "leaderboard_failed");
     }
   }
+
+  registerRelayStatusRoute(app);
 
   registerRoutes(app, {
     leaderboardHandler,

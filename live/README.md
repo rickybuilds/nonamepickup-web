@@ -47,7 +47,12 @@ the runtime files.
 
 ## Relay contract
 
-The browser cannot connect directly to HLDS UDP. The production relay must:
+The browser cannot connect directly to HLDS UDP. It opens a WebSocket to
+`/api/live/relay?server=central` (also `east` / `west`). That is an API path
+on the Node process, not `/live/api`. nginx already serves `/live/` as static
+files; it must proxy `/api/live/relay` to the API with WebSocket upgrades.
+
+The production relay must:
 
 - accept secure browser transport (`wss://` or WebRTC data channels);
 - allow only the configured NoName pickup endpoints;
@@ -59,3 +64,28 @@ The browser cannot connect directly to HLDS UDP. The production relay must:
 
 The first supported target is Central at `64.177.123.157:27015`. Add East and
 West after the end-to-end Central spectator path is verified.
+
+## Ubuntu deploy
+
+The website API (`tfcapi` on port 4000) owns the relay. After pulling this
+commit on the box:
+
+```sh
+cd /var/www/tfcbot/api
+npm install
+pm2 restart tfcapi
+curl -sS http://127.0.0.1:4000/api/live/relay
+```
+
+That last command should return JSON with `"ok": true`. If it fails, `pm2 logs tfcapi`
+usually means `ws` was not installed or the process is still down.
+
+Then include `deploy/nginx/tfc-live-relay.conf` in the HTTPS server block and
+reload nginx:
+
+```sh
+nginx -t && systemctl reload nginx
+```
+
+No extra inbound firewall port is required. Browsers stay on 443. The API host
+must be allowed to send outbound UDP to the three pickup servers on port 27015.

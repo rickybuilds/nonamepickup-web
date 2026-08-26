@@ -5,6 +5,12 @@ function relayUrl(path, serverKey) {
   return url;
 }
 
+function probeUrl(path, serverKey) {
+  const url = new URL(path, location.origin);
+  url.searchParams.set("server", serverKey);
+  return url;
+}
+
 function ipTuple(host) {
   const values = host.split(".").map(Number);
   if (values.length !== 4 || values.some(value => !Number.isInteger(value) || value < 0 || value > 255)) {
@@ -13,17 +19,29 @@ function ipTuple(host) {
   return values;
 }
 
+async function diagnoseRelay(path, serverKey) {
+  let response;
+  try {
+    response = await fetch(probeUrl(path, serverKey), { method: "GET", cache: "no-store" });
+  } catch {
+    throw new Error("The website API is unreachable, so the TFC UDP relay cannot start.");
+  }
+  if (response.status >= 500) {
+    throw new Error("The website API is down, so the TFC UDP relay cannot start.");
+  }
+}
+
 export class UdpWebSocketRelay {
   constructor(Net, path, server) {
     if (typeof Net !== "function") throw new Error("The Xash3D runtime does not export its network adapter.");
+    this.path = path;
     this.server = server;
     this.sentPackets = 0;
     this.receivedPackets = 0;
-    this.socket = new WebSocket(relayUrl(path, server.key));
-    this.socket.binaryType = "arraybuffer";
+    this.socket = null;
     this.net = new Net({
       sendto: packet => {
-        if (this.socket.readyState !== WebSocket.OPEN) return;
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
         this.sentPackets += 1;
         this.socket.send(packet.data.slice().buffer);
         if (this.sentPackets === 1) {
@@ -33,7 +51,22 @@ export class UdpWebSocketRelay {
     });
   }
 
-  open() {
+  async open() {
+    await diagnoseRelay(this.path, this.server.key);
+    this.socket = new WebSocket(relayUrl(this.path, this.server.key));
+    this.socket.binaryType = "arraybuffer";
+    this.socket.addEventListener("message", event => {
+      this.receivedPackets += 1;
+      if (this.receivedPackets === 1) {
+        console.info(`[live/relay] received first UDP packet from ${this.server.host}:${this.server.port}`);
+      }
+      this.net.incoming.push({
+        data: new Int8Array(event.data),
+        ip: ipTuple(this.server.host),
+        port: this.server.port
+      });
+    });
+
     return new Promise((resolve, reject) => {
       const timeout = window.setTimeout(() => reject(new Error("The UDP relay timed out.")), 10000);
       this.socket.addEventListener("open", () => {
@@ -42,23 +75,12 @@ export class UdpWebSocketRelay {
       }, { once: true });
       this.socket.addEventListener("error", () => {
         window.clearTimeout(timeout);
-        reject(new Error("The browser could not reach the TFC UDP relay."));
+        reject(new Error("nginx is not forwarding the WebSocket upgrade to /api/live/relay."));
       }, { once: true });
-      this.socket.addEventListener("message", event => {
-        this.receivedPackets += 1;
-        if (this.receivedPackets === 1) {
-          console.info(`[live/relay] received first UDP packet from ${this.server.host}:${this.server.port}`);
-        }
-        this.net.incoming.push({
-          data: new Int8Array(event.data),
-          ip: ipTuple(this.server.host),
-          port: this.server.port
-        });
-      });
     });
   }
 
   close() {
-    this.socket.close(1000, "spectator closed");
+    this.socket?.close(1000, "spectator closed");
   }
 }

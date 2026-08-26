@@ -86,7 +86,13 @@ const app = createApp({
 const server = app.listen(config.PORT, "0.0.0.0", () => {
   console.log(`API running on http://0.0.0.0:${config.PORT}/`);
 });
-const liveRelay = attachUdpRelay(server);
+let liveRelay = { close() {} };
+try {
+  liveRelay = attachUdpRelay(server);
+  console.log("[live-relay] WebSocket UDP relay attached at /api/live/relay");
+} catch (error) {
+  console.error("[live-relay] disabled:", error.message);
+}
 
 function warmLocalApi(path) {
   return new Promise(resolve => {
