@@ -1,5 +1,5 @@
-import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826b";
-import { createXashClient, runtimeAvailable } from "./xash-adapter.js?v=20260826b";
+import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826e";
+import { createXashClient, runtimeAvailable } from "./xash-adapter.js?v=20260826e";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
@@ -87,6 +87,7 @@ async function launch() {
     xashClient = await createXashClient({
       canvas,
       config: LIVE_CONFIG,
+      server: selectedServer(),
       onStatus: message => setStatus(message)
     });
     clientRoot.classList.add("running");
@@ -96,7 +97,8 @@ async function launch() {
     xashClient.connect(selectedServer());
   } catch (error) {
     console.error("[live/xash] launch failed", error);
-    setStatus(error.message || "The browser client failed to start.", "error");
+    const detail = error?.message || String(error || "");
+    setStatus(detail && detail !== "Infinity" ? detail : "The browser client failed to start.", "error");
     launchButton.disabled = false;
   }
 }

@@ -2,6 +2,9 @@
 .env.*
 node_modules/
 
+# Local browser-engine toolchain and upstream source checkouts
+/.live-build/
+
 logs/
 backups/
 download/

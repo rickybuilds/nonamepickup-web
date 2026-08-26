@@ -24,6 +24,7 @@ const { PickupStorage } = require("./pickup/storage");
 const { PickupIngestion } = require("./pickup/ingestion");
 const { PickupReplayViewer } = require("./pickup/viewer");
 const { PickupLiveService } = require("./pickup/live");
+const { attachUdpRelay } = require("./live/udpRelay");
 
 config.validatePickupConfiguration();
 
@@ -85,6 +86,7 @@ const app = createApp({
 const server = app.listen(config.PORT, "0.0.0.0", () => {
   console.log(`API running on http://0.0.0.0:${config.PORT}/`);
 });
+const liveRelay = attachUdpRelay(server);
 
 function warmLocalApi(path) {
   return new Promise(resolve => {
@@ -149,6 +151,7 @@ function shutdown(signal) {
 
   server.close(async () => {
     try {
+      liveRelay.close();
       pickupLive.close();
       db.close();
       await closePickupPool();

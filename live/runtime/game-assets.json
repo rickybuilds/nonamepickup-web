@@ -1,0 +1,10 @@
+{
+  "format": "tar+gzip+parts",
+  "compressedBytes": 162941819,
+  "parts": [
+    { "url": "./game-assets.tar.gz.part00", "bytes": 41943040, "sha256": "6274f2ba1d9add68700a0c81c6dfde859ca112723cc6b6b98af693d1c2f4b614" },
+    { "url": "./game-assets.tar.gz.part01", "bytes": 41943040, "sha256": "2cb2bbecd0725b9a1ed7bbd75d7dd0430f84d2c769413a171cfde5f353906a67" },
+    { "url": "./game-assets.tar.gz.part02", "bytes": 41943040, "sha256": "9e31c654feffdc50c9fb48b7ecf0111d8f18a38ae5f5c6b8c11ffc4206f1aec7" },
+    { "url": "./game-assets.tar.gz.part03", "bytes": 37112699, "sha256": "ee8a8fd9ee0e566fb5717564fe7eebdac09fed07e6dc9651e131071ee2cb3404" }
+  ]
+}
