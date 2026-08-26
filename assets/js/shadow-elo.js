@@ -227,8 +227,8 @@ function selRenderMatches(replay) {
         <span class="sel-match-date">${selEscape(selFormatDate(game.created_at))}</span>
         <span class="sel-team-pool blue">Blue ${selSigned(game.pools.BLUE, 0)}</span>
         <span class="sel-team-pool red">Red ${selSigned(game.pools.RED, 0)}</span>
-        <span class="sel-chevron">⌄</span>
         <span class="sel-fallback ${game.fallback ? "" : "none"}" title="${selEscape((game.fallback_reasons || []).join(", "))}">${game.fallback ? "Equal fallback" : "Weighted"}</span>
+        <span class="sel-chevron">⌄</span>
       </summary>
       <div class="sel-match-body">
         ${game.fallback ? `<p class="sel-fallback-reason"><strong>Equal-share fallback:</strong> ${selEscape((game.fallback_reasons || []).join(", ").replaceAll("_", " "))}</p>` : ""}
