@@ -201,10 +201,11 @@ function selMatchTeamTable(game, team) {
   return `<div class="sel-match-team ${team.toLowerCase()}">
     <h3>${team === "BLUE" ? "Blue team" : "Red team"}</h3>
     <table class="sel-match-table">
-      <thead><tr><th>Player</th><th>NN score</th><th>Rank</th><th>Actual</th></tr></thead>
+      <thead><tr><th>Player</th><th>Starting Elo</th><th>NN score</th><th>Rank</th><th>Actual</th></tr></thead>
       <tbody>${players.map(player => `
         <tr>
-          <td><span class="sel-player-name">${selEscape(player.name)}</span><small>${selWhole(player.before)} starting</small></td>
+          <td><span class="sel-player-name">${selEscape(player.name)}</span></td>
+          <td>${selWhole(player.before)}</td>
           <td>${Number.isFinite(player.nn_score) ? selNumber(player.nn_score, 2) : "—"}</td>
           <td>${Number.isFinite(player.rank) ? `#${player.rank}` : "—"}</td>
           <td class="${selTone(player.actual_delta)}">${selSigned(player.actual_delta, 1)}</td>
