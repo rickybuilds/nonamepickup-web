@@ -29,14 +29,31 @@ function ensureEngineShape(engine) {
   }
 }
 
-export function sizeCanvas(canvas, resizeBuffer = false) {
+function viewportSize() {
   const vv = window.visualViewport;
   const w = Math.round(vv ? vv.width : window.innerWidth);
   const h = Math.round(vv ? vv.height : window.innerHeight);
+  return { w, h };
+}
+
+function renderSize() {
+  const { w, h } = viewportSize();
+  const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2);
+  const rawWidth = w * dpr;
+  const rawHeight = h * dpr;
+  const downscale = Math.min(1, 1920 / rawWidth, 1080 / rawHeight);
+  return {
+    width: Math.max(640, Math.round(rawWidth * downscale)),
+    height: Math.max(360, Math.round(rawHeight * downscale))
+  };
+}
+
+export function sizeCanvas(canvas, resizeBuffer = false) {
+  const { w, h } = viewportSize();
   if (resizeBuffer) {
-    const scale = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2);
-    canvas.width = Math.max(640, Math.round(w * scale));
-    canvas.height = Math.max(360, Math.round(h * scale));
+    const { width, height } = renderSize();
+    canvas.width = width;
+    canvas.height = height;
   }
   canvas.style.setProperty("width", `${w}px`, "important");
   canvas.style.setProperty("height", `${h}px`, "important");
@@ -171,19 +188,39 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   } finally {
     window.removeEventListener("unhandledrejection", onAbort);
   }
-  sizeCanvas(canvas);
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));
+
+  // Xash applies the saved GoldSrc video mode while Host_Main starts. That
+  // resets WebGL's viewport to 640x480 even though the canvas CSS fills the
+  // page. Ask Xash/SDL to change modes so the renderer, drawing buffer, and
+  // HUD all agree on the browser viewport.
+  let activeVideoMode = "";
+  const applyVideoMode = () => {
+    sizeCanvas(canvas);
+    const { width, height } = renderSize();
+    const mode = `${width}x${height}`;
+    if (mode === activeVideoMode) return;
+    activeVideoMode = mode;
+    engine.Cmd_ExecuteString(`vid_setmode ${width} ${height}`);
+    console.info(`[live/xash] video mode ${mode}`);
+  };
+  applyVideoMode();
   onStatus("Xash3D is ready.");
 
   const persistConfig = () => saveConfig(gameFs);
   const configSaveTimer = window.setInterval(persistConfig, 20_000);
   window.addEventListener("beforeunload", persistConfig);
 
-  const onResize = () => sizeCanvas(canvas);
+  let resizeTimer = 0;
+  const onResize = () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(applyVideoMode, 120);
+  };
+  const onViewportScroll = () => sizeCanvas(canvas);
   window.addEventListener("resize", onResize);
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", onResize);
-    window.visualViewport.addEventListener("scroll", onResize);
+    window.visualViewport.addEventListener("scroll", onViewportScroll);
   }
 
   return {
@@ -214,9 +251,10 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       window.clearInterval(configSaveTimer);
       window.removeEventListener("beforeunload", persistConfig);
       window.removeEventListener("resize", onResize);
+      window.clearTimeout(resizeTimer);
       if (window.visualViewport) {
         window.visualViewport.removeEventListener("resize", onResize);
-        window.visualViewport.removeEventListener("scroll", onResize);
+        window.visualViewport.removeEventListener("scroll", onViewportScroll);
       }
       relay.close();
       window.alert = browserAlert;

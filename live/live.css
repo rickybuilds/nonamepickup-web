@@ -37,10 +37,10 @@ select { font: inherit; }
   place-items: center;
   isolation: isolate;
   background:
-    linear-gradient(90deg, rgba(2, 4, 7, .94) 0%, rgba(2, 4, 7, .76) 43%, rgba(2, 4, 7, .12) 78%),
-    radial-gradient(circle at 78% 30%, rgba(239, 51, 64, .2), transparent 31%),
-    url("/assets/images/tfc_dmsg_transparent.png") right 8% center / min(46vw, 680px) auto no-repeat,
-    linear-gradient(135deg, #121922, #070a0f 65%);
+    linear-gradient(90deg, rgba(2, 4, 7, .94) 0%, rgba(2, 4, 7, .72) 44%, rgba(2, 4, 7, .18) 78%),
+    radial-gradient(circle at 82% 40%, rgba(239, 51, 64, .12), transparent 34%),
+    url("/assets/images/headers/header-live-orange.webp") center / cover no-repeat,
+    #070a0f;
 }
 
 .live-stage::before {
@@ -327,12 +327,11 @@ h1 strong { color: var(--red); }
 .hidden { display: none !important; }
 
 @media (max-width: 980px) {
-  .live-stage { background-position: right -180px center; background-size: 700px auto; }
   .live-launcher { margin-right: 0; }
 }
 
 @media (max-width: 620px) {
-  .live-stage { align-items: end; background-position: center top 8%; background-size: 560px auto; }
+  .live-stage { align-items: end; }
   .live-launcher {
     width: 100%;
     padding: 34px 24px 28px;
