@@ -277,9 +277,7 @@ async function selLoad() {
     controller.abort();
   }, 30000);
   selContent.hidden = true;
-  selStatus.hidden = false;
   selStatus.className = "sel-status";
-  selStatus.innerHTML = `<div class="sel-spinner" aria-hidden="true"></div><strong>Loading current Elo…</strong>`;
   try {
     const response = await fetch(`api/shadow-elo?limit=${selState.limit}`, {
       cache: "no-store",
