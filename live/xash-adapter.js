@@ -1,5 +1,5 @@
-import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826n";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826n";
+import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826o";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826o";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -10,13 +10,11 @@ function ensureEngineShape(engine) {
 }
 
 export function sizeCanvas(canvas) {
-  const ratio = window.devicePixelRatio || 1;
-  const cssWidth = canvas.clientWidth || window.innerWidth;
-  const cssHeight = canvas.clientHeight || window.innerHeight;
-  const width = Math.max(1, Math.round(cssWidth * ratio));
-  const height = Math.max(1, Math.round(cssHeight * ratio));
-  if (canvas.width !== width) canvas.width = width;
-  if (canvas.height !== height) canvas.height = height;
+  const vv = window.visualViewport;
+  const w = Math.round(vv ? vv.width : window.innerWidth);
+  const h = Math.round(vv ? vv.height : window.innerHeight);
+  canvas.style.setProperty("width", `${w}px`, "important");
+  canvas.style.setProperty("height", `${h}px`, "important");
 }
 
 export async function runtimeAvailable(runtimeModule) {
@@ -53,7 +51,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   }
 
   onStatus("Opening the TFC UDP relay…");
-  const relay = new UdpWebSocketRelay(runtime.Net, config.relayPath, server);
+  const relay = new UdpWebSocketRelay(runtime.Net, config.relayPath, server, config.servers);
   await relay.open();
 
   const resolve = value => new URL(value, location.href).href;
@@ -142,19 +140,28 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
   const onResize = () => sizeCanvas(canvas);
   window.addEventListener("resize", onResize);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", onResize);
+    window.visualViewport.addEventListener("scroll", onResize);
+  }
 
   return {
     connect(server) {
       const address = `${server.host}:${server.port}`;
       console.info(`[live/xash] connecting to ${address}`);
-      engine.Cmd_ExecuteString(`name \"${config.playerName.replaceAll('"', "")}\"`);
-      engine.Cmd_ExecuteString(`password \"${config.playerPassword.replaceAll('"', "")}\"`);
-      engine.Cmd_ExecuteString(`connect ${address}`);
+      const executeConnect = () => {
+        engine.Cmd_ExecuteString(`name \"${config.playerName.replaceAll('"', "")}\"`);
+        engine.Cmd_ExecuteString(`password \"${config.playerPassword.replaceAll('"', "")}\"`);
+        engine.Cmd_ExecuteString(`connect ${address}`);
+      };
+
+      executeConnect();
+      window.setTimeout(executeConnect, 1200);
 
       if (config.spectatorCommand) {
         window.setTimeout(() => {
           engine.Cmd_ExecuteString(config.spectatorCommand);
-        }, config.spectatorDelayMs);
+        }, config.spectatorDelayMs + 1200);
       }
     },
 
@@ -164,6 +171,10 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
     quit() {
       window.removeEventListener("resize", onResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", onResize);
+        window.visualViewport.removeEventListener("scroll", onResize);
+      }
       relay.close();
       window.alert = browserAlert;
       if (typeof engine.quit === "function") engine.quit();

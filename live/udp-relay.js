@@ -60,22 +60,53 @@ async function diagnoseRelay(path, serverKey) {
   }
 }
 
+function answerMasterQuery(net, packet, scan, servers) {
+  const filter = new TextDecoder("latin1").decode(scan);
+  const isXash = filter.includes("\\clver\\");
+  const bytes = [255, 255, 255, 255, 102, 10];
+  if (isXash) {
+    const keyHex = (filter.match(/\\key\\([0-9a-fA-F]+)/) || [])[1] || "0";
+    const key = parseInt(keyHex, 16) >>> 0;
+    bytes.push(127, key & 255, key >> 8 & 255, key >> 16 & 255, key >> 24 & 255, 0);
+  }
+  const list = Object.values(servers || {});
+  for (const s of list) {
+    if (!s.host || !s.port) continue;
+    for (const b of s.host.split(".").map(Number)) bytes.push(b);
+    bytes.push(s.port >> 8 & 255, s.port & 255);
+  }
+  bytes.push(0, 0, 0, 0, 0, 0);
+  net.incoming.push({
+    ip: packet.ip,
+    port: packet.port,
+    data: new Int8Array(bytes)
+  });
+}
+
 export class UdpWebSocketRelay {
-  constructor(Net, path, server) {
+  constructor(Net, path, server, servers = {}) {
     if (typeof Net !== "function") throw new Error("The Xash3D runtime does not export its network adapter.");
     this.path = path;
     this.server = server;
+    this.servers = servers;
     this.sentPackets = 0;
     this.receivedPackets = 0;
     this.socket = null;
     this.lastPeer = { ip: ipTuple(server.host), port: server.port };
     this.net = new Net({
       sendto: packet => {
+        const data = packet.data;
+        const u8 = data instanceof Uint8Array ? data : new Uint8Array(data.buffer || data);
+        const scanAt = u8[0] === 49 && u8[1] === 255 ? 0 : u8[0] === 255 && u8[1] === 255 && u8[2] === 255 && u8[3] === 255 && u8[4] === 49 && u8[5] === 255 ? 4 : -1;
+        if (scanAt >= 0) {
+          answerMasterQuery(this.net, packet, u8.subarray(scanAt), this.servers);
+          return;
+        }
         if (packet.ip?.[0] === 101 && packet.ip?.[1] === 101) return;
         this.lastPeer = { ip: Array.from(packet.ip), port: packet.port };
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
         this.sentPackets += 1;
-        this.socket.send(packetBytes(packet.data));
+        this.socket.send(packetBytes(data));
         if (this.sentPackets === 1) {
           console.info(`[live/relay] sent first UDP packet to ${server.host}:${server.port}`);
         }
