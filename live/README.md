@@ -62,8 +62,9 @@ The production relay must:
 - attach or identify browser sessions so the server can force spectator mode;
 - close the UDP association when the browser session ends.
 
-The first supported target is Central at `64.177.123.157:27015`. Add East and
-West after the end-to-end Central spectator path is verified.
+The browser spectator targets the East, Central, and West HLTV proxies on UDP
+port `27020`. The HLTV proxies connect upstream to their game servers on
+`27015`.
 
 ## Ubuntu deploy
 
@@ -87,5 +88,6 @@ reload nginx:
 nginx -t && systemctl reload nginx
 ```
 
-No extra inbound firewall port is required. Browsers stay on 443. The API host
-must be allowed to send outbound UDP to the three pickup servers on port 27015.
+No extra inbound firewall port is required on the website. Browsers stay on
+443. The API host must be allowed to send outbound UDP to the three HLTV
+proxies on port 27020.

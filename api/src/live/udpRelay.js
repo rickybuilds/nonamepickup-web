@@ -12,12 +12,12 @@ const MAX_PENDING_UDP_PACKETS = 16;
 const RELAY_PATH = "/api/live/relay";
 
 const TARGETS = Object.freeze({
-  east: Object.freeze({ host: "108.61.128.120", port: 27015, transport: "game" }),
   // Browser spectators connect to the public HLTV proxy, never directly to
-  // the pickup game server. The proxy is the only spectator occupying a slot
-  // on the game server at :27015.
+  // a pickup game server. Each proxy is the only spectator occupying a slot
+  // on its game server at :27015.
+  east: Object.freeze({ host: "108.61.128.120", port: 27020, transport: "hltv" }),
   central: Object.freeze({ host: "64.177.123.157", port: 27020, transport: "hltv" }),
-  west: Object.freeze({ host: "149.28.78.158", port: 27015, transport: "game" })
+  west: Object.freeze({ host: "149.28.78.158", port: 27020, transport: "hltv" })
 });
 
 function parseInfoString(value) {

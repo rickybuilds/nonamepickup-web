@@ -22,10 +22,10 @@ export const LIVE_CONFIG = Object.freeze({
   servers: Object.freeze({
     east: Object.freeze({
       key: "east",
-      name: "TFC East US Server",
+      name: "TFC East Live (HLTV)",
       host: "108.61.128.120",
-      port: 27015,
-      available: false
+      port: 27020,
+      available: true
     }),
     central: Object.freeze({
       key: "central",
@@ -36,10 +36,10 @@ export const LIVE_CONFIG = Object.freeze({
     }),
     west: Object.freeze({
       key: "west",
-      name: "TFC West US Server",
+      name: "TFC West Live (HLTV)",
       host: "149.28.78.158",
-      port: 27015,
-      available: false
+      port: 27020,
+      available: true
     })
   })
 });
