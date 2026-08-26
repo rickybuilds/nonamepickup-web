@@ -1,5 +1,5 @@
-import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826m";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826m";
+import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826n";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826n";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -70,7 +70,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
   onStatus("Starting Xash3D…");
   const browserAlert = window.alert;
-  window.alert = message => console.error("[live/xash alert]", message);
+  window.alert = message => console.warn("[live/xash alert]", message);
 
   const filesystem = resolve(config.runtimeLibraries.filesystem);
   const engine = new Xash3D({
