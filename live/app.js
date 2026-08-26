@@ -180,9 +180,12 @@ serverSelect.addEventListener("change", renderSelectedServer);
 launchButton.addEventListener("click", launch);
 exitButton.addEventListener("click", exit);
 controls.querySelectorAll("[data-command]").forEach(button => {
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
     xashClient?.command(button.dataset.command);
     canvas.focus();
+    if (button.hasAttribute("data-pointer-lock") && document.pointerLockElement !== canvas) {
+      try { await canvas.requestPointerLock(); } catch {}
+    }
   });
 });
 fullscreenButton.addEventListener("click", async () => {

@@ -6,7 +6,7 @@
   <meta name="description" content="Watch active NoName Team Fortress Classic pickups in the browser.">
   <meta name="theme-color" content="#090d12">
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
-  <link rel="stylesheet" href="./live.css?v=20260826ag">
+  <link rel="stylesheet" href="./live.css?v=20260826ah">
   <title>NoName TFC | Browser Spectator</title>
 </head>
 <body>
@@ -87,10 +87,10 @@
       <button class="live-exit hidden" id="exit-button" type="button">Exit spectator</button>
 
       <nav class="live-controls hidden" id="live-controls" aria-label="Spectator controls">
-        <button type="button" data-command="spec_mode 1">Locked</button>
-        <button type="button" data-command="spec_mode 4">First person</button>
-        <button type="button" data-command="spec_mode 3">Free look</button>
-        <button type="button" data-command="spec_mode 5">Overview</button>
+        <button type="button" data-command="spec_autodirector 0; spec_mode 1">Locked</button>
+        <button type="button" data-command="spec_autodirector 0; spec_mode 4">First person</button>
+        <button type="button" data-command="spec_autodirector 0; spec_mode 3" data-pointer-lock>Free look</button>
+        <button type="button" data-command="spec_autodirector 0; spec_mode 5">Overview</button>
         <button type="button" data-command="spec_autodirector 1">Auto director</button>
         <button type="button" data-command="spec_menu">More</button>
         <button type="button" data-command="escape">Options</button>
@@ -99,6 +99,6 @@
     </section>
   </main>
 
-  <script type="module" src="./app.js?v=20260826ag"></script>
+  <script type="module" src="./app.js?v=20260826ah"></script>
 </body>
 </html>
