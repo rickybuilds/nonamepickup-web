@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826d";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826f";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826g";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -7,6 +7,16 @@ function ensureEngineShape(engine) {
       throw new Error(`The Xash3D runtime is missing ${method}().`);
     }
   }
+}
+
+export function sizeCanvas(canvas) {
+  const ratio = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth || window.innerWidth;
+  const cssHeight = canvas.clientHeight || window.innerHeight;
+  const width = Math.max(1, Math.round(cssWidth * ratio));
+  const height = Math.max(1, Math.round(cssHeight * ratio));
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
 }
 
 export async function runtimeAvailable(runtimeModule) {
@@ -28,8 +38,7 @@ export async function runtimeAvailable(runtimeModule) {
 }
 
 export async function createXashClient({ canvas, config, server, onStatus = () => {} }) {
-  canvas.width = Math.max(1, Math.round(canvas.clientWidth * window.devicePixelRatio));
-  canvas.height = Math.max(1, Math.round(canvas.clientHeight * window.devicePixelRatio));
+  sizeCanvas(canvas);
   onStatus("Loading the Xash3D WebAssembly runtime…");
   let runtime;
   try {
@@ -59,14 +68,12 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   const browserAlert = window.alert;
   window.alert = message => console.error("[live/xash alert]", message);
 
+  // Browser spectators connect to remote HLDS. Do not preload a local TFC
+  // server WASM — the public TFC web client also omits it.
   const engine = new Xash3D({
     canvas,
     renderer: "gles3compat",
     arguments: ["-windowed", "-game", config.gameDirectory, "+_vgui_menus", "0"],
-    filesMap: {
-      [config.serverModulePath]: resolve(config.runtimeLibraries.server)
-    },
-    dynamicLibraries: [config.serverModulePath],
     libraries: {
       xash: resolve(config.runtimeLibraries.xash),
       filesystem: resolve(config.runtimeLibraries.filesystem),
@@ -93,9 +100,13 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
   ensureEngineShape(engine);
   await engine.init();
+  sizeCanvas(canvas);
   engine.main();
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));
   onStatus("Xash3D is ready.");
+
+  const onResize = () => sizeCanvas(canvas);
+  window.addEventListener("resize", onResize);
 
   return {
     connect(server) {
@@ -117,6 +128,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     },
 
     quit() {
+      window.removeEventListener("resize", onResize);
       relay.close();
       window.alert = browserAlert;
       if (typeof engine.quit === "function") engine.quit();

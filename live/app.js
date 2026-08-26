@@ -1,5 +1,5 @@
 import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826e";
-import { createXashClient, runtimeAvailable } from "./xash-adapter.js?v=20260826f";
+import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826g";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
@@ -82,6 +82,9 @@ async function detectRuntime() {
 async function launch() {
   launchButton.disabled = true;
   setStatus("Starting the browser spectator…");
+  clientRoot.classList.add("running");
+  launcher.classList.add("hidden");
+  sizeCanvas(canvas);
 
   try {
     xashClient = await createXashClient({
@@ -90,13 +93,13 @@ async function launch() {
       server: selectedServer(),
       onStatus: message => setStatus(message)
     });
-    clientRoot.classList.add("running");
-    launcher.classList.add("hidden");
     exitButton.classList.remove("hidden");
     canvas.focus();
     xashClient.connect(selectedServer());
   } catch (error) {
     console.error("[live/xash] launch failed", error);
+    clientRoot.classList.remove("running");
+    launcher.classList.remove("hidden");
     const detail = error?.message || String(error || "");
     setStatus(detail && detail !== "Infinity" ? detail : "The browser client failed to start.", "error");
     launchButton.disabled = false;

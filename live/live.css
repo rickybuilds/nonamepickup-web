@@ -69,6 +69,10 @@ select { font: inherit; }
 }
 
 .live-client.running #xash-canvas { display: block; }
+.live-client.running .live-stage-shade { display: none; }
+.live-client.running .live-stage {
+  background: #000;
+}
 
 .live-stage-shade {
   position: absolute;
