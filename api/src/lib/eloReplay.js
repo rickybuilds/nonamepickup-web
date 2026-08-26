@@ -153,10 +153,8 @@ function replayFixedPool(inputMatches) {
         name: name || key,
         start,
         actual: start,
-        wide: start,
-        gentle: start,
         games: 0,
-        paths: { actual: [...padding], wide: [...padding], gentle: [...padding] }
+        paths: { actual: [...padding] }
       });
     }
     return states.get(key);
@@ -188,31 +186,27 @@ function replayFixedPool(inputMatches) {
     const invalidPerformance = reasons.some(reason => !reason.endsWith("_team_standard_deviation_zero"));
     const performanceById = new Map((match.performance?.players || []).filter(player => player.discord_id != null).map(player => [String(player.discord_id), player]));
 
-    const teamAllocations = {};
+    const actualAllocations = {};
     for (const [team, ids] of [["BLUE", blueIds], ["RED", redIds]]) {
       if (ids.length !== 4) continue;
       const teamPlayers = ids.map(id => ({ id, final_score: performanceById.get(id)?.final_score }));
-      teamAllocations[team] = {};
-      const equalShare = invalidPerformance || reasons.includes(`${team.toLowerCase()}_team_standard_deviation_zero`);
-      for (const scenario of Object.keys(SCENARIOS)) {
-        teamAllocations[team][scenario] = allocateTeamPool(pools[team], teamPlayers, scenario, equalShare);
-        const allocation = teamAllocations[team][scenario];
-        const allocatedPool = allocation.reduce((sum, row) => sum + row.delta, 0);
-        if (allocatedPool !== pools[team]) {
-          validation.push({ match_id: String(match.match_id), player_id: null, type: "team_pool_not_conserved", detail: `${team} ${scenario}: ${allocatedPool} != ${pools[team]}` });
-        }
-        if (allocation.some(row => row.share < SCENARIOS[scenario].minShare - 1e-9 || row.share > SCENARIOS[scenario].maxShare + 1e-9)) {
-          validation.push({ match_id: String(match.match_id), player_id: null, type: "share_bound_violation", detail: `${team} ${scenario}` });
-        }
-        const winner = String(match.winner || "").toUpperCase();
-        const isWinner = winner === team;
-        const isLoser = (winner === "BLUE" || winner === "RED") && winner !== team;
-        if (isWinner && allocation.some(row => row.delta < 0)) {
-          validation.push({ match_id: String(match.match_id), player_id: null, type: "winner_sign_violation", detail: `${team} ${scenario}` });
-        }
-        if (isLoser && allocation.some(row => row.delta > 0)) {
-          validation.push({ match_id: String(match.match_id), player_id: null, type: "loser_sign_violation", detail: `${team} ${scenario}` });
-        }
+      actualAllocations[team] = allocateTeamPool(pools[team], teamPlayers, SCENARIOS.gentle, invalidPerformance || reasons.includes(`${team.toLowerCase()}_team_standard_deviation_zero`));
+      const allocation = actualAllocations[team];
+      const allocatedPool = allocation.reduce((sum, row) => sum + row.delta, 0);
+      if (allocatedPool !== pools[team]) {
+        validation.push({ match_id: String(match.match_id), player_id: null, type: "team_pool_not_conserved", detail: `${team} actual: ${allocatedPool} != ${pools[team]}` });
+      }
+      if (allocation.some(row => row.share < SCENARIOS.gentle.minShare - 1e-9 || row.share > SCENARIOS.gentle.maxShare + 1e-9)) {
+        validation.push({ match_id: String(match.match_id), player_id: null, type: "share_bound_violation", detail: `${team} actual` });
+      }
+      const winner = String(match.winner || "").toUpperCase();
+      const isWinner = winner === team;
+      const isLoser = (winner === "BLUE" || winner === "RED") && winner !== team;
+      if (isWinner && allocation.some(row => row.delta < 0)) {
+        validation.push({ match_id: String(match.match_id), player_id: null, type: "winner_sign_violation", detail: `${team} actual` });
+      }
+      if (isLoser && allocation.some(row => row.delta > 0)) {
+        validation.push({ match_id: String(match.match_id), player_id: null, type: "loser_sign_violation", detail: `${team} actual` });
       }
     }
 
@@ -225,26 +219,19 @@ function replayFixedPool(inputMatches) {
         const change = changes.get(id);
         const performance = performanceById.get(id) || {};
         const state = stateFor(id, change?.display_name || performance.display_name, change?.before, gameIndex);
-        const wide = teamAllocations[team]?.wide?.find(row => row.id === id) || { delta: 0, share: 0.25 };
-        const gentle = teamAllocations[team]?.gentle?.find(row => row.id === id) || { delta: 0, share: 0.25 };
+        const actual = actualAllocations[team]?.find(row => row.id === id) || { delta: 0, share: 0.25 };
         const historicalBefore = number(change?.before);
         const historicalAfter = number(change?.after);
         const historicalDelta = number(change?.delta);
-        const simulatedStart = state ? { actual: state.actual, wide: state.wide, gentle: state.gentle } : null;
+        const simulatedStart = state ? { actual: state.actual } : null;
 
         if (change && historicalBefore != null && historicalDelta != null && historicalAfter != null && historicalBefore + historicalDelta !== historicalAfter) {
           validation.push({ match_id: String(match.match_id), player_id: id, type: "rating_row_arithmetic", detail: `${historicalBefore} + ${historicalDelta} != ${historicalAfter}` });
         }
-        if (state && historicalBefore != null && Math.abs(state.actual - historicalBefore) > 1e-9) {
-          validation.push({ match_id: String(match.match_id), player_id: id, type: "v1_before_mismatch", detail: `Replay ${state.actual}; recorded ${historicalBefore}` });
-        }
-
         if (state) {
           state.name = change?.display_name || performance.display_name || state.name;
           state.games += 1;
-          state.actual = historicalAfter ?? (state.actual + (historicalDelta || 0));
-          state.wide += wide.delta;
-          state.gentle += gentle.delta;
+          state.actual += actual.delta;
         }
 
         playerRows.push({
@@ -255,18 +242,13 @@ function replayFixedPool(inputMatches) {
           simulated_start: simulatedStart,
           nn_score: number(performance.final_score),
           rank: rankById.get(id) || null,
-          actual_delta: historicalDelta,
-          wide_delta: wide.delta,
-          wide_share: wide.share,
-          gentle_delta: gentle.delta,
-          gentle_share: gentle.share
+          actual_delta: actual.delta,
+          actual_share: actual.share
         });
       }
     }
 
-    for (const state of states.values()) {
-      for (const scenario of ["actual", "wide", "gentle"]) state.paths[scenario].push(state[scenario]);
-    }
+    for (const state of states.values()) state.paths.actual.push(state.actual);
 
     const winner = String(match.winner || "").toUpperCase();
     if ((winner === "BLUE" && pools.BLUE < 0) || (winner === "RED" && pools.RED < 0)) {
@@ -285,11 +267,7 @@ function replayFixedPool(inputMatches) {
     });
   });
 
-  const players = [...states.values()].map(state => ({
-    ...state,
-    wide_diff: state.wide - state.actual,
-    gentle_diff: state.gentle - state.actual
-  })).sort((a, b) => b.actual - a.actual || a.name.localeCompare(b.name));
+  const players = [...states.values()].sort((a, b) => b.actual - a.actual || a.name.localeCompare(b.name));
   const fallbackCounts = {};
   for (const game of outputGames.filter(game => game.fallback)) {
     for (const reason of game.fallback_reasons) fallbackCounts[reason] = (fallbackCounts[reason] || 0) + 1;
@@ -297,7 +275,7 @@ function replayFixedPool(inputMatches) {
 
   return {
     mode: "fixed_pool",
-    scenarios: SCENARIOS,
+    scenarios: { actual: { ...SCENARIOS.gentle, key: "actual", label: "20%-30%" } },
     labels,
     players,
     games: outputGames,

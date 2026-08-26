@@ -120,7 +120,7 @@ function selNormalizeSnapshot(snapshot, index) {
   const blueIds = new Set(selParseIds(snapshot.blue_ids));
   const redIds = new Set(selParseIds(snapshot.red_ids));
   const extra = selEnrichment(payload);
-  const players = (snapshot.v1_changes || []).map(change => {
+  const players = (snapshot.players || snapshot.v1_changes || []).map(change => {
     const id = selPlayerId(change);
     const details = extra.get(id) || {};
     const displayName = change.display_name || details.display_name || details.player || details.name || id;
@@ -131,13 +131,13 @@ function selNormalizeSnapshot(snapshot, index) {
       team,
       before: selNullableNumber(change.before),
       after: selNullableNumber(change.after),
-      actual_delta: Number(change.delta || 0),
+      actual_delta: Number(change.actual_delta ?? change.delta ?? 0),
       nn_score: Number(details.nn_score),
       rank: Number(details.rank)
     };
   });
 
-  const fallback = selIsFallback(payload);
+  const fallback = selIsFallback(payload) || Boolean(snapshot.fallback);
 
   return {
     ...snapshot,
