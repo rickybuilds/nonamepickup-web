@@ -5,14 +5,12 @@ const selState = {
   replay: null,
   scenario: "actual",
   selectedPlayer: null,
-  chart: null,
   request: null,
   requestId: 0
 };
 
 const selStatus = document.getElementById("sel-status");
 const selContent = document.getElementById("sel-content");
-const selRefresh = document.getElementById("sel-refresh");
 const selPlayerRows = document.getElementById("sel-player-rows");
 const selFilter = document.getElementById("sel-player-filter");
 const SEL_SCENARIOS = ["actual"];
@@ -189,57 +187,6 @@ function selBuildReplay(snapshots) {
   return { games, players: playerList, labels };
 }
 
-function selRenderKpis(replay) {
-  const topPlayer = replay.players[0];
-  const fallbacks = replay.summary?.fallback_matches ?? replay.games.filter(game => game.fallback).length;
-  const discrepancies = replay.summary?.validation_discrepancies ?? replay.validation?.length ?? 0;
-  document.getElementById("sel-kpis").innerHTML = `
-    <article class="sel-kpi"><span>Actual games replayed</span><strong>${replay.games.length}</strong><small>Oldest through today</small></article>
-    <article class="sel-kpi accent"><span>Players compared</span><strong>${replay.players.length}</strong><small>Real V1 starting Elo</small></article>
-    <article class="sel-kpi ${fallbacks ? "warn" : "good"}"><span>Equal-share fallbacks</span><strong>${fallbacks}</strong><small>${discrepancies} V1 validation discrepancies</small></article>
-    <article class="sel-kpi"><span>Top actual Elo</span><strong>${topPlayer ? selNumber(topPlayer.actual, 1) : "—"}</strong><small>${topPlayer ? selEscape(topPlayer.name) : "No replayed players"}</small></article>
-  `;
-}
-
-function selRenderChart() {
-  const replay = selState.replay;
-  if (!replay || typeof Chart === "undefined") return;
-  const canvas = document.getElementById("sel-chart");
-  const player = replay.players.find(item => item.id === selState.selectedPlayer) || replay.players[0];
-  if (!player) return;
-  document.getElementById("sel-chart-player").textContent = player.name;
-  const datasets = [
-    { key: "actual", label: "Actual 20%-30%", color: "#4d8fff" }
-  ].map(series => ({
-    label: series.label,
-    data: player.paths[series.key],
-    borderColor: series.color,
-    backgroundColor: "transparent",
-    borderWidth: 2.5,
-    pointRadius: 1.5,
-    pointHoverRadius: 4,
-    tension: .22,
-    spanGaps: true
-  }));
-
-  if (selState.chart) selState.chart.destroy();
-  selState.chart = new Chart(canvas.getContext("2d"), {
-    type: "line",
-    data: { labels: replay.labels, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false, interaction: { mode: "nearest", intersect: false },
-      plugins: {
-        legend: { display: true, labels: { color: "#9baccc", boxWidth: 18, boxHeight: 2, font: { size: 10, weight: "bold" } } },
-        tooltip: { backgroundColor: "#050a14", borderColor: "rgba(77,143,255,.35)", borderWidth: 1, titleColor: "#fff", bodyColor: "#b7c4df" }
-      },
-      scales: {
-        x: { grid: { color: "rgba(255,255,255,.035)" }, ticks: { color: "#667591", maxTicksLimit: 12, font: { size: 9 } } },
-        y: { grid: { color: "rgba(255,255,255,.05)" }, ticks: { color: "#7b8aa7", font: { size: 9 } }, title: { display: true, text: "ELO", color: "#667591", font: { size: 9, weight: "bold" } } }
-      }
-    }
-  });
-}
-
 function selRenderPlayers() {
   if (!selState.replay) return;
   const query = String(selFilter?.value || "").trim().toLowerCase();
@@ -314,11 +261,9 @@ function selRender(replay) {
   if (!replay.players.some(player => player.id === selState.selectedPlayer)) selState.selectedPlayer = replay.players[0]?.id || null;
   selStatus.hidden = true;
   selContent.hidden = false;
-  selRenderKpis(replay);
   selRenderPlayers();
   selRenderMatches(replay);
   selRenderValidation(replay);
-  selRenderChart();
 }
 
 async function selLoad() {
@@ -331,12 +276,10 @@ async function selLoad() {
     timedOut = true;
     controller.abort();
   }, 30000);
-  selRefresh.disabled = true;
-  selRefresh.textContent = "Replaying…";
   selContent.hidden = true;
   selStatus.hidden = false;
   selStatus.className = "sel-status";
-  selStatus.innerHTML = `<div class="sel-spinner" aria-hidden="true"></div><strong>Replaying ${selState.limit} games…</strong>`;
+  selStatus.innerHTML = `<div class="sel-spinner" aria-hidden="true"></div><strong>Loading current Elo…</strong>`;
   try {
     const response = await fetch(`api/shadow-elo?limit=${selState.limit}`, {
       cache: "no-store",
@@ -359,28 +302,15 @@ async function selLoad() {
     clearTimeout(timeout);
     if (requestId !== selState.requestId) return;
     selState.request = null;
-    selRefresh.disabled = false;
-    selRefresh.textContent = `Replay ${selState.limit} games`;
   }
 }
-
-document.getElementById("sel-window")?.addEventListener("click", event => {
-  const button = event.target.closest("button[data-limit]");
-  if (!button) return;
-  selState.limit = Number(button.dataset.limit);
-  document.querySelectorAll("#sel-window button").forEach(item => item.classList.toggle("active", item === button));
-  selRefresh.textContent = `Replay ${selState.limit} games`;
-  selLoad();
-});
 
 selPlayerRows?.addEventListener("click", event => {
   const row = event.target.closest("tr[data-player-id]");
   if (!row) return;
   selState.selectedPlayer = selState.selectedPlayer === row.dataset.playerId ? null : row.dataset.playerId;
   selRenderPlayers();
-  selRenderChart();
 });
 
 selFilter?.addEventListener("input", selRenderPlayers);
-selRefresh?.addEventListener("click", selLoad);
 selLoad();

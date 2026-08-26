@@ -7,7 +7,6 @@
   <meta name="description" content="Private NoName TFC historical Elo allocation simulator.">
   <title>NoName TFC | Historical Elo Simulator</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
@@ -45,35 +44,11 @@
     </div>
   </section>
 
-  <section class="sel-controlbar" aria-label="Replay controls">
-    <div>
-      <span class="sel-control-label">Replay window</span>
-      <div id="sel-window" class="sel-segments">
-        <button type="button" data-limit="20" class="active">20</button>
-        <button type="button" data-limit="50">50</button>
-        <button type="button" data-limit="100">100</button>
-      </div>
-    </div>
-    <div class="sel-rule"><span>Method</span><strong>Last N actual rated games</strong><small>Replayed chronologically through today</small></div>
-    <button id="sel-refresh" class="sel-refresh" type="button">Replay 20 games</button>
-  </section>
-
   <div id="sel-status" class="sel-status" aria-live="polite">
     <div class="sel-spinner" aria-hidden="true"></div><strong>Preparing historical replay…</strong>
   </div>
 
   <div id="sel-content" hidden>
-    <section id="sel-kpis" class="sel-kpis"></section>
-
-    <section class="sel-card sel-chart-card">
-      <div class="sel-card-head">
-        <div><p class="sel-card-kicker">ELO TRAJECTORY</p><h2>Player paths</h2></div>
-        <div id="sel-chart-player" class="sel-chart-player">Select a player below</div>
-      </div>
-      <div class="sel-chart-wrap"><canvas id="sel-chart"></canvas></div>
-      <p class="sel-chart-note">Select a player in the table to spotlight their line. Everyone begins at their recorded Elo before the oldest game.</p>
-    </section>
-
     <div class="sel-results-grid">
     <section class="sel-card">
       <div class="sel-card-head sel-table-head">
