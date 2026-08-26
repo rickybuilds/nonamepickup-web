@@ -9,7 +9,16 @@ function ensureEngineShape(engine) {
 export async function runtimeAvailable(runtimeModule) {
   try {
     const response = await fetch(runtimeModule, { method: "HEAD", cache: "no-store" });
-    return response.ok;
+    const contentType = String(response.headers.get("content-type") || "")
+      .split(";", 1)[0]
+      .trim()
+      .toLowerCase();
+
+    // The production static host serves /live/index.html as a 200 fallback for
+    // unknown /live/* paths. A status-only probe therefore reports a missing
+    // runtime as ready. Native module imports require a JavaScript MIME type,
+    // so use the same requirement here before enabling the launch button.
+    return response.ok && /(?:javascript|ecmascript)$/.test(contentType);
   } catch {
     return false;
   }
@@ -17,7 +26,12 @@ export async function runtimeAvailable(runtimeModule) {
 
 export async function createXashClient({ canvas, config, onStatus = () => {} }) {
   onStatus("Loading the Xash3D WebAssembly runtime…");
-  const runtime = await import(config.runtimeModule);
+  let runtime;
+  try {
+    runtime = await import(config.runtimeModule);
+  } catch (cause) {
+    throw new Error("The Xash3D WASM runtime has not been deployed yet.", { cause });
+  }
   const Xash3D = runtime.Xash3D || runtime.default;
 
   if (typeof Xash3D !== "function") {
