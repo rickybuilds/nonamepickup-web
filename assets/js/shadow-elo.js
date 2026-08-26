@@ -1,18 +1,16 @@
 "use strict";
 
 const selState = {
-  limit: 20,
+  limit: 100,
+  matchPage: 1,
   replay: null,
   scenario: "actual",
-  selectedPlayer: null,
   request: null,
   requestId: 0
 };
 
 const selStatus = document.getElementById("sel-status");
 const selContent = document.getElementById("sel-content");
-const selPlayerRows = document.getElementById("sel-player-rows");
-const selFilter = document.getElementById("sel-player-filter");
 const SEL_SCENARIOS = ["actual"];
 const SEL_COLORS = ["#38bdf8", "#a78bfa", "#4ade80", "#fbbf24", "#fb7185", "#60a5fa", "#f472b6", "#22d3ee", "#fb923c", "#818cf8", "#34d399", "#e879f9"];
 
@@ -192,42 +190,40 @@ function selBuildReplay(snapshots) {
   return { games, players: playerList, labels };
 }
 
-function selRenderPlayers() {
-  if (!selState.replay) return;
-  const query = String(selFilter?.value || "").trim().toLowerCase();
-  selPlayerRows.innerHTML = selState.replay.players.filter(player => player.name.toLowerCase().includes(query)).map(player => `
-    <tr data-player-id="${selEscape(player.id)}" class="${selState.selectedPlayer === player.id ? "selected" : ""}">
-      <td><span class="sel-player-name">${selEscape(player.name)}</span><span class="sel-player-games">${player.games} selected games</span></td>
-      <td class="sel-elo">${selWhole(player.start)}</td>
-      <td class="sel-elo">${selNumber(player.actual, 1)}</td>
-      <td class="${selTone(player.actual - player.start)}">${selSigned(player.actual - player.start, 1)}</td>
-    </tr>
-  `).join("") || `<tr><td colspan="4">No matching players.</td></tr>`;
-}
-
 function selFormatDate(timestamp) {
   if (!timestamp) return "Date unavailable";
   const ms = timestamp < 1e12 ? timestamp * 1000 : timestamp;
   return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function selMatchRows(game) {
-  return game.players.slice().sort((a, b) => a.team.localeCompare(b.team) || (a.rank || 99) - (b.rank || 99)).map(player => `
-    <tr>
-      <td><i class="sel-team-tag ${player.team.toLowerCase()}"></i><span class="sel-player-name">${selEscape(player.name)}</span></td>
-      <td>${selWhole(player.before)}</td>
-      <td>${Number.isFinite(player.nn_score) ? selNumber(player.nn_score, 2) : "—"}</td>
-      <td>${Number.isFinite(player.rank) ? `#${player.rank}` : "—"}</td>
-      <td class="${selTone(player.actual_delta)}">${selSigned(player.actual_delta, 1)}</td>
-    </tr>
-  `).join("");
+function selMatchTeamTable(game, team) {
+  const players = game.players.filter(player => player.team === team).sort((a, b) => (a.rank || 99) - (b.rank || 99));
+  return `<div class="sel-match-team ${team.toLowerCase()}">
+    <h3>${team === "BLUE" ? "Blue team" : "Red team"}</h3>
+    <table class="sel-match-table">
+      <thead><tr><th>Player</th><th>NN score</th><th>Rank</th><th>Actual</th></tr></thead>
+      <tbody>${players.map(player => `
+        <tr>
+          <td><span class="sel-player-name">${selEscape(player.name)}</span><small>${selWhole(player.before)} starting</small></td>
+          <td>${Number.isFinite(player.nn_score) ? selNumber(player.nn_score, 2) : "—"}</td>
+          <td>${Number.isFinite(player.rank) ? `#${player.rank}` : "—"}</td>
+          <td class="${selTone(player.actual_delta)}">${selSigned(player.actual_delta, 1)}</td>
+        </tr>
+      `).join("")}</tbody>
+    </table>
+  </div>`;
 }
 
 function selRenderMatches(replay) {
-  document.getElementById("sel-matches").innerHTML = replay.games.slice().reverse().map((game, reverseIndex) => `
+  const matches = replay.games.slice().reverse();
+  const pageCount = Math.max(1, Math.ceil(matches.length / 20));
+  selState.matchPage = Math.min(selState.matchPage, pageCount);
+  const pageStart = (selState.matchPage - 1) * 20;
+  const visibleMatches = matches.slice(pageStart, pageStart + 20);
+  document.getElementById("sel-matches").innerHTML = visibleMatches.map((game, pageIndex) => `
     <details class="sel-match">
       <summary>
-        <span class="sel-match-number">#${replay.games.length - reverseIndex}</span>
+        <span class="sel-match-number">#${matches.length - pageStart - pageIndex}</span>
         <span class="sel-match-title"><strong>${selEscape(game.match_id)} · ${selEscape(game.map_name || "Unknown map")}</strong><span>${selEscape(game.winner || "Unknown")} result</span></span>
         <span class="sel-match-date">${selEscape(selFormatDate(game.created_at))}</span>
         <span class="sel-team-pool blue">Blue ${selSigned(game.pools.BLUE, 0)}</span>
@@ -237,12 +233,14 @@ function selRenderMatches(replay) {
       </summary>
       <div class="sel-match-body">
         ${game.fallback ? `<p class="sel-fallback-reason"><strong>Equal-share fallback:</strong> ${selEscape((game.fallback_reasons || []).join(", ").replaceAll("_", " "))}</p>` : ""}
-        <div class="sel-table-scroll"><table class="sel-match-table">
-        <thead><tr><th>Player</th><th>Starting Elo</th><th>NN score</th><th>Team rank</th><th>Actual 20–30%</th></tr></thead>
-        <tbody>${selMatchRows(game)}</tbody>
-      </table></div></div>
+        <div class="sel-match-teams">${selMatchTeamTable(game, "BLUE")}${selMatchTeamTable(game, "RED")}</div>
+      </div>
     </details>
-  `).join("");
+  `).join("") + `<nav class="sel-pagination" aria-label="Replay ledger pages">
+    <button type="button" data-match-page="prev" ${selState.matchPage === 1 ? "disabled" : ""}>Previous</button>
+    <span>Page ${selState.matchPage} of ${pageCount}</span>
+    <button type="button" data-match-page="next" ${selState.matchPage === pageCount ? "disabled" : ""}>Next</button>
+  </nav>`;
 }
 
 function selRenderValidation(replay) {
@@ -263,10 +261,9 @@ function selRenderValidation(replay) {
 
 function selRender(replay) {
   selState.replay = replay;
-  if (!replay.players.some(player => player.id === selState.selectedPlayer)) selState.selectedPlayer = replay.players[0]?.id || null;
   selStatus.hidden = true;
   selContent.hidden = false;
-  selRenderPlayers();
+  selState.matchPage = 1;
   selRenderMatches(replay);
   selRenderValidation(replay);
 }
@@ -308,12 +305,12 @@ async function selLoad() {
   }
 }
 
-selPlayerRows?.addEventListener("click", event => {
-  const row = event.target.closest("tr[data-player-id]");
-  if (!row) return;
-  selState.selectedPlayer = selState.selectedPlayer === row.dataset.playerId ? null : row.dataset.playerId;
-  selRenderPlayers();
+document.getElementById("sel-matches")?.addEventListener("click", event => {
+  const button = event.target.closest("button[data-match-page]");
+  if (!button || button.disabled || !selState.replay) return;
+  const pageCount = Math.max(1, Math.ceil(selState.replay.games.length / 20));
+  selState.matchPage = Math.max(1, Math.min(pageCount, selState.matchPage + (button.dataset.matchPage === "next" ? 1 : -1)));
+  selRenderMatches(selState.replay);
 });
 
-selFilter?.addEventListener("input", selRenderPlayers);
 selLoad();

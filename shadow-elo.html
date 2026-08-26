@@ -10,9 +10,9 @@
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/shadow-elo.css?v=20260825a">
+  <link rel="stylesheet" href="assets/css/shadow-elo.css?v=20260825d">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/shadow-elo.js?v=20260825b" defer></script>
+  <script src="assets/js/shadow-elo.js?v=20260825d" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body class="bg-[#0a0c10] shadow-elo-page">
@@ -47,20 +47,6 @@
   <div id="sel-status" class="sel-status" aria-live="polite" hidden></div>
 
   <div id="sel-content" hidden>
-    <div class="sel-results-grid">
-    <section class="sel-card">
-      <div class="sel-card-head sel-table-head">
-        <div><p class="sel-card-kicker">SIMULATED ELO TODAY</p><h2>Where players would be now</h2></div>
-        <label class="sel-filter">Find player<input id="sel-player-filter" type="search" placeholder="Type a name…" autocomplete="off"></label>
-      </div>
-      <div class="sel-table-scroll">
-        <table class="sel-table">
-          <thead><tr><th>Player</th><th>Starting</th><th>Actual 20–30%</th><th>Change</th></tr></thead>
-          <tbody id="sel-player-rows"></tbody>
-        </table>
-      </div>
-    </section>
-
     <section class="sel-card">
       <div class="sel-card-head">
         <div><p class="sel-card-kicker">MATCH-BY-MATCH</p><h2>Replay ledger</h2></div>
@@ -68,7 +54,6 @@
       </div>
       <div id="sel-matches" class="sel-matches"></div>
     </section>
-    </div>
 
     <section id="sel-validation" class="sel-card sel-validation" hidden></section>
 
