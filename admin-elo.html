@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="description" content="Private NoName TFC admin Elo view.">
+  <title>NoName TFC | Admin ELO View</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/shadow-elo.css?v=20260825j">
+  <script src="assets/js/main.js?v=20260618i" defer></script>
+  <script src="assets/js/shadow-elo.js?v=20260825k" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#0a0c10] shadow-elo-page">
+<div class="site-bg-grid"></div>
+<div class="site-bg-glow site-bg-glow-a"></div>
+<div class="site-bg-glow site-bg-glow-b"></div>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="nn-logo" href="index.html" aria-label="NoName TFC home">
+      <span class="logo-nn">NN</span><span class="logo-slash">//</span><span class="logo-tfc">TFC</span>
+    </a>
+    <div class="sel-private"><span></span> Private research preview</div>
+    <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+  </div>
+</header>
+
+<main class="sel-main">
+  <section class="sel-hero">
+    <div class="sel-hero-copy">
+      <p class="sel-kicker">NN ADMIN / ELO VIEW</p>
+      <h1>Replay the past.<br><span>See today's Elo.</span></h1>
+      <p>Go back to the oldest game in the selected window, restore every player's Elo from that point, then replay each real game through today using the actual 20–30% team-pool split.</p>
+    </div>
+    <div class="sel-pool-demo" aria-label="Current allocation example">
+      <div class="sel-pool-head"><span>Current team pool</span><strong>+64 Elo</strong></div>
+      <div class="sel-pool-row"><span><i class="sel-dot actual"></i>Actual allocation</span><b>20–30% share</b></div>
+      <p>Every replay preserves each game's real team Elo pool.</p>
+    </div>
+  </section>
+
+  <div id="sel-status" class="sel-status" aria-live="polite" hidden></div>
+
+  <div id="sel-content" hidden>
+    <section class="sel-card">
+      <div class="sel-card-head">
+        <div><p class="sel-card-kicker">MATCH-BY-MATCH</p><h2>Replay ledger</h2></div>
+        <span class="sel-expand-hint">Select a game for NN score, team rank and deltas</span>
+      </div>
+      <div id="sel-matches" class="sel-matches"></div>
+    </section>
+
+    <section id="sel-validation" class="sel-card sel-validation" hidden></section>
+
+  </div>
+</main>
+</body>
+</html>
