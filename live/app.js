@@ -1,5 +1,5 @@
-import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826h";
-import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826h";
+import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826i";
+import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826i";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");

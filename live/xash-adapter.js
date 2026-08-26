@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826d";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826h";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826i";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -57,23 +57,30 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   await relay.open();
 
   const resolve = value => new URL(value, location.href).href;
-  const [gameFiles, extrasResponse] = await Promise.all([
+  const [gameFiles, extrasResponse, serverWasmResponse] = await Promise.all([
     loadGameAssets(config.gameAssetsManifest, onStatus),
-    fetch(resolve(config.extrasArchive), { cache: "force-cache" })
+    fetch(resolve(config.extrasArchive), { cache: "force-cache" }),
+    fetch(resolve(config.runtimeLibraries.server), { cache: "force-cache" })
   ]);
   if (!extrasResponse.ok) throw new Error("The TF15 client asset archive is unavailable.");
+  if (!serverWasmResponse.ok) throw new Error("The TFC server WASM library is unavailable.");
   const extras = new Uint8Array(await extrasResponse.arrayBuffer());
+  const serverWasm = new Uint8Array(await serverWasmResponse.arrayBuffer());
 
   onStatus("Mounting TFC and starting Xash3D…");
   const browserAlert = window.alert;
   window.alert = message => console.error("[live/xash alert]", message);
 
-  // Browser spectators connect to remote HLDS. Do not preload a local TFC
-  // server WASM — the public TFC web client also omits it.
+  // Host_Main loads dlls/tfc_emscripten_wasm32.wasm synchronously. Browser
+  // fetch cannot do that, so preload it and also place it in the VFS.
   const engine = new Xash3D({
     canvas,
     renderer: "gles3compat",
     arguments: ["-windowed", "-game", config.gameDirectory, "+_vgui_menus", "0"],
+    filesMap: {
+      [config.serverModulePath]: resolve(config.runtimeLibraries.server)
+    },
+    dynamicLibraries: [config.serverModulePath],
     libraries: {
       xash: resolve(config.runtimeLibraries.xash),
       filesystem: resolve(config.runtimeLibraries.filesystem),
@@ -87,6 +94,10 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     module: {
       preRun(module) {
         mountGameAssets(module.FS, gameFiles, extras);
+        module.FS.mkdirTree("/dlls");
+        module.FS.mkdirTree("/rodir/dlls");
+        module.FS.writeFile("/dlls/tfc_emscripten_wasm32.wasm", serverWasm);
+        module.FS.writeFile("/rodir/dlls/tfc_emscripten_wasm32.wasm", serverWasm);
       },
       print(message) {
         console.info("[live/xash]", message);
@@ -106,21 +117,21 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   window.addEventListener("unhandledrejection", onAbort);
   try {
     await engine.init();
-    await new Promise(resolveReady => window.setTimeout(resolveReady, 50));
+    if (!engine.running) engine.main();
+    await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {
       throw abortError || new Error("The Xash3D engine exited while loading the TFC client.");
     }
   } catch (cause) {
     const detail = String(cause?.message || cause || "");
     if (!detail || detail === "Infinity") {
-      throw new Error("The TFC client aborted while loading VGUI.", { cause });
+      throw new Error("The TFC client aborted while starting Xash3D.", { cause });
     }
     throw cause;
   } finally {
     window.removeEventListener("unhandledrejection", onAbort);
   }
   sizeCanvas(canvas);
-  engine.main();
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));
   onStatus("Xash3D is ready.");
 
