@@ -1,5 +1,5 @@
-import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826o";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826o";
+import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826t";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -68,7 +68,14 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
   onStatus("Starting Xash3D…");
   const browserAlert = window.alert;
-  window.alert = message => console.warn("[live/xash alert]", message);
+  window.alert = message => {
+    const text = String(message || "");
+    if (text.includes("addons/metamod/dlls/metamod_emscripten_wasm32.wasm")) {
+      console.info("[live/xash] skipped the server-only Metamod module.");
+      return;
+    }
+    console.warn("[live/xash alert]", message);
+  };
 
   const filesystem = resolve(config.runtimeLibraries.filesystem);
   const engine = new Xash3D({

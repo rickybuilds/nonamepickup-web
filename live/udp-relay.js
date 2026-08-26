@@ -25,14 +25,39 @@ function packetBytes(data) {
   return new Uint8Array(data);
 }
 
+function packetKind(data) {
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  if (bytes.length >= 5 && bytes[0] === 255 && bytes[1] === 255 && bytes[2] === 255 && bytes[3] === 255) {
+    const type = bytes[4] >= 32 && bytes[4] <= 126 ? String.fromCharCode(bytes[4]) : `0x${bytes[4].toString(16)}`;
+    return `connectionless ${type}`;
+  }
+  return "sequenced";
+}
+
+function describeConnectAuth(data) {
+  const text = new TextDecoder("latin1").decode(data);
+  const quoted = [...text.matchAll(/"([^"]*)"/g)];
+  const protocolInfo = quoted[0]?.[1] || "";
+  const read = key => (protocolInfo.match(new RegExp(`\\\\${key}\\\\([^\\\\]*)`)) || [])[1] || "";
+  return {
+    protocol: read("prot") || "unknown",
+    rawBytes: read("raw").length,
+    hasCdKey: Boolean(read("cdkey")),
+    hltv: /\\\\\*hltv\\\\1(?:\\\\|$)/.test(quoted[1]?.[1] || "")
+  };
+}
+
 function patchNetForIpv4(net) {
   const original = typeof net.getaddrinfo === "function" ? net.getaddrinfo.bind(net) : null;
   net.connect = net.connect || (() => 0);
   net.getaddrinfo = function getaddrinfo(hostnamePtr, restrictPrt, hintsPtr, addrinfoPtr) {
     const host = this.em.AsciiToString(hostnamePtr);
     if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
+      const service = restrictPrt ? this.em.AsciiToString(restrictPrt) : "";
+      const parsedPort = Number.parseInt(service, 10);
+      const port = Number.isInteger(parsedPort) && parsedPort >= 0 && parsedPort <= 65535 ? parsedPort : 0;
       const sa = this.em._malloc(16);
-      this.em.writeSockaddr(sa, 2, host, 0);
+      this.em.writeSockaddr(sa, 2, host, port);
       const ai = this.em._malloc(32);
       this.em.HEAP32[ai + 4 >> 2] = 2;
       this.em.HEAP32[ai + 8 >> 2] = 2;
@@ -106,7 +131,14 @@ export class UdpWebSocketRelay {
         this.lastPeer = { ip: Array.from(packet.ip), port: packet.port };
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
         this.sentPackets += 1;
-        this.socket.send(packetBytes(data));
+        const outbound = packetBytes(data);
+        this.socket.send(outbound);
+        if (this.sentPackets <= 12) {
+          console.info(`[live/relay] UDP send #${this.sentPackets}: ${packetKind(outbound)}, ${outbound.byteLength} bytes`);
+        }
+        if (outbound.length >= 5 && outbound[4] === 99) {
+          console.info(`[live/relay] connect authentication ${JSON.stringify(describeConnectAuth(outbound))}`);
+        }
         if (this.sentPackets === 1) {
           console.info(`[live/relay] sent first UDP packet to ${server.host}:${server.port}`);
         }
@@ -121,13 +153,24 @@ export class UdpWebSocketRelay {
     this.socket.binaryType = "arraybuffer";
     this.socket.addEventListener("message", event => {
       this.receivedPackets += 1;
+      const inbound = new Uint8Array(event.data);
+      if (this.receivedPackets <= 12) {
+        console.info(`[live/relay] UDP receive #${this.receivedPackets}: ${packetKind(inbound)}, ${inbound.byteLength} bytes`);
+      }
+      if (inbound.length >= 6 && inbound[0] === 255 && inbound[1] === 255 && inbound[2] === 255 && inbound[3] === 255 && inbound[4] === 57) {
+        const reason = new TextDecoder("latin1").decode(inbound.subarray(5)).replaceAll("\0", "").trim();
+        console.warn(`[live/relay] TFC server rejected the connection: ${reason || "no reason supplied"}`);
+      }
       if (this.receivedPackets === 1) {
         console.info(`[live/relay] received first UDP packet from ${this.server.host}:${this.server.port}`);
       }
       this.net.incoming.push({
-        data: new Uint8Array(event.data),
-        ip: this.lastPeer.ip,
-        port: this.lastPeer.port
+        data: inbound,
+        // This WebSocket has one allowlisted UDP target. Always report that
+        // real peer to Xash; the engine rejects challenge replies whose source
+        // port does not match the address supplied to `connect`.
+        ip: ipTuple(this.server.host),
+        port: this.server.port
       });
     });
 
