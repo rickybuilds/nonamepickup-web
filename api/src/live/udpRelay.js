@@ -30,7 +30,7 @@ function serializeInfoString(values) {
   return [...values].map(([key, value]) => `\\${key}\\${value}`).join("");
 }
 
-function rewriteAsHltvConnect(payload, hashedCdKey) {
+function rewriteBrowserConnect(payload, hashedCdKey) {
   if (payload.length < 6 || payload[0] !== 255 || payload[1] !== 255 || payload[2] !== 255 || payload[3] !== 255 || payload[4] !== 99) {
     return payload;
   }
@@ -46,9 +46,7 @@ function rewriteAsHltvConnect(payload, hashedCdKey) {
   protocolInfo.delete("cdkey");
 
   const userInfo = parseInfoString(match[4]);
-  userInfo.set("*hltv", "1");
-  userInfo.set("cl_lw", "1");
-  userInfo.set("cl_lc", "1");
+  userInfo.delete("*hltv");
 
   const rewritten = `connect ${match[1]} ${match[2]} "${serializeInfoString(protocolInfo)}" "${serializeInfoString(userInfo)}"${command.slice(match[0].length)}`;
   return Buffer.concat([Buffer.from([255, 255, 255, 255]), Buffer.from(rewritten, "latin1")]);
@@ -150,7 +148,7 @@ function attachUdpRelay(server, options = {}) {
     let windowStarted = Date.now();
     let packets = 0;
     let bytes = 0;
-    let reportedHltvRewrite = false;
+    let reportedAuthRewrite = false;
     // Protocol 2 transports the already-hashed 16-byte identity. A fresh
     // value per WebSocket avoids duplicate HLTV IDs without retaining any
     // client identifier or pretending to own a Steam account.
@@ -196,10 +194,10 @@ function attachUdpRelay(server, options = {}) {
       packets += 1;
       bytes += payload.length;
       if (packets > MAX_PACKETS_PER_SECOND || bytes > MAX_BYTES_PER_SECOND) return close();
-      const outbound = rewriteAsHltvConnect(payload, hashedCdKey);
-      if (outbound !== payload && !reportedHltvRewrite) {
-        reportedHltvRewrite = true;
-        console.info(`[live-relay] ${serverKey} browser client identified as an HLTV spectator`);
+      const outbound = rewriteBrowserConnect(payload, hashedCdKey);
+      if (outbound !== payload && !reportedAuthRewrite) {
+        reportedAuthRewrite = true;
+        console.info(`[live-relay] ${serverKey} browser client using protocol 2 spectator transport`);
       }
       if (!udpReady) {
         if (pending.length >= MAX_PENDING_UDP_PACKETS) return close();
