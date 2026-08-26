@@ -16,26 +16,30 @@ export const LIVE_CONFIG = Object.freeze({
   serverModulePath: "dlls/tfc_emscripten_wasm32.wasm",
   playerName: "NoName Spectator",
   playerPassword: "pickup",
-  spectatorCommand: "spectate",
+  // HLTV clients are spectators by construction; no game-team command is sent.
+  spectatorCommand: null,
   spectatorDelayMs: 3500,
   servers: Object.freeze({
     east: Object.freeze({
       key: "east",
       name: "TFC East US Server",
       host: "108.61.128.120",
-      port: 27015
+      port: 27015,
+      available: false
     }),
     central: Object.freeze({
       key: "central",
-      name: "TFC Central US Server",
+      name: "TFC Central Live (HLTV)",
       host: "64.177.123.157",
-      port: 27015
+      port: 27020,
+      available: true
     }),
     west: Object.freeze({
       key: "west",
       name: "TFC West US Server",
       host: "149.28.78.158",
-      port: 27015
+      port: 27015,
+      available: false
     })
   })
 });

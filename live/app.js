@@ -1,5 +1,5 @@
-import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826v";
-import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826v";
+import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826w";
+import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826w";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
@@ -31,7 +31,8 @@ function setStatus(message, state = "") {
 }
 
 function selectedServer() {
-  return LIVE_CONFIG.servers[serverSelect.value] || LIVE_CONFIG.servers.central;
+  const selected = LIVE_CONFIG.servers[serverSelect.value];
+  return selected?.available ? selected : LIVE_CONFIG.servers.central;
 }
 
 function renderSelectedServer() {
@@ -46,12 +47,13 @@ function renderSelectedServer() {
 function populateServerSelect() {
   const requested = new URLSearchParams(location.search).get("server")?.toLowerCase();
   for (const server of Object.values(LIVE_CONFIG.servers)) {
+    if (!server.available) continue;
     const option = document.createElement("option");
     option.value = server.key;
     option.textContent = server.name;
     serverSelect.append(option);
   }
-  serverSelect.value = LIVE_CONFIG.servers[requested] ? requested : "central";
+  serverSelect.value = LIVE_CONFIG.servers[requested]?.available ? requested : "central";
   renderSelectedServer();
 }
 
@@ -61,7 +63,7 @@ async function discoverActiveServer() {
     if (!response.ok) return;
     const payload = await response.json();
     const active = Array.isArray(payload.liveMatches)
-      ? payload.liveMatches.find(match => LIVE_CONFIG.servers[String(match.serverKey || "").toLowerCase()])
+      ? payload.liveMatches.find(match => LIVE_CONFIG.servers[String(match.serverKey || "").toLowerCase()]?.available)
       : null;
     if (!active) return;
 

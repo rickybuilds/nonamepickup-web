@@ -12,9 +12,12 @@ const MAX_PENDING_UDP_PACKETS = 16;
 const RELAY_PATH = "/api/live/relay";
 
 const TARGETS = Object.freeze({
-  east: Object.freeze({ host: "108.61.128.120", port: 27015 }),
-  central: Object.freeze({ host: "64.177.123.157", port: 27015 }),
-  west: Object.freeze({ host: "149.28.78.158", port: 27015 })
+  east: Object.freeze({ host: "108.61.128.120", port: 27015, transport: "game" }),
+  // Browser spectators connect to the public HLTV proxy, never directly to
+  // the pickup game server. The proxy is the only spectator occupying a slot
+  // on the game server at :27015.
+  central: Object.freeze({ host: "64.177.123.157", port: 27020, transport: "hltv" }),
+  west: Object.freeze({ host: "149.28.78.158", port: 27015, transport: "game" })
 });
 
 function parseInfoString(value) {
@@ -149,9 +152,10 @@ function attachUdpRelay(server, options = {}) {
     let packets = 0;
     let bytes = 0;
     let reportedAuthRewrite = false;
-    // Protocol 2 transports the already-hashed 16-byte identity. A fresh
-    // value per WebSocket avoids duplicate HLTV IDs without retaining any
-    // client identifier or pretending to own a Steam account.
+    // ReHLTV accepts legacy spectator clients downstream. A fresh protocol 2
+    // identity per WebSocket avoids duplicate spectator IDs without retaining
+    // a client identifier or pretending to own a Steam account. This transport
+    // must only target the HLTV listener, not the game server itself.
     const hashedCdKey = crypto.randomBytes(16).toString("hex");
 
     connections += 1;
@@ -194,10 +198,12 @@ function attachUdpRelay(server, options = {}) {
       packets += 1;
       bytes += payload.length;
       if (packets > MAX_PACKETS_PER_SECOND || bytes > MAX_BYTES_PER_SECOND) return close();
-      const outbound = rewriteBrowserConnect(payload, hashedCdKey);
+      const outbound = target.transport === "hltv"
+        ? rewriteBrowserConnect(payload, hashedCdKey)
+        : payload;
       if (outbound !== payload && !reportedAuthRewrite) {
         reportedAuthRewrite = true;
-        console.info(`[live-relay] ${serverKey} browser client using protocol 2 spectator transport`);
+        console.info(`[live-relay] ${serverKey} browser spectator using protocol 2 HLTV transport`);
       }
       if (!udpReady) {
         if (pending.length >= MAX_PENDING_UDP_PACKETS) return close();
