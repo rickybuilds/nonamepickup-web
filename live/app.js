@@ -1,5 +1,5 @@
-import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826y";
-import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826y";
+import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826z";
+import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826z";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
@@ -13,6 +13,8 @@ const serverAddressText = $("server-address");
 const serverState = $("server-state");
 const status = $("live-status");
 const exitButton = $("exit-button");
+const controls = $("live-controls");
+const fullscreenButton = $("fullscreen-button");
 
 let xashClient = null;
 let activeServerKey = null;
@@ -104,6 +106,7 @@ async function launch() {
       onStatus: message => setStatus(message)
     });
     exitButton.classList.remove("hidden");
+    controls.classList.remove("hidden");
     canvas.focus();
     xashClient.connect(selectedServer());
   } catch (error) {
@@ -121,6 +124,7 @@ function exit() {
   clientRoot.classList.remove("running");
   launcher.classList.remove("hidden");
   exitButton.classList.add("hidden");
+  controls.classList.add("hidden");
   launchButton.disabled = false;
   setStatus("Browser spectator stopped.", "ready");
 }
@@ -129,5 +133,17 @@ populateServerSelect();
 serverSelect.addEventListener("change", renderSelectedServer);
 launchButton.addEventListener("click", launch);
 exitButton.addEventListener("click", exit);
+controls.querySelectorAll("[data-command]").forEach(button => {
+  button.addEventListener("click", () => {
+    xashClient?.command(button.dataset.command);
+    canvas.focus();
+  });
+});
+fullscreenButton.addEventListener("click", async () => {
+  if (document.fullscreenElement) await document.exitFullscreen();
+  else await clientRoot.requestFullscreen();
+  sizeCanvas(canvas);
+  canvas.focus();
+});
 
 await Promise.all([discoverActiveServer(), detectRuntime()]);

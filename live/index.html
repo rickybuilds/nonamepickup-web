@@ -6,13 +6,13 @@
   <meta name="description" content="Watch active NoName Team Fortress Classic pickups in the browser.">
   <meta name="theme-color" content="#090d12">
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
-  <link rel="stylesheet" href="./live.css?v=20260826o">
+  <link rel="stylesheet" href="./live.css?v=20260826z">
   <title>NoName TFC | Browser Spectator</title>
 </head>
 <body>
   <main class="live-client" id="live-client">
     <section class="live-stage" aria-label="Team Fortress Classic browser spectator">
-      <canvas id="xash-canvas" tabindex="0" aria-label="Xash3D game canvas"></canvas>
+      <canvas id="xash-canvas" width="1600" height="900" tabindex="0" aria-label="Xash3D game canvas"></canvas>
 
       <div class="live-stage-shade" aria-hidden="true"></div>
 
@@ -60,9 +60,20 @@
       </section>
 
       <button class="live-exit hidden" id="exit-button" type="button">Exit spectator</button>
+
+      <nav class="live-controls hidden" id="live-controls" aria-label="Spectator controls">
+        <button type="button" data-command="spec_mode 1">Locked</button>
+        <button type="button" data-command="spec_mode 4">First person</button>
+        <button type="button" data-command="spec_mode 3">Free look</button>
+        <button type="button" data-command="spec_mode 5">Overview</button>
+        <button type="button" data-command="spec_autodirector 1">Auto director</button>
+        <button type="button" data-command="spec_menu">More</button>
+        <button type="button" data-command="escape">Options</button>
+        <button type="button" id="fullscreen-button">Fullscreen</button>
+      </nav>
     </section>
   </main>
 
-  <script type="module" src="./app.js?v=20260826y"></script>
+  <script type="module" src="./app.js?v=20260826z"></script>
 </body>
 </html>

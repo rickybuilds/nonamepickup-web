@@ -1,5 +1,25 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826y";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826z";
+
+const CONFIG_STORAGE_KEY = "tfc-config";
+
+function restoreConfig(fs) {
+  try {
+    const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (saved) fs.writeFile("/rodir/tfc/config.cfg", new TextEncoder().encode(saved));
+  } catch {
+    // Browser storage may be disabled; the in-memory configuration still works.
+  }
+}
+
+function saveConfig(fs) {
+  try {
+    const data = fs.readFile("/rodir/tfc/config.cfg");
+    localStorage.setItem(CONFIG_STORAGE_KEY, new TextDecoder().decode(data));
+  } catch {
+    // Config may not exist yet during early startup or private browsing.
+  }
+}
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -9,10 +29,15 @@ function ensureEngineShape(engine) {
   }
 }
 
-export function sizeCanvas(canvas) {
+export function sizeCanvas(canvas, resizeBuffer = false) {
   const vv = window.visualViewport;
   const w = Math.round(vv ? vv.width : window.innerWidth);
   const h = Math.round(vv ? vv.height : window.innerHeight);
+  if (resizeBuffer) {
+    const scale = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2);
+    canvas.width = Math.max(640, Math.round(w * scale));
+    canvas.height = Math.max(360, Math.round(h * scale));
+  }
   canvas.style.setProperty("width", `${w}px`, "important");
   canvas.style.setProperty("height", `${h}px`, "important");
 }
@@ -36,7 +61,10 @@ export async function runtimeAvailable(runtimeModule) {
 }
 
 export async function createXashClient({ canvas, config, server, onStatus = () => {} }) {
-  sizeCanvas(canvas);
+  // Match the WebGL render buffer to the physical viewport before SDL creates
+  // its context. Resizing only the CSS box leaves HTML's 300x150 canvas
+  // default in place, producing a heavily enlarged and cropped-looking view.
+  sizeCanvas(canvas, true);
   onStatus("Loading the Xash3D WebAssembly runtime…");
   let runtime;
   try {
@@ -118,15 +146,17 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
   ensureEngineShape(engine);
   let abortError = null;
+  let gameFs = null;
   const onAbort = event => {
     abortError = event.reason instanceof Error ? event.reason : new Error(String(event.reason || "wasm abort"));
   };
   window.addEventListener("unhandledrejection", onAbort);
   try {
     await engine.init();
-    const fs = engine.em?.FS || engine.em?.Module?.FS;
-    if (!fs) throw new Error("The Xash3D runtime did not expose a filesystem.");
-    mountGameAssets(fs, gameFiles, extras, valveExtras);
+    gameFs = engine.em?.FS || engine.em?.Module?.FS;
+    if (!gameFs) throw new Error("The Xash3D runtime did not expose a filesystem.");
+    mountGameAssets(gameFs, gameFiles, extras, valveExtras);
+    restoreConfig(gameFs);
     if (!engine.running) engine.main();
     await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {
@@ -144,6 +174,10 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   sizeCanvas(canvas);
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));
   onStatus("Xash3D is ready.");
+
+  const persistConfig = () => saveConfig(gameFs);
+  const configSaveTimer = window.setInterval(persistConfig, 20_000);
+  window.addEventListener("beforeunload", persistConfig);
 
   const onResize = () => sizeCanvas(canvas);
   window.addEventListener("resize", onResize);
@@ -176,6 +210,9 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     },
 
     quit() {
+      persistConfig();
+      window.clearInterval(configSaveTimer);
+      window.removeEventListener("beforeunload", persistConfig);
       window.removeEventListener("resize", onResize);
       if (window.visualViewport) {
         window.visualViewport.removeEventListener("resize", onResize);
