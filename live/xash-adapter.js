@@ -159,6 +159,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       const executeConnect = () => {
         engine.Cmd_ExecuteString(`name \"${config.playerName.replaceAll('"', "")}\"`);
         engine.Cmd_ExecuteString(`password \"${config.playerPassword.replaceAll('"', "")}\"`);
+        engine.Cmd_ExecuteString('setinfo "*hltv" "1"');
         engine.Cmd_ExecuteString(`connect ${address}`);
       };
 

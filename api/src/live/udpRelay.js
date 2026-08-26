@@ -1,5 +1,6 @@
 "use strict";
 
+const crypto = require("crypto");
 const dgram = require("dgram");
 
 const MAX_PACKET_BYTES = 65_507;
@@ -15,6 +16,43 @@ const TARGETS = Object.freeze({
   central: Object.freeze({ host: "64.177.123.157", port: 27015 }),
   west: Object.freeze({ host: "149.28.78.158", port: 27015 })
 });
+
+function parseInfoString(value) {
+  const result = new Map();
+  const parts = String(value || "").split("\\");
+  for (let index = parts[0] ? 0 : 1; index + 1 < parts.length; index += 2) {
+    if (parts[index]) result.set(parts[index], parts[index + 1]);
+  }
+  return result;
+}
+
+function serializeInfoString(values) {
+  return [...values].map(([key, value]) => `\\${key}\\${value}`).join("");
+}
+
+function rewriteAsHltvConnect(payload, hashedCdKey) {
+  if (payload.length < 6 || payload[0] !== 255 || payload[1] !== 255 || payload[2] !== 255 || payload[3] !== 255 || payload[4] !== 99) {
+    return payload;
+  }
+
+  const command = payload.subarray(4).toString("latin1");
+  const match = command.match(/^connect\s+(\d+)\s+(-?\d+)\s+"([^"]*)"\s+"([^"]*)"/);
+  if (!match) return payload;
+
+  const protocolInfo = parseInfoString(match[3]);
+  protocolInfo.set("prot", "2");
+  protocolInfo.set("unique", "-1");
+  protocolInfo.set("raw", hashedCdKey);
+  protocolInfo.delete("cdkey");
+
+  const userInfo = parseInfoString(match[4]);
+  userInfo.set("*hltv", "1");
+  userInfo.set("cl_lw", "1");
+  userInfo.set("cl_lc", "1");
+
+  const rewritten = `connect ${match[1]} ${match[2]} "${serializeInfoString(protocolInfo)}" "${serializeInfoString(userInfo)}"${command.slice(match[0].length)}`;
+  return Buffer.concat([Buffer.from([255, 255, 255, 255]), Buffer.from(rewritten, "latin1")]);
+}
 
 function rejectUpgrade(socket, status, message) {
   const body = `${message}\n`;
@@ -112,6 +150,11 @@ function attachUdpRelay(server, options = {}) {
     let windowStarted = Date.now();
     let packets = 0;
     let bytes = 0;
+    let reportedHltvRewrite = false;
+    // Protocol 2 transports the already-hashed 16-byte identity. A fresh
+    // value per WebSocket avoids duplicate HLTV IDs without retaining any
+    // client identifier or pretending to own a Steam account.
+    const hashedCdKey = crypto.randomBytes(16).toString("hex");
 
     connections += 1;
     connectionsByIp.set(ip, (connectionsByIp.get(ip) || 0) + 1);
@@ -153,12 +196,17 @@ function attachUdpRelay(server, options = {}) {
       packets += 1;
       bytes += payload.length;
       if (packets > MAX_PACKETS_PER_SECOND || bytes > MAX_BYTES_PER_SECOND) return close();
+      const outbound = rewriteAsHltvConnect(payload, hashedCdKey);
+      if (outbound !== payload && !reportedHltvRewrite) {
+        reportedHltvRewrite = true;
+        console.info(`[live-relay] ${serverKey} browser client identified as an HLTV spectator`);
+      }
       if (!udpReady) {
         if (pending.length >= MAX_PENDING_UDP_PACKETS) return close();
-        pending.push(payload);
+        pending.push(outbound);
         return;
       }
-      udp.send(payload);
+      udp.send(outbound);
     });
     ws.on("error", close);
     ws.on("close", close);
