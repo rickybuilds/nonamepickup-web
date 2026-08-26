@@ -1,0 +1,119 @@
+import { LIVE_CONFIG, serverAddress } from "./config.js";
+import { createXashClient, runtimeAvailable } from "./xash-adapter.js";
+
+const $ = id => document.getElementById(id);
+const clientRoot = $("live-client");
+const canvas = $("xash-canvas");
+const launcher = $("live-launcher");
+const launchButton = $("launch-button");
+const launchDetail = $("launch-detail");
+const serverSelect = $("server-select");
+const serverName = $("server-name");
+const serverAddressText = $("server-address");
+const serverState = $("server-state");
+const status = $("live-status");
+const exitButton = $("exit-button");
+
+let xashClient = null;
+let activeServerKey = null;
+
+function setStatus(message, state = "") {
+  status.className = `live-status${state ? ` ${state}` : ""}`;
+  status.querySelector("span").textContent = message;
+}
+
+function selectedServer() {
+  return LIVE_CONFIG.servers[serverSelect.value] || LIVE_CONFIG.servers.central;
+}
+
+function renderSelectedServer() {
+  const server = selectedServer();
+  serverName.textContent = server.name;
+  serverAddressText.textContent = serverAddress(server);
+  const isActive = server.key === activeServerKey;
+  serverState.textContent = isActive ? "LIVE" : "READY";
+  serverState.classList.toggle("live", isActive);
+}
+
+function populateServerSelect() {
+  const requested = new URLSearchParams(location.search).get("server")?.toLowerCase();
+  for (const server of Object.values(LIVE_CONFIG.servers)) {
+    const option = document.createElement("option");
+    option.value = server.key;
+    option.textContent = server.name;
+    serverSelect.append(option);
+  }
+  serverSelect.value = LIVE_CONFIG.servers[requested] ? requested : "central";
+  renderSelectedServer();
+}
+
+async function discoverActiveServer() {
+  try {
+    const response = await fetch("/api/queue", { cache: "no-store" });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const active = Array.isArray(payload.liveMatches)
+      ? payload.liveMatches.find(match => LIVE_CONFIG.servers[String(match.serverKey || "").toLowerCase()])
+      : null;
+    if (!active) return;
+
+    activeServerKey = String(active.serverKey).toLowerCase();
+    if (!new URLSearchParams(location.search).has("server")) {
+      serverSelect.value = activeServerKey;
+    }
+    renderSelectedServer();
+  } catch {
+    // The static client remains usable with the configured server list.
+  }
+}
+
+async function detectRuntime() {
+  const available = await runtimeAvailable(LIVE_CONFIG.runtimeModule);
+  launchButton.disabled = !available;
+  launchDetail.textContent = available ? "WASM client ready" : "Runtime build required";
+  setStatus(
+    available
+      ? "Browser client found. Choose a server and launch."
+      : "Live shell ready; waiting for the Xash3D and TF15 WASM build.",
+    available ? "ready" : ""
+  );
+}
+
+async function launch() {
+  launchButton.disabled = true;
+  setStatus("Starting the browser spectator…");
+
+  try {
+    xashClient = await createXashClient({
+      canvas,
+      config: LIVE_CONFIG,
+      onStatus: message => setStatus(message)
+    });
+    clientRoot.classList.add("running");
+    launcher.classList.add("hidden");
+    exitButton.classList.remove("hidden");
+    canvas.focus();
+    xashClient.connect(selectedServer());
+  } catch (error) {
+    console.error("[live/xash] launch failed", error);
+    setStatus(error.message || "The browser client failed to start.", "error");
+    launchButton.disabled = false;
+  }
+}
+
+function exit() {
+  xashClient?.quit();
+  xashClient = null;
+  clientRoot.classList.remove("running");
+  launcher.classList.remove("hidden");
+  exitButton.classList.add("hidden");
+  launchButton.disabled = false;
+  setStatus("Browser spectator stopped.", "ready");
+}
+
+populateServerSelect();
+serverSelect.addEventListener("change", renderSelectedServer);
+launchButton.addEventListener("click", launch);
+exitButton.addEventListener("click", exit);
+
+await Promise.all([discoverActiveServer(), detectRuntime()]);
