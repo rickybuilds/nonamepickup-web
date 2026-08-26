@@ -163,12 +163,11 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       };
 
       executeConnect();
-      window.setTimeout(executeConnect, 1200);
 
       if (config.spectatorCommand) {
         window.setTimeout(() => {
           engine.Cmd_ExecuteString(config.spectatorCommand);
-        }, config.spectatorDelayMs + 1200);
+        }, config.spectatorDelayMs);
       }
     },
 
