@@ -1,5 +1,5 @@
 import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260826ac";
-import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826af";
+import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260826ag";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
@@ -12,6 +12,13 @@ const serverName = $("server-name");
 const serverAddressText = $("server-address");
 const serverState = $("server-state");
 const status = $("live-status");
+const loading = $("live-loading");
+const loadingMessage = $("loading-message");
+const loadingServer = $("loading-server");
+const loadingProgress = $("loading-progress");
+const loadingProgressFill = $("loading-progress-fill");
+const loadingStage = $("loading-stage");
+const loadingPercent = $("loading-percent");
 const exitButton = $("exit-button");
 const controls = $("live-controls");
 const fullscreenButton = $("fullscreen-button");
@@ -30,6 +37,32 @@ function launchErrorMessage(error) {
 function setStatus(message, state = "") {
   status.className = `live-status${state ? ` ${state}` : ""}`;
   status.querySelector("span").textContent = message;
+}
+
+function loadingState(message) {
+  const download = String(message).match(/Downloading TFC assets…\s*(\d+)%/i);
+  if (download) {
+    const assetPercent = Math.min(100, Number(download[1]));
+    return { progress: 12 + Math.round(assetPercent * .72), stage: "DOWNLOADING ASSETS" };
+  }
+  if (/runtime/i.test(message)) return { progress: 4, stage: "LOADING ENGINE" };
+  if (/relay/i.test(message)) return { progress: 9, stage: "OPENING LIVE RELAY" };
+  if (/decompress/i.test(message)) return { progress: 86, stage: "UNPACKING ASSETS" };
+  if (/prepared/i.test(message)) return { progress: 91, stage: "MOUNTING GAME FILES" };
+  if (/starting xash/i.test(message)) return { progress: 95, stage: "STARTING TFC" };
+  if (/connecting/i.test(message)) return { progress: 100, stage: "JOINING HLTV" };
+  if (/ready/i.test(message)) return { progress: 98, stage: "FINALIZING" };
+  return { progress: 2, stage: "INITIALIZING" };
+}
+
+function setLoading(message) {
+  const { progress, stage } = loadingState(message);
+  loadingMessage.textContent = message;
+  loadingStage.textContent = stage;
+  loadingPercent.textContent = `${progress}%`;
+  loadingProgress.setAttribute("aria-valuenow", String(progress));
+  loadingProgressFill.style.width = `${progress}%`;
+  setStatus(message);
 }
 
 function selectedServer() {
@@ -92,26 +125,37 @@ async function detectRuntime() {
 }
 
 async function launch() {
+  const server = selectedServer();
   launchButton.disabled = true;
   setStatus("Starting the browser spectator…");
-  clientRoot.classList.add("running");
+  clientRoot.classList.add("booting");
   launcher.classList.add("hidden");
+  loading.classList.remove("hidden");
+  loadingServer.textContent = `${server.name} · ${serverAddress(server)}`;
+  setLoading("Preparing the browser client…");
   sizeCanvas(canvas);
 
   try {
     xashClient = await createXashClient({
       canvas,
       config: LIVE_CONFIG,
-      server: selectedServer(),
-      onStatus: message => setStatus(message)
+      server,
+      onStatus: setLoading
     });
+    xashClient.connect(server);
+    setLoading(`Connecting to ${server.name}…`);
+    await new Promise(resolve => window.setTimeout(resolve, 1800));
+    clientRoot.classList.remove("booting");
+    clientRoot.classList.add("running");
+    loading.classList.add("hidden");
     exitButton.classList.remove("hidden");
     controls.classList.remove("hidden");
     canvas.focus();
-    xashClient.connect(selectedServer());
   } catch (error) {
     console.error("[live/xash] launch failed", error);
+    clientRoot.classList.remove("booting");
     clientRoot.classList.remove("running");
+    loading.classList.add("hidden");
     launcher.classList.remove("hidden");
     setStatus(launchErrorMessage(error), "error");
     launchButton.disabled = false;
@@ -121,7 +165,9 @@ async function launch() {
 function exit() {
   xashClient?.quit();
   xashClient = null;
+  clientRoot.classList.remove("booting");
   clientRoot.classList.remove("running");
+  loading.classList.add("hidden");
   launcher.classList.remove("hidden");
   exitButton.classList.add("hidden");
   controls.classList.add("hidden");

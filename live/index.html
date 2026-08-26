@@ -6,7 +6,7 @@
   <meta name="description" content="Watch active NoName Team Fortress Classic pickups in the browser.">
   <meta name="theme-color" content="#090d12">
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
-  <link rel="stylesheet" href="./live.css?v=20260826af">
+  <link rel="stylesheet" href="./live.css?v=20260826ag">
   <title>NoName TFC | Browser Spectator</title>
 </head>
 <body>
@@ -59,6 +59,31 @@
         </div>
       </section>
 
+      <section class="live-loading hidden" id="live-loading" aria-live="polite" aria-label="Loading browser spectator">
+        <div class="live-loading-card">
+          <div class="live-loading-brand">
+            <span class="live-brand-mark">NN</span>
+            <span class="live-brand-slash">//</span>
+            <span>TFC LIVE</span>
+          </div>
+
+          <div class="live-loading-kicker"><i></i> BROWSER SPECTATOR</div>
+          <h2>ENTERING THE<br><strong>LIVE PICKUP.</strong></h2>
+          <p class="live-loading-message" id="loading-message">Preparing the browser client…</p>
+          <p class="live-loading-server" id="loading-server">NoName HLTV</p>
+
+          <div class="live-loading-track" id="loading-progress" role="progressbar" aria-label="Loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="loading-progress-fill"></span>
+          </div>
+
+          <div class="live-loading-meta">
+            <span id="loading-stage">INITIALIZING</span>
+            <strong id="loading-percent">0%</strong>
+          </div>
+          <small>The first launch downloads the TFC browser assets. Future visits use your browser cache.</small>
+        </div>
+      </section>
+
       <button class="live-exit hidden" id="exit-button" type="button">Exit spectator</button>
 
       <nav class="live-controls hidden" id="live-controls" aria-label="Spectator controls">
@@ -74,6 +99,6 @@
     </section>
   </main>
 
-  <script type="module" src="./app.js?v=20260826af"></script>
+  <script type="module" src="./app.js?v=20260826ag"></script>
 </body>
 </html>
