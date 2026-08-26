@@ -38,13 +38,9 @@ function viewportSize() {
 
 function renderSize() {
   const { w, h } = viewportSize();
-  const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2);
-  const rawWidth = w * dpr;
-  const rawHeight = h * dpr;
-  const downscale = Math.min(1, 1920 / rawWidth, 1080 / rawHeight);
   return {
-    width: Math.max(640, Math.round(rawWidth * downscale)),
-    height: Math.max(360, Math.round(rawHeight * downscale))
+    width: Math.max(1, w),
+    height: Math.max(1, h)
   };
 }
 
@@ -78,7 +74,7 @@ export async function runtimeAvailable(runtimeModule) {
 }
 
 export async function createXashClient({ canvas, config, server, onStatus = () => {} }) {
-  // Match the WebGL render buffer to the physical viewport before SDL creates
+  // Match the WebGL render buffer to the visible viewport before SDL creates
   // its context. Resizing only the CSS box leaves HTML's 300x150 canvas
   // default in place, producing a heavily enlarged and cropped-looking view.
   sizeCanvas(canvas, true);
