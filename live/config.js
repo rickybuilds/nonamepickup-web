@@ -9,7 +9,7 @@ export const LIVE_CONFIG = Object.freeze({
     filesystem: "./runtime/filesystem_stdio.wasm",
     renderer: "./runtime/libref_webgl2.wasm",
     menu: "./runtime/cl_dlls/menu-stock_emscripten_wasm32.wasm",
-    client: "./runtime/cl_dlls/client_emscripten_wasm32.wasm?v=20260826j",
+    client: "./runtime/cl_dlls/client_emscripten_wasm32.wasm?v=20260826k",
     server: "./runtime/dlls/tfc_emscripten_wasm32.wasm"
   }),
   serverModulePath: "dlls/tfc_emscripten_wasm32.wasm",

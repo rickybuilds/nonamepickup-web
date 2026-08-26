@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826d";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826j";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826k";
 
 function ensureEngineShape(engine) {
   for (const method of ["init", "main", "Cmd_ExecuteString"]) {
@@ -68,7 +68,6 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   const browserAlert = window.alert;
   window.alert = message => console.error("[live/xash alert]", message);
 
-  // Same load list as tfc.akuji.org: no in-browser TFC server WASM.
   const filesystem = resolve(config.runtimeLibraries.filesystem);
   const engine = new Xash3D({
     canvas,
@@ -88,6 +87,12 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       }
     },
     module: {
+      noInitialRun: true,
+      preRun(module) {
+        // Host_Main is invoked when dylibs finish loading, still inside init().
+        // Game files have to be on the VFS before that or startup configs fail.
+        mountGameAssets(module.FS, gameFiles, extras);
+      },
       print(message) {
         console.info("[live/xash]", message);
       },
@@ -113,7 +118,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   window.addEventListener("unhandledrejection", onAbort);
   try {
     await engine.init();
-    mountGameAssets(engine.em.FS, gameFiles, extras);
+    if (engine.em?.Module) engine.em.Module.noInitialRun = false;
     if (!engine.running) engine.main();
     await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {
