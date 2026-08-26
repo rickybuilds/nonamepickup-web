@@ -2,7 +2,6 @@ import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
 import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826z";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
-const GAME_ASPECT_RATIO = 16 / 9;
 
 function restoreConfig(fs) {
   try {
@@ -37,25 +36,24 @@ function viewportSize() {
   return { w, h };
 }
 
-function gameViewportSize() {
+function renderSize() {
   const { w, h } = viewportSize();
-  if (w / h > GAME_ASPECT_RATIO) {
-    return { width: Math.max(1, Math.round(h * GAME_ASPECT_RATIO)), height: Math.max(1, h) };
-  }
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
   return {
-    width: Math.max(1, w),
-    height: Math.max(1, Math.round(w / GAME_ASPECT_RATIO))
+    width: Math.max(1, Math.floor(w * dpr)),
+    height: Math.max(1, Math.floor(h * dpr))
   };
 }
 
 export function sizeCanvas(canvas, resizeBuffer = false) {
-  const { width, height } = gameViewportSize();
+  const { w, h } = viewportSize();
   if (resizeBuffer) {
+    const { width, height } = renderSize();
     canvas.width = width;
     canvas.height = height;
   }
-  canvas.style.setProperty("width", `${width}px`, "important");
-  canvas.style.setProperty("height", `${height}px`, "important");
+  canvas.style.setProperty("width", `${w}px`, "important");
+  canvas.style.setProperty("height", `${h}px`, "important");
 }
 
 export async function runtimeAvailable(runtimeModule) {
@@ -196,7 +194,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   let activeVideoMode = "";
   const applyVideoMode = () => {
     sizeCanvas(canvas);
-    const { width, height } = gameViewportSize();
+    const { width, height } = renderSize();
     const mode = `${width}x${height}`;
     if (mode === activeVideoMode) return;
     activeVideoMode = mode;
