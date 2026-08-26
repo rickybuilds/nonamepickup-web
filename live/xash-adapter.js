@@ -45,6 +45,11 @@ function renderSize() {
   };
 }
 
+function videoModeSize() {
+  const { w, h } = viewportSize();
+  return { width: Math.max(1, w), height: Math.max(1, h) };
+}
+
 export function sizeCanvas(canvas, resizeBuffer = false) {
   const { w, h } = viewportSize();
   if (resizeBuffer) {
@@ -194,7 +199,9 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   let activeVideoMode = "";
   const applyVideoMode = () => {
     sizeCanvas(canvas);
-    const { width, height } = renderSize();
+    // SDL applies devicePixelRatio when it creates the WebGL drawing buffer.
+    // Pass CSS viewport pixels here so the scale is applied exactly once.
+    const { width, height } = videoModeSize();
     const mode = `${width}x${height}`;
     if (mode === activeVideoMode) return;
     activeVideoMode = mode;
