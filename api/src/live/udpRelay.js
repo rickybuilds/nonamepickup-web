@@ -50,7 +50,11 @@ function rewriteBrowserConnect(payload, hashedCdKey) {
   protocolInfo.delete("cdkey");
 
   const userInfo = parseInfoString(match[4]);
-  userInfo.delete("*hltv");
+  // Favorites/direct browser connections must remain HLTV spectators. The
+  // browser has no Steam ticket, so the relay replaces the auth fields below,
+  // but removing this marker turns the request into a normal game client and
+  // makes the HLTV proxy reject it.
+  userInfo.set("*hltv", "1");
 
   const rewritten = `connect ${match[1]} ${match[2]} "${serializeInfoString(protocolInfo)}" "${serializeInfoString(userInfo)}"${command.slice(match[0].length)}`;
   return Buffer.concat([Buffer.from([255, 255, 255, 255]), Buffer.from(rewritten, "latin1")]);
