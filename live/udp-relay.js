@@ -1,3 +1,11 @@
+const LOCAL_MASTER = Object.freeze({
+  host: "203.0.113.1",
+  ip: Object.freeze([203, 0, 113, 1]),
+  port: 27010
+});
+
+export const LOCAL_MASTER_ADDRESS = `${LOCAL_MASTER.host}:${LOCAL_MASTER.port}`;
+
 function relayUrl(path, serverKey) {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const url = new URL(path, `${protocol}//${location.host}`);
@@ -296,8 +304,11 @@ function answerMasterQuery(net, packet, scan, servers) {
   }
   bytes.push(0, 0, 0, 0, 0, 0);
   net.incoming.push({
-    ip: packet.ip,
-    port: packet.port,
+    // Xash accepts server-list packets only from an address registered as a
+    // master. Attribute this locally generated response to our documentation-
+    // range virtual master instead of whichever HLTV endpoint was queried.
+    ip: LOCAL_MASTER.ip,
+    port: LOCAL_MASTER.port,
     data: new Int8Array(bytes)
   });
 }
