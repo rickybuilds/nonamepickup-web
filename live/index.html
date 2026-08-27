@@ -42,6 +42,9 @@
         <label class="live-select-label" for="server-select">Server</label>
         <select id="server-select" class="live-select"></select>
 
+        <label class="live-select-label" for="player-name">Spectator name</label>
+        <input id="player-name" class="live-input" type="text" maxlength="31" autocomplete="nickname" spellcheck="false" placeholder="NoName Spectator">
+
         <button class="live-launch" id="launch-button" type="button" disabled>
           <span>Launch spectator</span>
           <small id="launch-detail">Runtime build required</small>
@@ -84,7 +87,11 @@
         </div>
       </section>
 
-      <button class="live-exit hidden" id="exit-button" type="button">Exit spectator</button>
+      <div class="live-actions hidden" id="live-actions">
+        <button class="live-action" id="menu-button" type="button">Game menu</button>
+        <button class="live-action" id="fullscreen-button" type="button">Fullscreen</button>
+        <button class="live-exit" id="exit-button" type="button">Exit spectator</button>
+      </div>
     </section>
   </main>
 

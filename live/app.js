@@ -11,6 +11,7 @@ const serverSelect = $("server-select");
 const serverName = $("server-name");
 const serverAddressText = $("server-address");
 const serverState = $("server-state");
+const playerName = $("player-name");
 const status = $("live-status");
 const loading = $("live-loading");
 const loadingMessage = $("loading-message");
@@ -19,10 +20,20 @@ const loadingProgress = $("loading-progress");
 const loadingProgressFill = $("loading-progress-fill");
 const loadingStage = $("loading-stage");
 const loadingPercent = $("loading-percent");
+const liveActions = $("live-actions");
+const menuButton = $("menu-button");
+const fullscreenButton = $("fullscreen-button");
 const exitButton = $("exit-button");
 
 let xashClient = null;
 let activeServerKey = null;
+const PLAYER_NAME_KEY = "tfc-player-name";
+
+try {
+  playerName.value = localStorage.getItem(PLAYER_NAME_KEY) || LIVE_CONFIG.playerName;
+} catch {
+  playerName.value = LIVE_CONFIG.playerName;
+}
 
 function launchErrorMessage(error) {
   const raw = error == null ? "" : String(error.message || error);
@@ -124,6 +135,9 @@ async function detectRuntime() {
 
 async function launch() {
   const server = selectedServer();
+  const name = playerName.value.trim().slice(0, 31) || LIVE_CONFIG.playerName;
+  playerName.value = name;
+  try { localStorage.setItem(PLAYER_NAME_KEY, name); } catch {}
   launchButton.disabled = true;
   setStatus("Starting the browser spectator…");
   clientRoot.classList.add("booting");
@@ -136,7 +150,7 @@ async function launch() {
   try {
     xashClient = await createXashClient({
       canvas,
-      config: LIVE_CONFIG,
+      config: { ...LIVE_CONFIG, playerName: name },
       server,
       onStatus: setLoading
     });
@@ -146,7 +160,7 @@ async function launch() {
     clientRoot.classList.remove("booting");
     clientRoot.classList.add("running");
     loading.classList.add("hidden");
-    exitButton.classList.remove("hidden");
+    liveActions.classList.remove("hidden");
     canvas.focus();
   } catch (error) {
     console.error("[live/xash] launch failed", error);
@@ -166,7 +180,7 @@ function exit() {
   clientRoot.classList.remove("running");
   loading.classList.add("hidden");
   launcher.classList.remove("hidden");
-  exitButton.classList.add("hidden");
+  liveActions.classList.add("hidden");
   launchButton.disabled = false;
   setStatus("Browser spectator stopped.", "ready");
 }
@@ -175,5 +189,15 @@ populateServerSelect();
 serverSelect.addEventListener("change", renderSelectedServer);
 launchButton.addEventListener("click", launch);
 exitButton.addEventListener("click", exit);
+menuButton.addEventListener("click", () => {
+  xashClient?.command("escape");
+  canvas.focus();
+});
+fullscreenButton.addEventListener("click", async () => {
+  if (document.fullscreenElement) await document.exitFullscreen();
+  else await clientRoot.requestFullscreen();
+  sizeCanvas(canvas);
+  canvas.focus();
+});
 
 await Promise.all([discoverActiveServer(), detectRuntime()]);
