@@ -1,100 +1,27 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Watch active NoName Team Fortress Classic pickups in the browser.">
-  <meta name="theme-color" content="#090d12">
-  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
-  <link rel="stylesheet" href="./live.css?v=20260827b">
-  <title>NoName TFC | Browser Spectator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TFC">
+  <title>Team Fortress Classic</title>
+  <link rel="stylesheet" href="./live.css?v=20260827c">
 </head>
 <body>
-  <main class="live-client" id="live-client">
-    <section class="live-stage" aria-label="Team Fortress Classic browser spectator">
-      <canvas id="xash-canvas" width="1600" height="900" tabindex="0" aria-label="Xash3D game canvas"></canvas>
-
-      <div class="live-stage-shade" aria-hidden="true"></div>
-
-      <section class="live-launcher" id="live-launcher">
-        <div class="live-brand" aria-label="NoName TFC">
-          <span class="live-brand-mark">NN</span>
-          <span class="live-brand-slash">//</span>
-          <span>TFC</span>
-        </div>
-
-        <p class="live-eyebrow"><span></span> BROWSER SPECTATOR</p>
-        <h1>WATCH THE<br><strong>PICKUP LIVE.</strong></h1>
-        <p class="live-intro">
-          A real Team Fortress Classic client running in your browser, powered by
-          Xash3D-FWGS and the reverse-engineered TF15 client.
-        </p>
-
-        <div class="live-server-card">
-          <div>
-            <span class="live-label">TARGET SERVER</span>
-            <strong id="server-name">Finding active pickup…</strong>
-            <small id="server-address">Checking NoName live state</small>
-          </div>
-          <span class="live-pill" id="server-state">CHECKING</span>
-        </div>
-
-        <label class="live-select-label" for="server-select">Server</label>
-        <select id="server-select" class="live-select"></select>
-
-        <label class="live-select-label" for="player-name">Spectator name</label>
-        <input id="player-name" class="live-input" type="text" maxlength="31" autocomplete="nickname" spellcheck="false" placeholder="NoName Spectator">
-
-        <button class="live-launch" id="launch-button" type="button" disabled>
-          <span>Launch spectator</span>
-          <small id="launch-detail">Runtime build required</small>
-        </button>
-
-        <div class="live-status" id="live-status" role="status" aria-live="polite">
-          <i></i>
-          <span>Preparing the browser client…</span>
-        </div>
-
-        <div class="live-links">
-          <a href="/live.html">Match center</a>
-          <a href="/pickup-live.html">Telemetry viewer</a>
-          <a href="/">NoName home</a>
-        </div>
-      </section>
-
-      <section class="live-loading hidden" id="live-loading" aria-live="polite" aria-label="Loading browser spectator">
-        <div class="live-loading-card">
-          <div class="live-loading-brand">
-            <span class="live-brand-mark">NN</span>
-            <span class="live-brand-slash">//</span>
-            <span>TFC LIVE</span>
-          </div>
-
-          <div class="live-loading-kicker"><i></i> BROWSER SPECTATOR</div>
-          <h2>ENTERING THE<br><strong>LIVE PICKUP.</strong></h2>
-          <p class="live-loading-message" id="loading-message">Preparing the browser client…</p>
-          <p class="live-loading-server" id="loading-server">NoName HLTV</p>
-
-          <div class="live-loading-track" id="loading-progress" role="progressbar" aria-label="Loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-            <span id="loading-progress-fill"></span>
-          </div>
-
-          <div class="live-loading-meta">
-            <span id="loading-stage">INITIALIZING</span>
-            <strong id="loading-percent">0%</strong>
-          </div>
-          <small>The first launch downloads the TFC browser assets. Future visits use your browser cache.</small>
-        </div>
-      </section>
-
-      <div class="live-actions hidden" id="live-actions">
-        <button class="live-action" id="menu-button" type="button">Game menu</button>
-        <button class="live-action" id="fullscreen-button" type="button">Fullscreen</button>
-        <button class="live-exit" id="exit-button" type="button">Exit spectator</button>
-      </div>
-    </section>
-  </main>
-
-  <script type="module" src="./app.js?v=20260827b"></script>
+  <div id="overlay">
+    <div class="live-loading-panel">
+      <div class="live-loading-logo"><span>TF</span><small>TEAM FORTRESS CLASSIC</small></div>
+      <div class="live-loading-edition">Browser Edition</div>
+      <div class="live-loading-progress"><div class="live-loading-rail"><div id="loading-bar"></div></div><div id="loading-percent">0%</div></div>
+      <div id="loading-status">connecting…</div>
+      <div id="loading-servers"></div>
+    </div>
+  </div>
+  <canvas id="xash-canvas" width="1600" height="900" tabindex="0" aria-label="Team Fortress Classic"></canvas>
+  <button class="live-exit hidden" id="exit-button" type="button">Exit spectator</button>
+  <script type="module" src="./app.js?v=20260827c"></script>
 </body>
 </html>
