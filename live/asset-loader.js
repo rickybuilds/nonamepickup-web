@@ -147,5 +147,6 @@ export function mountGameAssets(FS, files, extras, valveExtras) {
       "secure \"1\"\n";
     FS.writeFile("/rodir/tfc/liblist.gam", new TextEncoder().encode(liblist));
   } catch {}
+
   FS.chdir("/rodir");
 }

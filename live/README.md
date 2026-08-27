@@ -66,6 +66,34 @@ The browser spectator targets the East, Central, and West HLTV proxies on UDP
 port `27020`. The HLTV proxies connect upstream to their game servers on
 `27015`.
 
+## Custom sound downloads
+
+`sv_downloadurl` is an HLDS game-server setting; it does not belong in
+`hltv.cfg`. Put it in each pickup server's `server.cfg`, using a URL that
+contains the `tfc/` directory layout:
+
+```cfg
+sv_allowdownload 1
+sv_downloadurl "https://downloads.example.net/tfc/"
+```
+
+For example, `sound/airshot.wav` must be available at
+`https://downloads.example.net/tfc/sound/airshot.wav`. The files must also
+exist under the corresponding `tfc/sound/` directory on the HLTV host. The
+proxy needs to be able to obtain and transmit the files before a browser
+spectator can receive them; putting them only on the website's FastDL host is
+not sufficient for the proxy path.
+
+After changing the game server configuration, restart the HLTV proxy and
+verify the exact case and extension of every custom resource. The browser
+client enables `cl_allowdownload`, `cl_download_ingame`, and
+`cl_downloadfilter all` automatically, but it cannot repair a missing file or
+an HLTV proxy that failed to transmit one.
+
+The `ex_interp is a privileged variable` line is a server-side cvar
+restriction warning. `GL_INVALID_OPERATION` is emitted by the WebGL renderer;
+neither line explains a missing FastDL resource.
+
 ## Ubuntu deploy
 
 The website API (`tfcapi` on port 4000) owns the relay. After pulling this

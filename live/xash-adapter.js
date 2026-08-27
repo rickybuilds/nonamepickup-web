@@ -12,6 +12,29 @@ function restoreConfig(fs) {
   }
 }
 
+function ensureDownloadConfig(fs) {
+  // The browser client cannot use the normal GoldSrc download dialog. Keep
+  // automatic downloads enabled for resources advertised by an HLTV proxy.
+  // sv_downloadurl itself remains an HLDS server setting.
+  try {
+    const configPath = "/rodir/tfc/config.cfg";
+    let existing = "";
+    try { existing = new TextDecoder().decode(fs.readFile(configPath)); } catch {}
+    const missing = [
+      ["cl_allowdownload", "cl_allowdownload 1"],
+      ["cl_download_ingame", "cl_download_ingame 1"],
+      ["cl_downloadfilter", "cl_downloadfilter all"]
+    ].filter(([name]) => !new RegExp(`^\\s*${name}\\b`, "mi").test(existing))
+      .map(([, line]) => line);
+    if (missing.length) {
+      const separator = existing && !existing.endsWith("\n") ? "\n" : "";
+      fs.writeFile(configPath, new TextEncoder().encode(existing + separator + missing.join("\n") + "\n"));
+    }
+  } catch {
+    // A read-only or unusual runtime filesystem should not block spectator startup.
+  }
+}
+
 function saveConfig(fs) {
   try {
     const data = fs.readFile("/rodir/tfc/config.cfg");
@@ -176,6 +199,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     if (!gameFs) throw new Error("The Xash3D runtime did not expose a filesystem.");
     mountGameAssets(gameFs, gameFiles, extras, valveExtras);
     restoreConfig(gameFs);
+    ensureDownloadConfig(gameFs);
     if (!engine.running) engine.main();
     await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {
