@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827j";
+import { UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827k";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -106,6 +106,18 @@ function installExtraMouseBindings(engine) {
   });
 }
 
+function installSpectatorMovementBindings(engine) {
+  const bindings = {
+    w: "+forward",
+    a: "+moveleft",
+    s: "+back",
+    d: "+moveright"
+  };
+  for (const [key, command] of Object.entries(bindings)) {
+    engine.Cmd_ExecuteString(`bind "${key}" "${command}"`);
+  }
+}
+
 function viewportSize() {
   const vv = window.visualViewport;
   const w = Math.round(vv ? vv.width : window.innerWidth);
@@ -179,8 +191,28 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     throw new Error("The runtime module does not export Xash3D.");
   }
 
+  let engine;
+  const spectatorCommandTimers = new Set();
+  const scheduleSpectatorCommand = () => {
+    if (!config.spectatorCommand) return;
+    for (const offset of [0, 3000, 6000]) {
+      const timer = window.setTimeout(() => {
+        spectatorCommandTimers.delete(timer);
+        engine?.Cmd_ExecuteString(config.spectatorCommand);
+      }, config.spectatorDelayMs + offset);
+      spectatorCommandTimers.add(timer);
+    }
+  };
+
   onStatus("Opening the TFC UDP relay…");
-  const relay = new UdpWebSocketRelay(runtime.Net, config.relayPath, server, config.servers, config.playerPassword);
+  const relay = new UdpWebSocketRelay(
+    runtime.Net,
+    config.relayPath,
+    server,
+    config.servers,
+    config.playerPassword,
+    scheduleSpectatorCommand
+  );
   await relay.open();
   const restoreWebSocket = installSockfsRelayBridge(config.relayPath, config.servers);
 
@@ -208,7 +240,6 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   };
 
   const filesystem = resolve(config.runtimeLibraries.filesystem);
-  let engine;
   engine = new Xash3D({
     canvas,
     renderer: "gles3compat",
@@ -315,6 +346,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   applyVideoMode();
   onStatus("Xash3D is ready.");
   installExtraMouseBindings(engine);
+  installSpectatorMovementBindings(engine);
   if (touchEnabled) {
     installTouchKeyboard({ command: value => engine.Cmd_ExecuteString(String(value || "")) });
   }
@@ -347,11 +379,6 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
       executeConnect();
 
-      if (config.spectatorCommand) {
-        window.setTimeout(() => {
-          engine.Cmd_ExecuteString(config.spectatorCommand);
-        }, config.spectatorDelayMs);
-      }
     },
 
     command(value) {
@@ -360,6 +387,8 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
     quit() {
       persistConfig();
+      for (const timer of spectatorCommandTimers) window.clearTimeout(timer);
+      spectatorCommandTimers.clear();
       window.clearInterval(configSaveTimer);
       window.removeEventListener("beforeunload", persistConfig);
       window.removeEventListener("resize", onResize);

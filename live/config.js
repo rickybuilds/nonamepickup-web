@@ -16,8 +16,8 @@ export const LIVE_CONFIG = Object.freeze({
   serverModulePath: "dlls/tfc_emscripten_wasm32.wasm",
   playerName: "NoName Spectator",
   playerPassword: "pickup",
-  // HLTV clients are spectators by construction; no game-team command is sent.
-  spectatorCommand: null,
+  // HLTV mode 3 is free roaming; chase and first-person modes ignore movement.
+  spectatorCommand: "specmode 3",
   spectatorDelayMs: 3500,
   servers: Object.freeze({
     east: Object.freeze({

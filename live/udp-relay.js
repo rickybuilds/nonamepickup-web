@@ -303,12 +303,13 @@ function answerMasterQuery(net, packet, scan, servers) {
 }
 
 export class UdpWebSocketRelay {
-  constructor(Net, path, server, servers = {}, spectatorPassword = "") {
+  constructor(Net, path, server, servers = {}, spectatorPassword = "", onAccepted = () => {}) {
     if (typeof Net !== "function") throw new Error("The Xash3D runtime does not export its network adapter.");
     this.path = path;
     this.server = server;
     this.servers = servers;
     this.spectatorPassword = spectatorPassword;
+    this.onAccepted = onAccepted;
     this.sentPackets = 0;
     this.receivedPackets = 0;
     this.socket = null;
@@ -365,6 +366,9 @@ export class UdpWebSocketRelay {
         ? { host: frame.ip.join("."), port: frame.port }
         : this.server;
       const inbound = normalizeLegacyHltvAccept(inboundPayload, inboundServer);
+      if (inbound.length >= 5 && inbound[0] === 255 && inbound[1] === 255 && inbound[2] === 255 && inbound[3] === 255 && inbound[4] === 66) {
+        this.onAccepted(inboundServer);
+      }
       if (this.receivedPackets <= 12) {
         console.info(`[live/relay] UDP receive #${this.receivedPackets}: ${packetKind(inbound)}, ${inbound.byteLength} bytes`);
       }

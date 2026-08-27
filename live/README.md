@@ -15,7 +15,7 @@ The launch command sequence is:
 1. set a spectator display name;
 2. set the public pickup password;
 3. connect to the selected `host:port`;
-4. request spectator mode after the connection starts.
+4. select HLTV free-roaming mode after the connection starts.
 
 Client-side spectator mode is convenience only. A relay allowlist and an
 AMXX/server-side rule must prevent browser sessions from joining a playing
