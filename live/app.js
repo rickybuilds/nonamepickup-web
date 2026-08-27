@@ -1,5 +1,5 @@
 import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260827k";
-import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260827n";
+import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260827o";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
@@ -28,6 +28,7 @@ const exitButton = $("exit-button");
 let xashClient = null;
 let activeServerKey = null;
 const PLAYER_NAME_KEY = "tfc-player-name";
+const MENU_DESTINATION_KEY = "menu";
 
 try {
   playerName.value = localStorage.getItem(PLAYER_NAME_KEY) || LIVE_CONFIG.playerName;
@@ -75,12 +76,20 @@ function setLoading(message) {
 }
 
 function selectedServer() {
+  if (serverSelect.value === MENU_DESTINATION_KEY) return null;
   const selected = LIVE_CONFIG.servers[serverSelect.value];
   return selected?.available ? selected : LIVE_CONFIG.servers.central;
 }
 
 function renderSelectedServer() {
   const server = selectedServer();
+  if (!server) {
+    serverName.textContent = "TFC Main Menu";
+    serverAddressText.textContent = "Browse Favorites or configure the client";
+    serverState.textContent = "MENU";
+    serverState.classList.remove("live");
+    return;
+  }
   serverName.textContent = server.name;
   serverAddressText.textContent = serverAddress(server);
   const isActive = server.key === activeServerKey;
@@ -90,6 +99,10 @@ function renderSelectedServer() {
 
 function populateServerSelect() {
   const requested = new URLSearchParams(location.search).get("server")?.toLowerCase();
+  const menuOption = document.createElement("option");
+  menuOption.value = MENU_DESTINATION_KEY;
+  menuOption.textContent = "TFC Main Menu";
+  serverSelect.append(menuOption);
   for (const server of Object.values(LIVE_CONFIG.servers)) {
     if (!server.available) continue;
     const option = document.createElement("option");
@@ -97,7 +110,9 @@ function populateServerSelect() {
     option.textContent = server.name;
     serverSelect.append(option);
   }
-  serverSelect.value = LIVE_CONFIG.servers[requested]?.available ? requested : "central";
+  serverSelect.value = requested === MENU_DESTINATION_KEY
+    ? MENU_DESTINATION_KEY
+    : LIVE_CONFIG.servers[requested]?.available ? requested : "central";
   renderSelectedServer();
 }
 
@@ -135,6 +150,9 @@ async function detectRuntime() {
 
 async function launch() {
   const server = selectedServer();
+  // The menu still needs one relay association so its Favorites browser can
+  // query all allowlisted endpoints. It simply does not issue connect itself.
+  const relayServer = server || LIVE_CONFIG.servers.central;
   const name = playerName.value.trim().slice(0, 31) || LIVE_CONFIG.playerName;
   playerName.value = name;
   try { localStorage.setItem(PLAYER_NAME_KEY, name); } catch {}
@@ -143,7 +161,9 @@ async function launch() {
   clientRoot.classList.add("booting");
   launcher.classList.add("hidden");
   loading.classList.remove("hidden");
-  loadingServer.textContent = `${server.name} · ${serverAddress(server)}`;
+  loadingServer.textContent = server
+    ? `${server.name} · ${serverAddress(server)}`
+    : "TFC Main Menu · Favorites available";
   setLoading("Preparing the browser client…");
   sizeCanvas(canvas);
 
@@ -151,13 +171,15 @@ async function launch() {
     xashClient = await createXashClient({
       canvas,
       config: { ...LIVE_CONFIG, playerName: name },
-      server,
+      server: relayServer,
       onStatus: setLoading
     });
-    // Leave the user in the native TFC menu, like the reference client.
-    // HLTV connection is initiated from that interactive menu instead of
-    // bypassing Configuration, Multiplayer, Custom Game, and Previews.
-    setLoading("TFC menu ready.");
+    if (server) {
+      setLoading(`Connecting to ${server.name}…`);
+      xashClient.connect(server);
+    } else {
+      setLoading("TFC menu ready.");
+    }
     await new Promise(resolve => window.setTimeout(resolve, 1800));
     clientRoot.classList.remove("booting");
     clientRoot.classList.add("running");

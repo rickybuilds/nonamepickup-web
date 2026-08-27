@@ -10,12 +10,16 @@ The static shell is implemented and discovers the active NoName pickup through
 an isolated Xash3D adapter once generated runtime artifacts exist under
 `./runtime/`.
 
-The launch command sequence is:
+When a server is selected, the launch command sequence is:
 
 1. set a spectator display name;
 2. set the public pickup password;
 3. connect to the selected `host:port`;
 4. select HLTV free-roaming mode after the connection starts.
+
+Selecting **TFC Main Menu** starts the same client and relay without issuing a
+connect command. The native Favorites menu remains available for choosing a
+server later.
 
 Client-side spectator mode is convenience only. A relay allowlist and an
 AMXX/server-side rule must prevent browser sessions from joining a playing
