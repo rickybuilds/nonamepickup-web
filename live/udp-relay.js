@@ -216,6 +216,7 @@ function normalizeLegacyHltvAccept(data, server) {
 
 function describeConnectAuth(data) {
   const text = new TextDecoder("latin1").decode(data);
+  if (!/^connect\s+\d+\s+-?\d+\s+"/.test(text.slice(4))) return null;
   const quoted = [...text.matchAll(/"([^"]*)"/g)];
   const protocolInfo = quoted[0]?.[1] || "";
   const read = key => (protocolInfo.match(new RegExp(`\\\\${key}\\\\([^\\\\]*)`)) || [])[1] || "";
@@ -341,7 +342,8 @@ export class UdpWebSocketRelay {
           console.info(`[live/relay] UDP send #${this.sentPackets}: ${packetKind(outbound)}, ${outbound.byteLength} bytes`);
         }
         if (outbound.length >= 5 && outbound[4] === 99) {
-          console.info(`[live/relay] connect authentication ${JSON.stringify(describeConnectAuth(outbound))}`);
+          const authentication = describeConnectAuth(outbound);
+          if (authentication) console.info(`[live/relay] connect authentication ${JSON.stringify(authentication)}`);
         }
         if (this.sentPackets === 1) {
           console.info(`[live/relay] sent first UDP packet to ${server.host}:${server.port}`);
