@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827p";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827r";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -123,6 +123,7 @@ function isExpectedRelayServerListWarning(message, servers) {
   if (!match) return false;
   const host = match[1];
   const port = Number(match[2]);
+  if (`${host}:${port}` === LOCAL_MASTER_ADDRESS) return true;
   return Object.values(servers || {}).some(server => server.host === host && server.port === port);
 }
 

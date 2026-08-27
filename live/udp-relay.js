@@ -350,16 +350,6 @@ export class UdpWebSocketRelay {
         // each UDP payload so native Multiplayer can browse/connect to any
         // allowlisted HLTV target through the single WebSocket.
         this.socket.send(endpointFrame(packet.ip, packet.port, outbound));
-        if (this.sentPackets <= 12) {
-          console.info(`[live/relay] UDP send #${this.sentPackets}: ${packetKind(outbound)}, ${outbound.byteLength} bytes`);
-        }
-        if (outbound.length >= 5 && outbound[4] === 99) {
-          const authentication = describeConnectAuth(outbound);
-          if (authentication) console.info(`[live/relay] connect authentication ${JSON.stringify(authentication)}`);
-        }
-        if (this.sentPackets === 1) {
-          console.info(`[live/relay] sent first UDP packet to ${server.host}:${server.port}`);
-        }
       }
     });
     patchNetForIpv4(this.net);
@@ -380,9 +370,6 @@ export class UdpWebSocketRelay {
       if (inbound.length >= 5 && inbound[0] === 255 && inbound[1] === 255 && inbound[2] === 255 && inbound[3] === 255 && inbound[4] === 66) {
         this.onAccepted(inboundServer);
       }
-      if (this.receivedPackets <= 12) {
-        console.info(`[live/relay] UDP receive #${this.receivedPackets}: ${packetKind(inbound)}, ${inbound.byteLength} bytes`);
-      }
       if (inbound.length >= 5 && inbound[0] === 255 && inbound[1] === 255 && inbound[2] === 255 && inbound[3] === 255) {
         if (inbound[4] === 56) {
           console.warn("[live/relay] HLTV rejected the spectator password. Set spectatorpassword to pickup (or none) on the HLTV proxy.");
@@ -390,9 +377,6 @@ export class UdpWebSocketRelay {
           const reason = new TextDecoder("latin1").decode(inbound.subarray(5)).replaceAll("\0", "").trim();
           console.warn(`[live/relay] TFC server rejected the connection: ${reason || "no reason supplied"}`);
         }
-      }
-      if (this.receivedPackets === 1) {
-        console.info(`[live/relay] received first UDP packet from ${this.server.host}:${this.server.port}`);
       }
       this.net.incoming.push({
         data: inbound,
