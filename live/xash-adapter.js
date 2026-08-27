@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827r";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827x";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -369,11 +369,9 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   };
   applyVideoMode();
   onStatus("Xash3D is ready.");
-  // The native menu validates the source of every master response before it
-  // parses the server list. Register the adapter's local virtual master so the
-  // in-game console does not label its Favorites response as unexpected.
+  // Favorites are mounted from favorite_servers.lst. Remove public Internet
+  // masters so the browser never emits or receives unrelated master traffic.
   engine.Cmd_ExecuteString("clearmasters");
-  engine.Cmd_ExecuteString(`addmaster ${LOCAL_MASTER_ADDRESS} gs`);
   installExtraMouseBindings(engine);
   installSpectatorMovementBindings(engine);
   // Apply the launcher choice once. Native Configuration changes made after

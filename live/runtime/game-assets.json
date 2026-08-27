@@ -1,13 +1,13 @@
 {
   "format": "tar+gzip+parts",
-  "compressedBytes": 259044681,
+  "compressedBytes": 262430031,
   "parts": [
-    { "url": "./game-assets-20260827u.tar.gz.part00", "bytes": 41943040, "sha256": "cb57a52631fbf63a5a18d5894e1d210cc55ae551171e49282633ef52ac51a677" },
-    { "url": "./game-assets-20260827u.tar.gz.part01", "bytes": 41943040, "sha256": "2cb2bbecd0725b9a1ed7bbd75d7dd0430f84d2c769413a171cfde5f353906a67" },
-    { "url": "./game-assets-20260827u.tar.gz.part02", "bytes": 41943040, "sha256": "8dd0c2affd3f147ff8d2e588415ce7c977074270e43a0caf7cab5483757064cc" },
-    { "url": "./game-assets-20260827u.tar.gz.part03", "bytes": 41943040, "sha256": "e58c855b67bfe2335e0f06bbb722f3a8f1ad3743c8908be8f770af0baae103e4" },
-    { "url": "./game-assets-20260827u.tar.gz.part04", "bytes": 41943040, "sha256": "b52a7f870f13b27bbf9be816d97f196c76051022f079290f21d5fc42a8b97b23" },
-    { "url": "./game-assets-20260827u.tar.gz.part05", "bytes": 41943040, "sha256": "59cc4168872e5778f5da8513bbc0b4275a24629dcf0ced719e804039d83e2b82" },
-    { "url": "./game-assets-20260827u.tar.gz.part06", "bytes": 7386441, "sha256": "cef3967a8ed23f678cb23bc90dbfbd3835e32b6959a8460ddfad9c0a8aa7bde0" }
+    { "url": "./game-assets-20260827w.tar.gz.part00", "bytes": 41943040, "sha256": "c504f1679cd9dbe51faa6244a0b558d49a9eadff000b3a9b5afb700763bb651a" },
+    { "url": "./game-assets-20260827w.tar.gz.part01", "bytes": 41943040, "sha256": "2cb2bbecd0725b9a1ed7bbd75d7dd0430f84d2c769413a171cfde5f353906a67" },
+    { "url": "./game-assets-20260827w.tar.gz.part02", "bytes": 41943040, "sha256": "65eaa9d7e378e43e83c756a1175efdcb44f2c14db548e2c32685022b5d494825" },
+    { "url": "./game-assets-20260827w.tar.gz.part03", "bytes": 41943040, "sha256": "bc5dceef9f94a2b5129356a3c86b1c50684fb94b5be233d544a4bf852c1324c3" },
+    { "url": "./game-assets-20260827w.tar.gz.part04", "bytes": 41943040, "sha256": "ca4bc0ee74cc513b722770a96c9c0e7bc8cfc5a05ae9afbb433d4deaf01ca552" },
+    { "url": "./game-assets-20260827w.tar.gz.part05", "bytes": 41943040, "sha256": "7e97b858da5f325ca48b64187b3ce24759a5491dc1e0af0d90a7025ad9bc1b67" },
+    { "url": "./game-assets-20260827w.tar.gz.part06", "bytes": 10771791, "sha256": "67e93b6592159df104a1818559de8a2d6ab6bbcca50211482c2b921ebeba418e" }
   ]
 }

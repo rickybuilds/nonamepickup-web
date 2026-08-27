@@ -338,7 +338,9 @@ export class UdpWebSocketRelay {
             ? 4
             : -1;
         if (scanAt >= 0) {
-          answerMasterQuery(this.net, packet, u8.subarray(scanAt), this.servers);
+          // Favorites are populated locally and queried directly. Do not
+          // synthesize an Internet-master reply: Xash renders a warning for
+          // locally injected server-list packets before JS can filter it.
           return;
         }
         if (packet.ip?.[0] === 101 && packet.ip?.[1] === 101) return;
