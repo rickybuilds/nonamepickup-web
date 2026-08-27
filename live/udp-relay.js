@@ -77,6 +77,12 @@ function endpointFrame(ip, port, payload) {
   return frame;
 }
 
+function isEmscriptenPortFrame(data) {
+  return data.length === 10
+    && data[0] === 255 && data[1] === 255 && data[2] === 255 && data[3] === 255
+    && data[4] === 112 && data[5] === 111 && data[6] === 114 && data[7] === 116;
+}
+
 function parseEndpointFrame(data, servers) {
   if (data.length < 7) return null;
   const ip = Array.from(data.subarray(0, 4));
@@ -84,6 +90,97 @@ function parseEndpointFrame(data, servers) {
   const host = ip.join(".");
   const known = Object.values(servers || {}).some(server => server.host === host && server.port === port);
   return known ? { ip, port, payload: data.subarray(6) } : null;
+}
+
+// The Xash menu library is built with Emscripten's regular SOCKFS networking,
+// while the engine itself uses Net above. SOCKFS normally translates every
+// UDP peer into ws://<game-server>, which is both the wrong protocol for HLTV
+// and blocked when /live/ is served over HTTPS. Bridge only our allowlisted
+// peers back through the same secure, endpoint-framed relay contract.
+export function installSockfsRelayBridge(path, servers) {
+  const NativeWebSocket = window.WebSocket;
+  const targets = new Map(Object.values(servers || {})
+    .filter(server => server?.key && server.host && server.port)
+    .map(server => [server.host, server]));
+
+  class SockfsRelayWebSocket extends EventTarget {
+    static CONNECTING = NativeWebSocket.CONNECTING;
+    static OPEN = NativeWebSocket.OPEN;
+    static CLOSING = NativeWebSocket.CLOSING;
+    static CLOSED = NativeWebSocket.CLOSED;
+
+    constructor(value, protocols) {
+      super();
+      const requested = new URL(String(value), location.href);
+      const target = requested.protocol === "ws:" ? targets.get(requested.hostname) : null;
+      const requestedPort = requested.port ? Number(requested.port) : 0;
+      // A missing port means ws:// port 80 and is commonly Xash trying to
+      // reach a FastDL HTTP host. Never mistake that TCP traffic for HLTV UDP.
+      if (!target || requestedPort !== target.port) {
+        return protocols === undefined
+          ? new NativeWebSocket(value)
+          : new NativeWebSocket(value, protocols);
+      }
+
+      this.target = target;
+      this.ip = ipTuple(target.host);
+      this.socket = new NativeWebSocket(relayUrl(path, target.key));
+      this.socket.binaryType = "arraybuffer";
+      this.socket.addEventListener("open", () => this.emit(new Event("open")));
+      this.socket.addEventListener("error", () => this.emit(new Event("error")));
+      this.socket.addEventListener("close", event => {
+        const forwarded = typeof CloseEvent === "function"
+          ? new CloseEvent("close", { code: event.code, reason: event.reason, wasClean: event.wasClean })
+          : new Event("close");
+        this.emit(forwarded);
+      });
+      this.socket.addEventListener("message", event => {
+        const frame = parseEndpointFrame(new Uint8Array(event.data), servers);
+        if (!frame || frame.ip.join(".") !== target.host || frame.port !== target.port) return;
+        const data = frame.payload.slice().buffer;
+        this.emit(new MessageEvent("message", { data }));
+      });
+      console.info(`[live/relay] routed native menu socket for ${target.host}:${target.port} through WSS.`);
+    }
+
+    emit(event) {
+      const handler = this[`on${event.type}`];
+      if (typeof handler === "function") handler.call(this, event);
+      this.dispatchEvent(event);
+    }
+
+    get url() { return this.socket.url; }
+    get CONNECTING() { return NativeWebSocket.CONNECTING; }
+    get OPEN() { return NativeWebSocket.OPEN; }
+    get CLOSING() { return NativeWebSocket.CLOSING; }
+    get CLOSED() { return NativeWebSocket.CLOSED; }
+    get readyState() { return this.socket.readyState; }
+    get bufferedAmount() { return this.socket.bufferedAmount; }
+    get extensions() { return this.socket.extensions; }
+    get protocol() { return this.socket.protocol; }
+    get binaryType() { return this.socket.binaryType; }
+    set binaryType(value) { this.socket.binaryType = value; }
+
+    send(data) {
+      const payload = packetBytes(data);
+      // SOCKFS's WebSocket proxy protocol announces the local UDP port to a
+      // generic proxy. Our relay already owns the association, so this control
+      // packet must not be forwarded to HLTV.
+      if (isEmscriptenPortFrame(payload)) return;
+      this.socket.send(endpointFrame(this.ip, this.target.port, payload));
+    }
+
+    close(code, reason) {
+      if (code === undefined) this.socket.close();
+      else if (reason === undefined) this.socket.close(code);
+      else this.socket.close(code, reason);
+    }
+  }
+
+  window.WebSocket = SockfsRelayWebSocket;
+  return () => {
+    if (window.WebSocket === SockfsRelayWebSocket) window.WebSocket = NativeWebSocket;
+  };
 }
 
 function packetKind(data) {
@@ -126,26 +223,22 @@ function describeConnectAuth(data) {
   };
 }
 
-function patchNetForIpv4(net, relayHost, relayPort) {
+function patchNetForIpv4(net) {
   const original = typeof net.getaddrinfo === "function" ? net.getaddrinfo.bind(net) : null;
   net.connect = net.connect || (() => 0);
   net.getaddrinfo = function getaddrinfo(hostnamePtr, restrictPrt, hintsPtr, addrinfoPtr) {
     const host = this.em.AsciiToString(hostnamePtr);
-    // HLTV/ReHLTV may advertise a generated public hostname after the
-    // initial connection (for example pub-<id>.dev). The browser cannot
-    // resolve that hostname, and it must not bypass the WebSocket relay
-    // anyway. All traffic for this client is pinned to the selected relay
-    // target, so resolve advertised hostnames to that already-validated IP.
+    // Keep numeric game endpoints on the custom UDP adapter. Do not rewrite
+    // arbitrary names: pub-<id>.r2.dev, for example, is a Cloudflare FastDL
+    // host. Mapping it to the HLTV address turns an HTTP download attempt into
+    // a bogus game-server socket and can feed unrelated bytes into the stream.
     const isLiteralIpv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host);
-    const resolvedHost = isLiteralIpv4 ? host : relayHost;
-    if (resolvedHost) {
+    if (isLiteralIpv4) {
       const service = restrictPrt ? this.em.AsciiToString(restrictPrt) : "";
       const parsedPort = Number.parseInt(service, 10);
-      const port = !isLiteralIpv4 && relayPort
-        ? relayPort
-        : Number.isInteger(parsedPort) && parsedPort >= 0 && parsedPort <= 65535 ? parsedPort : 0;
+      const port = Number.isInteger(parsedPort) && parsedPort >= 0 && parsedPort <= 65535 ? parsedPort : 0;
       const sa = this.em._malloc(16);
-      this.em.writeSockaddr(sa, 2, resolvedHost, port);
+      this.em.writeSockaddr(sa, 2, host, port);
       const ai = this.em._malloc(32);
       this.em.HEAP32[ai + 4 >> 2] = 2;
       this.em.HEAP32[ai + 8 >> 2] = 2;
@@ -245,7 +338,7 @@ export class UdpWebSocketRelay {
         }
       }
     });
-    patchNetForIpv4(this.net, server.host, server.port);
+    patchNetForIpv4(this.net);
   }
 
   async open() {

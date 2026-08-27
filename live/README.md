@@ -72,10 +72,11 @@ The browser spectator targets the East, Central, and West HLTV proxies on UDP
 port `27020`. The HLTV proxies connect upstream to their game servers on
 `27015`.
 
-Some HLTV/ReHLTV setups advertise a generated hostname such as
-`pub-<id>.dev` after the initial handshake. The browser relay deliberately
-maps that advertised name back to the selected numeric HLTV endpoint; it must
-not attempt a second direct browser-to-UDP connection.
+The native Multiplayer/Favorites menu uses Emscripten's SOCKFS path rather than
+the engine's network adapter. `/live/` bridges only exact allowlisted HLTV
+`:27020` sockets from that path into the secure relay. Hostnames such as
+`pub-<id>.r2.dev` are Cloudflare R2 FastDL hosts and must never be rewritten to
+an HLTV IP address.
 
 ## Custom sound downloads
 
