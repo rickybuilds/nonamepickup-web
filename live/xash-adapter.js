@@ -111,11 +111,68 @@ function installSpectatorMovementBindings(engine) {
     w: "+forward",
     a: "+moveleft",
     s: "+back",
-    d: "+moveright"
+    d: "+moveright",
+    space: "+moveup",
+    ctrl: "+movedown"
   };
   for (const [key, command] of Object.entries(bindings)) {
     engine.Cmd_ExecuteString(`bind "${key}" "${command}"`);
   }
+  engine.Cmd_ExecuteString("cl_forwardspeed 1500");
+  engine.Cmd_ExecuteString("cl_backspeed 1500");
+  engine.Cmd_ExecuteString("cl_sidespeed 1500");
+  engine.Cmd_ExecuteString("cl_upspeed 1500");
+}
+
+function applyHltvSpectatorSpeed(engine) {
+  const memory = engine?.em?.HEAPF32 || engine?.em?.Module?.HEAPF32;
+  if (!memory) return 0;
+
+  let repaired = 0;
+  // GoldSrc sends movevars as consecutive floats. TF15 clamps free-roam input
+  // to spectatormaxspeed (the fourth value), and some legacy proxies even
+  // leave it at zero. Match the complete surrounding physics block before
+  // applying our HLTV-only camera speed so unrelated memory is never changed.
+  for (let index = 0; index + 14 < memory.length; index += 1) {
+    const gravity = memory[index];
+    const stopSpeed = memory[index + 1];
+    const maxSpeed = memory[index + 2];
+    const spectatorSpeed = memory[index + 3];
+    const accelerate = memory[index + 4];
+    const airAccelerate = memory[index + 5];
+    const waterAccelerate = memory[index + 6];
+    const friction = memory[index + 7];
+    const edgeFriction = memory[index + 8];
+    const waterFriction = memory[index + 9];
+    const entityGravity = memory[index + 10];
+    const bounce = memory[index + 11];
+    const stepSize = memory[index + 12];
+    const maxVelocity = memory[index + 13];
+    const zMax = memory[index + 14];
+
+    const looksLikeMovevars =
+      gravity >= 100 && gravity <= 2000 &&
+      stopSpeed >= 10 && stopSpeed <= 1000 &&
+      maxSpeed >= 100 && maxSpeed <= 2000 &&
+      spectatorSpeed >= 0 && spectatorSpeed <= 10000 &&
+      accelerate > 0 && accelerate <= 100 &&
+      airAccelerate > 0 && airAccelerate <= 10000 &&
+      waterAccelerate > 0 && waterAccelerate <= 100 &&
+      friction > 0 && friction <= 20 &&
+      edgeFriction > 0 && edgeFriction <= 20 &&
+      waterFriction > 0 && waterFriction <= 20 &&
+      entityGravity > 0 && entityGravity <= 10 &&
+      bounce >= 0 && bounce <= 10 &&
+      stepSize >= 1 && stepSize <= 128 &&
+      maxVelocity >= 100 && maxVelocity <= 10000 &&
+      zMax >= 1000;
+
+    if (!looksLikeMovevars) continue;
+    if (spectatorSpeed === 1500) continue;
+    memory[index + 3] = 1500;
+    repaired += 1;
+  }
+  return repaired;
 }
 
 function isExpectedRelayServerListWarning(message, servers) {
@@ -209,6 +266,22 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
   let engine;
   const spectatorCommandTimers = new Set();
+  let spectatorSpeedRepairTimer = 0;
+  const scheduleSpectatorSpeedRepair = () => {
+    window.clearInterval(spectatorSpeedRepairTimer);
+    let attempts = 0;
+    spectatorSpeedRepairTimer = window.setInterval(() => {
+      attempts += 1;
+      const repaired = applyHltvSpectatorSpeed(engine);
+      if (repaired > 0) {
+        console.info(`[live/xash] set HLTV free-roam speed to 1500 (${repaired} movement block${repaired === 1 ? "" : "s"}).`);
+      }
+      if (repaired > 0 || attempts >= 40) {
+        window.clearInterval(spectatorSpeedRepairTimer);
+        spectatorSpeedRepairTimer = 0;
+      }
+    }, 500);
+  };
   let spectatorCommandScheduled = false;
   const scheduleSpectatorCommand = () => {
     // spec_mode persists across HLTV server changes. Re-running the TF client
@@ -219,6 +292,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     const timer = window.setTimeout(() => {
       spectatorCommandTimers.delete(timer);
       engine?.Cmd_ExecuteString(config.spectatorCommand);
+      scheduleSpectatorSpeedRepair();
     }, config.spectatorDelayMs);
     spectatorCommandTimers.add(timer);
   };
@@ -410,6 +484,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       };
 
       executeConnect();
+      scheduleSpectatorSpeedRepair();
 
     },
 
@@ -421,6 +496,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       persistConfig();
       for (const timer of spectatorCommandTimers) window.clearTimeout(timer);
       spectatorCommandTimers.clear();
+      window.clearInterval(spectatorSpeedRepairTimer);
       window.clearInterval(configSaveTimer);
       window.removeEventListener("beforeunload", persistConfig);
       window.removeEventListener("resize", onResize);
