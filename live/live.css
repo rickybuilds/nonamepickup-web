@@ -398,10 +398,6 @@ h1 strong { color: var(--red); }
 }
 
 .live-exit {
-  position: fixed;
-  z-index: 20;
-  top: 16px;
-  right: 16px;
   padding: 9px 12px;
   border: 1px solid rgba(255,255,255,.18);
   border-radius: 9px;
@@ -410,11 +406,43 @@ h1 strong { color: var(--red); }
   cursor: pointer;
 }
 
+.live-actions {
+  position: fixed;
+  z-index: 20;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 7px;
+}
+
+.live-action {
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 9px;
+  color: rgba(255,255,255,.9);
+  background: rgba(0,0,0,.64);
+  cursor: pointer;
+}
+
+.live-action:hover,
+.live-action:focus-visible,
 .live-exit:hover,
 .live-exit:focus-visible {
   background: rgba(255,255,255,.14);
   outline: 0;
 }
+
+.live-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  outline: 0;
+  color: #eef2f7;
+  background: #101721;
+}
+
+.live-input:focus { border-color: rgba(85, 168, 255, .6); }
 
 .touch-keyboard-toggle {
   position: fixed;
@@ -435,7 +463,7 @@ h1 strong { color: var(--red); }
 
 .touch-keyboard-toggle:focus-visible,
 .touch-keyboard-toggle.active { outline: 0; background: rgba(216,179,74,.85); color: #14120c; }
-.touch-keyboard-toggle { display: flex; }
+.live-client.running .touch-keyboard-toggle { display: flex; }
 
 .touch-keyboard {
   position: fixed;
@@ -481,47 +509,41 @@ h1 strong { color: var(--red); }
 .touch-keyboard-key.down { color: #14120c; background: rgba(216,179,74,.9); }
 .touch-keyboard-key.held { background: rgba(216,179,74,.4); border-color: rgba(216,179,74,.9); }
 
-.hidden { display: none !important; }
-
-#overlay {
+.touch-controls {
   position: fixed;
-  inset: 0;
-  z-index: 10;
-  background: #0a0a08 url("/assets/images/headers/header-live-orange.webp") center / cover no-repeat;
-  transition: opacity .6s ease;
+  z-index: 29;
+  right: 18px;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  pointer-events: none;
 }
-#overlay.gone { opacity: 0; pointer-events: none; }
-#overlay::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(6,6,5,.45), rgba(6,6,5,.15) 42%, rgba(6,6,5,.82));
+.touch-dpad,
+.touch-actions { display: grid; gap: 8px; pointer-events: auto; }
+.touch-dpad { grid-template-columns: repeat(3, 54px); }
+.touch-dpad button:nth-child(1) { grid-column: 2; }
+.touch-dpad button:nth-child(2) { grid-column: 1; grid-row: 2; }
+.touch-dpad button:nth-child(3) { grid-column: 2; grid-row: 2; }
+.touch-dpad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+.touch-actions { grid-template-columns: repeat(2, 76px); }
+.touch-controls button {
+  min-height: 50px;
+  padding: 8px;
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(15,18,24,.72);
+  font-size: 11px;
+  font-weight: 800;
+  touch-action: none;
+  user-select: none;
 }
-.live-loading-panel {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 1;
-  padding: 0 clamp(24px, 6vw, 76px) clamp(28px, 7vh, 60px);
-  color: #e9e2cd;
-}
-.live-loading-logo { display: grid; width: max-content; color: #d8b34a; filter: drop-shadow(0 2px 10px rgba(0,0,0,.6)); }
-.live-loading-logo span { font: 900 clamp(54px, 8vw, 92px)/.8 Georgia, serif; letter-spacing: -.1em; }
-.live-loading-logo small { margin-top: 8px; font-size: 11px; font-weight: 800; letter-spacing: .22em; }
-.live-loading-edition { margin-top: 8px; color: #cdb970; font-size: clamp(13px, 1.6vw, 16px); font-weight: 600; letter-spacing: .42em; text-transform: uppercase; }
-.live-loading-progress { display: flex; align-items: center; gap: 16px; max-width: 560px; margin-top: clamp(20px, 4vh, 34px); }
-.live-loading-rail { flex: 1; height: 3px; overflow: hidden; background: rgba(255,255,255,.16); }
-.live-loading-rail > div { width: 0; height: 100%; background: #d8b34a; transition: width .25s ease; }
-#loading-percent { min-width: 4ch; color: #d8b34a; font-size: 13px; font-variant-numeric: tabular-nums; }
-#loading-status { min-height: 1.2em; margin-top: 12px; color: rgba(233,226,205,.72); font-size: 13px; }
-#loading-status.error { color: #e0563c; }
-#loading-servers { margin-top: 20px; color: rgba(233,226,205,.4); font-size: 12px; line-height: 1.7; }
-#loading-servers b { color: rgba(233,226,205,.75); font-weight: 600; }
+.touch-controls button:active { background: rgba(239,51,64,.82); }
+.live-client:not(.running) .touch-controls { display: none; }
 
-@media (max-width: 620px) {
-  .live-exit { top: 12px; right: 12px; }
-}
+.hidden { display: none !important; }
 
 @media (max-width: 980px) {
   .live-launcher { margin-right: 0; }
@@ -542,4 +564,5 @@ h1 strong { color: var(--red); }
   .live-loading { padding: 16px; }
   .live-loading-card { padding: 34px 26px 30px; }
   .live-loading-brand { margin-bottom: 30px; }
+  .live-actions { top: 12px; right: 12px; left: 12px; justify-content: flex-end; }
 }
