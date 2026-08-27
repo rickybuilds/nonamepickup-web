@@ -56,7 +56,7 @@ select { font: inherit; }
   mask-image: linear-gradient(90deg, #000 0%, transparent 82%);
 }
 
-#xash-canvas {
+#canvas {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -69,8 +69,8 @@ select { font: inherit; }
   touch-action: none;
 }
 
-.live-client.booting #xash-canvas,
-.live-client.running #xash-canvas { display: block !important; }
+.live-client.booting #canvas,
+.live-client.running #canvas { display: block !important; }
 .live-client.running .live-stage-shade { display: none; }
 .live-client.running .live-stage {
   background: #000;

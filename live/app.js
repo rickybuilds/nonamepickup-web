@@ -3,7 +3,7 @@ import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.j
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
-const canvas = $("xash-canvas");
+const canvas = $("canvas");
 const launcher = $("live-launcher");
 const launchButton = $("launch-button");
 const launchDetail = $("launch-detail");
