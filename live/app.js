@@ -154,8 +154,10 @@ async function launch() {
       server,
       onStatus: setLoading
     });
-    xashClient.connect(server);
-    setLoading(`Connecting to ${server.name}…`);
+    // Leave the user in the native TFC menu, like the reference client.
+    // HLTV connection is initiated from that interactive menu instead of
+    // bypassing Configuration, Multiplayer, Custom Game, and Previews.
+    setLoading("TFC menu ready.");
     await new Promise(resolve => window.setTimeout(resolve, 1800));
     clientRoot.classList.remove("booting");
     clientRoot.classList.add("running");
