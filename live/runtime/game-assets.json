@@ -1,24 +1,13 @@
 {
   "format": "tar+gzip+parts",
-  "compressedBytes": 736065481,
+  "compressedBytes": 259044681,
   "parts": [
-    { "url": "./game-assets-20260827s.tar.gz.part00", "bytes": 41943040, "sha256": "31a7b9eb8601e678605b45beb55a4fb62626c97da622fda419e3f8a38cbb9a6b" },
-    { "url": "./game-assets-20260827s.tar.gz.part01", "bytes": 41943040, "sha256": "2cb2bbecd0725b9a1ed7bbd75d7dd0430f84d2c769413a171cfde5f353906a67" },
-    { "url": "./game-assets-20260827s.tar.gz.part02", "bytes": 41943040, "sha256": "fcdeaea86b12bc7f02570ce0b7189a19de8d82ada2f83164d97b150016d20b65" },
-    { "url": "./game-assets-20260827s.tar.gz.part03", "bytes": 41943040, "sha256": "6b0ad23a49e1db13bdab8c77b7613abcbc1d9d20c296834c13b899d1adb00937" },
-    { "url": "./game-assets-20260827s.tar.gz.part04", "bytes": 41943040, "sha256": "7f8a0a8ad26cd634b67ff9fc33d753c8dcb764cbbe9d59795ede179705e33277" },
-    { "url": "./game-assets-20260827s.tar.gz.part05", "bytes": 41943040, "sha256": "71341e5fd01f2a87f83b7cfe21348ac3564319beaf07e5b220a0e90e61240be5" },
-    { "url": "./game-assets-20260827s.tar.gz.part06", "bytes": 41943040, "sha256": "00b44bf8d7dcdb1730bfbd5a3cfe3d2796ecce2c4f8a95fc041cf158dd8c6e5c" },
-    { "url": "./game-assets-20260827s.tar.gz.part07", "bytes": 41943040, "sha256": "64bef00a67456007f795de845fef751832360d2f9c3049c66e087dbf5efdfbae" },
-    { "url": "./game-assets-20260827s.tar.gz.part08", "bytes": 41943040, "sha256": "06888e8d888110e2e290d8c250f85928524102fcda072bac95c6b2385aecb5fc" },
-    { "url": "./game-assets-20260827s.tar.gz.part09", "bytes": 41943040, "sha256": "5ed9f7e1bc432a557dd7604121ac4e456c35864c79d0378f04ec7c5a646be1b3" },
-    { "url": "./game-assets-20260827s.tar.gz.part10", "bytes": 41943040, "sha256": "544ba3583aa2cfe785e4778a1eb1d9bab67d81ba10f217dc2e4d3b54e49e12df" },
-    { "url": "./game-assets-20260827s.tar.gz.part11", "bytes": 41943040, "sha256": "569d5f828455a38092b11119efa7f662d73d3a8e1647ca6aefb22fcb33060da1" },
-    { "url": "./game-assets-20260827s.tar.gz.part12", "bytes": 41943040, "sha256": "21cc801896f75f019e303e552c0fe535bfa50065b6330797c1ad0480f8e323cf" },
-    { "url": "./game-assets-20260827s.tar.gz.part13", "bytes": 41943040, "sha256": "701fd8ee7ee4bd5a18ccc7a48f85aafedc005b5bfbbfd342074c846f2aead6bd" },
-    { "url": "./game-assets-20260827s.tar.gz.part14", "bytes": 41943040, "sha256": "dff49787ba4a6e2d3292e751adc8a0a1718132084b28d9f9cd4ec32a364451a1" },
-    { "url": "./game-assets-20260827s.tar.gz.part15", "bytes": 41943040, "sha256": "7203529d8b39ea6bd295bda6839fd7eb4eab22d450508b7b409231aa4c24f9c2" },
-    { "url": "./game-assets-20260827s.tar.gz.part16", "bytes": 41943040, "sha256": "4d1a99a199f6b228c2a110adcef3f58a93caa765b9e7ac0f31fb37f42f4ac298" },
-    { "url": "./game-assets-20260827s.tar.gz.part17", "bytes": 23033801, "sha256": "27adc3cf8dc20396dd575a9cf7c5dbdf1ffb353c241f5ec7d1a65c8ce350114c" }
+    { "url": "./game-assets-20260827u.tar.gz.part00", "bytes": 41943040, "sha256": "cb57a52631fbf63a5a18d5894e1d210cc55ae551171e49282633ef52ac51a677" },
+    { "url": "./game-assets-20260827u.tar.gz.part01", "bytes": 41943040, "sha256": "2cb2bbecd0725b9a1ed7bbd75d7dd0430f84d2c769413a171cfde5f353906a67" },
+    { "url": "./game-assets-20260827u.tar.gz.part02", "bytes": 41943040, "sha256": "8dd0c2affd3f147ff8d2e588415ce7c977074270e43a0caf7cab5483757064cc" },
+    { "url": "./game-assets-20260827u.tar.gz.part03", "bytes": 41943040, "sha256": "e58c855b67bfe2335e0f06bbb722f3a8f1ad3743c8908be8f770af0baae103e4" },
+    { "url": "./game-assets-20260827u.tar.gz.part04", "bytes": 41943040, "sha256": "b52a7f870f13b27bbf9be816d97f196c76051022f079290f21d5fc42a8b97b23" },
+    { "url": "./game-assets-20260827u.tar.gz.part05", "bytes": 41943040, "sha256": "59cc4168872e5778f5da8513bbc0b4275a24629dcf0ced719e804039d83e2b82" },
+    { "url": "./game-assets-20260827u.tar.gz.part06", "bytes": 7386441, "sha256": "cef3967a8ed23f678cb23bc90dbfbd3835e32b6959a8460ddfad9c0a8aa7bde0" }
   ]
 }
