@@ -143,7 +143,10 @@ function answerMasterQuery(net, packet, scan, servers) {
   for (const s of list) {
     if (!s.host || !s.port) continue;
     for (const b of s.host.split(".").map(Number)) bytes.push(b);
-    bytes.push(s.port >> 8 & 255, s.port & 255);
+    // GoldSrc's A2M_GET_SERVERS response stores the UDP port low byte first.
+    // Sending network-order bytes here makes the native browser decode every
+    // configured HLTV endpoint as a different, invalid port.
+    bytes.push(s.port & 255, s.port >> 8 & 255);
   }
   bytes.push(0, 0, 0, 0, 0, 0);
   net.incoming.push({
