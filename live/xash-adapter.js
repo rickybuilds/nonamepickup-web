@@ -127,6 +127,13 @@ function isExpectedRelayServerListWarning(message, servers) {
   return Object.values(servers || {}).some(server => server.host === host && server.port === port);
 }
 
+function redactSensitiveConsoleText(message) {
+  return String(message || "").replace(
+    /(>?\s*rcon_password\s+)(?:"[^"]*"|\S+)/gi,
+    "$1[redacted]"
+  );
+}
+
 function viewportSize() {
   const vv = window.visualViewport;
   const w = Math.round(vv ? vv.width : window.innerWidth);
@@ -202,15 +209,18 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
 
   let engine;
   const spectatorCommandTimers = new Set();
+  let spectatorCommandScheduled = false;
   const scheduleSpectatorCommand = () => {
-    if (!config.spectatorCommand) return;
-    for (const offset of [0, 3000, 6000]) {
-      const timer = window.setTimeout(() => {
-        spectatorCommandTimers.delete(timer);
-        engine?.Cmd_ExecuteString(config.spectatorCommand);
-      }, config.spectatorDelayMs + offset);
-      spectatorCommandTimers.add(timer);
-    }
+    // spec_mode persists across HLTV server changes. Re-running the TF client
+    // command while Favorites is transitioning to another server can call the
+    // client DLL in a partially reset state and corrupt its WASM memory.
+    if (!config.spectatorCommand || spectatorCommandScheduled) return;
+    spectatorCommandScheduled = true;
+    const timer = window.setTimeout(() => {
+      spectatorCommandTimers.delete(timer);
+      engine?.Cmd_ExecuteString(config.spectatorCommand);
+    }, config.spectatorDelayMs);
+    spectatorCommandTimers.add(timer);
   };
 
   onStatus("Opening the TFC UDP relay…");
@@ -275,10 +285,10 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
         // HLTV endpoint, which Xash labels "unexpected" even though it is the
         // response requested by this browser adapter.
         if (isExpectedRelayServerListWarning(message, config.servers)) return;
-        console.info("[live/xash]", message);
+        console.info("[live/xash]", redactSensitiveConsoleText(message));
       },
       printErr(message) {
-        console.error("[live/xash]", message);
+        console.error("[live/xash]", redactSensitiveConsoleText(message));
       },
       callbacks: {
         gameReady() {
