@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827l";
+import { UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827m";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -116,6 +116,14 @@ function installSpectatorMovementBindings(engine) {
   for (const [key, command] of Object.entries(bindings)) {
     engine.Cmd_ExecuteString(`bind "${key}" "${command}"`);
   }
+}
+
+function isExpectedRelayServerListWarning(message, servers) {
+  const match = String(message || "").match(/Warning: unexpected server list packet from (\d{1,3}(?:\.\d{1,3}){3}):(\d+)/);
+  if (!match) return false;
+  const host = match[1];
+  const port = Number(match[2]);
+  return Object.values(servers || {}).some(server => server.host === host && server.port === port);
 }
 
 function viewportSize() {
@@ -261,6 +269,11 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     },
     module: {
       print(message) {
+        // The native menu keeps refreshing Favorites behind the game. Our
+        // local master response is intentionally sourced from an allowlisted
+        // HLTV endpoint, which Xash labels "unexpected" even though it is the
+        // response requested by this browser adapter.
+        if (isExpectedRelayServerListWarning(message, config.servers)) return;
         console.info("[live/xash]", message);
       },
       printErr(message) {
