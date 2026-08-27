@@ -53,7 +53,10 @@ function rewriteHltvConnect(payload) {
   protocolInfo.delete("cdkey");
 
   const userInfo = parseInfoString(match[4]);
-  userInfo.set("*hltv", "1");
+  // A browser watching an HLTV feed is a normal downstream spectator.
+  // *hltv=1 identifies another relay proxy and makes ReHLTV send periodic
+  // proxy-status packets whose layout is not the viewer protocol Xash parses.
+  userInfo.delete("*hltv");
   const rewritten = `connect ${match[1]} ${match[2]} "${serializeInfoString(protocolInfo)}" "${serializeInfoString(userInfo)}"${command.slice(match[0].length)}`;
   const encoded = new TextEncoder().encode(rewritten);
   const result = new Uint8Array(4 + encoded.length);
@@ -219,12 +222,11 @@ function describeConnectAuth(data) {
     protocol: read("prot") || "unknown",
     rawBytes: read("raw").length,
     hasCdKey: Boolean(read("cdkey")),
-    hltv: /\\\\\*hltv\\\\1(?:\\\\|$)/.test(quoted[1]?.[1] || "")
+    hltv: parseInfoString(quoted[1]?.[1]).get("*hltv") === "1"
   };
 }
 
 function patchNetForIpv4(net) {
-  const original = typeof net.getaddrinfo === "function" ? net.getaddrinfo.bind(net) : null;
   net.connect = net.connect || (() => 0);
   net.getaddrinfo = function getaddrinfo(hostnamePtr, restrictPrt, hintsPtr, addrinfoPtr) {
     const host = this.em.AsciiToString(hostnamePtr);
@@ -250,7 +252,11 @@ function patchNetForIpv4(net) {
       this.em.HEAPU32[addrinfoPtr >> 2] = ai;
       return 0;
     }
-    return original ? original(hostnamePtr, restrictPrt, hintsPtr, addrinfoPtr) : -1;
+    // Net's stock fallback converts every hostname into a synthetic
+    // 101.101.x.x peer. With no TCP WebSocket proxy behind that address, the
+    // only result on HTTPS is a blocked ws:// request. Report it unresolved
+    // instead; distributable custom files must be mounted as browser assets.
+    return -2;
   };
 }
 

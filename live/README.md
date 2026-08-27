@@ -72,6 +72,11 @@ The browser spectator targets the East, Central, and West HLTV proxies on UDP
 port `27020`. The HLTV proxies connect upstream to their game servers on
 `27015`.
 
+Browser viewers connect to those listeners as normal downstream spectators
+(HLTV `TYPE_CLIENT`), not as relay proxies. The relay removes `*hltv`; setting
+it to `1` opts into relay-to-relay status messages and eventually makes the
+Xash viewer abort with `svc_bad`.
+
 The native Multiplayer/Favorites menu uses Emscripten's SOCKFS path rather than
 the engine's network adapter. `/live/` bridges only exact allowlisted HLTV
 `:27020` sockets from that path into the secure relay. Hostnames such as
