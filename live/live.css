@@ -444,6 +444,71 @@ h1 strong { color: var(--red); }
 
 .live-input:focus { border-color: rgba(85, 168, 255, .6); }
 
+.touch-keyboard-toggle {
+  position: fixed;
+  z-index: 30;
+  top: calc(10px + env(safe-area-inset-top));
+  right: calc(10px + env(safe-area-inset-right));
+  display: none;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(216,179,74,.55);
+  border-radius: 8px;
+  color: #e9e2cd;
+  background: rgba(12,12,10,.55);
+  font-size: 22px;
+}
+
+.touch-keyboard-toggle:focus-visible,
+.touch-keyboard-toggle.active { outline: 0; background: rgba(216,179,74,.85); color: #14120c; }
+.live-client.running .touch-keyboard-toggle { display: flex; }
+
+.touch-keyboard {
+  position: fixed;
+  z-index: 30;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: none;
+  padding: 6px 5px calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(216,179,74,.45);
+  background: rgba(10,10,8,.88);
+  touch-action: none;
+  user-select: none;
+}
+.touch-keyboard.open { display: block; }
+.touch-keyboard-preview {
+  height: 38px;
+  margin-bottom: 6px;
+  padding: 0 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  color: #14120c;
+  background: #fff;
+  font: 18px/38px system-ui, sans-serif;
+  white-space: nowrap;
+}
+.touch-keyboard-preview.empty { color: rgba(20,18,12,.38); }
+.touch-keyboard-row { display: flex; gap: 5px; margin-bottom: 5px; }
+.touch-keyboard-row:last-child { margin-bottom: 0; }
+.touch-keyboard-key {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 6px;
+  color: #e9e2cd;
+  background: rgba(52,50,44,.92);
+  font: 19px system-ui, sans-serif;
+}
+.touch-keyboard-key.small { font-size: 13px; }
+.touch-keyboard-key.accent,
+.touch-keyboard-key.down { color: #14120c; background: rgba(216,179,74,.9); }
+.touch-keyboard-key.held { background: rgba(216,179,74,.4); border-color: rgba(216,179,74,.9); }
+
 .hidden { display: none !important; }
 
 @media (max-width: 980px) {

@@ -1,5 +1,6 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
 import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826z";
+import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827a";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
 
@@ -50,6 +51,37 @@ function ensureEngineShape(engine) {
       throw new Error(`The Xash3D runtime is missing ${method}().`);
     }
   }
+}
+
+function installExtraMouseBindings(engine) {
+  const bindings = { 3: "MOUSE4", 4: "MOUSE5" };
+  const actions = { MOUSE4: "+gren1", MOUSE5: "+gren2" };
+  const active = new Set();
+  for (const [button, key] of Object.entries(bindings)) {
+    const action = actions[key];
+    try { engine.Cmd_ExecuteString(`bind ${key} "${action}"`); } catch {}
+    const buttonNumber = Number(button);
+    window.addEventListener("mousedown", event => {
+      if (event.button !== buttonNumber) return;
+      event.preventDefault();
+      if (active.has(key)) return;
+      active.add(key);
+      engine.Cmd_ExecuteString(action);
+    }, { capture: true });
+    window.addEventListener("mouseup", event => {
+      if (event.button !== buttonNumber) return;
+      event.preventDefault();
+      if (!active.delete(key)) return;
+      engine.Cmd_ExecuteString(`-${action.slice(1)}`);
+    }, { capture: true });
+    window.addEventListener("auxclick", event => {
+      if (event.button === buttonNumber) event.preventDefault();
+    }, { capture: true });
+  }
+  window.addEventListener("blur", () => {
+    for (const key of active) engine.Cmd_ExecuteString(`-${actions[key].slice(1)}`);
+    active.clear();
+  });
 }
 
 function viewportSize() {
@@ -216,6 +248,12 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   }
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));
 
+  if (navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).get("touch") === "1") {
+    engine.Cmd_ExecuteString("touch_enable 1");
+    engine.Cmd_ExecuteString("osk_enable 0");
+    engine.Cmd_ExecuteString("con_fontscale 1.8");
+  }
+
   // Xash applies the saved GoldSrc video mode while Host_Main starts. That
   // resets WebGL's viewport to 640x480 even though the canvas CSS fills the
   // page. Ask Xash/SDL to change modes so the renderer, drawing buffer, and
@@ -234,6 +272,8 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   };
   applyVideoMode();
   onStatus("Xash3D is ready.");
+  installExtraMouseBindings(engine);
+  installTouchKeyboard({ command: value => engine.Cmd_ExecuteString(String(value || "")) });
 
   const persistConfig = () => saveConfig(gameFs);
   const configSaveTimer = window.setInterval(persistConfig, 20_000);
