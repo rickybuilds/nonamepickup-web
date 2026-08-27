@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827k";
+import { UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827l";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -347,6 +347,9 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   onStatus("Xash3D is ready.");
   installExtraMouseBindings(engine);
   installSpectatorMovementBindings(engine);
+  // Apply the launcher choice once. Native Configuration changes made after
+  // this point remain authoritative and are persisted in config.cfg.
+  engine.Cmd_ExecuteString(`name \"${config.playerName.replaceAll('"', "")}\"`);
   if (touchEnabled) {
     installTouchKeyboard({ command: value => engine.Cmd_ExecuteString(String(value || "")) });
   }
@@ -372,7 +375,6 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       const address = `${server.host}:${server.port}`;
       console.info(`[live/xash] connecting to ${address}`);
       const executeConnect = () => {
-        engine.Cmd_ExecuteString(`name \"${config.playerName.replaceAll('"', "")}\"`);
         engine.Cmd_ExecuteString(`password \"${config.playerPassword.replaceAll('"', "")}\"`);
         engine.Cmd_ExecuteString(`connect ${address}`);
       };
