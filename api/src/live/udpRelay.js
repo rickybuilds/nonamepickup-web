@@ -8,7 +8,6 @@ const MAX_PACKETS_PER_SECOND = 256;
 const MAX_BYTES_PER_SECOND = 512 * 1024;
 const MAX_CONNECTIONS = 64;
 const MAX_CONNECTIONS_PER_IP = 4;
-const MAX_PENDING_UDP_PACKETS = 16;
 const RELAY_PATH = "/api/live/relay";
 
 const TARGETS = Object.freeze({
@@ -19,6 +18,8 @@ const TARGETS = Object.freeze({
   central: Object.freeze({ host: "64.177.123.157", port: 27020, transport: "hltv" }),
   west: Object.freeze({ host: "149.28.78.158", port: 27020, transport: "hltv" })
 });
+
+const TARGET_BY_ENDPOINT = new Map(Object.values(TARGETS).map(target => [`${target.host}:${target.port}`, target]));
 
 function parseInfoString(value) {
   const result = new Map();
@@ -143,11 +144,9 @@ function attachUdpRelay(server, options = {}) {
   });
 
   webSockets.on("connection", (ws, request) => {
-    const { ip, target, serverKey } = request.liveRelay;
+    const { ip, target: defaultTarget, serverKey } = request.liveRelay;
     const udp = dgram.createSocket("udp4");
     let closed = false;
-    let udpReady = false;
-    const pending = [];
     let windowStarted = Date.now();
     let packets = 0;
     let bytes = 0;
@@ -168,24 +167,26 @@ function attachUdpRelay(server, options = {}) {
       const remaining = (connectionsByIp.get(ip) || 1) - 1;
       if (remaining > 0) connectionsByIp.set(ip, remaining);
       else connectionsByIp.delete(ip);
-      pending.length = 0;
       try { udp.close(); } catch {}
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
     };
 
-    udp.on("message", message => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(message, { binary: true });
+    udp.on("message", (message, rinfo) => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      const source = TARGET_BY_ENDPOINT.get(`${rinfo.address}:${rinfo.port}`) || defaultTarget;
+      const frame = Buffer.allocUnsafe(6 + message.length);
+      frame[0] = Number(source.host.split(".")[0]);
+      frame[1] = Number(source.host.split(".")[1]);
+      frame[2] = Number(source.host.split(".")[2]);
+      frame[3] = Number(source.host.split(".")[3]);
+      frame.writeUInt16BE(source.port, 4);
+      message.copy(frame, 6);
+      ws.send(frame, { binary: true });
     });
     udp.on("error", error => {
       console.error(`[live-relay] ${serverKey} UDP error:`, error.message);
       close();
     });
-    udp.connect(target.port, target.host, () => {
-      udpReady = true;
-      for (const packet of pending) udp.send(packet);
-      pending.length = 0;
-    });
-
     ws.on("message", (message, isBinary) => {
       const payload = Buffer.isBuffer(message) ? message : Buffer.concat(Array.isArray(message) ? message : [message]);
       if (!isBinary || payload.length < 1 || payload.length > MAX_PACKET_BYTES) return close();
@@ -198,19 +199,19 @@ function attachUdpRelay(server, options = {}) {
       packets += 1;
       bytes += payload.length;
       if (packets > MAX_PACKETS_PER_SECOND || bytes > MAX_BYTES_PER_SECOND) return close();
-      const outbound = target.transport === "hltv"
-        ? rewriteBrowserConnect(payload, hashedCdKey)
-        : payload;
+      const framedTarget = payload.length >= 7
+        ? TARGET_BY_ENDPOINT.get(`${payload[0]}.${payload[1]}.${payload[2]}.${payload[3]}:${payload.readUInt16BE(4)}`)
+        : null;
+      const destination = framedTarget || defaultTarget;
+      const packet = framedTarget ? payload.subarray(6) : payload;
+      const outbound = destination.transport === "hltv"
+        ? rewriteBrowserConnect(packet, hashedCdKey)
+        : packet;
       if (outbound !== payload && !reportedAuthRewrite) {
         reportedAuthRewrite = true;
         console.info(`[live-relay] ${serverKey} browser spectator using protocol 2 HLTV transport`);
       }
-      if (!udpReady) {
-        if (pending.length >= MAX_PENDING_UDP_PACKETS) return close();
-        pending.push(outbound);
-        return;
-      }
-      udp.send(outbound);
+      udp.send(outbound, destination.port, destination.host);
     });
     ws.on("error", close);
     ws.on("close", close);

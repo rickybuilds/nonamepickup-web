@@ -62,6 +62,12 @@ The production relay must:
 - attach or identify browser sessions so the server can force spectator mode;
 - close the UDP association when the browser session ends.
 
+The relay WebSocket carries a six-byte IPv4/port endpoint header before each
+UDP payload. This lets the native TFC Multiplayer browser query and connect to
+any configured allowlisted HLTV target while keeping all traffic on the relay.
+After deploying relay changes, restart the API process and reload `/live/` so
+the browser and server use the same framed transport.
+
 The browser spectator targets the East, Central, and West HLTV proxies on UDP
 port `27020`. The HLTV proxies connect upstream to their game servers on
 `27015`.

@@ -25,6 +25,24 @@ function packetBytes(data) {
   return new Uint8Array(data);
 }
 
+function endpointFrame(ip, port, payload) {
+  const frame = new Uint8Array(6 + payload.length);
+  frame.set(ip, 0);
+  frame[4] = port >> 8 & 255;
+  frame[5] = port & 255;
+  frame.set(payload, 6);
+  return frame;
+}
+
+function parseEndpointFrame(data, servers) {
+  if (data.length < 7) return null;
+  const ip = Array.from(data.subarray(0, 4));
+  const port = data[4] << 8 | data[5];
+  const host = ip.join(".");
+  const known = Object.values(servers || {}).some(server => server.host === host && server.port === port);
+  return known ? { ip, port, payload: data.subarray(6) } : null;
+}
+
 function packetKind(data) {
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
   if (bytes.length >= 5 && bytes[0] === 255 && bytes[1] === 255 && bytes[2] === 255 && bytes[3] === 255) {
@@ -159,7 +177,7 @@ export class UdpWebSocketRelay {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
         this.sentPackets += 1;
         const outbound = packetBytes(data);
-        this.socket.send(outbound);
+        this.socket.send(endpointFrame(packet.ip, packet.port, outbound));
         if (this.sentPackets <= 12) {
           console.info(`[live/relay] UDP send #${this.sentPackets}: ${packetKind(outbound)}, ${outbound.byteLength} bytes`);
         }
@@ -180,7 +198,12 @@ export class UdpWebSocketRelay {
     this.socket.binaryType = "arraybuffer";
     this.socket.addEventListener("message", event => {
       this.receivedPackets += 1;
-      const inbound = normalizeLegacyHltvAccept(new Uint8Array(event.data), this.server);
+      const frame = parseEndpointFrame(new Uint8Array(event.data), this.servers);
+      const inboundPayload = frame?.payload || new Uint8Array(event.data);
+      const inboundServer = frame
+        ? { host: frame.ip.join("."), port: frame.port }
+        : this.server;
+      const inbound = normalizeLegacyHltvAccept(inboundPayload, inboundServer);
       if (this.receivedPackets <= 12) {
         console.info(`[live/relay] UDP receive #${this.receivedPackets}: ${packetKind(inbound)}, ${inbound.byteLength} bytes`);
       }
@@ -193,11 +216,8 @@ export class UdpWebSocketRelay {
       }
       this.net.incoming.push({
         data: inbound,
-        // This WebSocket has one allowlisted UDP target. Always report that
-        // real peer to Xash; the engine rejects challenge replies whose source
-        // port does not match the address supplied to `connect`.
-        ip: ipTuple(this.server.host),
-        port: this.server.port
+        ip: frame?.ip || ipTuple(this.server.host),
+        port: frame?.port || this.server.port
       });
     });
 
