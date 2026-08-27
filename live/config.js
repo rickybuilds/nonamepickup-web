@@ -22,28 +22,28 @@ export const LIVE_CONFIG = Object.freeze({
   servers: Object.freeze({
     east: Object.freeze({
       key: "east",
-      name: "TFC East Live (HLTV)",
+      name: "NoNamePickups East Live (HLTV)",
       host: "108.61.128.120",
       port: 27020,
       available: true
     }),
     central: Object.freeze({
       key: "central",
-      name: "TFC Central Live (HLTV)",
+      name: "NoNamePickups Central Live (HLTV)",
       host: "64.177.123.157",
       port: 27020,
       available: true
     }),
     west: Object.freeze({
       key: "west",
-      name: "TFC West Live (HLTV)",
+      name: "NoNamePickups West Live (HLTV)",
       host: "149.28.78.158",
       port: 27020,
       available: true
     }),
     euro: Object.freeze({
       key: "euro",
-      name: "TFC Euro Live (HLTV)",
+      name: "Euro Live (HLTV)",
       host: "108.61.221.227",
       port: 27020,
       spectatorPassword: "",
