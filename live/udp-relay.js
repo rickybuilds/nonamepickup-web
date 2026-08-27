@@ -25,6 +25,49 @@ function packetBytes(data) {
   return new Uint8Array(data);
 }
 
+function parseInfoString(value) {
+  const result = new Map();
+  const parts = String(value || "").split("\\");
+  for (let index = parts[0] ? 0 : 1; index + 1 < parts.length; index += 2) {
+    if (parts[index]) result.set(parts[index], parts[index + 1]);
+  }
+  return result;
+}
+
+function serializeInfoString(values) {
+  return [...values].map(([key, value]) => `\\${key}\\${value}`).join("");
+}
+
+function rewriteHltvConnect(payload) {
+  if (payload.length < 6 || payload[0] !== 255 || payload[1] !== 255 || payload[2] !== 255 || payload[3] !== 255 || payload[4] !== 99) {
+    return payload;
+  }
+  const command = new TextDecoder("latin1").decode(payload.subarray(4));
+  const match = command.match(/^connect\s+(\d+)\s+(-?\d+)\s+"([^"]*)"\s+"([^"]*)"/);
+  if (!match) return payload;
+
+  const protocolInfo = parseInfoString(match[3]);
+  protocolInfo.set("prot", "2");
+  protocolInfo.set("unique", "-1");
+  protocolInfo.set("raw", cryptoRandomToken());
+  protocolInfo.delete("cdkey");
+
+  const userInfo = parseInfoString(match[4]);
+  userInfo.set("*hltv", "1");
+  const rewritten = `connect ${match[1]} ${match[2]} "${serializeInfoString(protocolInfo)}" "${serializeInfoString(userInfo)}"${command.slice(match[0].length)}`;
+  const encoded = new TextEncoder().encode(rewritten);
+  const result = new Uint8Array(4 + encoded.length);
+  result.set([255, 255, 255, 255]);
+  result.set(encoded, 4);
+  return result;
+}
+
+function cryptoRandomToken() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function endpointFrame(ip, port, payload) {
   const frame = new Uint8Array(6 + payload.length);
   frame.set(ip, 0);
@@ -186,7 +229,7 @@ export class UdpWebSocketRelay {
         this.lastPeer = { ip: Array.from(packet.ip), port: packet.port };
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
         this.sentPackets += 1;
-        const outbound = packetBytes(data);
+        const outbound = rewriteHltvConnect(packetBytes(data));
         // Match the reference transport: carry the intended endpoint beside
         // each UDP payload so native Multiplayer can browse/connect to any
         // allowlisted HLTV target through the single WebSocket.
