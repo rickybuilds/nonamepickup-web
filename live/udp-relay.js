@@ -170,7 +170,14 @@ export class UdpWebSocketRelay {
       sendto: packet => {
         const data = packet.data;
         const u8 = data instanceof Uint8Array ? data : new Uint8Array(data.buffer || data);
-        const scanAt = u8[0] === 49 && u8[1] === 255 ? 0 : u8[0] === 255 && u8[1] === 255 && u8[2] === 255 && u8[3] === 255 && u8[4] === 49 && u8[5] === 255 ? 4 : -1;
+        // The native browser can request any master-server region (the
+        // default is commonly 0x00/US East, not 0xFF/World). Answer every
+        // A2M_GET_SERVERS_BATCH2 request instead of only the World query.
+        const scanAt = u8[0] === 49 && u8.length >= 2
+          ? 0
+          : u8[0] === 255 && u8[1] === 255 && u8[2] === 255 && u8[3] === 255 && u8[4] === 49 && u8.length >= 6
+            ? 4
+            : -1;
         if (scanAt >= 0) {
           answerMasterQuery(this.net, packet, u8.subarray(scanAt), this.servers);
           return;
