@@ -36,6 +36,28 @@ function ensureDownloadConfig(fs) {
   }
 }
 
+function ensureFavoriteServers(fs, servers) {
+  try {
+    const path = "/rodir/tfc/favorite_servers.lst";
+    let existing = "";
+    try { existing = new TextDecoder().decode(fs.readFile(path)); } catch {}
+    const entries = existing.split(/\s+/).filter(Boolean);
+    const known = new Set();
+    for (let index = 0; index + 1 < entries.length; index += 2) {
+      known.add(`${entries[index]} ${entries[index + 1]}`);
+    }
+    const defaults = Object.values(servers || {})
+      .filter(server => server?.available && server.host && server.port)
+      .map(server => `${server.host}:${server.port} 49`)
+      .filter(entry => !known.has(entry));
+    if (!defaults.length) return;
+    const separator = existing && !existing.endsWith("\n") ? "\n" : "";
+    fs.writeFile(path, new TextEncoder().encode(existing + separator + defaults.join("\n") + "\n"));
+  } catch {
+    // A read-only runtime filesystem should not prevent the spectator from starting.
+  }
+}
+
 function saveConfig(fs) {
   try {
     const data = fs.readFile("/rodir/tfc/config.cfg");
@@ -246,6 +268,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     mountGameAssets(gameFs, gameFiles, extras, valveExtras);
     restoreConfig(gameFs);
     ensureDownloadConfig(gameFs);
+    ensureFavoriteServers(gameFs, config.servers);
     if (!engine.running) engine.main();
     await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {
