@@ -1,6 +1,6 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260826z";
-import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827a";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260827b";
+import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
 
@@ -105,6 +105,11 @@ function videoModeSize() {
   return { width: Math.max(1, w), height: Math.max(1, h) };
 }
 
+function touchModeEnabled() {
+  const requested = new URLSearchParams(location.search).get("touch");
+  return requested === "1" || (requested !== "0" && navigator.maxTouchPoints > 0 && matchMedia("(hover: none)").matches);
+}
+
 export function sizeCanvas(canvas, resizeBuffer = false) {
   const { w, h } = viewportSize();
   if (resizeBuffer) {
@@ -180,7 +185,8 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   };
 
   const filesystem = resolve(config.runtimeLibraries.filesystem);
-  const engine = new Xash3D({
+  let engine;
+  engine = new Xash3D({
     canvas,
     renderer: "gles3compat",
     arguments: ["-windowed", "-game", config.gameDirectory],
@@ -205,6 +211,14 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       },
       printErr(message) {
         console.error("[live/xash]", message);
+      },
+      callbacks: {
+        gameReady() {
+          if (!touchModeEnabled()) return;
+          engine?.Cmd_ExecuteString("touch_enable 1");
+          engine?.Cmd_ExecuteString("osk_enable 0");
+          engine?.Cmd_ExecuteString("con_fontscale 1.8");
+        }
       },
       // Override the wrapper default so the HL server dylib is not preloaded.
       dynamicLibraries: [
@@ -248,8 +262,12 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   }
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));
 
-  if (navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).get("touch") === "1") {
-    engine.Cmd_ExecuteString("touch_enable 1");
+  const touchEnabled = touchModeEnabled();
+  // Some desktop browser shells report touch points even when the user is
+  // using a mouse. Keep the native Xash touch HUD opt-in so it cannot cover
+  // the spectator view unexpectedly; mobile users can use ?touch=1.
+  engine.Cmd_ExecuteString(`touch_enable ${touchEnabled ? 1 : 0}`);
+  if (touchEnabled) {
     engine.Cmd_ExecuteString("osk_enable 0");
     engine.Cmd_ExecuteString("con_fontscale 1.8");
   }
@@ -273,7 +291,9 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   applyVideoMode();
   onStatus("Xash3D is ready.");
   installExtraMouseBindings(engine);
-  installTouchKeyboard({ command: value => engine.Cmd_ExecuteString(String(value || "")) });
+  if (touchEnabled) {
+    installTouchKeyboard({ command: value => engine.Cmd_ExecuteString(String(value || "")) });
+  }
 
   const persistConfig = () => saveConfig(gameFs);
   const configSaveTimer = window.setInterval(persistConfig, 20_000);

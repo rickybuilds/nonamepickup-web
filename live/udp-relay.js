@@ -177,6 +177,9 @@ export class UdpWebSocketRelay {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
         this.sentPackets += 1;
         const outbound = packetBytes(data);
+        // Match the reference transport: carry the intended endpoint beside
+        // each UDP payload so native Multiplayer can browse/connect to any
+        // allowlisted HLTV target through the single WebSocket.
         this.socket.send(endpointFrame(packet.ip, packet.port, outbound));
         if (this.sentPackets <= 12) {
           console.info(`[live/relay] UDP send #${this.sentPackets}: ${packetKind(outbound)}, ${outbound.byteLength} bytes`);
