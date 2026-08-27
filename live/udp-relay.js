@@ -65,17 +65,26 @@ function describeConnectAuth(data) {
   };
 }
 
-function patchNetForIpv4(net) {
+function patchNetForIpv4(net, relayHost, relayPort) {
   const original = typeof net.getaddrinfo === "function" ? net.getaddrinfo.bind(net) : null;
   net.connect = net.connect || (() => 0);
   net.getaddrinfo = function getaddrinfo(hostnamePtr, restrictPrt, hintsPtr, addrinfoPtr) {
     const host = this.em.AsciiToString(hostnamePtr);
-    if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
+    // HLTV/ReHLTV may advertise a generated public hostname after the
+    // initial connection (for example pub-<id>.dev). The browser cannot
+    // resolve that hostname, and it must not bypass the WebSocket relay
+    // anyway. All traffic for this client is pinned to the selected relay
+    // target, so resolve advertised hostnames to that already-validated IP.
+    const isLiteralIpv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host);
+    const resolvedHost = isLiteralIpv4 ? host : relayHost;
+    if (resolvedHost) {
       const service = restrictPrt ? this.em.AsciiToString(restrictPrt) : "";
       const parsedPort = Number.parseInt(service, 10);
-      const port = Number.isInteger(parsedPort) && parsedPort >= 0 && parsedPort <= 65535 ? parsedPort : 0;
+      const port = !isLiteralIpv4 && relayPort
+        ? relayPort
+        : Number.isInteger(parsedPort) && parsedPort >= 0 && parsedPort <= 65535 ? parsedPort : 0;
       const sa = this.em._malloc(16);
-      this.em.writeSockaddr(sa, 2, host, port);
+      this.em.writeSockaddr(sa, 2, resolvedHost, port);
       const ai = this.em._malloc(32);
       this.em.HEAP32[ai + 4 >> 2] = 2;
       this.em.HEAP32[ai + 8 >> 2] = 2;
@@ -162,7 +171,7 @@ export class UdpWebSocketRelay {
         }
       }
     });
-    patchNetForIpv4(this.net);
+    patchNetForIpv4(this.net, server.host, server.port);
   }
 
   async open() {

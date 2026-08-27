@@ -66,6 +66,11 @@ The browser spectator targets the East, Central, and West HLTV proxies on UDP
 port `27020`. The HLTV proxies connect upstream to their game servers on
 `27015`.
 
+Some HLTV/ReHLTV setups advertise a generated hostname such as
+`pub-<id>.dev` after the initial handshake. The browser relay deliberately
+maps that advertised name back to the selected numeric HLTV endpoint; it must
+not attempt a second direct browser-to-UDP connection.
+
 ## Custom sound downloads
 
 `sv_downloadurl` is an HLDS game-server setting; it does not belong in
