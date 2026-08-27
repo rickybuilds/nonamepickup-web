@@ -40,6 +40,14 @@ export const LIVE_CONFIG = Object.freeze({
       host: "149.28.78.158",
       port: 27020,
       available: true
+    }),
+    euro: Object.freeze({
+      key: "euro",
+      name: "TFC Euro Live (HLTV)",
+      host: "108.61.221.227",
+      port: 27020,
+      spectatorPassword: "",
+      available: true
     })
   })
 });

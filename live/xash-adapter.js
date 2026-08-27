@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827x";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827y";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -400,9 +400,12 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   return {
     connect(server) {
       const address = `${server.host}:${server.port}`;
+      const password = Object.hasOwn(server, "spectatorPassword")
+        ? server.spectatorPassword
+        : config.playerPassword;
       console.info(`[live/xash] connecting to ${address}`);
       const executeConnect = () => {
-        engine.Cmd_ExecuteString(`password \"${config.playerPassword.replaceAll('"', "")}\"`);
+        engine.Cmd_ExecuteString(`password \"${String(password || "").replaceAll('"', "")}\"`);
         engine.Cmd_ExecuteString(`connect ${address}`);
       };
 

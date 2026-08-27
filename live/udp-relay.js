@@ -347,7 +347,12 @@ export class UdpWebSocketRelay {
         this.lastPeer = { ip: Array.from(packet.ip), port: packet.port };
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
         this.sentPackets += 1;
-        const outbound = rewriteHltvConnect(packetBytes(data), this.spectatorPassword);
+        const endpoint = `${Array.from(packet.ip).join(".")}:${packet.port}`;
+        const target = Object.values(this.servers).find(candidate => `${candidate.host}:${candidate.port}` === endpoint);
+        const password = target && Object.hasOwn(target, "spectatorPassword")
+          ? target.spectatorPassword
+          : this.spectatorPassword;
+        const outbound = rewriteHltvConnect(packetBytes(data), password);
         // Match the reference transport: carry the intended endpoint beside
         // each UDP payload so native Multiplayer can browse/connect to any
         // allowlisted HLTV target through the single WebSocket.

@@ -16,7 +16,8 @@ const TARGETS = Object.freeze({
   // on its game server at :27015.
   east: Object.freeze({ host: "108.61.128.120", port: 27020, transport: "hltv", spectatorPassword: "pickup" }),
   central: Object.freeze({ host: "64.177.123.157", port: 27020, transport: "hltv", spectatorPassword: "pickup" }),
-  west: Object.freeze({ host: "149.28.78.158", port: 27020, transport: "hltv", spectatorPassword: "pickup" })
+  west: Object.freeze({ host: "149.28.78.158", port: 27020, transport: "hltv", spectatorPassword: "pickup" }),
+  euro: Object.freeze({ host: "108.61.221.227", port: 27020, transport: "hltv", spectatorPassword: "" })
 });
 
 const TARGET_BY_ENDPOINT = new Map(Object.values(TARGETS).map(target => [`${target.host}:${target.port}`, target]));
