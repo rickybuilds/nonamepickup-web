@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { UdpWebSocketRelay } from "./udp-relay.js?v=20260827e";
+import { UdpWebSocketRelay } from "./udp-relay.js?v=20260827f";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -24,7 +24,8 @@ function ensureDownloadConfig(fs) {
     const missing = [
       ["cl_allowdownload", "cl_allowdownload 1"],
       ["cl_download_ingame", "cl_download_ingame 1"],
-      ["cl_downloadfilter", "cl_downloadfilter all"]
+      ["cl_downloadfilter", "cl_downloadfilter all"],
+      ["cl_enable_splitcompress", "cl_enable_splitcompress 0"]
     ].filter(([name]) => !new RegExp(`^\\s*${name}\\b`, "mi").test(existing))
       .map(([, line]) => line);
     if (missing.length) {
@@ -270,6 +271,14 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     ensureDownloadConfig(gameFs);
     ensureFavoriteServers(gameFs, config.servers);
     if (!engine.running) engine.main();
+    // The HLTV relay can send split-compressed packets, but this bundled
+    // browser build later rejects the compressed HLTV stream as svc_bad.
+    // Disable only split compression before the native menu can connect;
+    // ordinary packet splitting remains available for large messages.
+    try {
+      engine.Cmd_ExecuteString("cl_enable_splitcompress 0");
+      console.info("[live/xash] disabled split compression for HLTV compatibility");
+    } catch {}
     await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {
       throw abortError || new Error("The Xash3D engine exited while loading the TFC client.");
