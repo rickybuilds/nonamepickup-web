@@ -14,9 +14,9 @@ const TARGETS = Object.freeze({
   // Browser spectators connect to the public HLTV proxy, never directly to
   // a pickup game server. Each proxy is the only spectator occupying a slot
   // on its game server at :27015.
-  east: Object.freeze({ host: "108.61.128.120", port: 27020, transport: "hltv" }),
-  central: Object.freeze({ host: "64.177.123.157", port: 27020, transport: "hltv" }),
-  west: Object.freeze({ host: "149.28.78.158", port: 27020, transport: "hltv" })
+  east: Object.freeze({ host: "108.61.128.120", port: 27020, transport: "hltv", spectatorPassword: "pickup" }),
+  central: Object.freeze({ host: "64.177.123.157", port: 27020, transport: "hltv", spectatorPassword: "pickup" }),
+  west: Object.freeze({ host: "149.28.78.158", port: 27020, transport: "hltv", spectatorPassword: "pickup" })
 });
 
 const TARGET_BY_ENDPOINT = new Map(Object.values(TARGETS).map(target => [`${target.host}:${target.port}`, target]));
@@ -34,7 +34,7 @@ function serializeInfoString(values) {
   return [...values].map(([key, value]) => `\\${key}\\${value}`).join("");
 }
 
-function rewriteBrowserConnect(payload, hashedCdKey) {
+function rewriteBrowserConnect(payload, hashedCdKey, spectatorPassword) {
   if (payload.length < 6 || payload[0] !== 255 || payload[1] !== 255 || payload[2] !== 255 || payload[3] !== 255 || payload[4] !== 99) {
     return payload;
   }
@@ -54,6 +54,7 @@ function rewriteBrowserConnect(payload, hashedCdKey) {
   // is TYPE_CLIENT (0). *hltv=1 means TYPE_PROXY and opts into relay-to-relay
   // status traffic that a browser spectator must not receive.
   userInfo.delete("*hltv");
+  userInfo.set("password", String(spectatorPassword || ""));
 
   const rewritten = `connect ${match[1]} ${match[2]} "${serializeInfoString(protocolInfo)}" "${serializeInfoString(userInfo)}"${command.slice(match[0].length)}`;
   return Buffer.concat([Buffer.from([255, 255, 255, 255]), Buffer.from(rewritten, "latin1")]);
@@ -208,7 +209,7 @@ function attachUdpRelay(server, options = {}) {
       const destination = framedTarget || defaultTarget;
       const packet = framedTarget ? payload.subarray(6) : payload;
       const outbound = destination.transport === "hltv"
-        ? rewriteBrowserConnect(packet, hashedCdKey)
+        ? rewriteBrowserConnect(packet, hashedCdKey, destination.spectatorPassword)
         : packet;
       if (outbound !== payload && !reportedAuthRewrite) {
         reportedAuthRewrite = true;

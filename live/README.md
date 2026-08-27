@@ -77,6 +77,11 @@ Browser viewers connect to those listeners as normal downstream spectators
 it to `1` opts into relay-to-relay status messages and eventually makes the
 Xash viewer abort with `svc_bad`.
 
+Each HLTV proxy must accept the public browser password configured in
+`config.js`. With the current `pickup` value, use `spectatorpassword pickup` in
+`hltv.cfg`; use `spectatorpassword none` instead when the viewer should be
+unrestricted. Restart the HLTV proxy after changing this setting.
+
 The native Multiplayer/Favorites menu uses Emscripten's SOCKFS path rather than
 the engine's network adapter. `/live/` bridges only exact allowlisted HLTV
 `:27020` sockets from that path into the secure relay. Hostnames such as

@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827g";
+import { UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827i";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -180,7 +180,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   }
 
   onStatus("Opening the TFC UDP relay…");
-  const relay = new UdpWebSocketRelay(runtime.Net, config.relayPath, server, config.servers);
+  const relay = new UdpWebSocketRelay(runtime.Net, config.relayPath, server, config.servers, config.playerPassword);
   await relay.open();
   const restoreWebSocket = installSockfsRelayBridge(config.relayPath, config.servers);
 

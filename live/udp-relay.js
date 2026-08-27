@@ -38,7 +38,7 @@ function serializeInfoString(values) {
   return [...values].map(([key, value]) => `\\${key}\\${value}`).join("");
 }
 
-function rewriteHltvConnect(payload) {
+function rewriteHltvConnect(payload, spectatorPassword) {
   if (payload.length < 6 || payload[0] !== 255 || payload[1] !== 255 || payload[2] !== 255 || payload[3] !== 255 || payload[4] !== 99) {
     return payload;
   }
@@ -57,6 +57,7 @@ function rewriteHltvConnect(payload) {
   // *hltv=1 identifies another relay proxy and makes ReHLTV send periodic
   // proxy-status packets whose layout is not the viewer protocol Xash parses.
   userInfo.delete("*hltv");
+  userInfo.set("password", String(spectatorPassword || ""));
   const rewritten = `connect ${match[1]} ${match[2]} "${serializeInfoString(protocolInfo)}" "${serializeInfoString(userInfo)}"${command.slice(match[0].length)}`;
   const encoded = new TextEncoder().encode(rewritten);
   const result = new Uint8Array(4 + encoded.length);
@@ -218,11 +219,13 @@ function describeConnectAuth(data) {
   const quoted = [...text.matchAll(/"([^"]*)"/g)];
   const protocolInfo = quoted[0]?.[1] || "";
   const read = key => (protocolInfo.match(new RegExp(`\\\\${key}\\\\([^\\\\]*)`)) || [])[1] || "";
+  const userInfo = parseInfoString(quoted[1]?.[1]);
   return {
     protocol: read("prot") || "unknown",
     rawBytes: read("raw").length,
     hasCdKey: Boolean(read("cdkey")),
-    hltv: parseInfoString(quoted[1]?.[1]).get("*hltv") === "1"
+    hltv: userInfo.get("*hltv") === "1",
+    passwordBytes: (userInfo.get("password") || "").length
   };
 }
 
@@ -299,11 +302,12 @@ function answerMasterQuery(net, packet, scan, servers) {
 }
 
 export class UdpWebSocketRelay {
-  constructor(Net, path, server, servers = {}) {
+  constructor(Net, path, server, servers = {}, spectatorPassword = "") {
     if (typeof Net !== "function") throw new Error("The Xash3D runtime does not export its network adapter.");
     this.path = path;
     this.server = server;
     this.servers = servers;
+    this.spectatorPassword = spectatorPassword;
     this.sentPackets = 0;
     this.receivedPackets = 0;
     this.socket = null;
@@ -328,7 +332,7 @@ export class UdpWebSocketRelay {
         this.lastPeer = { ip: Array.from(packet.ip), port: packet.port };
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
         this.sentPackets += 1;
-        const outbound = rewriteHltvConnect(packetBytes(data));
+        const outbound = rewriteHltvConnect(packetBytes(data), this.spectatorPassword);
         // Match the reference transport: carry the intended endpoint beside
         // each UDP payload so native Multiplayer can browse/connect to any
         // allowlisted HLTV target through the single WebSocket.
@@ -362,9 +366,13 @@ export class UdpWebSocketRelay {
       if (this.receivedPackets <= 12) {
         console.info(`[live/relay] UDP receive #${this.receivedPackets}: ${packetKind(inbound)}, ${inbound.byteLength} bytes`);
       }
-      if (inbound.length >= 6 && inbound[0] === 255 && inbound[1] === 255 && inbound[2] === 255 && inbound[3] === 255 && inbound[4] === 57) {
-        const reason = new TextDecoder("latin1").decode(inbound.subarray(5)).replaceAll("\0", "").trim();
-        console.warn(`[live/relay] TFC server rejected the connection: ${reason || "no reason supplied"}`);
+      if (inbound.length >= 5 && inbound[0] === 255 && inbound[1] === 255 && inbound[2] === 255 && inbound[3] === 255) {
+        if (inbound[4] === 56) {
+          console.warn("[live/relay] HLTV rejected the spectator password. Set spectatorpassword to pickup (or none) on the HLTV proxy.");
+        } else if (inbound[4] === 57) {
+          const reason = new TextDecoder("latin1").decode(inbound.subarray(5)).replaceAll("\0", "").trim();
+          console.warn(`[live/relay] TFC server rejected the connection: ${reason || "no reason supplied"}`);
+        }
       }
       if (this.receivedPackets === 1) {
         console.info(`[live/relay] received first UDP packet from ${this.server.host}:${this.server.port}`);
