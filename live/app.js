@@ -20,8 +20,6 @@ const loadingProgressFill = $("loading-progress-fill");
 const loadingStage = $("loading-stage");
 const loadingPercent = $("loading-percent");
 const exitButton = $("exit-button");
-const controls = $("live-controls");
-const fullscreenButton = $("fullscreen-button");
 
 let xashClient = null;
 let activeServerKey = null;
@@ -149,7 +147,6 @@ async function launch() {
     clientRoot.classList.add("running");
     loading.classList.add("hidden");
     exitButton.classList.remove("hidden");
-    controls.classList.remove("hidden");
     canvas.focus();
   } catch (error) {
     console.error("[live/xash] launch failed", error);
@@ -170,7 +167,6 @@ function exit() {
   loading.classList.add("hidden");
   launcher.classList.remove("hidden");
   exitButton.classList.add("hidden");
-  controls.classList.add("hidden");
   launchButton.disabled = false;
   setStatus("Browser spectator stopped.", "ready");
 }
@@ -179,20 +175,5 @@ populateServerSelect();
 serverSelect.addEventListener("change", renderSelectedServer);
 launchButton.addEventListener("click", launch);
 exitButton.addEventListener("click", exit);
-controls.querySelectorAll("[data-command]").forEach(button => {
-  button.addEventListener("click", async () => {
-    xashClient?.command(button.dataset.command);
-    canvas.focus();
-    if (button.hasAttribute("data-pointer-lock") && document.pointerLockElement !== canvas) {
-      try { await canvas.requestPointerLock(); } catch {}
-    }
-  });
-});
-fullscreenButton.addEventListener("click", async () => {
-  if (document.fullscreenElement) await document.exitFullscreen();
-  else await clientRoot.requestFullscreen();
-  sizeCanvas(canvas);
-  canvas.focus();
-});
 
 await Promise.all([discoverActiveServer(), detectRuntime()]);
