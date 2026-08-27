@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827n";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260827p";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -361,6 +361,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   // The native menu validates the source of every master response before it
   // parses the server list. Register the adapter's local virtual master so the
   // in-game console does not label its Favorites response as unexpected.
+  engine.Cmd_ExecuteString("clearmasters");
   engine.Cmd_ExecuteString(`addmaster ${LOCAL_MASTER_ADDRESS} gs`);
   installExtraMouseBindings(engine);
   installSpectatorMovementBindings(engine);
