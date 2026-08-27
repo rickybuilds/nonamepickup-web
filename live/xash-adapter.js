@@ -106,22 +106,69 @@ function installExtraMouseBindings(engine) {
   });
 }
 
-function installSpectatorMovementBindings(engine) {
+function installSpectatorMovementBindings(engine, canvas) {
   const bindings = {
-    w: "+forward",
-    a: "+moveleft",
-    s: "+back",
-    d: "+moveright",
-    space: "+moveup",
-    ctrl: "+movedown"
+    KeyW: ["w", "+forward"],
+    KeyA: ["a", "+moveleft"],
+    KeyS: ["s", "+back"],
+    KeyD: ["d", "+moveright"],
+    Space: ["space", "+moveup"],
+    ControlLeft: ["ctrl", "+movedown"],
+    ControlRight: ["ctrl", "+movedown"]
   };
-  for (const [key, command] of Object.entries(bindings)) {
+  for (const [key, command] of Object.values(bindings)) {
     engine.Cmd_ExecuteString(`bind "${key}" "${command}"`);
   }
+  engine.Cmd_ExecuteString("cl_nopred 0");
   engine.Cmd_ExecuteString("cl_forwardspeed 1500");
   engine.Cmd_ExecuteString("cl_backspeed 1500");
   engine.Cmd_ExecuteString("cl_sidespeed 1500");
   engine.Cmd_ExecuteString("cl_upspeed 1500");
+
+  const active = new Map();
+  const releaseAll = () => {
+    for (const command of new Set(active.values())) {
+      engine.Cmd_ExecuteString(`-${command.slice(1)}`);
+    }
+    active.clear();
+  };
+  const onKeyDown = event => {
+    const binding = bindings[event.code];
+    if (!binding || document.pointerLockElement !== canvas) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (active.has(event.code)) return;
+    const command = binding[1];
+    active.set(event.code, command);
+    engine.Cmd_ExecuteString(command);
+  };
+  const onKeyUp = event => {
+    const binding = bindings[event.code];
+    if (!binding || !active.has(event.code)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const command = active.get(event.code);
+    active.delete(event.code);
+    if (![...active.values()].includes(command)) {
+      engine.Cmd_ExecuteString(`-${command.slice(1)}`);
+    }
+  };
+  const onPointerLockChange = () => {
+    if (document.pointerLockElement !== canvas) releaseAll();
+  };
+
+  window.addEventListener("keydown", onKeyDown, true);
+  window.addEventListener("keyup", onKeyUp, true);
+  window.addEventListener("blur", releaseAll);
+  document.addEventListener("pointerlockchange", onPointerLockChange);
+
+  return () => {
+    releaseAll();
+    window.removeEventListener("keydown", onKeyDown, true);
+    window.removeEventListener("keyup", onKeyUp, true);
+    window.removeEventListener("blur", releaseAll);
+    document.removeEventListener("pointerlockchange", onPointerLockChange);
+  };
 }
 
 function applyHltvSpectatorSpeed(engine) {
@@ -282,18 +329,23 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       }
     }, 500);
   };
-  let spectatorCommandScheduled = false;
-  const scheduleSpectatorCommand = () => {
-    // spec_mode persists across HLTV server changes. Re-running the TF client
-    // command while Favorites is transitioning to another server can call the
-    // client DLL in a partially reset state and corrupt its WASM memory.
-    if (!config.spectatorCommand || spectatorCommandScheduled) return;
-    spectatorCommandScheduled = true;
+  let spectatorCommandTimer = 0;
+  const scheduleSpectatorCommand = (delayMs = config.spectatorDelayMs) => {
+    // Run only after the new map has settled. TF15 resets auto-director and the
+    // spectator mode during each HUD/map initialization, including Favorites
+    // server changes.
+    if (!config.spectatorCommand) return;
+    if (spectatorCommandTimer) {
+      window.clearTimeout(spectatorCommandTimer);
+      spectatorCommandTimers.delete(spectatorCommandTimer);
+    }
     const timer = window.setTimeout(() => {
       spectatorCommandTimers.delete(timer);
+      spectatorCommandTimer = 0;
       engine?.Cmd_ExecuteString(config.spectatorCommand);
       scheduleSpectatorSpeedRepair();
-    }, config.spectatorDelayMs);
+    }, delayMs);
+    spectatorCommandTimer = timer;
     spectatorCommandTimers.add(timer);
   };
 
@@ -354,6 +406,8 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     },
     module: {
       print(message) {
+        const text = String(message || "");
+        if (/Setting up renderer/i.test(text)) scheduleSpectatorCommand(500);
         // The native menu keeps refreshing Favorites behind the game. Our
         // local master response is intentionally sourced from an allowlisted
         // HLTV endpoint, which Xash labels "unexpected" even though it is the
@@ -447,7 +501,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   // masters so the browser never emits or receives unrelated master traffic.
   engine.Cmd_ExecuteString("clearmasters");
   installExtraMouseBindings(engine);
-  installSpectatorMovementBindings(engine);
+  const restoreSpectatorMovementBindings = installSpectatorMovementBindings(engine, canvas);
   // Apply the launcher choice once. Native Configuration changes made after
   // this point remain authoritative and are persisted in config.cfg.
   engine.Cmd_ExecuteString(`name \"${config.playerName.replaceAll('"', "")}\"`);
@@ -496,6 +550,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       persistConfig();
       for (const timer of spectatorCommandTimers) window.clearTimeout(timer);
       spectatorCommandTimers.clear();
+      restoreSpectatorMovementBindings();
       window.clearInterval(spectatorSpeedRepairTimer);
       window.clearInterval(configSaveTimer);
       window.removeEventListener("beforeunload", persistConfig);

@@ -397,41 +397,6 @@ h1 strong { color: var(--red); }
   to { transform: translateY(16px); }
 }
 
-.live-exit {
-  padding: 9px 12px;
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: 9px;
-  color: #fff;
-  background: rgba(0,0,0,.64);
-  cursor: pointer;
-}
-
-.live-actions {
-  position: fixed;
-  z-index: 20;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  gap: 7px;
-}
-
-.live-action {
-  padding: 9px 12px;
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: 9px;
-  color: rgba(255,255,255,.9);
-  background: rgba(0,0,0,.64);
-  cursor: pointer;
-}
-
-.live-action:hover,
-.live-action:focus-visible,
-.live-exit:hover,
-.live-exit:focus-visible {
-  background: rgba(255,255,255,.14);
-  outline: 0;
-}
-
 .live-input {
   width: 100%;
   padding: 12px 14px;

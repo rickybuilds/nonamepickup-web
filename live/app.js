@@ -1,5 +1,5 @@
-import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260827y";
-import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260827aa";
+import { LIVE_CONFIG, serverAddress } from "./config.js?v=20260827ac";
+import { createXashClient, runtimeAvailable, sizeCanvas } from "./xash-adapter.js?v=20260827ac";
 
 const $ = id => document.getElementById(id);
 const clientRoot = $("live-client");
@@ -20,11 +20,6 @@ const loadingProgress = $("loading-progress");
 const loadingProgressFill = $("loading-progress-fill");
 const loadingStage = $("loading-stage");
 const loadingPercent = $("loading-percent");
-const liveActions = $("live-actions");
-const menuButton = $("menu-button");
-const fullscreenButton = $("fullscreen-button");
-const exitButton = $("exit-button");
-
 let xashClient = null;
 let activeServerKey = null;
 const PLAYER_NAME_KEY = "tfc-player-name";
@@ -184,7 +179,6 @@ async function launch() {
     clientRoot.classList.remove("booting");
     clientRoot.classList.add("running");
     loading.classList.add("hidden");
-    liveActions.classList.remove("hidden");
     canvas.focus();
   } catch (error) {
     console.error("[live/xash] launch failed", error);
@@ -197,31 +191,8 @@ async function launch() {
   }
 }
 
-function exit() {
-  xashClient?.quit();
-  xashClient = null;
-  clientRoot.classList.remove("booting");
-  clientRoot.classList.remove("running");
-  loading.classList.add("hidden");
-  launcher.classList.remove("hidden");
-  liveActions.classList.add("hidden");
-  launchButton.disabled = false;
-  setStatus("Browser spectator stopped.", "ready");
-}
-
 populateServerSelect();
 serverSelect.addEventListener("change", renderSelectedServer);
 launchButton.addEventListener("click", launch);
-exitButton.addEventListener("click", exit);
-menuButton.addEventListener("click", () => {
-  xashClient?.command("escape");
-  canvas.focus();
-});
-fullscreenButton.addEventListener("click", async () => {
-  if (document.fullscreenElement) await document.exitFullscreen();
-  else await clientRoot.requestFullscreen();
-  sizeCanvas(canvas);
-  canvas.focus();
-});
 
 await Promise.all([discoverActiveServer(), detectRuntime()]);

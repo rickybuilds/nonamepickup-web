@@ -17,7 +17,7 @@ export const LIVE_CONFIG = Object.freeze({
   playerName: "NoName Spectator",
   playerPassword: "pickup",
   // HLTV mode 3 is free roaming; chase and first-person modes ignore movement.
-  spectatorCommand: "spec_mode 3",
+  spectatorCommand: "spec_autodirector 0; spec_pip 0; spec_mode 3",
   spectatorDelayMs: 3500,
   servers: Object.freeze({
     east: Object.freeze({
