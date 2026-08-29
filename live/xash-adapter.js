@@ -116,17 +116,16 @@ function installExtraMouseBindings(engine) {
   });
 }
 
-function installSpectatorMovementBindings(engine, canvas) {
+function restoreDefaultMovementBindings(engine) {
   const bindings = {
-    KeyW: ["w", "+forward"],
-    KeyA: ["a", "+moveleft"],
-    KeyS: ["s", "+back"],
-    KeyD: ["d", "+moveright"],
-    Space: ["space", "+moveup"],
-    ControlLeft: ["ctrl", "+movedown"],
-    ControlRight: ["ctrl", "+movedown"]
+    W: "+forward",
+    A: "+moveleft",
+    S: "+back",
+    D: "+moveright",
+    SPACE: "+jump",
+    CTRL: "+duck"
   };
-  for (const [key, command] of Object.values(bindings)) {
+  for (const [key, command] of Object.entries(bindings)) {
     engine.Cmd_ExecuteString(`bind "${key}" "${command}"`);
   }
   engine.Cmd_ExecuteString("cl_nopred 0");
@@ -134,51 +133,6 @@ function installSpectatorMovementBindings(engine, canvas) {
   engine.Cmd_ExecuteString("cl_backspeed 1500");
   engine.Cmd_ExecuteString("cl_sidespeed 1500");
   engine.Cmd_ExecuteString("cl_upspeed 1500");
-
-  const active = new Map();
-  const releaseAll = () => {
-    for (const command of new Set(active.values())) {
-      engine.Cmd_ExecuteString(`-${command.slice(1)}`);
-    }
-    active.clear();
-  };
-  const onKeyDown = event => {
-    const binding = bindings[event.code];
-    if (!binding || document.pointerLockElement !== canvas) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if (active.has(event.code)) return;
-    const command = binding[1];
-    active.set(event.code, command);
-    engine.Cmd_ExecuteString(command);
-  };
-  const onKeyUp = event => {
-    const binding = bindings[event.code];
-    if (!binding || !active.has(event.code)) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    const command = active.get(event.code);
-    active.delete(event.code);
-    if (![...active.values()].includes(command)) {
-      engine.Cmd_ExecuteString(`-${command.slice(1)}`);
-    }
-  };
-  const onPointerLockChange = () => {
-    if (document.pointerLockElement !== canvas) releaseAll();
-  };
-
-  window.addEventListener("keydown", onKeyDown, true);
-  window.addEventListener("keyup", onKeyUp, true);
-  window.addEventListener("blur", releaseAll);
-  document.addEventListener("pointerlockchange", onPointerLockChange);
-
-  return () => {
-    releaseAll();
-    window.removeEventListener("keydown", onKeyDown, true);
-    window.removeEventListener("keyup", onKeyUp, true);
-    window.removeEventListener("blur", releaseAll);
-    document.removeEventListener("pointerlockchange", onPointerLockChange);
-  };
 }
 
 function applyHltvSpectatorSpeed(engine) {
@@ -514,7 +468,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
   // masters so the browser never emits or receives unrelated master traffic.
   engine.Cmd_ExecuteString("clearmasters");
   installExtraMouseBindings(engine);
-  const restoreSpectatorMovementBindings = installSpectatorMovementBindings(engine, canvas);
+  restoreDefaultMovementBindings(engine);
   // Apply the launcher choice once. Native Configuration changes made after
   // this point remain authoritative and are persisted in config.cfg.
   engine.Cmd_ExecuteString(`name \"${config.playerName.replaceAll('"', "")}\"`);
@@ -568,7 +522,6 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
       persistConfig();
       for (const timer of spectatorCommandTimers) window.clearTimeout(timer);
       spectatorCommandTimers.clear();
-      restoreSpectatorMovementBindings();
       window.clearInterval(spectatorSpeedRepairTimer);
       window.clearInterval(configSaveTimer);
       window.removeEventListener("beforeunload", persistConfig);
