@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829d";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829e";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -453,11 +453,6 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     ensureDownloadConfig(gameFs);
     ensureFavoriteServers(gameFs, config.servers);
     if (!engine.running) engine.main();
-    // The bundled browser runtime stalls after HLTV sends a split-Huffman
-    // sign-on fragment. Do not advertise that optional extension; regular
-    // GoldSrc packet splitting remains enabled for large server messages.
-    engine.Cmd_ExecuteString("cl_enable_splitcompress 0");
-    console.info("[live/xash] disabled split compression for HLTV compatibility.");
     await new Promise(resolveReady => window.setTimeout(resolveReady, 250));
     if (engine.exited || abortError) {
       throw abortError || new Error("The Xash3D engine exited while loading the TFC client.");
@@ -472,6 +467,12 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     window.removeEventListener("unhandledrejection", onAbort);
   }
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));
+
+  // The bundled browser runtime stalls after HLTV sends a split-Huffman
+  // sign-on fragment. Do not advertise that optional extension; regular
+  // GoldSrc packet splitting remains enabled for large server messages.
+  engine.Cmd_ExecuteString("cl_enable_splitcompress 0");
+  console.info("[live/xash] disabled split compression for HLTV compatibility.");
 
   const touchEnabled = touchModeEnabled();
   // Some desktop browser shells report touch points even when the user is
