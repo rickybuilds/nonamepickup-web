@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829h";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829i";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";

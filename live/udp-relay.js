@@ -162,6 +162,49 @@ function relayDebugEnabled() {
 }
 
 const tracedPacketShapes = new Set();
+const tracedNetchanStates = new Set();
+
+const MUNGE2_TABLE = Object.freeze([0x05, 0x61, 0x7a, 0xed, 0x1b, 0xca, 0x0d, 0x9b, 0x4a, 0xf1, 0x64, 0xc7, 0xb5, 0x8e, 0xdf, 0xa0]);
+
+function swapUint32(value) {
+  return ((value & 0xff) << 24) | ((value & 0xff00) << 8) | ((value >>> 8) & 0xff00) | (value >>> 24);
+}
+
+function unmungedGoldSrcPayload(data, sequence) {
+  const payload = data.slice(8);
+  const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  const words = Math.floor(payload.length / 4);
+  for (let index = 0; index < words; index += 1) {
+    let word = view.getUint32(index * 4, true) ^ sequence;
+    view.setUint32(index * 4, word >>> 0, true);
+    for (let byte = 0; byte < 4; byte += 1) {
+      payload[index * 4 + byte] ^= 0xa5 | (byte << byte) | byte | MUNGE2_TABLE[(index + byte) & 15];
+    }
+    word = swapUint32(view.getUint32(index * 4, true)) ^ ~sequence;
+    view.setUint32(index * 4, word >>> 0, true);
+  }
+  return payload;
+}
+
+function netchanTrace(data) {
+  if (data.length < 8 || (data[0] === 255 && data[1] === 255 && data[2] === 255 && data[3] === 255)) return "";
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const sequenceWord = view.getUint32(0, true);
+  const acknowledgementWord = view.getUint32(4, true);
+  const sequence = sequenceWord & 0x3fffffff;
+  const acknowledgement = acknowledgementWord & 0x3fffffff;
+  let detail = ` seq=${sequence}${sequenceWord >>> 31 ? "R" : ""} ack=${acknowledgement}${acknowledgementWord >>> 31 ? "R" : ""}`;
+  if (!(sequenceWord & 0x40000000)) return detail;
+
+  const payload = unmungedGoldSrcPayload(data, sequence & 0xff);
+  if (payload.length < 9 || payload[0] === 0) return `${detail} fragments=none`;
+  const fragmentId = new DataView(payload.buffer, payload.byteOffset + 1, 4).getUint32(0, true);
+  const fragment = fragmentId >>> 16;
+  const total = fragmentId & 0xffff;
+  const offset = (payload[5] | payload[6] << 8) << 3;
+  const length = (payload[7] | payload[8] << 8) << 3;
+  return `${detail} fragment=${fragment}/${total} offset=${offset} length=${length >>> 3}B`;
+}
 
 function tracePacket(direction, ip, port, data) {
   if (!relayDebugEnabled()) return;
@@ -171,7 +214,12 @@ function tracePacket(direction, ip, port, data) {
     ? ""
     : ` head=${Array.from(data.subarray(0, 24), byte => byte.toString(16).padStart(2, "0")).join("")}`;
   tracedPacketShapes.add(shape);
-  console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${kind} (${data.length} bytes).${preview}`);
+  const state = kind === "sequenced" ? netchanTrace(data) : "";
+  const stateKey = `${direction}:${state}`;
+  const stateDetail = state && !tracedNetchanStates.has(stateKey) ? state : "";
+  tracedNetchanStates.add(stateKey);
+  if (tracedNetchanStates.size > 256) tracedNetchanStates.clear();
+  console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${kind} (${data.length} bytes).${preview}${stateDetail}`);
 }
 
 function normalizeLegacyHltvAccept(data) {
