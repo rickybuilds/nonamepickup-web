@@ -4,7 +4,12 @@ const crypto = require("crypto");
 const dgram = require("dgram");
 
 const MAX_PACKET_BYTES = 65_507;
-const MAX_PACKETS_PER_SECOND = 256;
+// Xash sends small netchan acknowledgements from its browser render loop. On
+// high-refresh-rate clients that legitimately exceeds 256 packets per second
+// while HLTV is delivering the fragmented sign-on stream. Keep a packet cap
+// for UDP-flood protection, but leave enough headroom for those acknowledgements;
+// the byte limit below remains the tighter control for larger payloads.
+const MAX_PACKETS_PER_SECOND = 1024;
 const MAX_BYTES_PER_SECOND = 512 * 1024;
 const MAX_CONNECTIONS = 64;
 const MAX_CONNECTIONS_PER_IP = 4;
