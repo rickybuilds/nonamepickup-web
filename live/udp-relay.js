@@ -161,9 +161,17 @@ function relayDebugEnabled() {
   return new URLSearchParams(location.search).has("debug");
 }
 
+const tracedPacketShapes = new Set();
+
 function tracePacket(direction, ip, port, data) {
   if (!relayDebugEnabled()) return;
-  console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${packetKind(data)} (${data.length} bytes).`);
+  const kind = packetKind(data);
+  const shape = `${direction}:${kind}:${data.length}`;
+  const preview = tracedPacketShapes.has(shape)
+    ? ""
+    : ` head=${Array.from(data.subarray(0, 24), byte => byte.toString(16).padStart(2, "0")).join("")}`;
+  tracedPacketShapes.add(shape);
+  console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${kind} (${data.length} bytes).${preview}`);
 }
 
 function normalizeLegacyHltvAccept(data) {
