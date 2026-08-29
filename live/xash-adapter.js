@@ -536,6 +536,14 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
         : config.playerPassword;
       console.info(`[live/xash] connecting to ${address}`);
       const executeConnect = () => {
+        if (new URLSearchParams(location.search).has("debug")) {
+          // Relay traces show packets reaching the Wasm socket. Enable Xash's
+          // own netchan diagnostics as well, so a rejected packet or forced
+          // reconnect is visible instead of silently returning to the menu.
+          engine.Cmd_ExecuteString("developer 2");
+          engine.Cmd_ExecuteString("net_showdrop 1");
+          engine.Cmd_ExecuteString("net_showpackets 1");
+        }
         engine.Cmd_ExecuteString(`password \"${String(password || "").replaceAll('"', "")}\"`);
         engine.Cmd_ExecuteString(`connect ${address}`);
       };
