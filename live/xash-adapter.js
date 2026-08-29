@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829i";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829j";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -536,6 +536,16 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
         : config.playerPassword;
       console.info(`[live/xash] connecting to ${address}`);
       const executeConnect = () => {
+        // Legacy HLTV sends its initial sign-on as a reliable fragmented
+        // stream. An unrestricted browser render loop can emit hundreds of
+        // acknowledgement-only packets per second on a fast desktop, which
+        // makes those old proxies stop advancing after a few fragments.
+        // Keep this browser transport at conventional GoldSrc rates before
+        // the first connect packet is built.
+        engine.Cmd_ExecuteString("fps_max 60");
+        engine.Cmd_ExecuteString("cl_cmdrate 30");
+        engine.Cmd_ExecuteString("cl_updaterate 30");
+        engine.Cmd_ExecuteString("rate 20000");
         engine.Cmd_ExecuteString(`password \"${String(password || "").replaceAll('"', "")}\"`);
         engine.Cmd_ExecuteString(`connect ${address}`);
       };

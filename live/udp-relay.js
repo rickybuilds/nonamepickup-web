@@ -215,11 +215,16 @@ function tracePacket(direction, ip, port, data) {
     : ` head=${Array.from(data.subarray(0, 24), byte => byte.toString(16).padStart(2, "0")).join("")}`;
   tracedPacketShapes.add(shape);
   const state = kind === "sequenced" ? netchanTrace(data) : "";
-  const stateKey = `${direction}:${state}`;
+  // A client acknowledgement is emitted once per rendered frame, so its
+  // sequence number is guaranteed to be unique. Deduplicate that changing
+  // number; otherwise ?debug=1 can itself starve the browser game loop.
+  const stateKey = `${direction}:${state.replace(/\bseq=\d+R?\s*/, "")}`;
   const stateDetail = state && !tracedNetchanStates.has(stateKey) ? state : "";
   tracedNetchanStates.add(stateKey);
   if (tracedNetchanStates.size > 256) tracedNetchanStates.clear();
-  console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${kind} (${data.length} bytes).${preview}${stateDetail}`);
+  if (preview || stateDetail || kind !== "sequenced") {
+    console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${kind} (${data.length} bytes).${preview}${stateDetail}`);
+  }
 }
 
 function normalizeLegacyHltvAccept(data) {
