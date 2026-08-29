@@ -33,53 +33,6 @@ function packetBytes(data) {
   return new Uint8Array(data);
 }
 
-function parseInfoString(value) {
-  const result = new Map();
-  const parts = String(value || "").split("\\");
-  for (let index = parts[0] ? 0 : 1; index + 1 < parts.length; index += 2) {
-    if (parts[index]) result.set(parts[index], parts[index + 1]);
-  }
-  return result;
-}
-
-function serializeInfoString(values) {
-  return [...values].map(([key, value]) => `\\${key}\\${value}`).join("");
-}
-
-function rewriteHltvConnect(payload, spectatorPassword) {
-  if (payload.length < 6 || payload[0] !== 255 || payload[1] !== 255 || payload[2] !== 255 || payload[3] !== 255 || payload[4] !== 99) {
-    return payload;
-  }
-  const command = new TextDecoder("latin1").decode(payload.subarray(4));
-  const match = command.match(/^connect\s+(\d+)\s+(-?\d+)\s+"([^"]*)"\s+"([^"]*)"/);
-  if (!match) return payload;
-
-  const protocolInfo = parseInfoString(match[3]);
-  protocolInfo.set("prot", "2");
-  protocolInfo.set("unique", "-1");
-  protocolInfo.set("raw", cryptoRandomToken());
-  protocolInfo.delete("cdkey");
-
-  const userInfo = parseInfoString(match[4]);
-  // A browser watching an HLTV feed is a normal downstream spectator.
-  // *hltv=1 identifies another relay proxy and makes ReHLTV send periodic
-  // proxy-status packets whose layout is not the viewer protocol Xash parses.
-  userInfo.delete("*hltv");
-  userInfo.set("password", String(spectatorPassword || ""));
-  const rewritten = `connect ${match[1]} ${match[2]} "${serializeInfoString(protocolInfo)}" "${serializeInfoString(userInfo)}"${command.slice(match[0].length)}`;
-  const encoded = new TextEncoder().encode(rewritten);
-  const result = new Uint8Array(4 + encoded.length);
-  result.set([255, 255, 255, 255]);
-  result.set(encoded, 4);
-  return result;
-}
-
-function cryptoRandomToken() {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
-}
-
 function endpointFrame(ip, port, payload) {
   const frame = new Uint8Array(6 + payload.length);
   frame.set(ip, 0);
@@ -204,38 +157,28 @@ function packetKind(data) {
   return "sequenced";
 }
 
-function normalizeLegacyHltvAccept(data, server) {
+function relayDebugEnabled() {
+  return new URLSearchParams(location.search).has("debug");
+}
+
+function tracePacket(direction, ip, port, data) {
+  if (!relayDebugEnabled()) return;
+  console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${packetKind(data)} (${data.length} bytes).`);
+}
+
+function normalizeLegacyHltvAccept(data) {
   // Valve HLTV BUILD 3378 accepts spectators with a fixed-width
-  // `B0000000000000000` packet. Native GoldSrc understands it, but Xash3D-
-  // FWGS expects the later tokenized S2C_CONNECTION representation.
+  // `B0000000000000000` packet. Xash recognizes the preceding `A...`
+  // challenge as GoldSrc, whose accept token must be exactly `B`.
   const isLegacyAccept = data.length === 21
     && data[0] === 255 && data[1] === 255 && data[2] === 255 && data[3] === 255
     && data[4] === 66
     && data.subarray(5).every(byte => byte === 48);
   if (!isLegacyAccept) return data;
 
-  const response = new TextEncoder().encode(`B 0 "${server.host}:${server.port}" 0 3378\n`);
-  const normalized = new Uint8Array(4 + response.length);
-  normalized.set([255, 255, 255, 255]);
-  normalized.set(response, 4);
-  console.info("[live/relay] normalized the legacy HLTV acceptance packet for Xash3D.");
+  const normalized = new Uint8Array([255, 255, 255, 255, 66, 0]);
+  console.info("[live/relay] normalized legacy HLTV acceptance for GoldSrc mode.");
   return normalized;
-}
-
-function describeConnectAuth(data) {
-  const text = new TextDecoder("latin1").decode(data);
-  if (!/^connect\s+\d+\s+-?\d+\s+"/.test(text.slice(4))) return null;
-  const quoted = [...text.matchAll(/"([^"]*)"/g)];
-  const protocolInfo = quoted[0]?.[1] || "";
-  const read = key => (protocolInfo.match(new RegExp(`\\\\${key}\\\\([^\\\\]*)`)) || [])[1] || "";
-  const userInfo = parseInfoString(quoted[1]?.[1]);
-  return {
-    protocol: read("prot") || "unknown",
-    rawBytes: read("raw").length,
-    hasCdKey: Boolean(read("cdkey")),
-    hltv: userInfo.get("*hltv") === "1",
-    passwordBytes: (userInfo.get("password") || "").length
-  };
 }
 
 function patchNetForIpv4(net) {
@@ -314,15 +257,12 @@ function answerMasterQuery(net, packet, scan, servers) {
 }
 
 export class UdpWebSocketRelay {
-  constructor(Net, path, server, servers = {}, spectatorPassword = "", onAccepted = () => {}) {
+  constructor(Net, path, server, servers = {}, onAccepted = () => {}) {
     if (typeof Net !== "function") throw new Error("The Xash3D runtime does not export its network adapter.");
     this.path = path;
     this.server = server;
     this.servers = servers;
-    this.spectatorPassword = spectatorPassword;
     this.onAccepted = onAccepted;
-    this.sentPackets = 0;
-    this.receivedPackets = 0;
     this.socket = null;
     this.lastPeer = { ip: ipTuple(server.host), port: server.port };
     this.net = new Net({
@@ -344,19 +284,14 @@ export class UdpWebSocketRelay {
           return;
         }
         if (packet.ip?.[0] === 101 && packet.ip?.[1] === 101) return;
-        this.lastPeer = { ip: Array.from(packet.ip), port: packet.port };
+        const peer = Array.from(packet.ip);
+        this.lastPeer = { ip: peer, port: packet.port };
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
-        this.sentPackets += 1;
-        const endpoint = `${Array.from(packet.ip).join(".")}:${packet.port}`;
-        const target = Object.values(this.servers).find(candidate => `${candidate.host}:${candidate.port}` === endpoint);
-        const password = target && Object.hasOwn(target, "spectatorPassword")
-          ? target.spectatorPassword
-          : this.spectatorPassword;
-        const outbound = rewriteHltvConnect(packetBytes(data), password);
-        // Match the reference transport: carry the intended endpoint beside
-        // each UDP payload so native Multiplayer can browse/connect to any
-        // allowlisted HLTV target through the single WebSocket.
-        this.socket.send(endpointFrame(packet.ip, packet.port, outbound));
+        // Keep the browser leg as a raw framed UDP bridge. The API relay is
+        // the sole owner of authentication rewriting, preventing two layers
+        // from mutating the same GoldSrc connect packet differently.
+        tracePacket("out", peer, packet.port, u8);
+        this.socket.send(endpointFrame(peer, packet.port, packetBytes(data)));
       }
     });
     patchNetForIpv4(this.net);
@@ -367,13 +302,13 @@ export class UdpWebSocketRelay {
     this.socket = new WebSocket(relayUrl(this.path, this.server.key));
     this.socket.binaryType = "arraybuffer";
     this.socket.addEventListener("message", event => {
-      this.receivedPackets += 1;
       const frame = parseEndpointFrame(new Uint8Array(event.data), this.servers);
       const inboundPayload = frame?.payload || new Uint8Array(event.data);
       const inboundServer = frame
         ? { host: frame.ip.join("."), port: frame.port }
         : this.server;
-      const inbound = normalizeLegacyHltvAccept(inboundPayload, inboundServer);
+      const inbound = normalizeLegacyHltvAccept(inboundPayload);
+      tracePacket("in", frame?.ip || ipTuple(this.server.host), frame?.port || this.server.port, inbound);
       if (inbound.length >= 5 && inbound[0] === 255 && inbound[1] === 255 && inbound[2] === 255 && inbound[3] === 255 && inbound[4] === 66) {
         this.onAccepted(inboundServer);
       }
@@ -386,7 +321,9 @@ export class UdpWebSocketRelay {
         }
       }
       this.net.incoming.push({
-        data: inbound,
+        // Match the reference adapter's signed byte view. Emscripten copies
+        // the underlying bytes unchanged, including GoldSrc's 0xff header.
+        data: new Int8Array(inbound.buffer, inbound.byteOffset, inbound.byteLength),
         ip: frame?.ip || ipTuple(this.server.host),
         port: frame?.port || this.server.port
       });

@@ -212,7 +212,7 @@ function attachUdpRelay(server, options = {}) {
       const outbound = destination.transport === "hltv"
         ? rewriteBrowserConnect(packet, hashedCdKey, destination.spectatorPassword)
         : packet;
-      if (outbound !== payload && !reportedAuthRewrite) {
+      if (outbound !== packet && !reportedAuthRewrite) {
         reportedAuthRewrite = true;
         console.info(`[live-relay] ${serverKey} browser spectator using protocol 2 HLTV transport`);
       }
