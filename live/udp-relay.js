@@ -223,6 +223,40 @@ function patchNetForIpv4(net) {
   };
 }
 
+function patchNetReceive(net) {
+  // xash3d-fwgs 1.2.2's Net.recvfrom() mistakes the value *at* errno for the
+  // errno address. On an empty UDP poll it therefore writes EWOULDBLOCK into
+  // arbitrary Wasm memory, causing Xash's repeating NET_QueuePacket errors
+  // and corrupting the next packet read. Keep its packet contract, but write
+  // errno through the actual pointer returned by getErrnoLocation().
+  net.recvfrom = function recvfrom(fd, bufPtr, bufLen, flags, sockaddrPtr, socklenPtr) {
+    const packet = this.incoming.pull();
+    const em = this.em;
+    if (!packet) {
+      const errnoPtr = em?.Module?.ccall?.("getErrnoLocation", "number", [], []);
+      if (errnoPtr) em.setValue(errnoPtr, 73, "i32"); // EWOULDBLOCK
+      return -1;
+    }
+
+    const data = packet.data;
+    const bytes = data instanceof Uint8Array ? data : new Uint8Array(data.buffer || data);
+    const copyLength = Math.min(bufLen, bytes.length);
+    if (copyLength > 0) em.HEAPU8.set(bytes.subarray(0, copyLength), bufPtr);
+    if (sockaddrPtr) {
+      const port = packet.port;
+      em.HEAP16[sockaddrPtr >> 1] = 2;
+      em.HEAP8[sockaddrPtr + 2] = port >> 8 & 255;
+      em.HEAP8[sockaddrPtr + 3] = port & 255;
+      em.HEAP8[sockaddrPtr + 4] = packet.ip[0];
+      em.HEAP8[sockaddrPtr + 5] = packet.ip[1];
+      em.HEAP8[sockaddrPtr + 6] = packet.ip[2];
+      em.HEAP8[sockaddrPtr + 7] = packet.ip[3];
+    }
+    if (socklenPtr) em.HEAP32[socklenPtr >> 2] = 16;
+    return copyLength;
+  };
+}
+
 async function diagnoseRelay(path, serverKey) {
   let response;
   try {
@@ -303,6 +337,7 @@ export class UdpWebSocketRelay {
       }
     });
     patchNetForIpv4(this.net);
+    patchNetReceive(this.net);
   }
 
   async open() {
