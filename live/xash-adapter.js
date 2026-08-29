@@ -24,7 +24,11 @@ function ensureDownloadConfig(fs) {
     const missing = [
       ["cl_allowdownload", "cl_allowdownload 1"],
       ["cl_download_ingame", "cl_download_ingame 1"],
-      ["cl_downloadfilter", "cl_downloadfilter all"]
+      ["cl_downloadfilter", "cl_downloadfilter all"],
+      // This must be loaded with the game configuration, before the first
+      // connect packet is assembled. Issuing it through Cmd_ExecuteString
+      // after startup is too late for this browser Xash build.
+      ["cl_enable_splitcompress", "cl_enable_splitcompress 0"]
     ].filter(([name]) => !new RegExp(`^\\s*${name}\\b`, "mi").test(existing))
       .map(([, line]) => line);
     if (missing.length) {
@@ -467,12 +471,6 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     window.removeEventListener("unhandledrejection", onAbort);
   }
   await new Promise(resolveReady => window.setTimeout(resolveReady, 750));
-
-  // The bundled browser runtime stalls after HLTV sends a split-Huffman
-  // sign-on fragment. Do not advertise that optional extension; regular
-  // GoldSrc packet splitting remains enabled for large server messages.
-  engine.Cmd_ExecuteString("cl_enable_splitcompress 0");
-  console.info("[live/xash] disabled split compression for HLTV compatibility.");
 
   const touchEnabled = touchModeEnabled();
   // Some desktop browser shells report touch points even when the user is
