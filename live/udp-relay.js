@@ -162,7 +162,7 @@ function relayDebugEnabled() {
 }
 
 const tracedPacketShapes = new Set();
-const tracedNetchanStates = new Set();
+const tracedFragmentMilestones = new Set();
 
 const MUNGE2_TABLE = Object.freeze([0x05, 0x61, 0x7a, 0xed, 0x1b, 0xca, 0x0d, 0x9b, 0x4a, 0xf1, 0x64, 0xc7, 0xb5, 0x8e, 0xdf, 0xa0]);
 
@@ -209,22 +209,28 @@ function netchanTrace(data) {
 function tracePacket(direction, ip, port, data) {
   if (!relayDebugEnabled()) return;
   const kind = packetKind(data);
+  if (kind === "sequenced") {
+    // Netchan traffic continues for the entire game and can exceed hundreds
+    // of packets per second. Report only useful sign-on progress milestones.
+    const state = direction === "in" ? netchanTrace(data) : "";
+    const match = state.match(/\bfragment=(\d+)\/(\d+)\b/);
+    if (!match) return;
+    const fragment = Number(match[1]);
+    const total = Number(match[2]);
+    if (fragment !== 1 && fragment !== total && fragment % 10 !== 0) return;
+    const milestone = `${ip.join(".")}:${port}:${fragment}/${total}`;
+    if (tracedFragmentMilestones.has(milestone)) return;
+    tracedFragmentMilestones.add(milestone);
+    console.info(`[live/relay] HLTV sign-on fragment ${fragment}/${total} received.`);
+    return;
+  }
+
   const shape = `${direction}:${kind}:${data.length}`;
   const preview = tracedPacketShapes.has(shape)
     ? ""
     : ` head=${Array.from(data.subarray(0, 24), byte => byte.toString(16).padStart(2, "0")).join("")}`;
   tracedPacketShapes.add(shape);
-  const state = kind === "sequenced" ? netchanTrace(data) : "";
-  // A client acknowledgement is emitted once per rendered frame, so its
-  // sequence number is guaranteed to be unique. Deduplicate that changing
-  // number; otherwise ?debug=1 can itself starve the browser game loop.
-  const stateKey = `${direction}:${state.replace(/\bseq=\d+R?\s*/, "")}`;
-  const stateDetail = state && !tracedNetchanStates.has(stateKey) ? state : "";
-  tracedNetchanStates.add(stateKey);
-  if (tracedNetchanStates.size > 256) tracedNetchanStates.clear();
-  if (preview || stateDetail || kind !== "sequenced") {
-    console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${kind} (${data.length} bytes).${preview}${stateDetail}`);
-  }
+  console.info(`[live/relay] ${direction} ${ip.join(".")}:${port} ${kind} (${data.length} bytes).${preview}`);
 }
 
 function normalizeLegacyHltvAccept(data) {

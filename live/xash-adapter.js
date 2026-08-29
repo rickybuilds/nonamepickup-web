@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829j";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829k";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -425,6 +425,10 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
         console.info("[live/xash]", redactSensitiveConsoleText(message));
       },
       printErr(message) {
+        const text = String(message || "");
+        // The custom UDP adapter intentionally has no TCP resolver for its
+        // synthetic local hostname. Xash probes both families during startup.
+        if (/Could not get TCP\/IPv[46] address, Invalid hostname: 'webxash3d\.\d+'/i.test(text)) return;
         console.error("[live/xash]", redactSensitiveConsoleText(message));
       },
       callbacks: {
@@ -542,14 +546,11 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
         : config.playerPassword;
       console.info(`[live/xash] connecting to ${address}`);
       const executeConnect = () => {
-        if (new URLSearchParams(location.search).has("debug")) {
-          // Relay traces show packets reaching the Wasm socket. Enable Xash's
-          // own netchan diagnostics as well, so a rejected packet or forced
-          // reconnect is visible instead of silently returning to the menu.
-          engine.Cmd_ExecuteString("developer 2");
-          engine.Cmd_ExecuteString("net_showdrop 1");
-          engine.Cmd_ExecuteString("net_showpackets 1");
-        }
+        // Do not persist verbose native netchan output between launches. The
+        // browser relay supplies bounded diagnostics for ?debug=1 instead.
+        engine.Cmd_ExecuteString("net_showdrop 0");
+        engine.Cmd_ExecuteString("net_showpackets 0");
+        engine.Cmd_ExecuteString("developer 0");
         engine.Cmd_ExecuteString(`password \"${String(password || "").replaceAll('"', "")}\"`);
         engine.Cmd_ExecuteString(`connect ${address}`);
       };
