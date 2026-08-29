@@ -1,5 +1,5 @@
 import { loadGameAssets, mountGameAssets } from "./asset-loader.js?v=20260826t";
-import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829f";
+import { LOCAL_MASTER_ADDRESS, UdpWebSocketRelay, installSockfsRelayBridge } from "./udp-relay.js?v=20260829g";
 import { installTouchKeyboard } from "./touch-keyboard.js?v=20260827c";
 
 const CONFIG_STORAGE_KEY = "tfc-config";
@@ -476,7 +476,7 @@ export async function createXashClient({ canvas, config, server, onStatus = () =
     // Ask Xash itself why it accepts or drops an inbound netchan packet. The
     // WebSocket relay can show bytes, but only the native channel has the
     // sequence, source-address, and fragment-validation state.
-    engine.Cmd_ExecuteString("cl_log_outofband 1; net_showdrop 1; net_showpackets 1");
+    engine.Cmd_ExecuteString("developer 1; cl_log_outofband 1; net_showdrop 1; net_showpackets 1");
     console.info("[live/xash] native network diagnostics enabled.");
   }
 
