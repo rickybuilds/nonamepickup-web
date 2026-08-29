@@ -21,14 +21,20 @@ function ensureDownloadConfig(fs) {
     const configPath = "/rodir/tfc/config.cfg";
     let existing = "";
     try { existing = new TextDecoder().decode(fs.readFile(configPath)); } catch {}
+    // Legacy HLTV's reliable sign-on stream contains BZip-compressed data.
+    // A previous relay experiment forced this off, which also affected fresh
+    // and private-browser configurations. Restore Xash's normal behavior
+    // even when the old value was persisted in localStorage.
+    const splitCompressPattern = /^\s*cl_enable_splitcompress\b[^\r\n]*$/gmi;
+    if (splitCompressPattern.test(existing)) {
+      existing = existing.replace(splitCompressPattern, "cl_enable_splitcompress 1");
+    } else {
+      existing += `${existing && !existing.endsWith("\n") ? "\n" : ""}cl_enable_splitcompress 1\n`;
+    }
     const missing = [
       ["cl_allowdownload", "cl_allowdownload 1"],
       ["cl_download_ingame", "cl_download_ingame 1"],
-      ["cl_downloadfilter", "cl_downloadfilter all"],
-      // This must be loaded with the game configuration, before the first
-      // connect packet is assembled. Issuing it through Cmd_ExecuteString
-      // after startup is too late for this browser Xash build.
-      ["cl_enable_splitcompress", "cl_enable_splitcompress 0"]
+      ["cl_downloadfilter", "cl_downloadfilter all"]
     ].filter(([name]) => !new RegExp(`^\\s*${name}\\b`, "mi").test(existing))
       .map(([, line]) => line);
     if (missing.length) {
