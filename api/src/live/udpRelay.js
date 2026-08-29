@@ -46,6 +46,11 @@ function rewriteBrowserConnect(payload, hashedCdKey, spectatorPassword) {
 
   const protocolInfo = parseInfoString(match[3]);
   protocolInfo.set("prot", "2");
+  // This Emscripten Xash build acknowledges, but never consumes, the HLTV
+  // split-Huffman sign-on stream. The relay owns the externally visible
+  // protocol info, so make the absence of optional extensions explicit.
+  // The small HLTV sign-on packets fit the original GoldSrc packet size.
+  protocolInfo.set("ext", "0");
   protocolInfo.set("unique", "-1");
   protocolInfo.set("raw", hashedCdKey);
   protocolInfo.delete("cdkey");
