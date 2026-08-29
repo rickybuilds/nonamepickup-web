@@ -321,9 +321,10 @@ export class UdpWebSocketRelay {
         }
       }
       this.net.incoming.push({
-        // Match the reference adapter's signed byte view. Emscripten copies
-        // the underlying bytes unchanged, including GoldSrc's 0xff header.
-        data: new Int8Array(inbound.buffer, inbound.byteOffset, inbound.byteLength),
+        // Use a standalone signed-byte buffer. The runtime's Net adapter
+        // creates a Uint8Array from the backing buffer; retaining this
+        // subarray's non-zero offset would prepend the six-byte relay frame.
+        data: new Int8Array(inbound.slice().buffer),
         ip: frame?.ip || ipTuple(this.server.host),
         port: frame?.port || this.server.port
       });
