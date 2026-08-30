@@ -303,11 +303,72 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderPerGame(data, qualificationNote) {
     const config = [
-      ["kills", "Kills / Game", "decimal"], ["deaths", "Deaths / Game", "decimal"], ["damage", "Damage / Game", "damage"],
-      ["captures", "Captures / Game", "decimal"], ["kills_per_round", "Kills / Round", "decimal"], ["damage_per_round", "Damage / Round", "damage"],
-      ["kdr", "K/D Ratio", "decimal"], ["win_rate", "Win Rate", "percent"], ["mvp_efficiency", "MVP Efficiency", "percent", "mvp-rate"]
+      ["kills", "Kills / Game", "decimal", "Average recorded kills per completed match."],
+      ["deaths", "Deaths / Game", "decimal", "Average recorded deaths per completed match."],
+      ["damage", "Damage / Game", "damage", "Average enemy damage dealt per completed match."],
+      ["captures", "Captures / Game", "decimal", "Average flag captures per completed match."],
+      ["kills_per_round", "Kills / Round", "decimal", "Average recorded kills per played round."],
+      ["damage_per_round", "Damage / Round", "damage", "Average enemy damage dealt per played round."],
+      ["kdr", "K/D Ratio", "decimal", "Career kills divided by recorded deaths."],
+      ["win_rate", "Win Rate", "percent", "Wins divided by completed games with a result."],
+      ["mvp_efficiency", "MVP Efficiency", "percent", "Matches with an MVP award divided by games played."]
     ];
-    document.getElementById("analytics-per-game").innerHTML = config.map(([key, title, type, recordType]) => renderCard(title, data.per_game?.[key], type, qualificationNote, recordType)).join("");
+    const target = document.getElementById("analytics-per-game");
+    target.innerHTML = `
+      <article class="analytics-card analytics-metric-menu">
+        <div class="analytics-card-head"><h3>Performance Metrics</h3><span>Select a ranking to explore</span></div>
+        <ol>${config.map(([key, title, type], index) => {
+          const leader = data.per_game?.[key]?.[0];
+          return `<li class="${index === 0 ? "is-selected" : ""}"><button class="analytics-master-option analytics-metric-option" type="button" data-metric="${escapeAttr(key)}" aria-pressed="${index === 0 ? "true" : "false"}"><span class="analytics-rank">${index + 1}</span><span class="analytics-player"><b>${escapeHtml(title)}</b><small>${leader ? escapeHtml(leader.player) : "No leader"}</small></span><strong>${leader ? formatValue(leader.value, type) : "—"}</strong></button></li>`;
+        }).join("")}</ol>
+      </article>
+      <div id="analytics-per-game-detail" class="analytics-detail"></div>`;
+
+    const detail = document.getElementById("analytics-per-game-detail");
+    const renderMetricDetail = key => {
+      const metric = config.find(([metricKey]) => metricKey === key);
+      if (!metric) return;
+      const [, title, type, description] = metric;
+      const rows = data.per_game?.[key] || [];
+      const leader = rows[0];
+      const runnerUp = rows[1];
+      const leadGap = leader && runnerUp ? Math.max(0, Number(leader.value || 0) - Number(runnerUp.value || 0)) : 0;
+      const maxValue = Math.max(1, ...rows.map(row => Number(row.value || 0)));
+      const sampleContext = row => {
+        if (key === "win_rate") return `${number.format(row.secondary || 0)} wins · ${number.format(row.matches || 0)} games`;
+        if (key === "mvp_efficiency") return `${number.format(row.secondary || 0)} MVPs · ${number.format(row.matches || 0)} games`;
+        return `${number.format(row.secondary || 0)} total · ${number.format(row.matches || 0)} games`;
+      };
+      detail.innerHTML = `
+        <article class="card analytics-detail-card">
+          <div class="analytics-detail-head"><div><span>SELECTED RANKING</span><h3>${escapeHtml(title)}</h3></div><p>${escapeHtml(description)}<small>${escapeHtml(qualificationNote)}</small></p></div>
+          <div class="analytics-detail-kpis">
+            <div><span>Leader</span><strong>${leader ? formatValue(leader.value, type) : "—"}</strong><small>${leader ? escapeHtml(leader.player) : "No data"}</small></div>
+            <div><span>Runner-Up</span><strong>${runnerUp ? formatValue(runnerUp.value, type) : "—"}</strong><small>${runnerUp ? escapeHtml(runnerUp.player) : "No data"}</small></div>
+            <div><span>Lead Gap</span><strong>${leader && runnerUp ? formatValue(leadGap, type) : "—"}</strong><small>First over second</small></div>
+            <div><span>Leader Sample</span><strong>${leader ? number.format(leader.matches || 0) : "—"}</strong><small>completed games</small></div>
+          </div>
+          <div class="analytics-metric-detail-body">
+            <div class="analytics-detail-subhead"><h4>Top Five Comparison</h4><span>Qualified players</span></div>
+            <ol class="analytics-metric-ranking">${rows.map((row, index) => {
+              const width = Math.max(4, (Number(row.value || 0) / maxValue) * 100);
+              return `<li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-metric-player"><div>${playerName(row)}<small>${escapeHtml(sampleContext(row))}</small></div><span class="analytics-metric-bar"><i style="width:${width.toFixed(2)}%"></i></span></div><strong>${formatValue(row.value, type)}</strong></li>`;
+            }).join("") || `<li class="analytics-empty">No qualified rankings yet</li>`}</ol>
+          </div>
+        </article>`;
+    };
+
+    target.addEventListener("click", event => {
+      const option = event.target.closest(".analytics-metric-option");
+      if (!option) return;
+      target.querySelectorAll(".analytics-metric-option").forEach(button => {
+        const selected = button === option;
+        button.setAttribute("aria-pressed", selected ? "true" : "false");
+        button.closest("li")?.classList.toggle("is-selected", selected);
+      });
+      renderMetricDetail(option.dataset.metric);
+    });
+    renderMetricDetail(config[0][0]);
     document.getElementById("analytics-per-game-note").textContent = qualificationNote;
   }
 
@@ -322,7 +383,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <article class="analytics-card analytics-weapon-total-card">
         <div class="analytics-card-head"><h3>Weapon Records</h3><span>Select a weapon to explore its stats</span></div>
         <ol>${totals.map((row, index) => `
-          <li class="${index === 0 ? "is-selected" : ""}"><button class="analytics-weapon-option" type="button" data-weapon="${escapeAttr(row.weapon)}" aria-pressed="${index === 0 ? "true" : "false"}"><span class="analytics-rank">${index + 1}</span><span class="analytics-player analytics-weapon-name">${weaponIcon(row.weapon)}<span>${escapeHtml(weaponLabel(row.weapon))}</span></span><strong>${number.format(row.value)}<small>${weaponUnit(row.weapon)}</small></strong></button></li>
+          <li class="${index === 0 ? "is-selected" : ""}"><button class="analytics-master-option analytics-weapon-option" type="button" data-weapon="${escapeAttr(row.weapon)}" aria-pressed="${index === 0 ? "true" : "false"}"><span class="analytics-rank">${index + 1}</span><span class="analytics-player analytics-weapon-name">${weaponIcon(row.weapon)}<span>${escapeHtml(weaponLabel(row.weapon))}</span></span><strong>${number.format(row.value)}<small>${weaponUnit(row.weapon)}</small></strong></button></li>
         `).join("") || `<li class="analytics-empty">No weapon data yet</li>`}</ol>
       </article>`;
     const leadersByWeapon = new Map();
@@ -350,24 +411,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       const maps = mapsByWeapon.get(weapon) || [];
       const perMatch = Number(total.matches || 0) > 0 ? Number(total.value || 0) / Number(total.matches) : 0;
       detail.innerHTML = `
-        <article class="card analytics-weapon-detail-card">
-          <div class="analytics-weapon-detail-head">
+        <article class="card analytics-detail-card">
+          <div class="analytics-detail-head analytics-weapon-detail-head">
             <div class="analytics-weapon-detail-title">${weaponIcon(weapon)}<div><span>SELECTED RECORD</span><h3>${escapeHtml(weaponLabel(weapon))}</h3></div></div>
             <p>${number.format(total.matches)} matches with recorded ${escapeHtml(unit)}</p>
           </div>
-          <div class="analytics-weapon-detail-kpis">
+          <div class="analytics-detail-kpis">
             <div><span>Overall</span><strong>${number.format(total.value)}</strong><small>${escapeHtml(unit)}</small></div>
             <div><span>Per Match</span><strong>${decimal.format(perMatch)}</strong><small>${escapeHtml(unit)} / recorded match</small></div>
             <div><span>Last 30 Days</span><strong>${number.format(total.last_30_days || 0)}</strong><small>${number.format(total.last_30_matches || 0)} matches</small></div>
             <div><span>Last 90 Days</span><strong>${number.format(total.last_90_days || 0)}</strong><small>${number.format(total.last_90_matches || 0)} matches</small></div>
           </div>
-          <div class="analytics-weapon-detail-body">
-            <section class="analytics-weapon-subpanel">
-              <div class="analytics-weapon-subhead"><h4>Career Leaders</h4><span>Top five overall</span></div>
+          <div class="analytics-detail-body">
+            <section class="analytics-detail-subpanel">
+              <div class="analytics-detail-subhead"><h4>Career Leaders</h4><span>Top five overall</span></div>
               <ol>${leaders.slice(0, 5).map((row, index) => `<li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-player">${playerName(row)}</div><strong>${number.format(row.value)}<small>${escapeHtml(unit)}</small></strong></li>`).join("") || `<li class="analytics-empty">No player records yet</li>`}</ol>
             </section>
-            <section class="analytics-weapon-subpanel">
-              <div class="analytics-weapon-subhead"><h4>Top Maps</h4><span>${escapeHtml(unit)} and pace by map</span></div>
+            <section class="analytics-detail-subpanel">
+              <div class="analytics-detail-subhead"><h4>Top Maps</h4><span>${escapeHtml(unit)} and pace by map</span></div>
               <ol>${maps.map((row, index) => `<li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-player">${mapName(row)}</div><strong>${number.format(row.value)}<small>${decimal.format(Number(row.value || 0) / Number(row.matches || 1))} / match</small></strong></li>`).join("") || `<li class="analytics-empty">No map records yet</li>`}</ol>
             </section>
           </div>
