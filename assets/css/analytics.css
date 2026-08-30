@@ -117,6 +117,10 @@
 .analytics-master-option small{color:var(--analytics-subtle)}
 .analytics-master-option .analytics-player b{display:block;overflow:hidden;color:#dbeafe;text-overflow:ellipsis;white-space:nowrap}
 .analytics-master-option .analytics-player small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.analytics-map-menu ol{max-height:405px;overflow-y:auto;scrollbar-color:rgba(77,166,255,.45) rgba(4,12,24,.5);scrollbar-width:thin}
+.analytics-map-menu ol::-webkit-scrollbar{width:6px}
+.analytics-map-menu ol::-webkit-scrollbar-track{background:rgba(4,12,24,.5)}
+.analytics-map-menu ol::-webkit-scrollbar-thumb{border-radius:999px;background:rgba(77,166,255,.45)}
 .analytics-weapon-total-card li.is-selected,.analytics-metric-menu li.is-selected,.analytics-map-menu li.is-selected{background:linear-gradient(90deg,rgba(37,99,235,.2),rgba(56,189,248,.06))!important;box-shadow:inset 3px 0 #38bdf8}
 .analytics-weapon-total-card li.is-selected .analytics-rank,.analytics-metric-menu li.is-selected .analytics-rank,.analytics-map-menu li.is-selected .analytics-rank{color:#fbbf24}
 .analytics-detail-card{position:sticky;top:calc(var(--site-header-height,78px) + 72px);overflow:hidden}

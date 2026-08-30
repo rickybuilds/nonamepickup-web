@@ -114,6 +114,7 @@ const MVP_CTES = `
 const ANALYTICS_CACHE_TTL_MS = 45_000;
 const MIN_PERFORMANCE_GAMES = 25;
 const MIN_MAP_GAMES = 10;
+const MIN_MAP_ARCHIVE_GAMES = 25;
 const analyticsPayloadCache = new Map();
 
 function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRouteError }) {
@@ -896,9 +897,9 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             LEFT JOIN match_kills mk ON mk.match_id = m.match_id
             WHERE m.status = 'completed' AND m.map_name IS NOT NULL AND m.map_name != ''
             GROUP BY m.map_name
+            HAVING COUNT(*) >= ?
             ORDER BY matches DESC, m.map_name COLLATE NOCASE
-            LIMIT 12
-          `).all(cutoff30Days, cutoff90Days).map(row => ({
+          `).all(cutoff30Days, cutoff90Days, MIN_MAP_ARCHIVE_GAMES).map(row => ({
             map: row.map_name || "Unknown",
             matches: Number(row.matches || 0),
             total_kills: Number(row.total_kills || 0),
@@ -986,7 +987,8 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             limit,
             qualification: {
               minimum_games: MIN_PERFORMANCE_GAMES,
-              minimum_map_games: MIN_MAP_GAMES
+              minimum_map_games: MIN_MAP_GAMES,
+              minimum_map_archive_games: MIN_MAP_ARCHIVE_GAMES
             },
             summary: {
               matches: Number(summary.matches || 0),

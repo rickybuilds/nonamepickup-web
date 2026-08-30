@@ -448,7 +448,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderDetail(totals[0]?.weapon);
   }
 
-  function renderMaps(data, minimumMapGames) {
+  function renderMaps(data, minimumMapGames, minimumMapArchiveGames) {
     const mapData = data.maps || {};
     const killsByMap = new Map((mapData.total_kills || []).map(row => [row.map, row]));
     const scoreByMap = new Map((mapData.average_team_score || []).map(row => [row.map, row]));
@@ -469,7 +469,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const target = document.getElementById("analytics-maps");
     target.innerHTML = `
       <article class="analytics-card analytics-map-menu">
-        <div class="analytics-card-head"><h3>Map Archive</h3><span>Select a map to explore</span></div>
+        <div class="analytics-card-head"><h3>Map Archive</h3><span>Maps with ${number.format(minimumMapArchiveGames)}+ completed games</span></div>
         <ol>${details.map((row, index) => `<li class="${index === 0 ? "is-selected" : ""}"><button class="analytics-master-option analytics-map-option" type="button" data-map="${escapeAttr(row.map)}" aria-pressed="${index === 0 ? "true" : "false"}"><span class="analytics-rank">${index + 1}</span><span class="analytics-player"><b>${escapeHtml(row.map)}</b><small>${number.format(row.total_kills || 0)} recorded kills</small></span><strong>${number.format(row.matches || 0)}<small>games</small></strong></button></li>`).join("") || `<li class="analytics-empty">No map data yet</li>`}</ol>
       </article>
       <div id="analytics-map-detail" class="analytics-detail"></div>`;
@@ -575,7 +575,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderOverviewTeasers(data);
       renderPerGame(data, qualificationNote);
       renderWeapons(data);
-      renderMaps(data, minimumMapGames);
+      renderMaps(data, minimumMapGames, Number(data.qualification?.minimum_map_archive_games || 25));
       document.getElementById("analytics-mvps").innerHTML = renderCard("Match MVPs", data.mvps, "MVP games", "Total matches where player earned MVP", false, true);
       document.getElementById("analytics-mvp-rate").innerHTML = renderCard("MVP Efficiency", data.mvp_rate, "percent", qualificationNote, "mvp-rate", true);
       renderSection("analytics-combat", data.combat, sections.combat, qualificationNote);
