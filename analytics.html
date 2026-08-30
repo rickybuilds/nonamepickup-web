@@ -16,9 +16,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20260716glow1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20260830v4">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20260830v5">
   <script src="assets/js/main.js?v=20260618i" defer></script>
-  <script src="assets/js/analytics.js?v=20260830v3" defer></script>
+  <script src="assets/js/analytics.js?v=20260830v5" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -62,7 +62,10 @@
           <p class="analytics-kicker">THE RECORD ROOM</p>
           <h1>NoName Analytics</h1>
           <p class="analytics-subtitle">Performance leaders, career records, and the history of NoName TFC.</p>
-          <p id="analytics-updated" class="analytics-updated">Loading the record books...</p>
+          <div id="analytics-updated" class="analytics-updated is-loading" role="status" aria-live="polite">
+            <span id="analytics-updated-text">Loading analytics...</span>
+            <span id="analytics-load-progress" class="analytics-load-progress" role="progressbar" aria-label="Loading analytics statistics"><span></span></span>
+          </div>
         </div>
 
         <div class="analytics-summary" aria-label="Analytics coverage">

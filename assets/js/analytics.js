@@ -295,6 +295,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     ].join("");
   }
 
+  function finishAnalyticsLoading(message) {
+    document.getElementById("analytics-updated-text").textContent = message;
+    document.getElementById("analytics-updated").classList.remove("is-loading");
+    document.getElementById("analytics-load-progress").hidden = true;
+  }
+
   function renderPerGame(data, qualificationNote) {
     const config = [
       ["kills", "Kills / Game", "decimal"], ["deaths", "Deaths / Game", "decimal"], ["damage", "Damage / Game", "damage"],
@@ -382,7 +388,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("analytics-player-count").textContent = number.format(data.summary?.players || 0);
       document.getElementById("analytics-round-count").textContent = number.format(data.summary?.rounds || 0);
       document.getElementById("analytics-kill-count").textContent = number.format(data.summary?.total_kills || 0);
-      document.getElementById("analytics-updated").textContent = `Updated ${new Date(Number(data.generated_at || 0) * 1000).toLocaleString()}`;
+      finishAnalyticsLoading(`Updated ${new Date(Number(data.generated_at || 0) * 1000).toLocaleString()}`);
       renderActivity(data.activity);
       renderSpotlight(data, qualificationNote);
       renderComparisons(data);
@@ -402,7 +408,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.error("Analytics load failed", loadError);
       error.hidden = false;
       error.textContent = "The analytics data could not be loaded right now.";
-      document.getElementById("analytics-updated").textContent = "Analytics unavailable";
+      finishAnalyticsLoading("Analytics unavailable");
     }
   }
 
