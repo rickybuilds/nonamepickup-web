@@ -477,16 +477,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     const detailTarget = document.getElementById("analytics-map-detail");
     const rankLabel = (rows, map) => {
       const index = (rows || []).findIndex(row => row.map === map);
-      return index >= 0 ? `#${index + 1}` : "Outside top 5";
+      return index >= 0 ? `#${index + 1}` : "—";
     };
+    const rankedGames = [...details].sort((a, b) => Number(b.matches || 0) - Number(a.matches || 0) || String(a.map).localeCompare(String(b.map)));
+    const rankedKills = [...details].sort((a, b) => Number(b.total_kills || 0) - Number(a.total_kills || 0) || Number(b.matches || 0) - Number(a.matches || 0) || String(a.map).localeCompare(String(b.map)));
+    const rankedScores = details.filter(row => row.average_team_score != null && Number(row.matches || 0) >= minimumMapGames)
+      .sort((a, b) => Number(b.average_team_score || 0) - Number(a.average_team_score || 0) || Number(b.matches || 0) - Number(a.matches || 0) || String(a.map).localeCompare(String(b.map)));
     const renderMapDetail = map => {
       const detail = details.find(row => row.map === map);
       if (!detail) return;
       const leaders = leadersByMap.get(map) || [];
       const standings = [
-        ["Games Played", `#${details.findIndex(row => row.map === map) + 1}`, `${number.format(detail.matches || 0)} completed`],
-        ["Recorded Kills", rankLabel(mapData.total_kills, map), `${number.format(detail.total_kills || 0)} kills`],
-        ["Average Team Score", rankLabel(mapData.average_team_score, map), detail.average_team_score == null ? "No score sample" : `${decimal.format(detail.average_team_score)} average`]
+        ["Games Played", rankLabel(rankedGames, map), `${number.format(detail.matches || 0)} completed`],
+        ["Recorded Kills", rankLabel(rankedKills, map), `${number.format(detail.total_kills || 0)} kills`],
+        ["Average Team Score", rankLabel(rankedScores, map), detail.average_team_score == null ? "No score sample" : `${decimal.format(detail.average_team_score)} average`]
       ];
       detailTarget.innerHTML = `
         <article class="card analytics-detail-card">
