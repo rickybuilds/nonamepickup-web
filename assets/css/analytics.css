@@ -2,6 +2,7 @@
 .analytics-summary article{border:1px solid rgba(77,166,255,.26);box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 10px 24px rgba(0,0,0,.18)}
 .analytics-updated.is-loading{width:min(280px,100%)}
 .analytics-load-progress{display:block;position:relative;overflow:hidden;width:100%;height:4px;margin-top:8px;border-radius:999px;background:rgba(77,166,255,.15);box-shadow:inset 0 0 0 1px rgba(77,166,255,.14)}
+.analytics-load-progress[hidden]{display:none}
 .analytics-load-progress>span{position:absolute;inset:0 auto 0 -42%;width:42%;border-radius:inherit;background:linear-gradient(90deg,transparent,#38bdf8 45%,#818cf8);box-shadow:0 0 10px rgba(56,189,248,.65);animation:analytics-loading 1.15s ease-in-out infinite}
 @keyframes analytics-loading{to{transform:translateX(338%)}}
 @media(prefers-reduced-motion:reduce){.analytics-load-progress>span{left:0;width:100%;animation:none}}
