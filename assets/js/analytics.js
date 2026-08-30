@@ -250,6 +250,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     ].join("");
   }
 
+  function renderOverviewTeaser(title, eyebrow, entries) {
+    const rows = entries.filter(([, row]) => row);
+    return `
+      <article class="card analytics-teaser-card">
+        <div class="analytics-card-head"><h3>${escapeHtml(title)}</h3><span>${escapeHtml(eyebrow)}</span></div>
+        <div class="analytics-teaser-list">
+          ${rows.map(([label, row, type]) => `
+            <div class="analytics-teaser-row">
+              <span>${escapeHtml(label)}</span>
+              <div>${playerName(row)}</div>
+              <strong>${formatValue(row.value, type)}</strong>
+            </div>
+          `).join("") || `<p class="analytics-empty">No records yet.</p>`}
+        </div>
+      </article>`;
+  }
+
+  function renderOverviewTeasers(data) {
+    const target = document.getElementById("analytics-overview-teasers");
+    if (!target) return;
+    target.innerHTML = [
+      renderOverviewTeaser("Top Per-Game Performers", "Qualified efficiency leaders", [
+        ["Kills / Game", data.per_game?.kills?.[0], "decimal"],
+        ["Damage / Game", data.per_game?.damage?.[0], "damage"],
+        ["K/D", data.per_game?.kdr?.[0], "decimal"],
+        ["Win Rate", data.per_game?.win_rate?.[0], "percent"],
+        ["MVP Efficiency", data.per_game?.mvp_efficiency?.[0], "percent"]
+      ]),
+      renderOverviewTeaser("All-Time Leaders", "Career record owners", [
+        ["Career Kills", data.combat?.kills?.[0], "kills"],
+        ["Career Damage", data.combat?.enemy_damage?.[0], "damage"],
+        ["Games Played", data.combat?.games?.[0], "games"],
+        ["Match MVPs", data.mvps?.[0], "MVP games"],
+        ["Captures", data.flags?.caps?.[0], "caps"]
+      ]),
+      renderOverviewTeaser("Record Holders", "Standout match and round marks", [
+        ["Match Kills", data.matches?.kills?.[0], "kills"],
+        ["Match Damage", data.matches?.enemy_damage?.[0], "damage"],
+        ["Round Kills", data.rounds?.kills?.[0], "kills"],
+        ["Round Damage", data.rounds?.damage?.[0], "damage"],
+        ["Match Captures", data.matches?.caps?.[0], "caps"]
+      ])
+    ].join("");
+  }
+
   function renderPerGame(data, qualificationNote) {
     const config = [
       ["kills", "Kills / Game", "decimal"], ["deaths", "Deaths / Game", "decimal"], ["damage", "Damage / Game", "damage"],
@@ -341,6 +386,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderActivity(data.activity);
       renderSpotlight(data, qualificationNote);
       renderComparisons(data);
+      renderOverviewTeasers(data);
       renderPerGame(data, qualificationNote);
       renderWeapons(data);
       renderMaps(data, minimumMapGames);
