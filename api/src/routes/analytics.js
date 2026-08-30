@@ -875,16 +875,38 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           return { totals, leaders: leadersByWeapon, maps: mapsByWeapon };
         });
 
-        const maps = timedAnalytics("analytics:maps", () => ({
-          most_played: db.prepare(`
-            SELECT map_name, COUNT(*) AS value, COUNT(*) AS matches
-            FROM matches
-            WHERE status = 'completed' AND map_name IS NOT NULL AND map_name != ''
-            GROUP BY map_name
-            ORDER BY value DESC, map_name COLLATE NOCASE
-            LIMIT ?
-          `).all(limit).map(serializeMapLeader),
-          total_kills: db.prepare(`
+        const maps = timedAnalytics("analytics:maps", () => {
+          const now = Math.floor(Date.now() / 1000);
+          const cutoff30Days = now - (30 * 86400);
+          const cutoff90Days = now - (90 * 86400);
+          const details = db.prepare(`
+            WITH match_kills AS (
+              SELECT match_id, SUM(COALESCE(kills, 0)) AS total_kills
+              FROM match_player_stats
+              GROUP BY match_id
+            )
+            SELECT
+              m.map_name,
+              COUNT(*) AS matches,
+              SUM(COALESCE(mk.total_kills, 0)) AS total_kills,
+              ROUND(AVG(CASE WHEN m.score_blue IS NOT NULL AND m.score_red IS NOT NULL THEN (m.score_blue + m.score_red) / 2.0 END), 1) AS average_team_score,
+              SUM(CASE WHEN m.created_at >= ? THEN 1 ELSE 0 END) AS last_30_days,
+              SUM(CASE WHEN m.created_at >= ? THEN 1 ELSE 0 END) AS last_90_days
+            FROM matches m
+            LEFT JOIN match_kills mk ON mk.match_id = m.match_id
+            WHERE m.status = 'completed' AND m.map_name IS NOT NULL AND m.map_name != ''
+            GROUP BY m.map_name
+            ORDER BY matches DESC, m.map_name COLLATE NOCASE
+            LIMIT 12
+          `).all(cutoff30Days, cutoff90Days).map(row => ({
+            map: row.map_name || "Unknown",
+            matches: Number(row.matches || 0),
+            total_kills: Number(row.total_kills || 0),
+            average_team_score: row.average_team_score == null ? null : Number(row.average_team_score),
+            last_30_days: Number(row.last_30_days || 0),
+            last_90_days: Number(row.last_90_days || 0)
+          }));
+          const totalKills = db.prepare(`
             SELECT
               m.map_name,
               SUM(COALESCE(s.kills, 0)) AS value,
@@ -895,8 +917,8 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             GROUP BY m.map_name
             ORDER BY value DESC, matches DESC, m.map_name COLLATE NOCASE
             LIMIT ?
-          `).all(limit).map(serializeMapLeader),
-          average_team_score: db.prepare(`
+          `).all(limit).map(serializeMapLeader);
+          const averageTeamScore = db.prepare(`
             SELECT
               map_name,
               ROUND(AVG((score_blue + score_red) / 2.0), 1) AS value,
@@ -911,8 +933,51 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             HAVING COUNT(*) >= ?
             ORDER BY value DESC, matches DESC, map_name COLLATE NOCASE
             LIMIT ?
-          `).all(MIN_MAP_GAMES, limit).map(serializeMapLeader)
-        }));
+          `).all(MIN_MAP_GAMES, limit).map(serializeMapLeader);
+          const playerLeaders = db.prepare(`${IDENTITY_CTES},
+            map_player_totals AS (
+              SELECT
+                m.map_name,
+                MAX(ps.player_id) AS player_id,
+                MAX(ps.player) AS player,
+                ps.identity,
+                SUM(COALESCE(ps.kills, 0)) AS value,
+                COUNT(DISTINCT ps.match_id) AS matches
+              FROM player_stats ps
+              JOIN matches m ON m.match_id = ps.match_id
+              WHERE m.status = 'completed'
+                AND m.map_name IS NOT NULL
+                AND m.map_name != ''
+                AND ps.identity IS NOT NULL
+              GROUP BY m.map_name, ps.identity
+            ),
+            ranked AS (
+              SELECT
+                *,
+                ROW_NUMBER() OVER (
+                  PARTITION BY map_name
+                  ORDER BY value DESC, matches DESC, player COLLATE NOCASE
+                ) AS position
+              FROM map_player_totals
+              WHERE value > 0
+            )
+            SELECT map_name, player_id, player, value, matches
+            FROM ranked
+            WHERE position <= 5
+            ORDER BY map_name COLLATE NOCASE, position
+          `).all().map(row => ({
+            map: row.map_name || "Unknown",
+            ...serializeLeader(row)
+          }));
+
+          return {
+            most_played: details.slice(0, limit).map(row => ({ map: row.map, value: row.matches, matches: row.matches })),
+            total_kills: totalKills,
+            average_team_score: averageTeamScore,
+            details,
+            leaders: playerLeaders
+          };
+        });
 
         return {
           ok: true,

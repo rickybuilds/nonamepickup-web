@@ -448,18 +448,79 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderDetail(totals[0]?.weapon);
   }
 
-  function renderMapCard(title, rows, type, note) {
-    return `<article class="analytics-card"><div class="analytics-card-head"><h3>${escapeHtml(title)}</h3><span>${escapeHtml(note)}</span></div><ol>${(rows || []).map((row, index) => `
-      <li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-player">${mapName(row)}</div><strong>${formatValue(row.value, type)}${type === "games" ? " games" : type === "kills" ? " kills" : ""}<small>${number.format(row.matches || 0)} completed matches</small></strong></li>
-    `).join("") || `<li class="analytics-empty">No map data yet</li>`}</ol></article>`;
-  }
-
   function renderMaps(data, minimumMapGames) {
-    document.getElementById("analytics-maps").innerHTML = [
-      renderMapCard("Most Played Maps", data.maps?.most_played, "games", "Completed matches"),
-      renderMapCard("Most Recorded Kills", data.maps?.total_kills, "kills", "Player kills across completed matches"),
-      renderMapCard("Highest Average Team Score", data.maps?.average_team_score, "decimal", `Combined score divided by two; minimum ${minimumMapGames} games`)
-    ].join("");
+    const mapData = data.maps || {};
+    const killsByMap = new Map((mapData.total_kills || []).map(row => [row.map, row]));
+    const scoreByMap = new Map((mapData.average_team_score || []).map(row => [row.map, row]));
+    const details = mapData.details?.length ? mapData.details : (mapData.most_played || []).map(row => ({
+      map: row.map,
+      matches: Number(row.matches || row.value || 0),
+      total_kills: Number(killsByMap.get(row.map)?.value || 0),
+      average_team_score: scoreByMap.get(row.map)?.value ?? null,
+      last_30_days: 0,
+      last_90_days: 0
+    }));
+    const leadersByMap = new Map();
+    (mapData.leaders || []).forEach(row => {
+      const list = leadersByMap.get(row.map) || [];
+      list.push(row);
+      leadersByMap.set(row.map, list);
+    });
+    const target = document.getElementById("analytics-maps");
+    target.innerHTML = `
+      <article class="analytics-card analytics-map-menu">
+        <div class="analytics-card-head"><h3>Map Archive</h3><span>Select a map to explore</span></div>
+        <ol>${details.map((row, index) => `<li class="${index === 0 ? "is-selected" : ""}"><button class="analytics-master-option analytics-map-option" type="button" data-map="${escapeAttr(row.map)}" aria-pressed="${index === 0 ? "true" : "false"}"><span class="analytics-rank">${index + 1}</span><span class="analytics-player"><b>${escapeHtml(row.map)}</b><small>${number.format(row.total_kills || 0)} recorded kills</small></span><strong>${number.format(row.matches || 0)}<small>games</small></strong></button></li>`).join("") || `<li class="analytics-empty">No map data yet</li>`}</ol>
+      </article>
+      <div id="analytics-map-detail" class="analytics-detail"></div>`;
+
+    const detailTarget = document.getElementById("analytics-map-detail");
+    const rankLabel = (rows, map) => {
+      const index = (rows || []).findIndex(row => row.map === map);
+      return index >= 0 ? `#${index + 1}` : "Outside top 5";
+    };
+    const renderMapDetail = map => {
+      const detail = details.find(row => row.map === map);
+      if (!detail) return;
+      const leaders = leadersByMap.get(map) || [];
+      const standings = [
+        ["Games Played", `#${details.findIndex(row => row.map === map) + 1}`, `${number.format(detail.matches || 0)} completed`],
+        ["Recorded Kills", rankLabel(mapData.total_kills, map), `${number.format(detail.total_kills || 0)} kills`],
+        ["Average Team Score", rankLabel(mapData.average_team_score, map), detail.average_team_score == null ? "No score sample" : `${decimal.format(detail.average_team_score)} average`]
+      ];
+      detailTarget.innerHTML = `
+        <article class="card analytics-detail-card">
+          <div class="analytics-detail-head"><div><span>SELECTED MAP</span><h3>${mapName(detail)}</h3></div><p>Completed-match volume, combat, scoring, and player leaders.<small>Score ranking requires ${number.format(minimumMapGames)} games</small></p></div>
+          <div class="analytics-detail-kpis">
+            <div><span>Completed Games</span><strong>${number.format(detail.matches || 0)}</strong><small>archive total</small></div>
+            <div><span>Recorded Kills</span><strong>${number.format(detail.total_kills || 0)}</strong><small>${decimal.format(Number(detail.total_kills || 0) / Number(detail.matches || 1))} / game</small></div>
+            <div><span>Avg Team Score</span><strong>${detail.average_team_score == null ? "—" : decimal.format(detail.average_team_score)}</strong><small>combined score ÷ two</small></div>
+            <div><span>Recent Activity</span><strong>${number.format(detail.last_30_days || 0)}</strong><small>30 days · ${number.format(detail.last_90_days || 0)} in 90</small></div>
+          </div>
+          <div class="analytics-detail-body">
+            <section class="analytics-detail-subpanel">
+              <div class="analytics-detail-subhead"><h4>Top Players</h4><span>Recorded kills on this map</span></div>
+              <ol>${leaders.map((row, index) => `<li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-player">${playerName(row)}</div><strong>${number.format(row.value)}<small>${number.format(row.matches || 0)} games</small></strong></li>`).join("") || `<li class="analytics-empty">No player records yet</li>`}</ol>
+            </section>
+            <section class="analytics-detail-subpanel analytics-map-standings">
+              <div class="analytics-detail-subhead"><h4>Archive Standing</h4><span>Position among all maps</span></div>
+              <ol>${standings.map(([label, rank, context], index) => `<li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-player">${escapeHtml(label)}<small>${escapeHtml(context)}</small></div><strong>${escapeHtml(rank)}</strong></li>`).join("")}</ol>
+            </section>
+          </div>
+        </article>`;
+    };
+
+    target.addEventListener("click", event => {
+      const option = event.target.closest(".analytics-map-option");
+      if (!option) return;
+      target.querySelectorAll(".analytics-map-option").forEach(button => {
+        const selected = button === option;
+        button.setAttribute("aria-pressed", selected ? "true" : "false");
+        button.closest("li")?.classList.toggle("is-selected", selected);
+      });
+      renderMapDetail(option.dataset.map);
+    });
+    renderMapDetail(details[0]?.map);
   }
 
   function setupTabs() {
