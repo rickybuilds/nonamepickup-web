@@ -313,11 +313,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderWeapons(data) {
     const totals = data.weapons?.totals || [];
+    const weaponIcon = weapon => weapon === "suicide"
+      ? `<span class="weapon-icon analytics-suicide-icon" aria-hidden="true">💀</span>`
+      : `<i class="weapon-icon ${escapeAttr(weapon)}" aria-hidden="true"></i>`;
+    const weaponLabel = weapon => weapon === "suicide" ? "Suicides" : weaponName(weapon);
+    const weaponUnit = weapon => weapon === "suicide" ? "suicides" : "kills";
     document.getElementById("analytics-weapon-totals").innerHTML = `
       <article class="analytics-card analytics-weapon-total-card">
-        <div class="analytics-card-head"><h3>Most Kills By Weapon</h3><span>Recorded weapon kill totals</span></div>
+        <div class="analytics-card-head"><h3>Weapon Records</h3><span>Select a weapon to explore its stats</span></div>
         <ol>${totals.map((row, index) => `
-          <li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-player analytics-weapon-name"><i class="weapon-icon ${escapeAttr(row.weapon)}" aria-hidden="true"></i><span>${escapeHtml(weaponName(row.weapon))}</span></div><strong>${number.format(row.value)} kills<small>${number.format(row.matches)} matches with recorded kills</small></strong></li>
+          <li class="${index === 0 ? "is-selected" : ""}"><button class="analytics-weapon-option" type="button" data-weapon="${escapeAttr(row.weapon)}" aria-pressed="${index === 0 ? "true" : "false"}"><span class="analytics-rank">${index + 1}</span><span class="analytics-player analytics-weapon-name">${weaponIcon(row.weapon)}<span>${escapeHtml(weaponLabel(row.weapon))}</span></span><strong>${number.format(row.value)}<small>${weaponUnit(row.weapon)}</small></strong></button></li>
         `).join("") || `<li class="analytics-empty">No weapon data yet</li>`}</ol>
       </article>`;
     const leadersByWeapon = new Map();
@@ -326,7 +331,60 @@ document.addEventListener("DOMContentLoaded", async () => {
       list.push(row);
       leadersByWeapon.set(row.weapon, list);
     });
-    document.getElementById("analytics-weapon-leaders").innerHTML = totals.slice(0, 6).map(row => renderCard(`${weaponName(row.weapon)} Kill Leaders`, leadersByWeapon.get(row.weapon), "kills", "Career weapon kills")).join("");
+    const mapsByWeapon = new Map();
+    (data.weapons?.maps || []).forEach(row => {
+      const list = mapsByWeapon.get(row.weapon) || [];
+      list.push(row);
+      mapsByWeapon.set(row.weapon, list);
+    });
+
+    const detail = document.getElementById("analytics-weapon-leaders");
+    const renderDetail = weapon => {
+      const total = totals.find(row => row.weapon === weapon);
+      if (!total) {
+        detail.innerHTML = `<p class="analytics-empty">Select a weapon to view its records.</p>`;
+        return;
+      }
+      const unit = weaponUnit(weapon);
+      const leaders = weapon === "suicide" ? (data.chaos?.suicides || []) : (leadersByWeapon.get(weapon) || []);
+      const maps = mapsByWeapon.get(weapon) || [];
+      const perMatch = Number(total.matches || 0) > 0 ? Number(total.value || 0) / Number(total.matches) : 0;
+      detail.innerHTML = `
+        <article class="card analytics-weapon-detail-card">
+          <div class="analytics-weapon-detail-head">
+            <div class="analytics-weapon-detail-title">${weaponIcon(weapon)}<div><span>SELECTED RECORD</span><h3>${escapeHtml(weaponLabel(weapon))}</h3></div></div>
+            <p>${number.format(total.matches)} matches with recorded ${escapeHtml(unit)}</p>
+          </div>
+          <div class="analytics-weapon-detail-kpis">
+            <div><span>Overall</span><strong>${number.format(total.value)}</strong><small>${escapeHtml(unit)}</small></div>
+            <div><span>Per Match</span><strong>${decimal.format(perMatch)}</strong><small>${escapeHtml(unit)} / recorded match</small></div>
+            <div><span>Last 30 Days</span><strong>${number.format(total.last_30_days || 0)}</strong><small>${number.format(total.last_30_matches || 0)} matches</small></div>
+            <div><span>Last 90 Days</span><strong>${number.format(total.last_90_days || 0)}</strong><small>${number.format(total.last_90_matches || 0)} matches</small></div>
+          </div>
+          <div class="analytics-weapon-detail-body">
+            <section class="analytics-weapon-subpanel">
+              <div class="analytics-weapon-subhead"><h4>Career Leaders</h4><span>Top five overall</span></div>
+              <ol>${leaders.slice(0, 5).map((row, index) => `<li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-player">${playerName(row)}</div><strong>${number.format(row.value)}<small>${escapeHtml(unit)}</small></strong></li>`).join("") || `<li class="analytics-empty">No player records yet</li>`}</ol>
+            </section>
+            <section class="analytics-weapon-subpanel">
+              <div class="analytics-weapon-subhead"><h4>Top Maps</h4><span>${escapeHtml(unit)} and pace by map</span></div>
+              <ol>${maps.map((row, index) => `<li class="${index === 0 ? "is-leader" : ""}"><span class="analytics-rank">${index + 1}</span><div class="analytics-player">${mapName(row)}</div><strong>${number.format(row.value)}<small>${decimal.format(Number(row.value || 0) / Number(row.matches || 1))} / match</small></strong></li>`).join("") || `<li class="analytics-empty">No map records yet</li>`}</ol>
+            </section>
+          </div>
+        </article>`;
+    };
+
+    document.getElementById("analytics-weapon-totals").addEventListener("click", event => {
+      const option = event.target.closest(".analytics-weapon-option");
+      if (!option) return;
+      document.querySelectorAll(".analytics-weapon-option").forEach(button => {
+        const selected = button === option;
+        button.setAttribute("aria-pressed", selected ? "true" : "false");
+        button.closest("li")?.classList.toggle("is-selected", selected);
+      });
+      renderDetail(option.dataset.weapon);
+    });
+    renderDetail(totals[0]?.weapon);
   }
 
   function renderMapCard(title, rows, type, note) {

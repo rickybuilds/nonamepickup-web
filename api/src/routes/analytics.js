@@ -729,21 +729,60 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
         });
 
         const weapons = timedAnalytics("analytics:weapons", () => {
+          const now = Math.floor(Date.now() / 1000);
+          const cutoff30Days = now - (30 * 86400);
+          const cutoff90Days = now - (90 * 86400);
           const totals = db.prepare(`
-            SELECT
-              weapon,
-              SUM(COALESCE(kills, 0)) AS value,
-              COUNT(DISTINCT match_id) AS matches
-            FROM match_player_weapons
-            WHERE weapon IS NOT NULL AND weapon != ''
-            GROUP BY weapon
-            HAVING value > 0
+            WITH cutoffs AS (
+              SELECT ? AS days_30, ? AS days_90
+            ),
+            weapon_totals AS (
+              SELECT
+                w.weapon,
+                SUM(COALESCE(w.kills, 0)) AS value,
+                COUNT(DISTINCT w.match_id) AS matches,
+                SUM(CASE WHEN m.created_at >= c.days_30 THEN COALESCE(w.kills, 0) ELSE 0 END) AS last_30_days,
+                COUNT(DISTINCT CASE WHEN m.created_at >= c.days_30 THEN w.match_id END) AS last_30_matches,
+                SUM(CASE WHEN m.created_at >= c.days_90 THEN COALESCE(w.kills, 0) ELSE 0 END) AS last_90_days,
+                COUNT(DISTINCT CASE WHEN m.created_at >= c.days_90 THEN w.match_id END) AS last_90_matches
+              FROM match_player_weapons w
+              JOIN matches m ON m.match_id = w.match_id
+              CROSS JOIN cutoffs c
+              WHERE w.weapon IS NOT NULL AND w.weapon != '' AND m.status = 'completed'
+              GROUP BY w.weapon
+              HAVING value > 0
+              ORDER BY value DESC, matches DESC, weapon COLLATE NOCASE
+              LIMIT 11
+            ),
+            suicide_totals AS (
+              SELECT
+                'suicide' AS weapon,
+                SUM(COALESCE(s.suicides, 0)) AS value,
+                COUNT(DISTINCT CASE WHEN COALESCE(s.suicides, 0) > 0 THEN s.match_id END) AS matches,
+                SUM(CASE WHEN m.created_at >= c.days_30 THEN COALESCE(s.suicides, 0) ELSE 0 END) AS last_30_days,
+                COUNT(DISTINCT CASE WHEN m.created_at >= c.days_30 AND COALESCE(s.suicides, 0) > 0 THEN s.match_id END) AS last_30_matches,
+                SUM(CASE WHEN m.created_at >= c.days_90 THEN COALESCE(s.suicides, 0) ELSE 0 END) AS last_90_days,
+                COUNT(DISTINCT CASE WHEN m.created_at >= c.days_90 AND COALESCE(s.suicides, 0) > 0 THEN s.match_id END) AS last_90_matches
+              FROM match_player_round_stats s
+              JOIN matches m ON m.match_id = s.match_id
+              CROSS JOIN cutoffs c
+              WHERE m.status = 'completed'
+            )
+            SELECT weapon, value, matches, last_30_days, last_30_matches, last_90_days, last_90_matches
+            FROM (
+              SELECT weapon, value, matches, last_30_days, last_30_matches, last_90_days, last_90_matches FROM weapon_totals
+              UNION ALL
+              SELECT weapon, value, matches, last_30_days, last_30_matches, last_90_days, last_90_matches FROM suicide_totals WHERE value > 0
+            )
             ORDER BY value DESC, matches DESC, weapon COLLATE NOCASE
-            LIMIT 12
-          `).all().map(row => ({
+          `).all(cutoff30Days, cutoff90Days).map(row => ({
             weapon: row.weapon,
             value: Number(row.value || 0),
-            matches: Number(row.matches || 0)
+            matches: Number(row.matches || 0),
+            last_30_days: Number(row.last_30_days || 0),
+            last_30_matches: Number(row.last_30_matches || 0),
+            last_90_days: Number(row.last_90_days || 0),
+            last_90_matches: Number(row.last_90_matches || 0)
           }));
 
           const leadersByWeapon = db.prepare(`${IDENTITY_CTES},
@@ -783,7 +822,57 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             ...serializeLeader(row)
           }));
 
-          return { totals, leaders: leadersByWeapon };
+          const mapsByWeapon = db.prepare(`
+            WITH combined AS (
+              SELECT
+                w.weapon,
+                m.map_name,
+                SUM(COALESCE(w.kills, 0)) AS value,
+                COUNT(DISTINCT w.match_id) AS matches
+              FROM match_player_weapons w
+              JOIN matches m ON m.match_id = w.match_id
+              WHERE w.weapon IS NOT NULL
+                AND w.weapon != ''
+                AND m.status = 'completed'
+                AND m.map_name IS NOT NULL
+                AND m.map_name != ''
+              GROUP BY w.weapon, m.map_name
+
+              UNION ALL
+
+              SELECT
+                'suicide' AS weapon,
+                m.map_name,
+                SUM(COALESCE(s.suicides, 0)) AS value,
+                COUNT(DISTINCT CASE WHEN COALESCE(s.suicides, 0) > 0 THEN s.match_id END) AS matches
+              FROM match_player_round_stats s
+              JOIN matches m ON m.match_id = s.match_id
+              WHERE m.status = 'completed'
+                AND m.map_name IS NOT NULL
+                AND m.map_name != ''
+              GROUP BY m.map_name
+              HAVING value > 0
+            ),
+            ranked AS (
+              SELECT
+                *,
+                ROW_NUMBER() OVER (
+                  PARTITION BY weapon
+                  ORDER BY value DESC, matches DESC, map_name COLLATE NOCASE
+                ) AS position
+              FROM combined
+              WHERE value > 0
+            )
+            SELECT weapon, map_name, value, matches
+            FROM ranked
+            WHERE position <= 5
+            ORDER BY weapon COLLATE NOCASE, position
+          `).all().map(row => ({
+            weapon: row.weapon,
+            ...serializeMapLeader(row)
+          }));
+
+          return { totals, leaders: leadersByWeapon, maps: mapsByWeapon };
         });
 
         const maps = timedAnalytics("analytics:maps", () => ({
