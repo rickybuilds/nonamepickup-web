@@ -216,7 +216,7 @@ const state = {
   zones: null,
   origin: null,
   primaryDuration: 0,
-  averageSpeed: 0,
+  cumulativeDistances: [],
   duration: 0,
   playbackTime: 0,
   fov: readStoredReplayFov(),
@@ -1466,20 +1466,41 @@ function frameSpeed() {
   return a.p.distanceTo(b.p) / dt;
 }
 
-function replayAverageSpeed(frames) {
-  if (!Array.isArray(frames) || frames.length < 2) return 0;
-  const startTime = Number(frames[0]?.rt);
-  const endTime = Number(frames[frames.length - 1]?.rt);
-  const duration = endTime - startTime;
-  if (!Number.isFinite(duration) || duration <= 0) return 0;
-
-  let distance = 0;
+function replayCumulativeDistances(frames) {
+  if (!Array.isArray(frames) || !frames.length) return [];
+  const distances = [0];
   for (let index = 1; index < frames.length; index += 1) {
     const previous = frames[index - 1]?.p;
     const current = frames[index]?.p;
-    if (previous && current) distance += previous.distanceTo(current);
+    distances[index] = distances[index - 1] + (previous && current ? previous.distanceTo(current) : 0);
   }
-  return distance / duration;
+  return distances;
+}
+
+function replayAverageSpeedAt(time) {
+  const frames = state.normalized;
+  const distances = state.cumulativeDistances;
+  if (frames.length < 2 || distances.length !== frames.length) return 0;
+
+  const endTime = Number(frames[frames.length - 1].rt);
+  const elapsed = Math.min(Math.max(0, Number(time) || 0), endTime);
+  if (elapsed <= 0) return 0;
+
+  let low = 0;
+  let high = frames.length - 1;
+  while (low < high) {
+    const mid = Math.floor((low + high + 1) / 2);
+    if (frames[mid].rt <= elapsed) low = mid;
+    else high = mid - 1;
+  }
+
+  const index = Math.min(low, frames.length - 2);
+  const current = frames[index];
+  const next = frames[index + 1];
+  const span = Math.max(0.0001, next.rt - current.rt);
+  const mix = Math.min(1, Math.max(0, (elapsed - current.rt) / span));
+  const distance = distances[index] + current.p.distanceTo(next.p) * mix;
+  return distance / elapsed;
 }
 
 function buttonText(buttons) {
@@ -1530,7 +1551,7 @@ function updateStats(frame) {
   const buttons = $("replay-stat-buttons");
   const speedValue = frameSpeed();
   if (speed) speed.textContent = `${Math.round(speedValue).toLocaleString()} HU/s`;
-  if (averageSpeed) averageSpeed.textContent = `${Math.round(state.averageSpeed).toLocaleString()} HU/s`;
+  if (averageSpeed) averageSpeed.textContent = `${Math.round(replayAverageSpeedAt(state.playbackTime)).toLocaleString()} HU/s`;
   if (position) position.textContent = `${frame.x.toFixed(1)}, ${frame.y.toFixed(1)}, ${frame.z.toFixed(1)}`;
   if (look) look.textContent = `P ${frame.pitch.toFixed(1)} / Y ${frame.yaw.toFixed(1)}`;
   if (buttons) buttons.textContent = buttonText(frame.buttons);
@@ -2872,7 +2893,7 @@ async function init() {
     state.frames = frames;
     state.normalized = normalizeFrames(frames, replay);
     state.primaryDuration = Math.max(0, state.normalized[state.normalized.length - 1].rt);
-    state.averageSpeed = replayAverageSpeed(state.normalized);
+    state.cumulativeDistances = replayCumulativeDistances(state.normalized);
     state.duration = state.primaryDuration;
     state.playbackTime = 0;
     state.frameIndex = 0;
