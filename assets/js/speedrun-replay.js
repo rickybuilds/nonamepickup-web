@@ -216,6 +216,7 @@ const state = {
   zones: null,
   origin: null,
   primaryDuration: 0,
+  averageSpeed: 0,
   duration: 0,
   playbackTime: 0,
   fov: readStoredReplayFov(),
@@ -1465,6 +1466,22 @@ function frameSpeed() {
   return a.p.distanceTo(b.p) / dt;
 }
 
+function replayAverageSpeed(frames) {
+  if (!Array.isArray(frames) || frames.length < 2) return 0;
+  const startTime = Number(frames[0]?.rt);
+  const endTime = Number(frames[frames.length - 1]?.rt);
+  const duration = endTime - startTime;
+  if (!Number.isFinite(duration) || duration <= 0) return 0;
+
+  let distance = 0;
+  for (let index = 1; index < frames.length; index += 1) {
+    const previous = frames[index - 1]?.p;
+    const current = frames[index]?.p;
+    if (previous && current) distance += previous.distanceTo(current);
+  }
+  return distance / duration;
+}
+
 function buttonText(buttons) {
   const value = Number(buttons || 0);
   const parts = [];
@@ -1507,11 +1524,13 @@ function updateInputHud(frame, speedValue) {
 
 function updateStats(frame) {
   const speed = $("replay-stat-speed");
+  const averageSpeed = $("replay-stat-average-speed");
   const position = $("replay-stat-position");
   const look = $("replay-stat-look");
   const buttons = $("replay-stat-buttons");
   const speedValue = frameSpeed();
   if (speed) speed.textContent = `${Math.round(speedValue).toLocaleString()} HU/s`;
+  if (averageSpeed) averageSpeed.textContent = `${Math.round(state.averageSpeed).toLocaleString()} HU/s`;
   if (position) position.textContent = `${frame.x.toFixed(1)}, ${frame.y.toFixed(1)}, ${frame.z.toFixed(1)}`;
   if (look) look.textContent = `P ${frame.pitch.toFixed(1)} / Y ${frame.yaw.toFixed(1)}`;
   if (buttons) buttons.textContent = buttonText(frame.buttons);
@@ -2853,6 +2872,7 @@ async function init() {
     state.frames = frames;
     state.normalized = normalizeFrames(frames, replay);
     state.primaryDuration = Math.max(0, state.normalized[state.normalized.length - 1].rt);
+    state.averageSpeed = replayAverageSpeed(state.normalized);
     state.duration = state.primaryDuration;
     state.playbackTime = 0;
     state.frameIndex = 0;
