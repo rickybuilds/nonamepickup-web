@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="assets/css/app.css?v=20260627sitezoom1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedruns.css?v=20260727replaylayout3">
-  <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260906avgspeed1">
+  <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260906avgspeed2">
   <script src="assets/js/main.js?v=20260618i" defer></script>
   <script type="importmap">
     {
@@ -20,7 +20,7 @@
       }
     }
   </script>
-  <script type="module" src="assets/js/speedrun-replay.js?v=20260906avgspeed1"></script>
+  <script type="module" src="assets/js/speedrun-replay.js?v=20260906avgspeed2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -57,9 +57,14 @@
       </div>
       <aside class="replay-input-hud" aria-label="Recorded player inputs">
         <div class="replay-speedometer">
-          <span>SPEED</span>
-          <strong id="replay-speedometer-value">0</strong>
-          <small>HU/S</small>
+          <div class="replay-speedometer-metric">
+            <span>SPEED</span>
+            <div><strong id="replay-speedometer-value">0</strong><small>HU/S</small></div>
+          </div>
+          <div class="replay-speedometer-metric">
+            <span>AVG SPEED</span>
+            <div><strong id="replay-speedometer-average-value">0</strong><small>HU/S</small></div>
+          </div>
         </div>
         <div class="replay-keyboard" aria-label="Movement keys">
           <kbd data-input="forward">W</kbd>
@@ -137,7 +142,6 @@
 
       <section class="replay-stats" aria-label="Replay frame statistics">
         <div><span>Speed</span><strong id="replay-stat-speed">-</strong></div>
-        <div><span>Avg Speed</span><strong id="replay-stat-average-speed">-</strong></div>
         <div><span>Position</span><strong id="replay-stat-position">-</strong></div>
         <div><span>Look</span><strong id="replay-stat-look">-</strong></div>
         <div><span>Buttons</span><strong id="replay-stat-buttons">-</strong></div>

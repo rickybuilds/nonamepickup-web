@@ -1531,7 +1531,7 @@ const REPLAY_INPUT_MASKS = {
   attack2: 2048
 };
 
-function updateInputHud(frame, speedValue) {
+function updateInputHud(frame, speedValue, averageSpeedValue) {
   const value = Math.trunc(Number(frame?.buttons) || 0);
   document.querySelectorAll("[data-input]").forEach(key => {
     const mask = REPLAY_INPUT_MASKS[key.dataset.input];
@@ -1541,21 +1541,22 @@ function updateInputHud(frame, speedValue) {
   });
   const speedometer = $("replay-speedometer-value");
   if (speedometer) speedometer.textContent = Math.round(speedValue).toLocaleString();
+  const averageSpeedometer = $("replay-speedometer-average-value");
+  if (averageSpeedometer) averageSpeedometer.textContent = Math.round(averageSpeedValue).toLocaleString();
 }
 
 function updateStats(frame) {
   const speed = $("replay-stat-speed");
-  const averageSpeed = $("replay-stat-average-speed");
   const position = $("replay-stat-position");
   const look = $("replay-stat-look");
   const buttons = $("replay-stat-buttons");
   const speedValue = frameSpeed();
+  const averageSpeedValue = replayAverageSpeedAt(state.playbackTime);
   if (speed) speed.textContent = `${Math.round(speedValue).toLocaleString()} HU/s`;
-  if (averageSpeed) averageSpeed.textContent = `${Math.round(replayAverageSpeedAt(state.playbackTime)).toLocaleString()} HU/s`;
   if (position) position.textContent = `${frame.x.toFixed(1)}, ${frame.y.toFixed(1)}, ${frame.z.toFixed(1)}`;
   if (look) look.textContent = `P ${frame.pitch.toFixed(1)} / Y ${frame.yaw.toFixed(1)}`;
   if (buttons) buttons.textContent = buttonText(frame.buttons);
-  updateInputHud(frame, speedValue);
+  updateInputHud(frame, speedValue, averageSpeedValue);
 }
 
 function normalizeProjectileFrame(frame, origin) {

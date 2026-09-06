@@ -407,16 +407,33 @@
 }
 
 .replay-speedometer {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 9px;
   padding: 8px 10px;
   border: 1px solid rgba(56, 189, 248, .24);
   border-radius: 6px;
   background: rgba(14, 165, 233, .12);
   font-variant-numeric: tabular-nums;
+}
+
+.replay-speedometer-metric {
+  display: grid;
+  min-width: 0;
+  padding: 0 8px;
+  text-align: center;
+}
+
+.replay-speedometer-metric + .replay-speedometer-metric {
+  border-left: 1px solid rgba(56, 189, 248, .2);
+}
+
+.replay-speedometer-metric > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
 }
 
 .replay-speedometer span,
@@ -430,7 +447,7 @@
 .replay-speedometer strong {
   color: #f8fafc;
   font-family: Orbitron, Inter, sans-serif;
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -856,7 +873,8 @@
     padding: 6px 8px;
   }
 
-  .replay-speedometer strong { font-size: 20px; }
+  .replay-speedometer-metric { padding: 0 5px; }
+  .replay-speedometer strong { font-size: 17px; }
   .replay-keyboard { grid-template-columns: repeat(3, 38px); gap: 4px; }
   .replay-input-actions { gap: 4px; margin-top: 4px; }
   .replay-input-hud kbd { min-height: 32px; font-size: 9px; }
