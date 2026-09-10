@@ -1204,6 +1204,10 @@
   max-height: min(36vh, 330px);
 }
 
+.speedrun-map-detail-cards .speedrun-table-wrap {
+  overflow-x: hidden;
+}
+
 .speedrun-section > .speedrun-map-board::-webkit-scrollbar,
 .speedrun-section > .speedrun-table-wrap::-webkit-scrollbar,
 .speedrun-columns .speedrun-table-wrap::-webkit-scrollbar,
@@ -1406,6 +1410,57 @@
 .speedrun-map-detail-cards .speedrun-table td {
   padding: 12px 10px;
   white-space: nowrap;
+}
+
+.speedrun-map-detail-cards .speedrun-table {
+  table-layout: fixed;
+}
+
+.speedrun-map-detail-cards .speedrun-table th,
+.speedrun-map-detail-cards .speedrun-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(1),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(1) { width: 8%; }
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(2),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(2) { width: 23%; }
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(3),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(3) { width: 12%; }
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(4),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(4) { width: 14%; }
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(5),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(5) { width: 12%; }
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(6),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(6) { width: 15%; }
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(7),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(7) {
+  width: 16%;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.speedrun-map-detail-cards .speedrun-replay-cell,
+.speedrun-map-detail-cards .speedrun-replay-heading {
+  width: auto;
+}
+
+.speedrun-map-detail-cards .speedrun-replay-action,
+.speedrun-map-detail-cards .speedrun-replay-link {
+  width: 64px;
+  min-width: 64px;
+}
+
+.speedrun-map-detail-cards .speedrun-replay-link {
+  padding-inline: 3px;
+  font-size: 8px;
 }
 
 .speedrun-rank-pill {
