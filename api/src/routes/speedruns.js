@@ -1198,12 +1198,10 @@ function createSpeedrunsRouter({ logRouteError }) {
           SELECT
             COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid) AS player_key,
             a.map,
-            COUNT(*) AS attempts
-          FROM speedrun_runs a
+            SUM(a.attempts) AS attempts
+          FROM speedrun_map_attempts a
           LEFT JOIN speedrun_player_links link ON link.steamid = a.steamid
-          WHERE a.ruleset = ${CURRENT_RULESET}
-            AND ${eligibleRunSql("a.")}
-            AND a.map = ?
+          WHERE a.map = ?
           GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid), a.map
         ) attempt_stats
           ON attempt_stats.map = r.map
@@ -1617,12 +1615,10 @@ function createSpeedrunsRouter({ logRouteError }) {
           SELECT
             COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid) AS player_key,
             a.map,
-            COUNT(*) AS attempts
-          FROM speedrun_runs a
+            SUM(a.attempts) AS attempts
+          FROM speedrun_map_attempts a
           LEFT JOIN speedrun_player_links link ON link.steamid = a.steamid
-          WHERE a.ruleset = ${CURRENT_RULESET}
-            AND ${eligibleRunSql("a.")}
-            AND a.steamid IN (${placeholders})
+          WHERE a.steamid IN (${placeholders})
           GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid), a.map
         ) attempt_stats
           ON attempt_stats.map = ranked_records.map
