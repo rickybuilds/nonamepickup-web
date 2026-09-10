@@ -337,6 +337,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       difficulty: row.difficulty == null ? null : Number(row.difficulty),
       enabled: Number(row.enabled || 0) === 1,
       totalRuns: Number(row.totalRuns || 0),
+      totalAttempts: Number(row.totalAttempts || 0),
       totalRunners: Number(row.totalRunners || 0),
       totalRecords: Number(row.totalRecords || 0),
       worldRecordTimeMs,
@@ -819,6 +820,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         m.finish_y,
         m.finish_z,
         COALESCE(run_stats.totalRuns, 0) AS totalRuns,
+        COALESCE(attempt_stats.totalAttempts, 0) AS totalAttempts,
         COALESCE(run_stats.totalRunners, 0) AS totalRunners,
         COALESCE(record_stats.totalRecords, 0) AS totalRecords,
         run_stats.lastRunAt,
@@ -1004,6 +1006,11 @@ function createSpeedrunsRouter({ logRouteError }) {
         GROUP BY map
       ) run_stats ON run_stats.map = m.map
       LEFT JOIN (
+        SELECT map, SUM(attempts) AS totalAttempts
+        FROM speedrun_map_attempts
+        GROUP BY map
+      ) attempt_stats ON attempt_stats.map = m.map
+      LEFT JOIN (
         SELECT
           map,
           COUNT(*) AS totalRecords
@@ -1161,6 +1168,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     ] = await Promise.all([
       speedrunQuery(`
         SELECT
+          (SELECT COALESCE(SUM(attempts), 0) FROM speedrun_map_attempts WHERE map = ?) AS totalAttempts,
           (SELECT COUNT(*) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRunSql()} AND map = ?) AS totalRuns,
           (SELECT COUNT(DISTINCT steamid) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRunSql()} AND map = ? AND steamid IS NOT NULL AND steamid != '') AS totalRunners,
           (SELECT COUNT(*) FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRecordSql()} AND map = ?) AS totalRecords,
@@ -1170,7 +1178,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           (SELECT steamid FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRecordSql()} AND map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordSteamId,
           (SELECT class_id FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRecordSql()} AND map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassId,
           (SELECT class_name FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRecordSql()} AND map = ? ORDER BY best_time_ms ASC, COALESCE(pb_created_at, updated_at) ASC, steamid ASC, class_id ASC LIMIT 1) AS worldRecordClassName
-      `, [mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName]),
+      `, [mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName, mapName]),
       speedrunQuery(`
         SELECT
           r.steamid,
@@ -1291,6 +1299,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         finish: { x: mapRow.finish_x, y: mapRow.finish_y, z: mapRow.finish_z }
       },
       summary: {
+        totalAttempts: Number(summary.totalAttempts || 0),
         totalRuns: Number(summary.totalRuns || 0),
         totalRunners: Number(summary.totalRunners || 0),
         totalRecords: Number(summary.totalRecords || 0),

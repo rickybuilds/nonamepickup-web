@@ -1362,6 +1362,7 @@
       setText("sr-map-title", data.displayName || data.map);
       setText("sr-map-subtitle", `${data.map} · ${data.category || "other"} · ${data.enabled ? "enabled" : "disabled"}`);
       setText("sr-map-wr", time(data.summary, "worldRecordTime"));
+      setText("sr-map-attempts", compact(data.summary?.totalAttempts));
       setText("sr-map-runs", compact(data.summary?.totalRuns));
       setText("sr-map-runners", compact(data.summary?.totalRunners));
       setText("sr-map-records", compact(data.summary?.totalRecords));
