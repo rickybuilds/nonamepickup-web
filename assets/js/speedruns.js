@@ -738,11 +738,12 @@
           <td data-label="Replay" class="speedrun-replay-cell">${replayAction(row)}</td>
           <td data-label="Rank">${rankBadge(row)}</td>
           <td data-label="Total"><span class="speedrun-total-runners">/ ${escapeHtml(row.totalRunners ?? row.total_runners ?? "-")}</span></td>
+          <td data-label="Attempts">${compact(row.attempts)}</td>
           <td data-label="WR Gap" class="${Number(row.wrGapMs ?? row.wr_gap_ms) <= 0 ? "speedrun-wr-gap is-wr" : "speedrun-wr-gap"}">${escapeHtml(formatGap(row.wrGapMs ?? row.wr_gap_ms))}</td>
           <td data-label="Improvement" class="speedrun-improvement">${escapeHtml(formatImprovementValue(row.improvementMs ?? row.improvement_ms))}</td>
           <td data-label="Set">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
-      `).join("") || `<tr><td colspan="9">${empty("No personal bests match these filters.")}</td></tr>`);
+      `).join("") || `<tr><td colspan="10">${empty("No personal bests match these filters.")}</td></tr>`);
     };
 
     [classFilter, categoryFilter, rankFilter].forEach(control => {
@@ -1396,10 +1397,11 @@
           <td>${runnerLink(row)}</td>
           <td>${escapeHtml(classText(row))}</td>
           <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
+          <td>${compact(row.attempts)}</td>
           <td class="speedrun-replay-cell">${replayAction(row)}</td>
           <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
-        `).join("") || `<tr><td colspan="6">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
+        `).join("") || `<tr><td colspan="7">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
 
         if (comparisonResult.status === "fulfilled") {
           renderGlobalComparison("sr-map-comparisons", comparisons, selectedClass);

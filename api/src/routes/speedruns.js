@@ -295,6 +295,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       recordRank: row.record_rank == null ? null : Number(row.record_rank),
       totalRunners: row.total_runners == null ? null : Number(row.total_runners),
       total_runners: row.total_runners == null ? null : Number(row.total_runners),
+      attempts: Number(row.attempts || 0),
       worldRecordTimeMs,
       world_record_time_ms: worldRecordTimeMs,
       worldRecordDisplay: formatTimeMs(worldRecordTimeMs),
@@ -1181,6 +1182,7 @@ function createSpeedrunsRouter({ logRouteError }) {
           r.best_time_ms,
           r.pb_created_at,
           r.updated_at,
+          COALESCE(attempt_stats.attempts, 0) AS attempts,
           EXISTS (
             SELECT 1
             FROM speedrun_ghosts g
@@ -1192,11 +1194,23 @@ function createSpeedrunsRouter({ logRouteError }) {
           ) AS has_replay
         FROM speedrun_records r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
+        LEFT JOIN (
+          SELECT
+            COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid) AS player_key,
+            a.map,
+            SUM(a.attempts) AS attempts
+          FROM speedrun_map_attempts a
+          LEFT JOIN speedrun_player_links link ON link.steamid = a.steamid
+          WHERE a.map = ?
+          GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid), a.map
+        ) attempt_stats
+          ON attempt_stats.map = r.map
+         AND attempt_stats.player_key = COALESCE(NULLIF(TRIM(l.discord_id), ''), r.steamid)
         WHERE r.ruleset = ${CURRENT_RULESET}
           AND ${eligibleRecordSql("r.")}
           AND r.map = ?
         ORDER BY r.best_time_ms ASC, COALESCE(r.pb_created_at, r.updated_at) ASC, r.steamid ASC, r.class_id ASC
-      `, [mapName]),
+      `, [mapName, mapName]),
       speedrunQuery(`
         SELECT
           r.id,
@@ -1562,7 +1576,8 @@ function createSpeedrunsRouter({ logRouteError }) {
               AND rr.map = ranked_records.map
               AND rr.class_id = ranked_records.class_id
               AND rr.time_ms > ranked_records.best_time_ms
-          ) AS improvement_ms
+          ) AS improvement_ms,
+          COALESCE(attempt_stats.attempts, 0) AS attempts
         FROM (
           SELECT
             steamid,
@@ -1594,9 +1609,23 @@ function createSpeedrunsRouter({ logRouteError }) {
         ) record_stats
           ON record_stats.map = ranked_records.map
          AND record_stats.class_id = ranked_records.class_id
-        WHERE steamid IN (${placeholders})
+        LEFT JOIN speedrun_player_links player_link
+          ON player_link.steamid = ranked_records.steamid
+        LEFT JOIN (
+          SELECT
+            COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid) AS player_key,
+            a.map,
+            SUM(a.attempts) AS attempts
+          FROM speedrun_map_attempts a
+          LEFT JOIN speedrun_player_links link ON link.steamid = a.steamid
+          WHERE a.steamid IN (${placeholders})
+          GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid), a.map
+        ) attempt_stats
+          ON attempt_stats.map = ranked_records.map
+         AND attempt_stats.player_key = COALESCE(NULLIF(TRIM(player_link.discord_id), ''), ranked_records.steamid)
+        WHERE ranked_records.steamid IN (${placeholders})
         ORDER BY map ASC, class_id ASC, best_time_ms ASC
-      `, steamIds),
+      `, [...steamIds, ...steamIds]),
 
       speedrunQuery(`
         SELECT
