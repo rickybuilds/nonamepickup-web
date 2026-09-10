@@ -870,7 +870,7 @@
 }
 
 .speedrun-map-detail-cards {
-  grid-template-columns: 1.15fr .925fr .925fr;
+  grid-template-columns: 1.32fr .84fr .84fr;
 }
 
 .speedrun-map-detail-cards .speedrun-section-heading.compact {
@@ -1408,7 +1408,7 @@
 
 .speedrun-map-detail-cards .speedrun-table th,
 .speedrun-map-detail-cards .speedrun-table td {
-  padding: 12px 10px;
+  padding: 10px 7px;
   white-space: nowrap;
 }
 
@@ -1423,28 +1423,48 @@
 }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(1),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(1) { width: 8%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(1) { width: 9%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(2),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(2) { width: 23%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(2) { width: 20%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(3),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(3) { width: 12%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(3) { width: 11%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(4),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(4) { width: 14%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(4) { width: 13%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(5),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(5) { width: 12%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(5) { width: 11%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(6),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(6) { width: 15%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(6) { width: 14%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(7),
 .speedrun-map-detail-cards .speedrun-table td:nth-child(7) {
-  width: 16%;
+  width: 22%;
   white-space: normal;
   line-height: 1.25;
+}
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(4),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(4),
+.speedrun-map-detail-cards .speedrun-table th:nth-child(5),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(5) {
+  text-align: center;
+}
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(7),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(7) {
+  text-align: right;
+}
+
+.speedrun-map-detail-cards .speedrun-table tbody tr {
+  transition: background .15s ease;
+}
+
+.speedrun-map-detail-cards .speedrun-table tbody tr:hover {
+  background: rgba(14, 116, 144, .12);
 }
 
 .speedrun-map-detail-cards .speedrun-replay-cell,
@@ -1461,6 +1481,14 @@
 .speedrun-map-detail-cards .speedrun-replay-link {
   padding-inline: 3px;
   font-size: 8px;
+}
+
+.speedrun-map-detail-cards .speedrun-table th {
+  font-size: 9px;
+}
+
+.speedrun-map-detail-cards .speedrun-table td {
+  font-size: 12px;
 }
 
 .speedrun-rank-pill {
