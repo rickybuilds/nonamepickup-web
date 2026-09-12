@@ -258,7 +258,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     };
   }
 
-  function mapProgressionPoint(row, improvementMs, attemptsToRecord) {
+  function mapProgressionPoint(row, improvementMs) {
     const timeMs = row.time_ms == null ? null : Number(row.time_ms);
     const createdAt = iso(row.created_at);
     return {
@@ -266,9 +266,7 @@ function createSpeedrunsRouter({ logRouteError }) {
       player_name: row.player_name || null,
       steamid: row.steamid || null,
       created_at: createdAt,
-      improvement_ms: improvementMs == null ? null : Number(improvementMs),
-      attempts_to_record: attemptsToRecord == null ? null : Number(attemptsToRecord),
-      attemptsToRecord: attemptsToRecord == null ? null : Number(attemptsToRecord)
+      improvement_ms: improvementMs == null ? null : Number(improvementMs)
     };
   }
 
@@ -1118,15 +1116,10 @@ function createSpeedrunsRouter({ logRouteError }) {
 
     const classes = new Map();
     const bestByClass = new Map();
-    const attemptsByClass = new Map();
-    const recordAttemptTotalsByClass = new Map();
     for (const row of rows) {
       const classId = Number(row.class_id);
       const timeMs = Number(row.time_ms);
       if (!Number.isFinite(classId) || !Number.isFinite(timeMs)) continue;
-
-      const attempts = (attemptsByClass.get(classId) || 0) + 1;
-      attemptsByClass.set(classId, attempts);
 
       const previousBest = bestByClass.get(classId);
       if (previousBest == null || timeMs < previousBest) {
@@ -1138,13 +1131,10 @@ function createSpeedrunsRouter({ logRouteError }) {
             points: []
           });
         }
-        const previousRecordAttempts = recordAttemptTotalsByClass.get(classId) || 0;
         classes.get(classId).points.push(mapProgressionPoint(
           row,
-          previousBest == null ? null : previousBest - timeMs,
-          attempts - previousRecordAttempts
+          previousBest == null ? null : previousBest - timeMs
         ));
-        recordAttemptTotalsByClass.set(classId, attempts);
       }
     }
 
@@ -1299,25 +1289,13 @@ function createSpeedrunsRouter({ logRouteError }) {
       `, [mapName])
     ]);
 
-    const bestByClass = new Map();
+    let best = Infinity;
     const worldRecordProgression = [];
-    const attemptsByClass = new Map();
-    const recordAttemptTotalsByClass = new Map();
     for (const row of progressionRows) {
-      const classId = Number(row.class_id);
       const timeMs = Number(row.time_ms);
-      if (!Number.isFinite(classId) || !Number.isFinite(timeMs)) continue;
-      const attempts = (attemptsByClass.get(classId) || 0) + 1;
-      attemptsByClass.set(classId, attempts);
-      const previousRecordAttempts = recordAttemptTotalsByClass.get(classId) || 0;
-      const previousBest = bestByClass.get(classId);
-      if (previousBest == null || timeMs < previousBest) {
-        bestByClass.set(classId, timeMs);
-        const mapped = mapRun(row);
-        mapped.attemptsToRecord = attempts - previousRecordAttempts;
-        mapped.attempts_to_record = mapped.attemptsToRecord;
-        worldRecordProgression.push(mapped);
-        recordAttemptTotalsByClass.set(classId, attempts);
+      if (Number.isFinite(timeMs) && timeMs < best) {
+        best = timeMs;
+        worldRecordProgression.push(mapRun(row));
       }
     }
     worldRecordProgression.reverse();

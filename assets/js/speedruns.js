@@ -984,7 +984,6 @@
         <strong style="color:${escapeAttr(point.classRow.color)}">${escapeHtml(point.classRow.className)}</strong>
         <span>${escapeHtml(point.player_name || point.steamid || "Unknown")}</span>
         <span>${escapeHtml(progressionPointTime(point))}</span>
-        <span>${escapeHtml(compact(point.attempts_to_record))} attempts to #1</span>
         <span>${escapeHtml(formatDateTime(point.created_at))}</span>
         <span>${escapeHtml(formatImprovement(point.improvement_ms))}</span>
       `;
@@ -1060,7 +1059,7 @@
       .sort((a, b) => b.x - a.x);
     setHtml("sr-map-progression", flattened.map(point => listRow({
       title: point.player_name || "Unknown",
-      subtitle: `${point.classRow.className} · ${compact(point.attempts_to_record)} attempts to #1 · ${formatDateTime(point.created_at)} · ${formatImprovement(point.improvement_ms)}`,
+      subtitle: `${point.classRow.className} · ${formatDateTime(point.created_at)} · ${formatImprovement(point.improvement_ms)}`,
       value: progressionPointTime(point)
     })).join("") || empty("No world record progression yet."));
 
@@ -1346,10 +1345,9 @@
     }
 
     try {
-      const [mapResult, comparisonResult, progressionResult] = await Promise.allSettled([
+      const [mapResult, comparisonResult] = await Promise.allSettled([
         api(`/api/speedruns/maps/${encodeURIComponent(mapName)}`),
-        api(`/api/speedruns/comparisons/maps/${encodeURIComponent(mapName)}`),
-        api(`/api/speedruns/maps/${encodeURIComponent(mapName)}/progression`)
+        api(`/api/speedruns/comparisons/maps/${encodeURIComponent(mapName)}`)
       ]);
       if (mapResult.status === "rejected") throw mapResult.reason;
 
@@ -1357,14 +1355,8 @@
       const comparisons = comparisonResult.status === "fulfilled"
         ? (comparisonResult.value?.comparisons || [])
         : [];
-      const progressionData = progressionResult.status === "fulfilled"
-        ? progressionResult.value
-        : { classes: [] };
       if (comparisonResult.status === "rejected") {
         console.error("[speedrun-map-comparisons]", comparisonResult.reason);
-      }
-      if (progressionResult.status === "rejected") {
-        console.error("[speedrun-map-progression]", progressionResult.reason);
       }
       document.title = `NoName TFC | ${data.displayName || data.map} Speedrun`;
       setText("sr-map-title", data.displayName || data.map);
@@ -1377,12 +1369,6 @@
       setText("sr-map-difficulty", data.difficulty == null ? "-" : `D${data.difficulty}`);
 
       const classFilter = $("sr-map-class-filter");
-      const attemptsToRecord = new Map();
-      for (const classRow of progressionData.classes || []) {
-        for (const point of classRow.points || []) {
-          attemptsToRecord.set(`${classRow.class_id}:${point.time_ms}:${point.steamid || ""}`, point.attempts_to_record);
-        }
-      }
       const classOptions = [...new Map([
         ...(data.leaderboard || []).map(row => [classValue(row), classText(row)]),
         ...comparisons.map(comparison => [
@@ -1413,14 +1399,10 @@
           <td>${escapeHtml(classText(row))}</td>
           <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
           <td>${compact(row.attempts)}</td>
-          <td>${(() => {
-            const value = attemptsToRecord.get(`${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`);
-            return value == null ? "-" : compact(value);
-          })()}</td>
           <td class="speedrun-replay-cell">${replayAction(row)}</td>
           <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
-        `).join("") || `<tr><td colspan="8">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
+        `).join("") || `<tr><td colspan="7">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
 
         if (comparisonResult.status === "fulfilled") {
           renderGlobalComparison("sr-map-comparisons", comparisons, selectedClass);
@@ -1436,9 +1418,10 @@
       renderLeaderboard();
 
       renderRuns("sr-map-recent", data.recentRuns, "No recent runs for this map.");
-      if (progressionResult.status === "fulfilled") {
-        renderProgression(progressionData);
-      } else {
+      try {
+        renderProgression(await api(`/api/speedruns/maps/${encodeURIComponent(mapName)}/progression`));
+      } catch (progressionError) {
+        console.error("[speedrun-map-progression]", progressionError);
         const status = $("sr-progression-status");
         const content = $("sr-progression-content");
         if (status) {
