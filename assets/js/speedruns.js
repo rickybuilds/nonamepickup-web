@@ -1378,10 +1378,8 @@
 
       const classFilter = $("sr-map-class-filter");
       const attemptsToRecord = new Map();
-      for (const classRow of progressionData.classes || []) {
-        for (const point of classRow.points || []) {
-          attemptsToRecord.set(`${classRow.class_id}:${point.time_ms}:${point.steamid || ""}`, point.attempts_to_record);
-        }
+      for (const point of progressionData.personal_bests || []) {
+        attemptsToRecord.set(`${point.class_id}:${point.time_ms}:${point.steamid || ""}`, point.attempts_to_pb);
       }
       const classOptions = [...new Map([
         ...(data.leaderboard || []).map(row => [classValue(row), classText(row)]),
@@ -1407,12 +1405,7 @@
           : (data.leaderboard || []);
 
         setHtml("sr-map-leaderboard", rows.map((row, index) => {
-          const classRows = (data.leaderboard || []).filter(candidate => classValue(candidate) === classValue(row));
-          const currentClassBest = Math.min(...classRows.map(candidate => Number(candidate.bestTimeMs)));
-          const recordKey = `${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`;
-          const wrAttempts = Number(row.bestTimeMs) === currentClassBest
-            ? attemptsToRecord.get(recordKey)
-            : null;
+          const pbAttempts = attemptsToRecord.get(`${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`);
           return `
           <tr>
           <td>#${compact(index + 1)}</td>
@@ -1420,7 +1413,7 @@
           <td>${escapeHtml(classText(row))}</td>
           <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
           <td>${compact(row.attempts)}</td>
-          <td>${wrAttempts == null ? "-" : compact(wrAttempts)}</td>
+          <td>${pbAttempts == null ? "-" : compact(pbAttempts)}</td>
           <td class="speedrun-replay-cell">
             ${replayAction(row)}
           </td>
