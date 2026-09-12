@@ -1231,34 +1231,37 @@ function createSpeedrunsRouter({ logRouteError }) {
         FROM speedrun_records r
         LEFT JOIN speedrun_player_links l ON l.steamid = r.steamid
         LEFT JOIN (
-          SELECT player_key, map, SUM(attempts) AS attempts
+          SELECT player_key, map, class_id, SUM(attempts) AS attempts
           FROM (
             SELECT
               COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid) AS player_key,
               a.map,
+              a.class_id,
               COUNT(*) AS attempts
             FROM speedrun_map_attempts a
             LEFT JOIN speedrun_player_links link ON link.steamid = a.steamid
             WHERE a.map = ?
-            GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid), a.map
+            GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid), a.map, a.class_id
 
             UNION ALL
 
             SELECT
               COALESCE(NULLIF(TRIM(link.discord_id), ''), r.steamid) AS player_key,
               r.map,
+              r.class_id,
               COUNT(*) AS attempts
             FROM speedrun_runs r
             LEFT JOIN speedrun_player_links link ON link.steamid = r.steamid
             WHERE r.ruleset = ${CURRENT_RULESET}
               AND ${eligibleRunSql("r.")}
               AND r.map = ?
-            GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), r.steamid), r.map
+            GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), r.steamid), r.map, r.class_id
           ) attempt_totals
-          GROUP BY player_key, map
+          GROUP BY player_key, map, class_id
         ) attempt_stats
-          ON attempt_stats.map = r.map
+         ON attempt_stats.map = r.map
          AND attempt_stats.player_key = COALESCE(NULLIF(TRIM(l.discord_id), ''), r.steamid)
+         AND attempt_stats.class_id <=> r.class_id
         WHERE r.ruleset = ${CURRENT_RULESET}
           AND ${eligibleRecordSql("r.")}
           AND r.map = ?
@@ -1666,34 +1669,37 @@ function createSpeedrunsRouter({ logRouteError }) {
         LEFT JOIN speedrun_player_links player_link
           ON player_link.steamid = ranked_records.steamid
         LEFT JOIN (
-          SELECT player_key, map, SUM(attempts) AS attempts
+          SELECT player_key, map, class_id, SUM(attempts) AS attempts
           FROM (
             SELECT
               COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid) AS player_key,
               a.map,
+              a.class_id,
               COUNT(*) AS attempts
             FROM speedrun_map_attempts a
             LEFT JOIN speedrun_player_links link ON link.steamid = a.steamid
             WHERE a.steamid IN (${placeholders})
-            GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid), a.map
+            GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid), a.map, a.class_id
 
             UNION ALL
 
             SELECT
               COALESCE(NULLIF(TRIM(link.discord_id), ''), r.steamid) AS player_key,
               r.map,
+              r.class_id,
               COUNT(*) AS attempts
             FROM speedrun_runs r
             LEFT JOIN speedrun_player_links link ON link.steamid = r.steamid
             WHERE r.ruleset = ${CURRENT_RULESET}
               AND ${eligibleRunSql("r.")}
               AND r.steamid IN (${placeholders})
-            GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), r.steamid), r.map
+            GROUP BY COALESCE(NULLIF(TRIM(link.discord_id), ''), r.steamid), r.map, r.class_id
           ) attempt_totals
-          GROUP BY player_key, map
+          GROUP BY player_key, map, class_id
         ) attempt_stats
-          ON attempt_stats.map = ranked_records.map
+         ON attempt_stats.map = ranked_records.map
          AND attempt_stats.player_key = COALESCE(NULLIF(TRIM(player_link.discord_id), ''), ranked_records.steamid)
+         AND attempt_stats.class_id <=> ranked_records.class_id
         WHERE ranked_records.steamid IN (${placeholders})
         ORDER BY map ASC, class_id ASC, best_time_ms ASC
       `, [...steamIds, ...steamIds, ...steamIds]),
