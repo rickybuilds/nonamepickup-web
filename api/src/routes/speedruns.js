@@ -258,7 +258,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     };
   }
 
-  function mapProgressionPoint(row, improvementMs) {
+  function mapProgressionPoint(row, improvementMs, attemptsToRecord) {
     const timeMs = row.time_ms == null ? null : Number(row.time_ms);
     const createdAt = iso(row.created_at);
     return {
@@ -266,7 +266,9 @@ function createSpeedrunsRouter({ logRouteError }) {
       player_name: row.player_name || null,
       steamid: row.steamid || null,
       created_at: createdAt,
-      improvement_ms: improvementMs == null ? null : Number(improvementMs)
+      improvement_ms: improvementMs == null ? null : Number(improvementMs),
+      attempts_to_record: attemptsToRecord == null ? null : Number(attemptsToRecord),
+      attemptsToRecord: attemptsToRecord == null ? null : Number(attemptsToRecord)
     };
   }
 
@@ -1096,7 +1098,8 @@ function createSpeedrunsRouter({ logRouteError }) {
     `, [mapName]);
     if (!mapRows.length) return res.status(404).json({ ok: false, error: "map_not_found" });
 
-    const rows = await speedrunQuery(`
+    const [rows, attemptEvents] = await Promise.all([
+      speedrunQuery(`
       SELECT
         r.id,
         r.steamid,
@@ -1112,10 +1115,28 @@ function createSpeedrunsRouter({ logRouteError }) {
         AND r.class_id IS NOT NULL
         AND ${eligibleRunSql("r.")}
       ORDER BY r.class_id ASC, r.created_at ASC, r.id ASC
-    `, [mapName]);
+      `, [mapName]),
+      speedrunQuery(`
+        SELECT class_id, created_at
+        FROM speedrun_map_attempts
+        WHERE map = ? AND class_id IS NOT NULL
+        ORDER BY class_id ASC, created_at ASC, id ASC
+      `, [mapName])
+    ]);
+
+    const eventsByClass = new Map();
+    for (const event of attemptEvents) {
+      const classId = Number(event.class_id);
+      const timestamp = new Date(event.created_at).getTime();
+      if (!Number.isFinite(classId) || !Number.isFinite(timestamp)) continue;
+      const events = eventsByClass.get(classId) || [];
+      events.push(timestamp);
+      eventsByClass.set(classId, events);
+    }
 
     const classes = new Map();
     const bestByClass = new Map();
+    const recordTimesByClass = new Map();
     for (const row of rows) {
       const classId = Number(row.class_id);
       const timeMs = Number(row.time_ms);
@@ -1131,10 +1152,17 @@ function createSpeedrunsRouter({ logRouteError }) {
             points: []
           });
         }
+        const currentTimestamp = new Date(row.created_at).getTime();
+        const previousTimestamp = recordTimesByClass.get(classId) ?? -Infinity;
+        const attemptsToRecord = (eventsByClass.get(classId) || [])
+          .filter(timestamp => timestamp > previousTimestamp && timestamp <= currentTimestamp)
+          .length;
         classes.get(classId).points.push(mapProgressionPoint(
           row,
-          previousBest == null ? null : previousBest - timeMs
+          previousBest == null ? null : previousBest - timeMs,
+          attemptsToRecord
         ));
+        recordTimesByClass.set(classId, currentTimestamp);
       }
     }
 
