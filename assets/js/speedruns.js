@@ -1378,10 +1378,8 @@
 
       const classFilter = $("sr-map-class-filter");
       const attemptsToRecord = new Map();
-      for (const classRow of progressionData.classes || []) {
-        for (const point of classRow.points || []) {
-          attemptsToRecord.set(`${classRow.class_id}:${point.time_ms}:${point.steamid || ""}`, point.attempts_to_record);
-        }
+      for (const point of progressionData.personal_bests || []) {
+        attemptsToRecord.set(`${point.class_id}:${point.time_ms}:${point.steamid || ""}`, point.attempts_to_pb);
       }
       const classOptions = [...new Map([
         ...(data.leaderboard || []).map(row => [classValue(row), classText(row)]),
@@ -1422,7 +1420,7 @@
           </td>
           <td class="speedrun-set-cell">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
-        `).join("") || `<tr><td colspan="7">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
+        `).join("") || `<tr><td colspan="8">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
 
         if (comparisonResult.status === "fulfilled") {
           renderGlobalComparison("sr-map-comparisons", comparisons, selectedClass);

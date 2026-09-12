@@ -1139,6 +1139,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     const classes = new Map();
     const bestByClass = new Map();
     const personalBestByRunnerClass = new Map();
+    const personalBestAttempts = [];
     for (const row of rows) {
       const classId = Number(row.class_id);
       const timeMs = Number(row.time_ms);
@@ -1158,6 +1159,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           timeMs,
           timestamp: currentTimestamp
         });
+        personalBestAttempts.push({
+          steamid: row.steamid || null,
+          class_id: classId,
+          time_ms: timeMs,
+          attempts_to_pb: attemptsToRecord
+        });
       }
 
       const previousBest = bestByClass.get(classId);
@@ -1175,12 +1182,12 @@ function createSpeedrunsRouter({ logRouteError }) {
           previousBest == null ? null : previousBest - timeMs,
           attemptsToRecord
         ));
-        recordTimesByClass.set(classId, currentTimestamp);
       }
     }
 
     res.json({
       map: mapRows[0].map,
+      personal_bests: personalBestAttempts,
       classes: [...classes.values()].sort((a, b) => (
         String(a.class_name || "").localeCompare(String(b.class_name || "")) ||
         Number(a.class_id || 0) - Number(b.class_id || 0)
