@@ -1378,8 +1378,10 @@
 
       const classFilter = $("sr-map-class-filter");
       const attemptsToRecord = new Map();
-      for (const point of progressionData.personal_bests || []) {
-        attemptsToRecord.set(`${point.class_id}:${point.time_ms}:${point.steamid || ""}`, point.attempts_to_pb);
+      for (const classRow of progressionData.classes || []) {
+        for (const point of classRow.points || []) {
+          attemptsToRecord.set(`${classRow.class_id}:${point.time_ms}:${point.steamid || ""}`, point.attempts_to_record);
+        }
       }
       const classOptions = [...new Map([
         ...(data.leaderboard || []).map(row => [classValue(row), classText(row)]),
@@ -1404,23 +1406,28 @@
           ? (data.leaderboard || []).filter(row => classValue(row) === selectedClass)
           : (data.leaderboard || []);
 
-        setHtml("sr-map-leaderboard", rows.map((row, index) => `
+        setHtml("sr-map-leaderboard", rows.map((row, index) => {
+          const classRows = (data.leaderboard || []).filter(candidate => classValue(candidate) === classValue(row));
+          const currentClassBest = Math.min(...classRows.map(candidate => Number(candidate.bestTimeMs)));
+          const recordKey = `${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`;
+          const wrAttempts = Number(row.bestTimeMs) === currentClassBest
+            ? attemptsToRecord.get(recordKey)
+            : null;
+          return `
           <tr>
           <td>#${compact(index + 1)}</td>
           <td>${runnerLink(row)}</td>
           <td>${escapeHtml(classText(row))}</td>
           <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
           <td>${compact(row.attempts)}</td>
-          <td>${(() => {
-            const value = attemptsToRecord.get(`${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`);
-            return value == null ? "-" : compact(value);
-          })()}</td>
+          <td>${wrAttempts == null ? "-" : compact(wrAttempts)}</td>
           <td class="speedrun-replay-cell">
             ${replayAction(row)}
           </td>
           <td class="speedrun-set-cell">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
-        `).join("") || `<tr><td colspan="8">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
+        `;
+        }).join("") || `<tr><td colspan="8">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
 
         if (comparisonResult.status === "fulfilled") {
           renderGlobalComparison("sr-map-comparisons", comparisons, selectedClass);
