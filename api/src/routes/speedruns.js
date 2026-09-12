@@ -1006,7 +1006,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         GROUP BY map
       ) run_stats ON run_stats.map = m.map
       LEFT JOIN (
-        SELECT map, SUM(attempts) AS totalAttempts
+        SELECT map, COUNT(*) AS totalAttempts
         FROM speedrun_map_attempts
         GROUP BY map
       ) attempt_stats ON attempt_stats.map = m.map
@@ -1168,7 +1168,7 @@ function createSpeedrunsRouter({ logRouteError }) {
     ] = await Promise.all([
       speedrunQuery(`
         SELECT
-          (SELECT COALESCE(SUM(attempts), 0) FROM speedrun_map_attempts WHERE map = ?) AS totalAttempts,
+          (SELECT COUNT(*) FROM speedrun_map_attempts WHERE map = ?) AS totalAttempts,
           (SELECT COUNT(*) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRunSql()} AND map = ?) AS totalRuns,
           (SELECT COUNT(DISTINCT steamid) FROM speedrun_runs WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRunSql()} AND map = ? AND steamid IS NOT NULL AND steamid != '') AS totalRunners,
           (SELECT COUNT(*) FROM speedrun_records WHERE ruleset = ${CURRENT_RULESET} AND ${eligibleRecordSql()} AND map = ?) AS totalRecords,
@@ -1208,7 +1208,7 @@ function createSpeedrunsRouter({ logRouteError }) {
             SELECT
               COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid) AS player_key,
               a.map,
-              SUM(a.attempts) AS attempts
+              COUNT(*) AS attempts
             FROM speedrun_map_attempts a
             LEFT JOIN speedrun_player_links link ON link.steamid = a.steamid
             WHERE a.map = ?
@@ -1643,7 +1643,7 @@ function createSpeedrunsRouter({ logRouteError }) {
             SELECT
               COALESCE(NULLIF(TRIM(link.discord_id), ''), a.steamid) AS player_key,
               a.map,
-              SUM(a.attempts) AS attempts
+              COUNT(*) AS attempts
             FROM speedrun_map_attempts a
             LEFT JOIN speedrun_player_links link ON link.steamid = a.steamid
             WHERE a.steamid IN (${placeholders})
