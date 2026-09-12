@@ -1411,16 +1411,20 @@
           <td>#${compact(index + 1)}</td>
           <td>${runnerLink(row)}</td>
           <td>${escapeHtml(classText(row))}</td>
-          <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
+          <td class="speedrun-time speedrun-time-cell">
+            <strong>${escapeHtml(time(row, "bestTime"))}</strong>
+            <small class="speedrun-set-time">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</small>
+          </td>
           <td>${compact(row.attempts)}</td>
           <td>${(() => {
             const value = attemptsToRecord.get(`${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`);
             return value == null ? "-" : compact(value);
           })()}</td>
-          <td class="speedrun-replay-cell">${replayAction(row)}</td>
-          <td>${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
+          <td class="speedrun-replay-cell">
+            ${replayAction(row)}
+          </td>
         </tr>
-        `).join("") || `<tr><td colspan="8">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
+        `).join("") || `<tr><td colspan="7">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
 
         if (comparisonResult.status === "fulfilled") {
           renderGlobalComparison("sr-map-comparisons", comparisons, selectedClass);

@@ -1483,6 +1483,20 @@
   font-size: 8px;
 }
 
+.speedrun-map-detail-cards .speedrun-set-time {
+  display: block;
+  margin-top: 3px;
+  color: #71849c;
+  font-size: 8px;
+  font-weight: 750;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.speedrun-map-detail-cards .speedrun-time-cell {
+  white-space: normal;
+}
+
 .speedrun-map-detail-cards .speedrun-table th {
   font-size: 9px;
 }
