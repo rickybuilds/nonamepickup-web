@@ -1423,28 +1423,36 @@
 }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(1),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(1) { width: 9%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(1) { width: 8%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(2),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(2) { width: 20%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(2) { width: 17%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(3),
 .speedrun-map-detail-cards .speedrun-table td:nth-child(3) { width: 11%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(4),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(4) { width: 13%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(4) { width: 12%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(5),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(5) { width: 11%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(5) { width: 10%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(6),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(6) { width: 14%; }
+.speedrun-map-detail-cards .speedrun-table td:nth-child(6) { width: 9%; }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(7),
 .speedrun-map-detail-cards .speedrun-table td:nth-child(7) {
-  width: 22%;
+  width: 14%;
   white-space: normal;
   line-height: 1.25;
+}
+
+.speedrun-map-detail-cards .speedrun-table th:nth-child(8),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(8) {
+  width: 19%;
+  white-space: normal;
+  line-height: 1.25;
+  text-align: right;
 }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(4),
@@ -1456,7 +1464,15 @@
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(7),
 .speedrun-map-detail-cards .speedrun-table td:nth-child(7) {
-  text-align: right;
+  text-align: center;
+}
+
+.speedrun-map-detail-cards .speedrun-set-cell {
+  color: #71849c;
+  font-size: 8px;
+  font-weight: 750;
+  line-height: 1.15;
+  white-space: normal;
 }
 
 .speedrun-map-detail-cards .speedrun-table tbody tr {

@@ -1411,10 +1411,7 @@
           <td>#${compact(index + 1)}</td>
           <td>${runnerLink(row)}</td>
           <td>${escapeHtml(classText(row))}</td>
-          <td class="speedrun-time speedrun-time-cell">
-            <strong>${escapeHtml(time(row, "bestTime"))}</strong>
-            <small class="speedrun-set-time">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</small>
-          </td>
+          <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
           <td>${compact(row.attempts)}</td>
           <td>${(() => {
             const value = attemptsToRecord.get(`${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`);
@@ -1423,6 +1420,7 @@
           <td class="speedrun-replay-cell">
             ${replayAction(row)}
           </td>
+          <td class="speedrun-set-cell">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
         `).join("") || `<tr><td colspan="7">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
 
