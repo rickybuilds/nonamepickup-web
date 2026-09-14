@@ -1150,13 +1150,8 @@ function createSpeedrunsRouter({ logRouteError }) {
       const runnerKey = `${row.steamid || ""}:${classId}`;
       const previousPersonalBest = personalBestByRunnerClass.get(runnerKey);
       const isPersonalBest = previousPersonalBest == null || timeMs < previousPersonalBest.timeMs;
-      let attemptsToPersonalBest = 0;
       let personalBestEntry = null;
       if (isPersonalBest) {
-        const previousPersonalBestTimestamp = previousPersonalBest?.timestamp ?? -Infinity;
-        attemptsToPersonalBest = (eventsByRunnerClass.get(runnerKey) || [])
-          .filter(timestamp => timestamp > previousPersonalBestTimestamp && timestamp <= currentTimestamp)
-          .length;
         personalBestByRunnerClass.set(runnerKey, {
           timeMs,
           timestamp: currentTimestamp
@@ -1164,8 +1159,7 @@ function createSpeedrunsRouter({ logRouteError }) {
         personalBestEntry = {
           steamid: row.steamid || null,
           class_id: classId,
-          time_ms: timeMs,
-          attempts_to_pb: attemptsToPersonalBest
+          time_ms: timeMs
         };
         personalBestAttempts.push(personalBestEntry);
       }
