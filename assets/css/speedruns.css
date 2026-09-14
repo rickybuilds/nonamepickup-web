@@ -1392,6 +1392,8 @@
 
 .speedrun-table-wrap {
   overflow: auto;
+  scrollbar-color: rgba(56, 189, 248, .52) rgba(8, 15, 29, .72);
+  scrollbar-width: thin;
 }
 
 .speedrun-table {
@@ -1413,13 +1415,34 @@
 }
 
 .speedrun-map-detail-cards .speedrun-table {
+  min-width: 760px;
   table-layout: fixed;
+  background: rgba(7, 15, 28, .74);
 }
 
 .speedrun-map-detail-cards .speedrun-table th,
 .speedrun-map-detail-cards .speedrun-table td {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.speedrun-map-detail-cards .speedrun-table th {
+  overflow: visible;
+  padding-block: 12px;
+  border-bottom-color: rgba(77, 166, 255, .2);
+  color: #a9c8e8;
+  line-height: 1.2;
+  text-overflow: clip;
+  vertical-align: middle;
+}
+
+.speedrun-map-detail-cards .speedrun-table td {
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+.speedrun-map-detail-cards .speedrun-table tbody tr:nth-child(even) td {
+  background: rgba(12, 25, 43, .36);
 }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(1),
@@ -1458,8 +1481,10 @@
 .speedrun-map-detail-cards .speedrun-table th:nth-child(4),
 .speedrun-map-detail-cards .speedrun-table td:nth-child(4),
 .speedrun-map-detail-cards .speedrun-table th:nth-child(5),
-.speedrun-map-detail-cards .speedrun-table td:nth-child(5) {
-  text-align: center;
+.speedrun-map-detail-cards .speedrun-table td:nth-child(5),
+.speedrun-map-detail-cards .speedrun-table th:nth-child(6),
+.speedrun-map-detail-cards .speedrun-table td:nth-child(6) {
+  text-align: right;
 }
 
 .speedrun-map-detail-cards .speedrun-table th:nth-child(7),
