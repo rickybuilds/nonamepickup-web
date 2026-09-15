@@ -1377,9 +1377,10 @@
       setText("sr-map-difficulty", data.difficulty == null ? "-" : `D${data.difficulty}`);
 
       const classFilter = $("sr-map-class-filter");
-      const attemptsToRecord = new Map();
+      const attemptsToNumberOne = new Map();
       for (const point of progressionData.personal_bests || []) {
-        attemptsToRecord.set(`${point.class_id}:${point.time_ms}:${point.steamid || ""}`, point.attempts_to_pb);
+        const key = `${point.class_id}:${point.time_ms}:${point.steamid || ""}`;
+        attemptsToNumberOne.set(key, point.attempts_to_record);
       }
       const classOptions = [...new Map([
         ...(data.leaderboard || []).map(row => [classValue(row), classText(row)]),
@@ -1405,7 +1406,7 @@
           : (data.leaderboard || []);
 
         setHtml("sr-map-leaderboard", rows.map((row, index) => {
-          const pbAttempts = attemptsToRecord.get(`${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`);
+          const attemptsToFirst = attemptsToNumberOne.get(`${row.classId}:${row.bestTimeMs}:${row.steamId || ""}`);
           return `
           <tr>
           <td>#${compact(index + 1)}</td>
@@ -1413,14 +1414,14 @@
           <td>${escapeHtml(classText(row))}</td>
           <td class="speedrun-time">${escapeHtml(time(row, "bestTime"))}</td>
           <td>${compact(row.attempts)}</td>
-          <td>${pbAttempts == null ? "-" : compact(pbAttempts)}</td>
+          <td>${attemptsToFirst == null ? "-" : compact(attemptsToFirst)}</td>
           <td class="speedrun-replay-cell">
             ${replayAction(row)}
           </td>
           <td class="speedrun-set-cell">${escapeHtml(formatDateTime(achievedTimestamp(row)))}</td>
         </tr>
         `;
-        }).join("") || `<tr><td colspan="8">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
+        }).join("") || `<tr><td colspan="9">${empty(selectedClass ? "No records for this class yet." : "No records yet.")}</td></tr>`);
 
         if (comparisonResult.status === "fulfilled") {
           renderGlobalComparison("sr-map-comparisons", comparisons, selectedClass);

@@ -1138,6 +1138,7 @@ function createSpeedrunsRouter({ logRouteError }) {
 
     const classes = new Map();
     const bestByClass = new Map();
+    const recordTimestampByClass = new Map();
     const personalBestByRunnerClass = new Map();
     const personalBestAttempts = [];
     for (const row of rows) {
@@ -1149,27 +1150,36 @@ function createSpeedrunsRouter({ logRouteError }) {
       const runnerKey = `${row.steamid || ""}:${classId}`;
       const previousPersonalBest = personalBestByRunnerClass.get(runnerKey);
       const isPersonalBest = previousPersonalBest == null || timeMs < previousPersonalBest.timeMs;
-      let attemptsToPersonalBest = 0;
+      let personalBestEntry = null;
       if (isPersonalBest) {
-        const previousPersonalBestTimestamp = previousPersonalBest?.timestamp ?? -Infinity;
-        attemptsToPersonalBest = (eventsByRunnerClass.get(runnerKey) || [])
-          .filter(timestamp => timestamp > previousPersonalBestTimestamp && timestamp <= currentTimestamp)
-          .length;
         personalBestByRunnerClass.set(runnerKey, {
           timeMs,
           timestamp: currentTimestamp
         });
-        personalBestAttempts.push({
+        personalBestEntry = {
           steamid: row.steamid || null,
           class_id: classId,
-          time_ms: timeMs,
-          attempts_to_pb: attemptsToPersonalBest
-        });
+          time_ms: timeMs
+        };
+        personalBestAttempts.push(personalBestEntry);
       }
 
       const previousBest = bestByClass.get(classId);
       if (previousBest == null || timeMs < previousBest) {
+        const previousRecordTimestamp = recordTimestampByClass.get(classId) ?? -Infinity;
+        const attemptsToRecord = (eventsByRunnerClass.get(runnerKey) || [])
+          .filter(timestamp => timestamp > previousRecordTimestamp && timestamp <= currentTimestamp)
+          .length;
+        const completedRunsToRecord = rows.filter(candidate => (
+          String(candidate.steamid || "") === String(row.steamid || "") &&
+          Number(candidate.class_id) === classId &&
+          (() => {
+            const timestamp = new Date(candidate.created_at).getTime();
+            return Number.isFinite(timestamp) && timestamp > previousRecordTimestamp && timestamp <= currentTimestamp;
+          })()
+        )).length;
         bestByClass.set(classId, timeMs);
+        recordTimestampByClass.set(classId, currentTimestamp);
         if (!classes.has(classId)) {
           classes.set(classId, {
             class_id: classId,
@@ -1177,10 +1187,12 @@ function createSpeedrunsRouter({ logRouteError }) {
             points: []
           });
         }
+        const totalAttemptsToRecord = attemptsToRecord + completedRunsToRecord;
+        if (personalBestEntry) personalBestEntry.attempts_to_record = totalAttemptsToRecord;
         classes.get(classId).points.push(mapProgressionPoint(
           row,
           previousBest == null ? null : previousBest - timeMs,
-          attemptsToPersonalBest
+          totalAttemptsToRecord
         ));
       }
     }
