@@ -40,6 +40,22 @@ location ~ ^/api/pickup-live/viewer/.+/events$ {
 
 The application also sends `X-Accel-Buffering: no`, but the proxy configuration makes the behavior unambiguous.
 
+## Temporarily disable pickup live
+
+To stop the telemetry forwarder immediately and prevent it from starting again
+at boot, run this on each game server:
+
+```sh
+systemctl disable --now tfc-pickup-live-forwarder.service
+systemctl is-enabled tfc-pickup-live-forwarder.service
+systemctl is-active tfc-pickup-live-forwarder.service
+```
+
+The last two commands should report `disabled` and `inactive`. No website API
+restart is required for this change. The normal `/live.html` dashboard remains
+available, but its `Watch Live` link to the telemetry viewer is intentionally
+removed while the forwarder is offline.
+
 ## Install the EAST forwarder
 
 Run these from a checkout containing this repository:
