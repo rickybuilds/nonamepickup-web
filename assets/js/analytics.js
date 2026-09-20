@@ -151,10 +151,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${formatValue(row.value, type)}${unit}${details.length ? `<small>${details.join(" · ")}</small>` : ""}${recordLinks(row)}`;
   }
 
-  function renderCard(title, rows, type, note, recordType = false, featured = false) {
+  function renderCard(title, rows, type, note, recordType = false, featured = false, rankOffset = 0) {
     const list = (rows || []).map((row, index) => `
-      <li class="${index === 0 ? "is-leader" : ""}">
-        <span class="analytics-rank">${index + 1}</span>
+      <li class="${index === 0 && rankOffset === 0 ? "is-leader" : ""}">
+        <span class="analytics-rank">${index + rankOffset + 1}</span>
         <div class="analytics-player">${playerName(row)}</div>
         <strong>${rowContext(row, type, recordType)}</strong>
       </li>
@@ -188,7 +188,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
       page = Math.min(page, pageCount - 1);
       const pageRows = rows.slice(page * pageSize, (page + 1) * pageSize);
-      const shameCard = renderCard(shameConfig[1], pageRows, shameConfig[2], shameConfig[3], shameConfig[4]);
+      const shameCard = renderCard(shameConfig[1], pageRows, shameConfig[2], shameConfig[3], shameConfig[4], false, page * pageSize);
       const chaosCards = chaosConfig.map(([key, title, type, note, recordType]) =>
         renderCard(title, data?.[key], type, recordType === "qualified" ? qualificationNote : note, recordType)
       ).join("");
@@ -198,7 +198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <span>Page ${page + 1} of ${pageCount}</span>
           <button type="button" class="analytics-page-button" data-shame-page="next" ${page >= pageCount - 1 ? "disabled" : ""}>Next 5</button>
         </nav>` : "";
-      target.innerHTML = `${shameCard}${chaosCards}${pagination}`;
+      target.innerHTML = `<div class="analytics-shame-paginated">${shameCard}${pagination}</div>${chaosCards}`;
     };
 
     target.addEventListener("click", event => {
