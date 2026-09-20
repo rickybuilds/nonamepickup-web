@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["kdr", "Best K/D In A Match", "decimal", "Minimum 10 kills", "match"]
     ],
     chaos: [
-      ["least_flag_touches", "Least Flag Touches In A Match", "touches", "Minimum 15 minutes of recorded participation", "least-flag-touches"],
+      ["least_flag_touches", "Least Flag Touches In A Match", "touches", "Zero touches · Medic / Scout / Spy · 15 min minimum", "least-flag-touches"],
       ["suicides", "Most Suicides", "suicides"],
       ["team_kills", "Most Team Kills", "team kills"],
       ["team_damage", "Most Team Damage", "damage"],
@@ -140,6 +140,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       details.push(`${number.format(row.secondary || 0)} MVPs / ${number.format(row.matches || 0)} games`);
     } else if (recordType === "least-flag-touches") {
       details.push(`${formatDuration(row.played_seconds || 0)} played`);
+      if (row.class_name) details.push(escapeHtml(row.class_name));
       if (row.map) details.push(escapeHtml(row.map));
     } else if (row.secondary != null) {
       details.push(`${number.format(row.secondary)} total`);

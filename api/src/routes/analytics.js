@@ -128,6 +128,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
       secondary: row.secondary == null ? null : Number(row.secondary || 0),
       matches: row.matches == null ? null : Number(row.matches || 0),
       played_seconds: row.played_seconds == null ? null : Number(row.played_seconds || 0),
+      class_name: row.class_name || null,
       match_id: row.match_id == null ? null : String(row.match_id),
       round_num: row.round_num == null ? null : Number(row.round_num || 0),
       map: row.map_name || null,
@@ -718,18 +719,28 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               m.map_name,
               m.hampalyzer_url,
               m.tfcstats_url,
+              MAX(ps.main_class) AS class_name,
               SUM(COALESCE(rs.flag_touches, 0)) AS flag_touches,
               SUM(COALESCE(mr.duration_seconds, 0)) AS played_seconds
             FROM round_stats rs
             JOIN match_rounds mr
               ON mr.match_id = rs.match_id
              AND mr.round_num = rs.round_num
+            JOIN (
+              SELECT identity, match_id, MAX(LOWER(TRIM(main_class))) AS main_class
+              FROM player_stats
+              GROUP BY identity, match_id
+            ) ps
+              ON ps.identity = rs.identity
+             AND ps.match_id = rs.match_id
             JOIN matches m ON m.match_id = rs.match_id
             WHERE rs.identity IS NOT NULL
               AND rs.identity != ''
               AND m.status = 'completed'
+              AND LOWER(TRIM(ps.main_class)) IN ('medic', 'scout', 'spy')
             GROUP BY rs.identity, rs.match_id
-            HAVING SUM(COALESCE(mr.duration_seconds, 0)) >= ?
+            HAVING SUM(COALESCE(rs.flag_touches, 0)) = 0
+               AND SUM(COALESCE(mr.duration_seconds, 0)) >= ?
           `;
           const leastFlagTouchesRows = timedAnalytics("analytics:chaos:leastFlagTouchesBase", () => db.prepare(leastFlagTouchesRowsSql).all(15 * 60));
           const leastFlagTouches = topRows(leastFlagTouchesRows, row => row.flag_touches, {
