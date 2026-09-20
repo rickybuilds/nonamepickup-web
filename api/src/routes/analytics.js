@@ -27,7 +27,8 @@ const IDENTITY_CTES = `
         NULLIF(s.player_key, ''),
         NULLIF(s.steam_id, ''),
         LOWER(TRIM(s.display_name))
-      ) AS identity
+      ) AS identity,
+      r.rating AS rating
     FROM match_player_stats s
     LEFT JOIN steam_links pk ON pk.steam_id = s.player_key
     LEFT JOIN steam_links sid ON sid.steam_id = s.steam_id
@@ -113,6 +114,7 @@ const MVP_CTES = `
 
 const ANALYTICS_CACHE_TTL_MS = 45_000;
 const MIN_PERFORMANCE_GAMES = 25;
+const MIN_SHAME_ELO = 1200;
 const MIN_MAP_GAMES = 10;
 const MIN_MAP_ARCHIVE_GAMES = 25;
 const analyticsPayloadCache = new Map();
@@ -128,6 +130,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
       secondary: row.secondary == null ? null : Number(row.secondary || 0),
       matches: row.matches == null ? null : Number(row.matches || 0),
       played_seconds: row.played_seconds == null ? null : Number(row.played_seconds || 0),
+      rating: row.rating == null ? null : Number(row.rating || 0),
       class_name: row.class_name || null,
       match_id: row.match_id == null ? null : String(row.match_id),
       round_num: row.round_num == null ? null : Number(row.round_num || 0),
@@ -721,6 +724,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               m.hampalyzer_url,
               m.tfcstats_url,
               MAX(ps.main_class) AS class_name,
+              MAX(ps.rating) AS rating,
               SUM(COALESCE(rs.flag_touches, 0)) AS flag_touches,
               MAX(ps.played_seconds) AS played_seconds
             FROM round_stats rs
@@ -729,6 +733,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
                 ps.identity,
                 ps.match_id,
                 MAX(LOWER(TRIM(ps.main_class))) AS main_class,
+                MAX(ps.rating) AS rating,
                 SUM(COALESCE(c.seconds, 0)) AS played_seconds
               FROM player_stats ps
               JOIN match_player_classes c
@@ -746,8 +751,9 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             GROUP BY rs.identity, rs.match_id
             HAVING SUM(COALESCE(rs.flag_touches, 0)) <= 1
                AND MAX(ps.played_seconds) >= ?
+               AND MAX(ps.rating) >= ?
           `;
-          const leastFlagTouchesRows = timedAnalytics("analytics:chaos:leastFlagTouchesBase", () => db.prepare(leastFlagTouchesRowsSql).all(20 * 60));
+          const leastFlagTouchesRows = timedAnalytics("analytics:chaos:leastFlagTouchesBase", () => db.prepare(leastFlagTouchesRowsSql).all(20 * 60, MIN_SHAME_ELO));
           const leastFlagTouches = topRows(leastFlagTouchesRows, row => row.flag_touches, {
             ascending: true,
             limit: 50,
