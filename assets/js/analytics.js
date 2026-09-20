@@ -141,7 +141,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else if (recordType === "least-flag-touches") {
       details.push(`${formatDuration(row.played_seconds || 0)} class time`);
       if (row.class_name) details.push(escapeHtml(row.class_name));
-      if (row.rating != null) details.push(`${number.format(row.rating)} Elo`);
       if (row.map) details.push(escapeHtml(row.map));
     } else if (row.secondary != null) {
       details.push(`${number.format(row.secondary)} total`);
