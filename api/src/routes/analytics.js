@@ -721,15 +721,19 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               m.tfcstats_url,
               MAX(ps.main_class) AS class_name,
               SUM(COALESCE(rs.flag_touches, 0)) AS flag_touches,
-              SUM(COALESCE(mr.duration_seconds, 0)) AS played_seconds
+              MAX(ps.played_seconds) AS played_seconds
             FROM round_stats rs
-            JOIN match_rounds mr
-              ON mr.match_id = rs.match_id
-             AND mr.round_num = rs.round_num
             JOIN (
-              SELECT identity, match_id, MAX(LOWER(TRIM(main_class))) AS main_class
-              FROM player_stats
-              GROUP BY identity, match_id
+              SELECT
+                ps.identity,
+                ps.match_id,
+                MAX(LOWER(TRIM(ps.main_class))) AS main_class,
+                SUM(COALESCE(c.seconds, 0)) AS played_seconds
+              FROM player_stats ps
+              JOIN match_player_classes c
+                ON c.match_id = ps.match_id
+               AND c.player_key = ps.player_key
+              GROUP BY ps.identity, ps.match_id
             ) ps
               ON ps.identity = rs.identity
              AND ps.match_id = rs.match_id
@@ -740,7 +744,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               AND LOWER(TRIM(ps.main_class)) IN ('medic', 'scout', 'spy')
             GROUP BY rs.identity, rs.match_id
             HAVING SUM(COALESCE(rs.flag_touches, 0)) = 0
-               AND SUM(COALESCE(mr.duration_seconds, 0)) >= ?
+               AND MAX(ps.played_seconds) >= ?
           `;
           const leastFlagTouchesRows = timedAnalytics("analytics:chaos:leastFlagTouchesBase", () => db.prepare(leastFlagTouchesRowsSql).all(15 * 60));
           const leastFlagTouches = topRows(leastFlagTouchesRows, row => row.flag_touches, {
