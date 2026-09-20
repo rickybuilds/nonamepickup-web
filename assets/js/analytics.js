@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ["kdr", "Best K/D In A Match", "decimal", "Minimum 10 kills", "match"]
     ],
     chaos: [
-      ["least_flag_touches", "Least Flag Touches In A Match", "touches", "Zero touches · Medic / Scout / Spy · 15 min class time", "least-flag-touches"],
+      ["least_flag_touches", "Least Flag Touches In A Match", "touches", "0–1 touches · Medic / Scout / Spy · 20 min class time", "least-flag-touches"],
       ["suicides", "Most Suicides", "suicides"],
       ["team_kills", "Most Team Kills", "team kills"],
       ["team_damage", "Most Team Damage", "damage"],
@@ -173,6 +173,41 @@ document.addEventListener("DOMContentLoaded", async () => {
     target.innerHTML = config.map(([key, title, type, note, recordType]) =>
       renderCard(title, data?.[key], type, recordType === "qualified" ? qualificationNote : note, recordType)
     ).join("");
+  }
+
+  function renderShame(data, qualificationNote) {
+    const target = document.getElementById("analytics-chaos");
+    if (!target) return;
+    const shameConfig = sections.chaos[0];
+    const chaosConfig = sections.chaos.slice(1);
+    const rows = data?.least_flag_touches || [];
+    const pageSize = 5;
+    let page = 0;
+
+    const render = () => {
+      const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+      page = Math.min(page, pageCount - 1);
+      const pageRows = rows.slice(page * pageSize, (page + 1) * pageSize);
+      const shameCard = renderCard(shameConfig[1], pageRows, shameConfig[2], shameConfig[3], shameConfig[4]);
+      const chaosCards = chaosConfig.map(([key, title, type, note, recordType]) =>
+        renderCard(title, data?.[key], type, recordType === "qualified" ? qualificationNote : note, recordType)
+      ).join("");
+      const pagination = pageCount > 1 ? `
+        <nav class="analytics-pagination" aria-label="Wall of Shame flag-touch records">
+          <button type="button" class="analytics-page-button" data-shame-page="prev" ${page === 0 ? "disabled" : ""}>Previous 5</button>
+          <span>Page ${page + 1} of ${pageCount}</span>
+          <button type="button" class="analytics-page-button" data-shame-page="next" ${page >= pageCount - 1 ? "disabled" : ""}>Next 5</button>
+        </nav>` : "";
+      target.innerHTML = `${shameCard}${chaosCards}${pagination}`;
+    };
+
+    target.addEventListener("click", event => {
+      const button = event.target.closest("[data-shame-page]");
+      if (!button || button.disabled) return;
+      page += button.dataset.shamePage === "next" ? 1 : -1;
+      render();
+    });
+    render();
   }
 
   function fillActivityMonths(rows) {
@@ -592,7 +627,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderSection("analytics-roles", data.roles, sections.roles, qualificationNote);
       renderSection("analytics-rounds", data.rounds, sections.rounds, qualificationNote);
       renderSection("analytics-matches", data.matches, sections.matches, qualificationNote);
-      renderSection("analytics-chaos", data.chaos, sections.chaos, qualificationNote);
+      renderShame(data.chaos, qualificationNote);
     } catch (loadError) {
       console.error("Analytics load failed", loadError);
       error.hidden = false;

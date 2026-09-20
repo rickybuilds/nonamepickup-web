@@ -304,6 +304,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           const filterFn = options.filter || (() => true);
           const secondaryFn = options.secondary || (() => null);
           const ascending = !!options.ascending;
+          const resultLimit = Number(options.limit || limit);
           const top = [];
 
           for (const row of rows) {
@@ -316,9 +317,9 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             };
             let insertAt = top.findIndex(existing => compareTopRows(candidate, existing, ascending) < 0);
             if (insertAt === -1) insertAt = top.length;
-            if (insertAt < limit) {
+            if (insertAt < resultLimit) {
               top.splice(insertAt, 0, candidate);
-              if (top.length > limit) top.pop();
+              if (top.length > resultLimit) top.pop();
             }
           }
 
@@ -743,12 +744,13 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               AND m.status = 'completed'
               AND LOWER(TRIM(ps.main_class)) IN ('medic', 'scout', 'spy')
             GROUP BY rs.identity, rs.match_id
-            HAVING SUM(COALESCE(rs.flag_touches, 0)) = 0
+            HAVING SUM(COALESCE(rs.flag_touches, 0)) <= 1
                AND MAX(ps.played_seconds) >= ?
           `;
-          const leastFlagTouchesRows = timedAnalytics("analytics:chaos:leastFlagTouchesBase", () => db.prepare(leastFlagTouchesRowsSql).all(15 * 60));
+          const leastFlagTouchesRows = timedAnalytics("analytics:chaos:leastFlagTouchesBase", () => db.prepare(leastFlagTouchesRowsSql).all(20 * 60));
           const leastFlagTouches = topRows(leastFlagTouchesRows, row => row.flag_touches, {
             ascending: true,
+            limit: 50,
             secondary: row => row.played_seconds
           });
           const perMatchRows = (rows, valueKey) => topRows(rows, row => Number((Number(row[valueKey] || 0) / Number(row.matches || 1)).toFixed(2)), {
