@@ -127,6 +127,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
       value: Number(row.value || 0),
       secondary: row.secondary == null ? null : Number(row.secondary || 0),
       matches: row.matches == null ? null : Number(row.matches || 0),
+      played_seconds: row.played_seconds == null ? null : Number(row.played_seconds || 0),
       match_id: row.match_id == null ? null : String(row.match_id),
       round_num: row.round_num == null ? null : Number(row.round_num || 0),
       map: row.map_name || null,
@@ -709,6 +710,32 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
 
           const playerChaosRows = getPlayerTotals();
           const roundChaosRows = timedAnalytics("analytics:chaos:roundBase", () => db.prepare(roundChaosSql).all());
+          const leastFlagTouchesRowsSql = `${IDENTITY_CTES}
+            SELECT
+              MAX(rs.player_id) AS player_id,
+              MAX(rs.player) AS player,
+              rs.match_id,
+              m.map_name,
+              m.hampalyzer_url,
+              m.tfcstats_url,
+              SUM(COALESCE(rs.flag_touches, 0)) AS flag_touches,
+              SUM(COALESCE(mr.duration_seconds, 0)) AS played_seconds
+            FROM round_stats rs
+            JOIN match_rounds mr
+              ON mr.match_id = rs.match_id
+             AND mr.round_num = rs.round_num
+            JOIN matches m ON m.match_id = rs.match_id
+            WHERE rs.identity IS NOT NULL
+              AND rs.identity != ''
+              AND m.status = 'completed'
+            GROUP BY rs.identity, rs.match_id
+            HAVING SUM(COALESCE(mr.duration_seconds, 0)) >= ?
+          `;
+          const leastFlagTouchesRows = timedAnalytics("analytics:chaos:leastFlagTouchesBase", () => db.prepare(leastFlagTouchesRowsSql).all(15 * 60));
+          const leastFlagTouches = topRows(leastFlagTouchesRows, row => row.flag_touches, {
+            ascending: true,
+            secondary: row => row.played_seconds
+          });
           const perMatchRows = (rows, valueKey) => topRows(rows, row => Number((Number(row[valueKey] || 0) / Number(row.matches || 1)).toFixed(2)), {
             filter: row => Number(row.matches || 0) >= 10
           });
@@ -719,6 +746,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           });
 
           return {
+            least_flag_touches: leastFlagTouches,
             suicides: topAggregateRows(roundChaosRows, "suicides"),
             team_kills: topAggregateRows(roundChaosRows, "team_kills"),
             team_damage: topAggregateRows(playerChaosRows, "team_damage"),

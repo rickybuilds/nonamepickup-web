@@ -85,6 +85,12 @@
 .analytics-card{overflow:hidden;transition:transform .2s ease,border-color .2s ease}
 .analytics-card:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.42)}
 .analytics-card-featured{border-color:rgba(251,191,36,.3);background:linear-gradient(145deg,rgba(54,38,12,.26),var(--surface-bg) 45%)!important}
+.analytics-shame-section{padding-top:4px}
+.analytics-shame-section .analytics-section-heading h2{color:#fda4af}
+.analytics-shame-section .analytics-card{border-color:rgba(248,113,113,.28);background:linear-gradient(145deg,rgba(127,29,29,.16),var(--surface-bg) 48%)}
+.analytics-shame-section .analytics-card:hover{border-color:rgba(248,113,113,.55)}
+.analytics-shame-section .analytics-card li.is-leader{background:linear-gradient(90deg,rgba(248,113,113,.14),transparent)!important}
+.analytics-shame-section .analytics-card .analytics-rank,.analytics-shame-section .analytics-card li.is-leader .analytics-rank{color:#fb7185}
 .analytics-card-head{min-height:70px;padding:16px 18px 12px;border-bottom:1px solid rgba(148,163,184,.1)}
 .analytics-card-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
 .analytics-card-head span{display:block;margin-top:5px;color:var(--analytics-subtle);font:700 10px/1.4 "Inter",sans-serif}
