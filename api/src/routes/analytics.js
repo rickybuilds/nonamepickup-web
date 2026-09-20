@@ -744,7 +744,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
               AND m.status = 'completed'
               AND LOWER(TRIM(ps.main_class)) IN ('medic', 'scout', 'spy')
             GROUP BY rs.identity, rs.match_id
-            HAVING SUM(COALESCE(rs.flag_touches, 0)) <= 2
+            HAVING SUM(COALESCE(rs.flag_touches, 0)) <= 1
                AND MAX(ps.played_seconds) >= ?
           `;
           const leastFlagTouchesRows = timedAnalytics("analytics:chaos:leastFlagTouchesBase", () => db.prepare(leastFlagTouchesRowsSql).all(20 * 60));
