@@ -33,6 +33,7 @@ The match list filters only the current fetched page; its controls and result co
 - Match filters explicitly apply to the loaded page. Mobile match rows retain date and result beneath the map name. The speedrun index puts recent world records and record holders before the large map index, and search updates results in place without stealing focus.
 - Map detail distinguishes all completed matches from the 25 recent matches shown. Player and speedrun detail hero values have labels. Comparison accepts exact names as well as IDs, rejecting ambiguous names.
 - The search dialog restores focus to its trigger, traps keyboard focus while open, and ignores stale search responses. API failures have distinct states from valid empty results where the endpoint allows it.
+- Live scores use the queue snapshot's `round`, `halfScores`, and `currentScore` fields in the same Team 1 / Team 2 interpretation as the original `live.html`. The Overview rail also refreshes the active round and score with its queue check.
 
 ## Mobile composition pass
 

@@ -47,6 +47,34 @@ const date = (value) => {
 };
 const score = (m) =>
   `<span class="score"><span class="blue">${esc(m.score_blue ?? "—")}</span> <span class="muted">:</span> <span class="red">${esc(m.score_red ?? "—")}</span></span>`;
+const liveRoundScore = (state) => {
+  const value = (number) =>
+    number == null || number === "" || !Number.isFinite(Number(number))
+      ? null
+      : Number(number);
+  const round = Number(state?.round || 0);
+  const current = value(state?.currentScore);
+  const first = state?.halfScores?.[0];
+  const firstRound = first
+    ? Math.max(value(first.blue) ?? 0, value(first.red) ?? 0)
+    : null;
+  if (round === 1) return { team1: current, team2: 0 };
+  if (round >= 2) return { team1: firstRound, team2: current };
+  return {
+    team1: value(state?.score_blue ?? state?.blue_score),
+    team2: value(state?.score_red ?? state?.red_score),
+  };
+};
+const liveRoundLabel = (state) => {
+  const round = Number(state?.round || 0);
+  const caps = state?.liveCaps == null ? null : Number(state.liveCaps);
+  return [
+    round ? `ROUND ${round}` : "ROUND UNKNOWN",
+    caps != null && Number.isFinite(caps)
+      ? `${caps} ${caps === 1 ? "CAP" : "CAPS"} THIS ROUND`
+      : null,
+  ].filter(Boolean).join(" / ");
+};
 const pageHead = (n, title, copy = "") =>
   `<div class="page-head"><div><span class="eyebrow">${esc(n)} / NONAME PICKUP</span><h1>${esc(title)}</h1></div><p>${esc(copy)}</p></div>`;
 const section = (index, title, action = "") =>
@@ -175,19 +203,18 @@ async function overview() {
   const railMap =
     live?.map_name || live?.map || lastMatch?.map_name || "Awaiting a pickup";
   const railScore = live
-    ? {
-        score_blue: live.score_blue ?? live.blue_score,
-        score_red: live.score_red ?? live.red_score,
-      }
-    : lastMatch;
+    ? liveRoundScore(live)
+    : lastMatch
+      ? { team1: lastMatch.score_blue, team2: lastMatch.score_red }
+      : null;
   const checked = queue ? `${localTime()} LOCAL` : "—";
   set(`<div class="lede"><span>01 / THE COMMUNITY FREQUENCY</span><span>QUEUE SNAPSHOT / MATCH RECORD</span></div>${unavailable ? message(`${unavailable} data source${unavailable === 1 ? "" : "s"} unavailable. The remaining figures were returned by this check.`, "error") : ""}
   <div class="overview-grid">
     <section class="primary-field"><span class="eyebrow">TEAM FORTRESS CLASSIC / PICKUP NETWORK</span><h1><span>NO</span><span>NAME<span class="slash">/</span></span></h1><div class="primary-sub"><p>Eight players. Two teams. The competitive TFC record.</p><a class="text-link" href="${link("matches")}">Browse matches ↗</a></div></section>
-    <aside class="live-rail"><div class="rail-top"><span>01 / QUEUE SNAPSHOT</span><span class="signal${queue ? "" : " unavailable"}"><span class="signal-dot"></span>${railState}</span></div>
+    <aside class="live-rail" data-live-match="${live ? "true" : "false"}"><div class="rail-top"><span>01 / QUEUE SNAPSHOT</span><span class="signal${queue ? "" : " unavailable"}"><span class="signal-dot"></span>${railState}</span></div>
       <div><div class="micro muted">PLAYERS QUEUED / ${esc(checked)}</div><div class="queue-number">${fmt(queue?.count)}<small> / ${fmt(queue?.max)}</small></div><div class="queue-peek">${queueNamesMarkup(queue)}</div></div>
-      <hr class="rail-rule"><div><div class="micro muted">${railLabel}</div><div class="rail-map">${esc(railMap)}</div>${!live && lastMatch ? `<div class="rail-context">${date(lastMatch.created_at)} / ${esc(matchStatus(lastMatch))}</div>` : ""}</div>
-      ${railScore ? `<div class="rail-scores"><span class="team-blue">BLUE</span><b class="team-blue">${esc(railScore.score_blue ?? "—")}</b><span>:</span><b class="team-red">${esc(railScore.score_red ?? "—")}</b><span class="team-red">RED</span></div>` : ""}
+      <hr class="rail-rule"><div><div class="micro muted">${railLabel}</div><div class="rail-map">${esc(railMap)}</div>${live ? `<div class="rail-context">${esc(liveRoundLabel(live))} / TEAM 1 : TEAM 2</div>` : lastMatch ? `<div class="rail-context">${date(lastMatch.created_at)} / ${esc(matchStatus(lastMatch))}</div>` : ""}</div>
+      ${railScore ? `<div class="rail-scores"><span class="team-blue">${live ? "T1" : "BLUE"}</span><b class="team-blue">${esc(railScore.team1 ?? "—")}</b><span>:</span><b class="team-red">${esc(railScore.team2 ?? "—")}</b><span class="team-red">${live ? "T2" : "RED"}</span></div>` : ""}
       <a class="rail-action" href="${link("live")}"><span>VIEW QUEUE & SERVERS</span><span>↗</span></a></aside>
   </div>
   <div class="data-strip"><div class="strip-cell"><span class="micro">MATCHES / ALL TIME</span><strong>${fmt(summary.totalMatches)}</strong><small>completed 4v4 pickups</small></div><div class="strip-cell"><span class="micro">PLAYERS / ALL TIME</span><strong>${fmt(summary.uniquePlayers)}</strong><small>in the rating record</small></div><div class="strip-cell"><span class="micro">MATCHES / 7 DAYS</span><strong>${fmt(summary.matches7d)}</strong><small>recent activity</small></div><div class="strip-cell"><span class="micro">PLAYERS / 7 DAYS</span><strong>${fmt(summary.uniquePlayers7d)}</strong><small>active this week</small></div></div>
@@ -197,8 +224,12 @@ async function live() {
   const q = await get("queue");
   const matches = q.liveMatches || [];
   const checked = `${localTime()} LOCAL`;
+  const liveMatchRow = (m) => {
+    const points = liveRoundScore(m);
+    return `<div class="match-row"><span class="match-date">${esc(m.serverKey || "SERVER")}</span><span class="match-map">${esc(m.map_name || m.map || "Map unknown")}<small class="match-mobile-meta">${esc(liveRoundLabel(m))}</small></span><span class="live-score"><span class="score"><span class="blue">${esc(points.team1 ?? "—")}</span> : <span class="red">${esc(points.team2 ?? "—")}</span></span><small>TEAM 1 / TEAM 2</small></span><span class="tag">${esc(m.timeleft || "IN PROGRESS")}</span><a class="row-arrow" href="${old("live.html")}" aria-label="Open live spectator">↗</a></div>`;
+  };
   set(
-    `${pageHead("01", "Live", "Queue and game server state from the latest check.")}<div class="profile-ribbon"><span>QUEUE / ${fmt(q.count)} OF ${fmt(q.max)}</span><span>CHECKED ${checked}</span></div><div class="data-strip"><div class="strip-cell"><span class="micro">PLAYERS QUEUED</span><strong>${fmt(q.count)}</strong></div><div class="strip-cell"><span class="micro">SLOTS REMAINING</span><strong>${fmt(Math.max(0, (q.max || 8) - (q.count || 0)))}</strong></div><div class="strip-cell"><span class="micro">ACTIVE MATCHES</span><strong>${fmt(matches.length)}</strong></div><div class="strip-cell"><span class="micro">QUEUE CAPACITY</span><strong>${fmt(q.max || 8)}</strong></div></div>${section("02", "On the server")}${matches.length ? matches.map((m) => `<div class="match-row"><span class="match-date">${esc(m.serverKey || "SERVER")}</span><span class="match-map">${esc(m.map_name || m.map || "Map unknown")}<small class="match-mobile-meta">${esc(m.serverKey || "SERVER")} / ${esc(m.timeleft || "IN PROGRESS")}</small></span><span class="score"><span class="blue">${esc(m.score_blue ?? m.blue_score ?? "—")}</span> : <span class="red">${esc(m.score_red ?? m.red_score ?? "—")}</span></span><span class="tag">${esc(m.timeleft || "IN PROGRESS")}</span><a class="row-arrow" href="${old("live.html")}" aria-label="Open live spectator">↗</a></div>`).join("") : message("No match is active on a connected server.")} ${section("03", "In queue")}${q.players?.length ? q.players.map((p, i) => `<div class="stat-line"><span><span class="number muted">${String(i + 1).padStart(2, "0")} / </span>${esc(p.name || p.id)}</span><span class="number">QUEUED</span></div>`).join("") : message("No players are currently queued.")}<div class="live-actions" role="group" aria-label="Live actions"><button type="button" id="refresh-live"><span>01</span><strong>Refresh snapshot</strong><span>↻</span></button><a href="${old("live.html")}"><span>02</span><strong>Live spectator</strong><span>↗</span></a><a href="${old("pickup-live.html")}"><span>03</span><strong>Browser live viewer</strong><span>↗</span></a></div>`,
+    `${pageHead("01", "Live", "Queue and game server state from the latest check.")}<div class="profile-ribbon"><span>QUEUE / ${fmt(q.count)} OF ${fmt(q.max)}</span><span>CHECKED ${checked}</span></div><div class="data-strip"><div class="strip-cell"><span class="micro">PLAYERS QUEUED</span><strong>${fmt(q.count)}</strong></div><div class="strip-cell"><span class="micro">SLOTS REMAINING</span><strong>${fmt(Math.max(0, (q.max || 8) - (q.count || 0)))}</strong></div><div class="strip-cell"><span class="micro">ACTIVE MATCHES</span><strong>${fmt(matches.length)}</strong></div><div class="strip-cell"><span class="micro">QUEUE CAPACITY</span><strong>${fmt(q.max || 8)}</strong></div></div>${section("02", "On the server")}${matches.length ? matches.map(liveMatchRow).join("") : message("No match is active on a connected server.")} ${section("03", "In queue")}${q.players?.length ? q.players.map((p, i) => `<div class="stat-line"><span><span class="number muted">${String(i + 1).padStart(2, "0")} / </span>${esc(p.name || p.id)}</span><span class="number">QUEUED</span></div>`).join("") : message("No players are currently queued.")}<div class="live-actions" role="group" aria-label="Live actions"><button type="button" id="refresh-live"><span>01</span><strong>Refresh snapshot</strong><span>↻</span></button><a href="${old("live.html")}"><span>02</span><strong>Live spectator</strong><span>↗</span></a><a href="${old("pickup-live.html")}"><span>03</span><strong>Browser live viewer</strong><span>↗</span></a></div>`,
   );
   document.querySelector("#refresh-live").onclick = live;
 }
@@ -712,6 +743,19 @@ function setupQueueToast() {
           rail.querySelector(".queue-number").innerHTML = `${fmt(queue.count)}<small> / ${fmt(queue.max)}</small>`;
           rail.querySelector(".queue-peek").innerHTML = queueNamesMarkup(queue);
           rail.querySelector(".micro.muted").textContent = `PLAYERS QUEUED / ${localTime()} LOCAL`;
+          const active = queue.liveMatches?.[0];
+          if (Boolean(active) !== (rail.dataset.liveMatch === "true")) {
+            overview();
+          } else if (active) {
+            const points = liveRoundScore(active);
+            const scoreNumbers = rail.querySelectorAll(".rail-scores b");
+            rail.querySelector(".rail-map").textContent = active.map_name || active.map || "Awaiting a pickup";
+            rail.querySelector(".rail-context").textContent = `${liveRoundLabel(active)} / TEAM 1 : TEAM 2`;
+            if (scoreNumbers.length === 2) {
+              scoreNumbers[0].textContent = points.team1 ?? "—";
+              scoreNumbers[1].textContent = points.team2 ?? "—";
+            }
+          }
         }
       }
       if (currentCount < 5) dismissedCount = null;
