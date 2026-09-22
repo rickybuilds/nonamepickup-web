@@ -43,6 +43,13 @@ The match list filters only the current fetched page; its controls and result co
 - The same mobile type, touch, and overflow rules cover Live, match/player/map details, Speedruns, Analytics, Compare, Archive, and search. Desktop rules remain scoped outside the narrow-width overrides.
 - At 761–1100px, player and match ledgers switch from six desktop columns to three scan columns with the remaining data on a secondary line. Search stays visible in the header at this transition width.
 
+## Real-device follow-up after `7ccd630`
+
+- The compact Players ledger remains `ORDER / PLAYER / ELO` with supporting record data under the name.
+- The Overview match and ELO regions now become sequential below 1100px, where the earlier side-by-side split caused destructive names on the reported Android device. The identity/queue hero remains split.
+- Navigation becomes a ruled four/three section index through the same transition range, with larger touch rows on coarse-pointer devices and a clear ink-filled current section.
+- Live actions are integrated as numbered ledger rows. The smallest phone metadata is slightly larger without changing primary type or row density.
+
 ## Review and next steps
 
 Static JavaScript syntax and whitespace checks pass. Public production API calls for the queue, a match, a player profile, and speedrun summaries/maps returned successfully on 2026-09-22. A user-provided desktop screenshot exposed a wordmark layout bug: the inner slash was rendered as a third block and made the hero too tall. The selector and composition were corrected, followed by the production-interface pass above. A follow-up render, mobile screenshots, interaction, console, network, and accessibility checks remain outstanding: the available browser tool rejected a local-file visit under its URL policy. The project should not be deployed or called complete until those checks pass on a review host serving `/refactor/`.
