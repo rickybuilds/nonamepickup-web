@@ -29,7 +29,7 @@ The match list filters only the current fetched page; its controls and result co
 ## Production-interface pass
 
 - The overview keeps the editorial wordmark but removes noninformational circles and shortens the hero so match activity enters the first viewport sooner. The dark rail now shows a timestamped queue snapshot, queued names, and the last completed result when no match is live. An unavailable queue is not displayed as an empty queue.
-- The leaderboard API supplies current ELO while its `days` parameter changes game and form counts. The interface now calls this a record window and explains that ELO is current. Players with private ratings are omitted from sorted standings; they remain findable by name.
+- The leaderboard API supplies current ELO while its `days` parameter changes game and form counts. The interface now calls this a record window and explains that ELO is current. Overview and Players standings include only visible ratings with at least 10 completed games all time. Players below that threshold or with private ratings remain findable by name.
 - Match filters explicitly apply to the loaded page. Mobile match rows retain date and result beneath the map name. The speedrun index puts recent world records and record holders before the large map index, and search updates results in place without stealing focus.
 - Map detail distinguishes all completed matches from the 25 recent matches shown. Player and speedrun detail hero values have labels. Comparison accepts exact names as well as IDs, rejecting ambiguous names.
 - The search dialog restores focus to its trigger, traps keyboard focus while open, and ignores stale search responses. API failures have distinct states from valid empty results where the endpoint allows it.

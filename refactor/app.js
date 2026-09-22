@@ -67,6 +67,14 @@ const safeUrl = (value) => {
   }
 };
 const old = (page) => `../${page}`;
+const MIN_LEADERBOARD_GAMES = 10;
+const qualifiedRatings = (rows) =>
+  (rows || []).filter(
+    (player) =>
+      !player.hidden &&
+      player.elo != null &&
+      Number(player.games) >= MIN_LEADERBOARD_GAMES,
+  );
 const matchStatus = (m) => {
   if (m.status === "admin") return "ADJUSTMENT";
   if (m.status === "in_progress") return "IN PROGRESS";
@@ -128,7 +136,7 @@ async function overview() {
     get("home"),
     get("queue"),
     get("matches?limit=6&includePending=1"),
-    get("leaderboard?limit=15&days=30"),
+    get("leaderboard?limit=500&days=0"),
   ]);
   const [home, queue, matches, leaders] = results.map((r) =>
     r.status === "fulfilled" ? r.value : null,
@@ -139,9 +147,7 @@ async function overview() {
   const summary = home?.data?.summary || {};
   const live = queue?.liveMatches?.[0];
   const matchRows = matches?.data || [];
-  const ranking = (leaders?.data || [])
-    .filter((player) => !player.hidden && player.elo != null)
-    .slice(0, 6);
+  const ranking = qualifiedRatings(leaders?.data).slice(0, 6);
   const lastMatch = matchRows.find((match) => match.status === "completed");
   const railState = queue
     ? live
@@ -180,7 +186,7 @@ async function overview() {
       <a class="rail-action" href="${link("live")}"><span>VIEW QUEUE & SERVERS</span><span>↗</span></a></aside>
   </div>
   <div class="data-strip"><div class="strip-cell"><span class="micro">MATCHES / ALL TIME</span><strong>${fmt(summary.totalMatches)}</strong><small>completed 4v4 pickups</small></div><div class="strip-cell"><span class="micro">PLAYERS / ALL TIME</span><strong>${fmt(summary.uniquePlayers)}</strong><small>in the rating record</small></div><div class="strip-cell"><span class="micro">MATCHES / 7 DAYS</span><strong>${fmt(summary.matches7d)}</strong><small>recent activity</small></div><div class="strip-cell"><span class="micro">PLAYERS / 7 DAYS</span><strong>${fmt(summary.uniquePlayers7d)}</strong><small>active this week</small></div></div>
-  <div class="split overview-ledgers"><section>${section("02", "Latest 4v4 pickups", `<a class="text-link" href="${link("matches")}">All matches ↗</a>`)}${matchRows.length ? matchRows.map(matchRow).join("") : message(matches ? "No pickups recorded yet." : "Match service unavailable.")}</section><section>${section("03", "Current ELO", `<a class="text-link" href="${link("players")}">Full standings ↗</a>`)}${ranking.length ? ranking.map(rankRow).join("") : message(leaders ? "No visible ratings available." : "Ranking service unavailable.")}<div class="rank-note">Visible ratings only. Games shown from the last 30 days; ELO is current.</div></section></div>`);
+  <div class="split overview-ledgers"><section>${section("02", "Latest 4v4 pickups", `<a class="text-link" href="${link("matches")}">All matches ↗</a>`)}${matchRows.length ? matchRows.map(matchRow).join("") : message(matches ? "No pickups recorded yet." : "Match service unavailable.")}</section><section>${section("03", "Current ELO", `<a class="text-link" href="${link("players")}">Full standings ↗</a>`)}${ranking.length ? ranking.map(rankRow).join("") : message(leaders ? "No qualified visible ratings yet." : "Ranking service unavailable.")}<div class="rank-note">10+ completed games all time. ELO is current.</div></section></div>`);
 }
 async function live() {
   const q = await get("queue");
@@ -260,9 +266,20 @@ async function match() {
   );
 }
 async function players() {
-  const response = await get(`leaderboard?limit=500&days=${state.period}`);
+  const [response, allTime] = await Promise.all([
+    get(`leaderboard?limit=500&days=${state.period}`),
+    state.period === 0
+      ? Promise.resolve(null)
+      : get("leaderboard?limit=500&days=0"),
+  ]);
+  const eligibleIds = new Set(
+    qualifiedRatings((allTime || response).data).map((player) => player.id),
+  );
   const rows = (response.data || [])
-    .filter((player) => !player.hidden && player.elo != null)
+    .filter(
+      (player) =>
+        !player.hidden && player.elo != null && eligibleIds.has(player.id),
+    )
     .map((player, index) => ({ ...player, visibleRank: index + 1 }));
   const filtered = rows.filter(
     (p) =>
@@ -270,7 +287,7 @@ async function players() {
       `${p.player} ${p.id}`.toLowerCase().includes(state.playerQuery),
   );
   set(
-    `${pageHead("03", "Players", "Current ELO with match record and recent form.")}<div class="lede"><span>${fmt(rows.length)} VISIBLE RATINGS / PRIVATE RATINGS OMITTED</span><span>RECORD WINDOW / ${state.period ? `${state.period} DAYS` : "ALL TIME"}</span></div><div class="control-bar"><input id="player-filter" type="search" placeholder="Filter visible players" aria-label="Filter visible players" value="${esc(state.playerQuery)}"><select id="period-filter" aria-label="Match record window"><option value="7" ${state.period === 7 ? "selected" : ""}>7-day record</option><option value="30" ${state.period === 30 ? "selected" : ""}>30-day record</option><option value="90" ${state.period === 90 ? "selected" : ""}>90-day record</option><option value="0" ${state.period === 0 ? "selected" : ""}>All-time record</option></select><button type="button" id="open-search">SEARCH ALL PLAYERS ↗</button></div><div class="rank-note">The record window changes games and form. ELO is the current rating.</div><div class="table-head leaderboard-table"><span>ORDER</span><span>PLAYER</span><span>ELO</span><span>GAMES</span><span>RECORD</span><span>RECENT</span></div><div id="player-table">${playerTable(filtered)}</div>`,
+    `${pageHead("03", "Players", "Current ELO with match record and recent form.")}<div class="lede"><span>${fmt(rows.length)} QUALIFIED RATINGS / PRIVATE RATINGS OMITTED</span><span>RECORD WINDOW / ${state.period ? `${state.period} DAYS` : "ALL TIME"}</span></div><div class="control-bar"><input id="player-filter" type="search" placeholder="Filter qualified players" aria-label="Filter qualified players" value="${esc(state.playerQuery)}"><select id="period-filter" aria-label="Match record window"><option value="7" ${state.period === 7 ? "selected" : ""}>7-day record</option><option value="30" ${state.period === 30 ? "selected" : ""}>30-day record</option><option value="90" ${state.period === 90 ? "selected" : ""}>90-day record</option><option value="0" ${state.period === 0 ? "selected" : ""}>All-time record</option></select><button type="button" id="open-search">SEARCH ALL PLAYERS ↗</button></div><div class="rank-note">Standings require 10+ completed games all time. The record window changes games and form; ELO is current.</div><div class="table-head leaderboard-table"><span>ORDER</span><span>PLAYER</span><span>ELO</span><span>GAMES</span><span>RECORD</span><span>RECENT</span></div><div id="player-table">${playerTable(filtered)}</div>`,
   );
   document.querySelector("#player-filter").oninput = (e) => {
     state.playerQuery = e.target.value.toLowerCase();
