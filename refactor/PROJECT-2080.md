@@ -41,6 +41,7 @@ The match list filters only the current fetched page; its controls and result co
 - The four metrics use a compact 2×2 ledger below 760px. Four across would leave less than 90px per metric at 360px, making both the values and labels too narrow to read reliably.
 - Match, ranking, map, and record rows keep dense rules and minimum touch height. Long names truncate in scan lists while detail views reduce their display type. Mobile match, leaderboard, map, and combat rows keep their secondary data in a smaller line under the primary name.
 - The same mobile type, touch, and overflow rules cover Live, match/player/map details, Speedruns, Analytics, Compare, Archive, and search. Desktop rules remain scoped outside the narrow-width overrides.
+- At 761–1100px, player and match ledgers switch from six desktop columns to three scan columns with the remaining data on a secondary line. Search stays visible in the header at this transition width.
 
 ## Review and next steps
 

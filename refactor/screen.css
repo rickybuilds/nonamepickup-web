@@ -1225,6 +1225,66 @@ main {
   }
 }
 
+/* The compact edition starts before six-column ledgers become cramped. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  .masthead {
+    padding: 0 2vw;
+    gap: 1vw;
+  }
+  .brand {
+    min-width: 120px;
+  }
+  .brand-mark {
+    font-size: 33px;
+  }
+  .masthead-right {
+    display: flex;
+    font-size: 10px;
+  }
+  .primary-nav {
+    gap: 0.7vw;
+  }
+  .primary-nav a {
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+  .leaderboard-table {
+    grid-template-columns: 40px minmax(0, 1fr) 95px;
+  }
+  .leaderboard-table > :nth-child(n + 4) {
+    display: none;
+  }
+  .leaderboard-table .table-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  .leaderboard-table .table-mobile-meta {
+    display: block;
+    margin-top: 3px;
+    font: 12px/1.3 var(--mono);
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .matches-table {
+    grid-template-columns: minmax(0, 1fr) 120px 24px;
+  }
+  .matches-table > :nth-child(1),
+  .matches-table > :nth-child(3),
+  .matches-table > :nth-child(5) {
+    display: none;
+  }
+  .matches-table .table-mobile-meta {
+    display: block;
+    margin-top: 3px;
+    font: 12px/1.3 var(--mono);
+    color: var(--muted);
+  }
+}
+
 /* The narrow edition keeps the editorial rules but changes the reading order. */
 @media (max-width: 760px) {
   .masthead {
