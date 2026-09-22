@@ -34,6 +34,14 @@ The match list filters only the current fetched page; its controls and result co
 - Map detail distinguishes all completed matches from the 25 recent matches shown. Player and speedrun detail hero values have labels. Comparison accepts exact names as well as IDs, rejecting ambiguous names.
 - The search dialog restores focus to its trigger, traps keyboard focus while open, and ignores stale search responses. API failures have distinct states from valid empty results where the endpoint allows it.
 
+## Mobile composition pass
+
+- At phone widths the overview retains the split identity/queue hero. Its wordmark and queue text are typeset for two narrow columns; the match and ELO ledgers become consecutive full-width sections.
+- Navigation is a visible, ruled section index with 44px touch rows. It uses seven columns at small-tablet widths and a deliberate four/three two-row composition on phones. Search remains in the brand row.
+- The four metrics use a compact 2×2 ledger below 760px. Four across would leave less than 90px per metric at 360px, making both the values and labels too narrow to read reliably.
+- Match, ranking, map, and record rows keep dense rules and minimum touch height. Long names truncate in scan lists while detail views reduce their display type. Mobile match, leaderboard, map, and combat rows keep their secondary data in a smaller line under the primary name.
+- The same mobile type, touch, and overflow rules cover Live, match/player/map details, Speedruns, Analytics, Compare, Archive, and search. Desktop rules remain scoped outside the narrow-width overrides.
+
 ## Review and next steps
 
 Static JavaScript syntax and whitespace checks pass. Public production API calls for the queue, a match, a player profile, and speedrun summaries/maps returned successfully on 2026-09-22. A user-provided desktop screenshot exposed a wordmark layout bug: the inner slash was rendered as a third block and made the hero too tall. The selector and composition were corrected, followed by the production-interface pass above. A follow-up render, mobile screenshots, interaction, console, network, and accessibility checks remain outstanding: the available browser tool rejected a local-file visit under its URL policy. The project should not be deployed or called complete until those checks pass on a review host serving `/refactor/`.
