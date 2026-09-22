@@ -239,6 +239,15 @@ function fastKillEventIdentityWhere(identity,alias=""){
       params:steamIds
     };
   }
+  if(identity.steamIds.length){
+    return{
+      sql:`(${prefix}attacker_discord_id=? OR (
+        (${prefix}attacker_discord_id IS NULL OR ${prefix}attacker_discord_id='')
+        AND ${prefix}attacker_steam_id IN (${placeholders(identity.steamIds)})
+      ))`,
+      params:[identity.id,...identity.steamIds]
+    };
+  }
   return{
     sql:`${prefix}attacker_discord_id=?`,
     params:[identity.id]
@@ -1084,7 +1093,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
 
     if(!player)return sendError(res,404,"player_not_found");
 
-    const steam=db.prepare(`
+    const steamLinks=db.prepare(`
       SELECT
         psi.*,
         sp.steam_id64,
@@ -1096,10 +1105,13 @@ router.get("/player/:discordId/v3",(req,res)=>{
       FROM player_steam_ids psi
       LEFT JOIN steam_profiles sp ON sp.steam_id=psi.steam_id
       WHERE CAST(psi.discord_id AS TEXT)=?
+        AND psi.steam_id IS NOT NULL
+        AND psi.steam_id!=''
       ORDER BY psi.is_primary DESC, psi.steam_id
-      LIMIT 1
-    `).get(discordId);
+    `).all(discordId);
 
+    const steam=steamLinks[0]||null;
+    const steamIds=[...new Set(steamLinks.map(row=>String(row.steam_id||"")).filter(Boolean))];
     const steamId=steam?.steam_id||null;
 
     const record=db.prepare(`
@@ -1187,7 +1199,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
         AND r.rating > ?
     `).get(player.rating||0);
 
-    const hStats=steamId?db.prepare(`
+    const hStats=steamIds.length?db.prepare(`
       WITH player_rows AS (
         SELECT
           match_id,
@@ -1202,7 +1214,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
           flag_time_seconds,
           conc_jumps
         FROM match_player_stats
-        WHERE steam_id=?
+        WHERE steam_id IN (${placeholders(steamIds)})
         UNION ALL
         SELECT
           match_id,
@@ -1217,8 +1229,8 @@ router.get("/player/:discordId/v3",(req,res)=>{
           flag_time_seconds,
           conc_jumps
         FROM match_player_stats
-        WHERE player_key=?
-          AND COALESCE(steam_id,'')<>?
+        WHERE player_key IN (${placeholders(steamIds)})
+          AND COALESCE(steam_id,'') NOT IN (${placeholders(steamIds)})
       )
       SELECT
         COUNT(DISTINCT match_id) AS matches,
@@ -1233,35 +1245,27 @@ router.get("/player/:discordId/v3",(req,res)=>{
         SUM(flag_time_seconds) AS flag_time,
         SUM(conc_jumps) AS conc_jumps
       FROM player_rows
-    `).get(steamId,steamId,steamId):null;
+    `).get(...steamIds,...steamIds,...steamIds):null;
 
-    const classRows=steamId?db.prepare(`
+    const classRows=steamIds.length?db.prepare(`
       SELECT class_name,
             SUM(seconds) AS seconds,
             COUNT(DISTINCT match_id) AS matches
       FROM match_player_classes
-      WHERE player_key=?
+      WHERE player_key IN (${placeholders(steamIds)})
       GROUP BY class_name
       ORDER BY seconds DESC
-    `).all(steamId):[];
+    `).all(...steamIds):[];
 
     let mvpGames=0;
-    if(steamId){
+    if(steamIds.length){
       try{
         const mvpRow=db.prepare(`
-          WITH mvp_rows AS (
-            SELECT match_id
-            FROM match_round_mvps
-            WHERE mvp_player_key=?
-            UNION ALL
-            SELECT match_id
-            FROM match_round_mvps
-            WHERE steam_id=?
-              AND COALESCE(mvp_player_key,'')<>?
-          )
           SELECT COUNT(DISTINCT match_id) AS mvp_games
-          FROM mvp_rows
-        `).get(steamId,steamId,steamId);
+          FROM match_round_mvps
+          WHERE mvp_player_key IN (${placeholders(steamIds)})
+             OR steam_id IN (${placeholders(steamIds)})
+        `).get(...steamIds,...steamIds);
         mvpGames=Number(mvpRow?.mvp_games||0);
       }catch(mvpError){
         if(!String(mvpError?.message||"").includes("no such table")){
@@ -1320,7 +1324,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
           win_pct:decided?Math.round((wins/decided)*100):0
         },
         hampalyzer:{
-          linked:!!steamId,
+          linked:steamIds.length>0,
           matches:hMatches,
           kills,
           deaths,
