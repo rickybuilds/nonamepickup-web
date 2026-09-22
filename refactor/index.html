@@ -1,44 +1,89 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#e9e6dc">
-  <meta name="description" content="NoName Pickup — the competitive Team Fortress Classic record, live queue, matches, players, and speedruns.">
-  <link rel="canonical" href="https://nonamepickup.servehalflife.com/refactor/">
-  <link rel="icon" href="../assets/images/favicon.ico">
-  <link rel="stylesheet" href="./screen.css">
-  <script type="module" src="./app.js"></script>
-  <title>NoName Pickup / 2080</title>
-</head>
-<body>
-  <a class="skip" href="#content">Skip to content</a>
-  <div class="site-shell">
-    <header class="masthead">
-      <a class="brand" href="./" aria-label="NoName Pickup home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-caption">NONAME<br>PICKUP</span></a>
-      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-nav">INDEX <span aria-hidden="true">☰</span></button>
-      <nav id="primary-nav" class="primary-nav" aria-label="Primary">
-        <a href="./" data-view="overview">Overview</a>
-        <a href="./?view=live" data-view="live">Live</a>
-        <a href="./?view=matches" data-view="matches">Matches</a>
-        <a href="./?view=players" data-view="players">Players</a>
-        <a href="./?view=maps" data-view="maps">Maps</a>
-        <a href="./?view=speedruns" data-view="speedruns">Speedruns</a>
-        <a href="./?view=archive" data-view="archive">Archive</a>
-      </nav>
-      <div class="masthead-right"><button type="button" id="header-search" class="header-search">SEARCH /</button><span class="clock" id="clock" aria-label="Current UTC time">--:-- UTC</span></div>
-    </header>
-    <main id="content" tabindex="-1">
-      <div class="loading" role="status"><span class="loading-line"></span>Reading the record…</div>
-    </main>
-    <footer class="footer"><span>NO NAME. ALL GAME.</span><span>TEAM FORTRESS CLASSIC / SINCE THE BEGINNING</span><a href="../index.html">Original site ↗</a></footer>
-  </div>
-  <div id="search-layer" class="search-layer" hidden>
-    <div class="search-dialog" role="dialog" aria-modal="true" aria-label="Search players">
-      <div class="search-top"><label for="player-search">FIND A PLAYER</label><button type="button" id="close-search" aria-label="Close search">ESC / CLOSE</button></div>
-      <input id="player-search" type="search" autocomplete="off" placeholder="Name or player ID">
-      <div id="search-results" class="search-results" aria-live="polite">Start typing to search the player record.</div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#e9e6dc" />
+    <meta
+      name="description"
+      content="NoName Pickup — the competitive Team Fortress Classic record, live queue, matches, players, and speedruns."
+    />
+    <link
+      rel="canonical"
+      href="https://nonamepickup.servehalflife.com/refactor/"
+    />
+    <link rel="icon" href="../assets/images/favicon.ico" />
+    <link rel="stylesheet" href="./screen.css" />
+    <script type="module" src="./app.js"></script>
+    <title>NoName Pickup / 2080</title>
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to content</a>
+    <div class="site-shell">
+      <header class="masthead">
+        <a class="brand" href="./" aria-label="NoName Pickup home"
+          ><span class="brand-mark">N<span>/</span>N</span
+          ><span class="brand-caption">NONAME<br />PICKUP</span></a
+        >
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="primary-nav"
+        >
+          INDEX <span aria-hidden="true">☰</span>
+        </button>
+        <nav id="primary-nav" class="primary-nav" aria-label="Primary">
+          <a href="./" data-view="overview">Overview</a>
+          <a href="./?view=live" data-view="live">Live</a>
+          <a href="./?view=matches" data-view="matches">Matches</a>
+          <a href="./?view=players" data-view="players">Players</a>
+          <a href="./?view=maps" data-view="maps">Maps</a>
+          <a href="./?view=speedruns" data-view="speedruns">Speedruns</a>
+          <a href="./?view=archive" data-view="archive">Archive</a>
+        </nav>
+        <div class="masthead-right">
+          <button type="button" id="header-search" class="header-search">
+            SEARCH /</button
+          ><span class="clock" id="clock" aria-label="Current UTC time"
+            >--:-- UTC</span
+          >
+        </div>
+      </header>
+      <main id="content" tabindex="-1">
+        <div class="loading" role="status">
+          <span class="loading-line"></span>Reading the record…
+        </div>
+      </main>
+      <footer class="footer">
+        <span>NO NAME. ALL GAME.</span
+        ><span>TEAM FORTRESS CLASSIC / SINCE THE BEGINNING</span
+        ><a href="../index.html">Original site ↗</a>
+      </footer>
     </div>
-  </div>
-</body>
+    <div id="search-layer" class="search-layer" hidden>
+      <div
+        class="search-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search players"
+      >
+        <div class="search-top">
+          <label for="player-search">FIND A PLAYER</label
+          ><button type="button" id="close-search" aria-label="Close search">
+            ESC / CLOSE
+          </button>
+        </div>
+        <input
+          id="player-search"
+          type="search"
+          autocomplete="off"
+          placeholder="Name or player ID"
+        />
+        <div id="search-results" class="search-results" aria-live="polite">
+          Start typing to search the player record.
+        </div>
+      </div>
+    </div>
+  </body>
 </html>
