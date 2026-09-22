@@ -31,6 +31,8 @@ const elo = (value) =>
   value == null || value === "" || !Number.isFinite(Number(value))
     ? "—"
     : String(Math.round(Number(value)));
+const localTime = () =>
+  new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 const date = (value) => {
   if (value == null || value === "") return "Date unavailable";
   const n = Number(value);
@@ -75,6 +77,17 @@ const qualifiedRatings = (rows) =>
       player.elo != null &&
       Number(player.games) >= MIN_LEADERBOARD_GAMES,
   );
+const queueNamesMarkup = (queue) =>
+  queue?.players?.length
+    ? queue.players
+        .map(
+          (player) =>
+            `<span title="${esc(player.name || player.id)}">${esc(player.name || player.id)}</span>`,
+        )
+        .join("")
+    : queue
+      ? "No players queued"
+      : "Queue data unavailable";
 const matchStatus = (m) => {
   if (m.status === "admin") return "ADJUSTMENT";
   if (m.status === "in_progress") return "IN PROGRESS";
@@ -127,7 +140,7 @@ function wireNav() {
   });
   const clock = () =>
     (document.querySelector("#clock").textContent =
-      new Date().toISOString().slice(11, 16) + " UTC");
+      `${localTime()} LOCAL`);
   clock();
   setInterval(clock, 30000);
 }
@@ -167,20 +180,12 @@ async function overview() {
         score_red: live.score_red ?? live.red_score,
       }
     : lastMatch;
-  const queueNames = queue?.players?.length
-    ? queue.players
-        .slice(0, 4)
-        .map((player) => esc(player.name || player.id))
-        .join(" · ")
-    : queue
-      ? "No players queued"
-      : "Queue data unavailable";
-  const checked = queue ? `${new Date().toISOString().slice(11, 16)} UTC` : "—";
+  const checked = queue ? `${localTime()} LOCAL` : "—";
   set(`<div class="lede"><span>01 / THE COMMUNITY FREQUENCY</span><span>QUEUE SNAPSHOT / MATCH RECORD</span></div>${unavailable ? message(`${unavailable} data source${unavailable === 1 ? "" : "s"} unavailable. The remaining figures were returned by this check.`, "error") : ""}
   <div class="overview-grid">
     <section class="primary-field"><span class="eyebrow">TEAM FORTRESS CLASSIC / PICKUP NETWORK</span><h1><span>NO</span><span>NAME<span class="slash">/</span></span></h1><div class="primary-sub"><p>Eight players. Two teams. The competitive TFC record.</p><a class="text-link" href="${link("matches")}">Browse matches ↗</a></div></section>
     <aside class="live-rail"><div class="rail-top"><span>01 / QUEUE SNAPSHOT</span><span class="signal${queue ? "" : " unavailable"}"><span class="signal-dot"></span>${railState}</span></div>
-      <div><div class="micro muted">PLAYERS QUEUED / ${esc(checked)}</div><div class="queue-number">${fmt(queue?.count)}<small> / ${fmt(queue?.max)}</small></div><div class="queue-peek">${queueNames}</div></div>
+      <div><div class="micro muted">PLAYERS QUEUED / ${esc(checked)}</div><div class="queue-number">${fmt(queue?.count)}<small> / ${fmt(queue?.max)}</small></div><div class="queue-peek">${queueNamesMarkup(queue)}</div></div>
       <hr class="rail-rule"><div><div class="micro muted">${railLabel}</div><div class="rail-map">${esc(railMap)}</div>${!live && lastMatch ? `<div class="rail-context">${date(lastMatch.created_at)} / ${esc(matchStatus(lastMatch))}</div>` : ""}</div>
       ${railScore ? `<div class="rail-scores"><span class="team-blue">BLUE</span><b class="team-blue">${esc(railScore.score_blue ?? "—")}</b><span>:</span><b class="team-red">${esc(railScore.score_red ?? "—")}</b><span class="team-red">RED</span></div>` : ""}
       <a class="rail-action" href="${link("live")}"><span>VIEW QUEUE & SERVERS</span><span>↗</span></a></aside>
@@ -191,7 +196,7 @@ async function overview() {
 async function live() {
   const q = await get("queue");
   const matches = q.liveMatches || [];
-  const checked = new Date().toISOString().slice(11, 16) + " UTC";
+  const checked = `${localTime()} LOCAL`;
   set(
     `${pageHead("01", "Live", "Queue and game server state from the latest check.")}<div class="profile-ribbon"><span>QUEUE / ${fmt(q.count)} OF ${fmt(q.max)}</span><span>CHECKED ${checked}</span></div><div class="data-strip"><div class="strip-cell"><span class="micro">PLAYERS QUEUED</span><strong>${fmt(q.count)}</strong></div><div class="strip-cell"><span class="micro">SLOTS REMAINING</span><strong>${fmt(Math.max(0, (q.max || 8) - (q.count || 0)))}</strong></div><div class="strip-cell"><span class="micro">ACTIVE MATCHES</span><strong>${fmt(matches.length)}</strong></div><div class="strip-cell"><span class="micro">QUEUE CAPACITY</span><strong>${fmt(q.max || 8)}</strong></div></div>${section("02", "On the server")}${matches.length ? matches.map((m) => `<div class="match-row"><span class="match-date">${esc(m.serverKey || "SERVER")}</span><span class="match-map">${esc(m.map_name || m.map || "Map unknown")}<small class="match-mobile-meta">${esc(m.serverKey || "SERVER")} / ${esc(m.timeleft || "IN PROGRESS")}</small></span><span class="score"><span class="blue">${esc(m.score_blue ?? m.blue_score ?? "—")}</span> : <span class="red">${esc(m.score_red ?? m.red_score ?? "—")}</span></span><span class="tag">${esc(m.timeleft || "IN PROGRESS")}</span><a class="row-arrow" href="${old("live.html")}" aria-label="Open live spectator">↗</a></div>`).join("") : message("No match is active on a connected server.")} ${section("03", "In queue")}${q.players?.length ? q.players.map((p, i) => `<div class="stat-line"><span><span class="number muted">${String(i + 1).padStart(2, "0")} / </span>${esc(p.name || p.id)}</span><span class="number">QUEUED</span></div>`).join("") : message("No players are currently queued.")}<div class="live-actions" role="group" aria-label="Live actions"><button type="button" id="refresh-live"><span>01</span><strong>Refresh snapshot</strong><span>↻</span></button><a href="${old("live.html")}"><span>02</span><strong>Live spectator</strong><span>↗</span></a><a href="${old("pickup-live.html")}"><span>03</span><strong>Browser live viewer</strong><span>↗</span></a></div>`,
   );
@@ -684,6 +689,45 @@ async function render() {
     fail(error);
   }
 }
+function setupQueueToast() {
+  if (view === "live") return;
+  const toast = document.querySelector("#queue-toast");
+  const countLabel = document.querySelector("#queue-toast-count");
+  let currentCount = 0;
+  let dismissedCount = null;
+  let requestInFlight = false;
+  document.querySelector("#dismiss-queue-toast").onclick = () => {
+    dismissedCount = currentCount;
+    toast.hidden = true;
+  };
+  const checkQueue = async () => {
+    if (document.hidden || requestInFlight) return;
+    requestInFlight = true;
+    try {
+      const queue = await get("queue");
+      currentCount = Number(queue.count) || 0;
+      if (view === "overview") {
+        const rail = document.querySelector(".live-rail");
+        if (rail) {
+          rail.querySelector(".queue-number").innerHTML = `${fmt(queue.count)}<small> / ${fmt(queue.max)}</small>`;
+          rail.querySelector(".queue-peek").innerHTML = queueNamesMarkup(queue);
+          rail.querySelector(".micro.muted").textContent = `PLAYERS QUEUED / ${localTime()} LOCAL`;
+        }
+      }
+      if (currentCount < 5) dismissedCount = null;
+      countLabel.textContent = `${currentCount}/${Number(queue.max) || 8} PLAYERS QUEUED`;
+      toast.hidden = currentCount < 5 || dismissedCount === currentCount;
+    } catch {
+      toast.hidden = true;
+    } finally {
+      requestInFlight = false;
+    }
+  };
+  document.addEventListener("visibilitychange", checkQueue);
+  setInterval(checkQueue, 5000);
+  checkQueue();
+}
 wireNav();
 setupSearch();
+setupQueueToast();
 render();

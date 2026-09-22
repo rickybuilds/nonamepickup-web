@@ -310,6 +310,76 @@ main {
   font: 11px/1.4 var(--mono);
   overflow-wrap: anywhere;
 }
+.queue-peek {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px 8px;
+}
+.queue-peek span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.queue-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 25;
+  width: 256px;
+  max-width: calc(100vw - 32px);
+  background: var(--ink);
+  color: var(--paper);
+  border-left: 5px solid var(--acid);
+  box-shadow: 5px 5px 0 #181b1940;
+  animation: queue-appear 180ms ease-out;
+}
+.queue-toast[hidden] {
+  display: none;
+}
+.queue-toast a {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 13px 48px 13px 14px;
+}
+.queue-toast a > span,
+.queue-toast a > small {
+  font: 12px var(--mono);
+  letter-spacing: 0.04em;
+}
+.queue-toast a > span {
+  color: var(--acid);
+}
+.queue-toast a > strong {
+  font: 600 18px/1.1 var(--font);
+  letter-spacing: -0.04em;
+}
+.queue-toast button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--paper);
+  font-size: 22px;
+}
+@keyframes queue-appear {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 760px) {
+  .queue-toast {
+    right: 12px;
+    bottom: 12px;
+  }
+  .queue-toast a > span,
+  .queue-toast a > small {
+    font-size: 13px;
+  }
+}
 .rail-rule {
   border: 0;
   border-top: 1px solid #626861;
