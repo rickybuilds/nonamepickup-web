@@ -1382,15 +1382,26 @@ main {
   }
   .eyebrow,
   .micro,
+  .section-index,
   .lede,
   .match-date,
   .match-mobile-meta,
   .rank-number,
   .rank-games,
   .rank-note,
+  .tag,
   .detail-meta,
   .profile-ribbon,
   .table-mobile-meta {
+    font-size: 15px;
+  }
+  .primary-field > .eyebrow,
+  .live-rail .micro,
+  .rail-top,
+  .queue-peek,
+  .rail-context,
+  .rail-action,
+  .text-link {
     font-size: 15px;
   }
   .leaderboard-table .table-mobile-meta,
