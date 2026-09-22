@@ -50,6 +50,12 @@ The match list filters only the current fetched page; its controls and result co
 - Navigation becomes a ruled four/three section index through the same transition range, with larger touch rows on coarse-pointer devices and a clear ink-filled current section.
 - Live actions are integrated as numbered ledger rows. The smallest phone metadata is slightly larger without changing primary type or row density.
 
+## Speedruns follow-up
+
+- Recent world records and record holders now become consecutive full-width ledger sections below 1100px. The map record index remains below them. World-record rows reserve width for map, runner, time, and the navigation mark; long names truncate cleanly only when needed.
+- The Speedruns four-metric strip stays four-across at 360–430px, with compact type sized for the current four-digit totals. Other pages keep their existing mobile metric layouts.
+- Project 2080 ELO values use a dedicated formatter: rounded whole numbers without thousands separators. Match counts, run counts, scores, and other metrics keep their existing formatting.
+
 ## Review and next steps
 
 Static JavaScript syntax and whitespace checks pass. Public production API calls for the queue, a match, a player profile, and speedrun summaries/maps returned successfully on 2026-09-22. Real-device Android review confirmed the compact Players ledger works and exposed the remaining Overview, navigation, and Live-action issues addressed above. A browser viewport review of the previously deployed build reproduced the transition mismatch at an effective 980px layout width: the Players ledger had condensed while the Overview lower split and navigation had not. The current follow-up commits still need rendered review after they reach `/refactor/`; the public host was serving the previous stylesheet when these changes were pushed. Full interaction, console, network, and accessibility checks also remain outstanding.

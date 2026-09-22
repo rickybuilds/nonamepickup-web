@@ -891,6 +891,13 @@ main {
     border-right: 0;
     border-bottom: 2px solid var(--ink);
   }
+  .speedrun-ledgers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .speedrun-ledgers > :first-child {
+    border-right: 0;
+    border-bottom: 2px solid var(--ink);
+  }
   .live-actions {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1373,6 +1380,16 @@ main {
     font: 12px/1.3 var(--mono);
     color: var(--muted);
   }
+  .speedrun-ledgers .record-row {
+    grid-template-columns: minmax(0, 1fr) minmax(165px, 0.45fr) 115px 24px;
+  }
+  .speedrun-ledgers .record-row > :nth-child(2),
+  .speedrun-ledgers .rank-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 @media (min-width: 761px) and (max-width: 1100px) and (pointer: coarse) {
@@ -1821,5 +1838,39 @@ main {
   }
   .compare-versus > div {
     padding: 15px;
+  }
+}
+
+@media (max-width: 760px) {
+  .speedrun-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .speedrun-summary .strip-cell {
+    min-height: 82px;
+    padding: 10px 8px;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+  }
+  .speedrun-summary .strip-cell:last-child {
+    border-right: 0;
+  }
+  .speedrun-summary .micro {
+    font-size: 12px;
+    line-height: 1.25;
+    letter-spacing: 0;
+  }
+  .speedrun-summary .strip-cell strong {
+    font-size: clamp(21px, 5.4vw, 26px);
+    margin-top: 8px;
+  }
+  .speedrun-ledgers .record-row > :nth-child(2) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  .speedrun-ledgers .record-row > :nth-child(3) {
+    white-space: nowrap;
   }
 }
