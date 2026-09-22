@@ -43,6 +43,10 @@ The match list filters only the current fetched page; its controls and result co
 - The same mobile type, touch, and overflow rules cover Live, match/player/map details, Speedruns, Analytics, Compare, Archive, and search. Desktop rules remain scoped outside the narrow-width overrides.
 - At 761–1100px, player and match ledgers switch from six desktop columns to three scan columns with the remaining data on a secondary line. Search stays visible in the header at this transition width.
 
+## Night mode
+
+The header's Night/Day control switches the same editorial layout to a low-glare palette. The choice is saved locally; before a choice is made, the browser's color-scheme preference determines the initial mode. The theme is applied before the stylesheet loads to avoid a bright flash on return visits. The queue rail remains the darkest surface, while team scores, current-state accents, rules, controls, and search retain distinct contrast.
+
 ## Real-device follow-up after `7ccd630`
 
 - The compact Players ledger remains `ORDER / PLAYER / ELO` with supporting record data under the name.

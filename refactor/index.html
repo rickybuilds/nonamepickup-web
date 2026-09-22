@@ -13,6 +13,7 @@
       href="https://nonamepickup.servehalflife.com/refactor/"
     />
     <link rel="icon" href="../assets/images/favicon.ico" />
+    <script src="./theme.js"></script>
     <link rel="stylesheet" href="./screen.css" />
     <script type="module" src="./app.js"></script>
     <title>NoName Pickup / 2080</title>
@@ -35,9 +36,11 @@
           <a href="./?view=archive" data-view="archive">Archive</a>
         </nav>
         <div class="masthead-right">
-          <button type="button" id="header-search" class="header-search">
-            SEARCH /</button
-          ><span class="clock" id="clock" aria-label="Current local time"
+          <div class="header-tools">
+            <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Night mode" aria-pressed="false">NIGHT /</button>
+            <button type="button" id="header-search" class="header-search">SEARCH /</button>
+          </div>
+          <span class="clock" id="clock" aria-label="Current local time"
             >--:-- LOCAL</span
           >
         </div>
