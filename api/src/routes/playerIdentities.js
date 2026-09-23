@@ -234,6 +234,103 @@ function createPlayerIdentitiesRouter({
     }
   });
 
+  // Public Project 2080 directory: identity and connection metadata only.
+  // Raw IP values and shared-IP relationships stay out of this response.
+  router.get("/player-identities/public", (req, res) => {
+    try {
+      const query = cleanString(req.query.q, 120).toLowerCase();
+      const filter = ["recent", "unlinked", "multiple_aliases"].includes(req.query.filter)
+        ? req.query.filter
+        : "all";
+      const page = Math.max(1, Math.min(10000, Number.parseInt(req.query.page, 10) || 1));
+      const limit = Math.max(1, Math.min(50, Number.parseInt(req.query.limit, 10) || 20));
+      const clauses = [];
+      const values = [];
+      if (query) {
+        const term = `%${query}%`;
+        clauses.push(`(
+          LOWER(COALESCE(pi.current_name, '')) LIKE ?
+          OR LOWER(COALESCE(pi.steam_id, '')) LIKE ?
+          OR LOWER(COALESCE(pi.discord_id, '')) LIKE ?
+          OR LOWER(COALESCE(r.display_name, '')) LIKE ?
+          OR EXISTS (
+            SELECT 1 FROM steam_alias_history sah
+            WHERE sah.steam_id = pi.steam_id AND LOWER(sah.alias) LIKE ?
+          )
+        )`);
+        values.push(term, term, term, term, term);
+      }
+      if (filter === "recent") {
+        clauses.push("pi.last_seen >= ?");
+        values.push(Math.floor(Date.now() / 1000) - 7 * 86400);
+      } else if (filter === "unlinked") {
+        clauses.push("(pi.discord_id IS NULL OR TRIM(pi.discord_id) = '')");
+      } else if (filter === "multiple_aliases") {
+        clauses.push("(SELECT COUNT(*) FROM steam_alias_history sah WHERE sah.steam_id = pi.steam_id) > 1");
+      }
+      const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+      const count = Number(db.prepare(`
+        SELECT COUNT(*) AS total FROM player_identities pi
+        LEFT JOIN ratings r ON CAST(r.player_id AS TEXT) = CAST(pi.discord_id AS TEXT)
+        ${where}
+      `).get(...values).total || 0);
+      const rows = db.prepare(`
+        SELECT pi.steam_id, pi.discord_id, r.display_name AS discord_name,
+          sp.avatarmedium, pi.current_name, pi.current_server,
+          pi.first_seen, pi.last_seen, pi.connection_count,
+          (SELECT COUNT(*) FROM steam_alias_history sah WHERE sah.steam_id = pi.steam_id) AS alias_count
+        FROM player_identities pi
+        LEFT JOIN ratings r ON CAST(r.player_id AS TEXT) = CAST(pi.discord_id AS TEXT)
+        LEFT JOIN steam_profiles sp ON sp.steam_id = pi.steam_id
+        ${where}
+        ORDER BY pi.last_seen DESC
+        LIMIT ? OFFSET ?
+      `).all(...values, limit, (page - 1) * limit);
+      const summary = db.prepare(`
+        SELECT COUNT(*) AS known_players, COALESCE(SUM(connection_count), 0) AS total_connections,
+          SUM(CASE WHEN discord_id IS NULL OR TRIM(discord_id) = '' THEN 1 ELSE 0 END) AS unlinked_players
+        FROM player_identities
+      `).get();
+      res.json({
+        ok: true,
+        data: rows,
+        pagination: { page, limit, total: count },
+        summary: {
+          known_players: Number(summary.known_players || 0),
+          total_connections: Number(summary.total_connections || 0),
+          unlinked_players: Number(summary.unlinked_players || 0)
+        }
+      });
+    } catch (error) {
+      logRouteError("[/api/player-identities/public]", error);
+      sendError(res, 500, "player_identities_public_failed");
+    }
+  });
+
+  router.get("/player-identities/public/:steamid", (req, res) => {
+    try {
+      const steamId = cleanString(req.params.steamid, 100);
+      if (!steamId) return sendError(res, 400, "invalid_steam_id");
+      const player = db.prepare(`
+        SELECT pi.steam_id, pi.discord_id, r.display_name AS discord_name,
+          pi.current_name, pi.current_server, pi.first_seen, pi.last_seen, pi.connection_count
+        FROM player_identities pi
+        LEFT JOIN ratings r ON CAST(r.player_id AS TEXT) = CAST(pi.discord_id AS TEXT)
+        WHERE pi.steam_id = ?
+      `).get(steamId);
+      if (!player) return sendError(res, 404, "player_identity_not_found");
+      const aliases = db.prepare(`
+        SELECT alias, times_seen, first_seen, last_seen
+        FROM steam_alias_history WHERE steam_id = ?
+        ORDER BY times_seen DESC
+      `).all(steamId);
+      res.json({ ok: true, player, aliases });
+    } catch (error) {
+      logRouteError("[/api/player-identities/public/:steamid]", error);
+      sendError(res, 500, "player_identity_public_failed");
+    }
+  });
+
   router.get("/player-identities/ip/:ip", (req, res) => {
     const ip = cleanString(req.params.ip, 100);
     if (!ip) return sendError(res, 400, "invalid_ip");

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#e9e6dc" />
+    <link rel="icon" href="../assets/images/favicon.ico" />
+    <link rel="stylesheet" href="./screen.css" />
+    <link rel="stylesheet" href="./integration.css" />
+    <title>Pickup replay / NoName 2080</title>
+    <script type="module" src="./pickup-replay.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to content</a>
+    <div class="site-shell">
+      <header class="masthead">
+        <a class="brand" href="./" aria-label="NoName Pickup home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-caption">NONAME<br />PICKUP</span></a>
+        <nav class="primary-nav" aria-label="Primary">
+          <a href="./">Overview</a><a href="./?view=live">Live</a><a href="./?view=matches" aria-current="page">Matches</a><a href="./?view=players">Players</a><a href="./?view=maps">Maps</a><a href="./?view=speedruns">Speedruns</a><a href="./?view=archive">Archive</a>
+        </nav>
+      </header>
+      <main id="content" tabindex="-1">
+        <div class="page-head"><div><span class="eyebrow">MATCH ARCHIVE / PLAYBACK</span><h1>Pickup replay</h1></div><p>Round playback uses the established NoName replay engine. Camera, POV, timeline, clip and export controls remain available.</p></div>
+        <div class="detail-meta" id="replay-context"><span>Loading match context…</span></div>
+        <iframe id="pickup-replay-frame" class="integration-frame replay-frame" title="Interactive pickup replay" allow="fullscreen; clipboard-write" loading="eager"></iframe>
+        <div class="action-row"><a id="match-return" href="./?view=matches">← Match record</a><a id="standalone-replay" href="#">Open replay in a separate tab ↗</a></div>
+      </main>
+      <footer class="footer"><span>NO NAME. ALL GAME.</span><span>TEAM FORTRESS CLASSIC / SINCE THE BEGINNING</span><a href="../index.html">Original site ↗</a></footer>
+    </div>
+  </body>
+</html>

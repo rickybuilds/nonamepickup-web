@@ -431,6 +431,105 @@ main {
     font-size: 13px;
   }
 }
+
+.analytics-chart {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0 8px;
+  overflow: hidden;
+}
+.analytics-chart svg {
+  display: block;
+  width: 100%;
+  min-width: 520px;
+  height: auto;
+  overflow: visible;
+}
+.analytics-chart line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.analytics-chart polyline {
+  fill: none;
+  stroke: var(--acid);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.analytics-chart polyline[data-series]:nth-of-type(1) { stroke: var(--acid); }
+.analytics-chart polyline[data-series]:nth-of-type(2) { stroke: var(--blue); }
+.analytics-chart polyline[data-series]:nth-of-type(3) { stroke: var(--red); }
+.analytics-chart polyline[data-series]:nth-of-type(4) { stroke: var(--ink); }
+.analytics-chart polyline[data-series="blue"] { stroke: var(--blue); }
+.analytics-chart polyline[data-series="red"] { stroke: var(--red); }
+.chart-scale,
+.chart-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font: 11px var(--mono);
+}
+.chart-legend {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.analytics-chart circle {
+  fill: var(--ink);
+  stroke: var(--acid);
+  stroke-width: 2;
+}
+.analytics-months {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  color: var(--muted);
+  font: 11px var(--mono);
+  text-align: center;
+}
+.analytics-row {
+  grid-template-columns: 52px minmax(180px, 1fr) minmax(100px, .5fr) minmax(70px, .35fr);
+}
+.identity-table {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(120px, .8fr) minmax(110px, .5fr) minmax(120px, .65fr) minmax(80px, .4fr);
+  align-items: center;
+  gap: 12px;
+}
+.identity-row {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+}
+.identity-row:hover,
+.identity-row:focus-visible {
+  background: var(--surface);
+}
+.archive-restricted {
+  opacity: .78;
+  cursor: default;
+}
+@media (max-width: 760px) {
+  .analytics-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+  }
+  .analytics-row > :last-child {
+    display: none;
+  }
+  .identity-table {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .identity-table > :nth-child(n + 3) {
+    display: none;
+  }
+  .analytics-months span:nth-child(2n) {
+    display: none;
+  }
+  .analytics-months {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
 .rail-rule {
   border: 0;
   border-top: 1px solid #626861;

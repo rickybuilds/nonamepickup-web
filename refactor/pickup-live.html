@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#e9e6dc" />
+    <link rel="icon" href="../assets/images/favicon.ico" />
+    <link rel="stylesheet" href="./screen.css" />
+    <link rel="stylesheet" href="./integration.css" />
+    <title>Live pickup / NoName 2080</title>
+    <script type="module" src="./pickup-live.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to content</a>
+    <div class="site-shell">
+      <header class="masthead">
+        <a class="brand" href="./" aria-label="NoName Pickup home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-caption">NONAME<br />PICKUP</span></a>
+        <nav class="primary-nav" aria-label="Primary"><a href="./">Overview</a><a href="./?view=live" aria-current="page">Live</a><a href="./?view=matches">Matches</a><a href="./?view=players">Players</a><a href="./?view=maps">Maps</a><a href="./?view=speedruns">Speedruns</a><a href="./?view=archive">Archive</a></nav>
+      </header>
+      <main id="content" tabindex="-1">
+        <div class="page-head"><div><span class="eyebrow">LIVE / SPECTATOR</span><h1>Live pickup viewer</h1></div><p>The existing live renderer carries POV, camera, HUD, timeline and clip tools inside the 2080 navigation.</p></div>
+        <div id="live-context" class="detail-meta"></div>
+        <iframe id="pickup-live-frame" class="integration-frame replay-frame" title="Live pickup viewer" allow="fullscreen; clipboard-write" loading="eager"></iframe>
+        <div class="action-row"><a href="./?view=live">← Live queue</a><a id="standalone-live" href="#">Open live viewer in a separate tab ↗</a></div>
+      </main>
+      <footer class="footer"><span>NO NAME. ALL GAME.</span><span>TEAM FORTRESS CLASSIC / SINCE THE BEGINNING</span><a href="../index.html">Original site ↗</a></footer>
+    </div>
+  </body>
+</html>

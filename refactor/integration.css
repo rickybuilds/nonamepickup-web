@@ -1,0 +1,18 @@
+.integration-frame {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #0a0c10;
+}
+.replay-frame {
+  min-height: min(78vh, 920px);
+}
+.spectator-frame {
+  min-height: min(82vh, 960px);
+}
+@media (max-width: 760px) {
+  .replay-frame,
+  .spectator-frame {
+    min-height: 78vh;
+  }
+}

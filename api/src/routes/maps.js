@@ -82,6 +82,12 @@ function createMapsRouter({
       if (!map) return sendError(res, 400, "missing_map");
 
       const limit = positiveInt(req.query.limit, 500, 1, maxMatchLimit);
+      const offset = positiveInt(req.query.offset, 0, 0, 1000000);
+      const total = Number(db.prepare(`
+        SELECT COUNT(*) AS total
+        FROM matches
+        WHERE map_name = ? AND status IN ('completed','in_progress')
+      `).get(map).total || 0);
 
       const rows = db.prepare(`
       SELECT ${matchColumns("m")}
@@ -89,12 +95,12 @@ function createMapsRouter({
       WHERE m.map_name = ?
         AND m.status IN ('completed','in_progress')
       ORDER BY m.created_at DESC
-      LIMIT ?
-    `).all(map, limit);
+        LIMIT ? OFFSET ?
+    `).all(map, limit, offset);
       const playersByMatch = loadMatchPlayers(rows, { includeRatings: false });
       const out = rows.map(row => serializeMatch(row, playersByMatch, { includeTfcstats: false }));
 
-      res.json({ ok: true, data: out, count: out.length });
+      res.json({ ok: true, data: out, count: out.length, total, limit, offset });
     } catch (e) {
       logRouteError("[/api/map/:map/matches]", e);
       sendError(res, 500, "map_matches_failed");
