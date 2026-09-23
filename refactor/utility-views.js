@@ -234,14 +234,15 @@ export function createUtilityViews({ get, set, pageHead, section, message, fmt, 
       if (metric === "conversion") return `${formatted}%`;
       return `${formatted}${units[metric] ? ` ${units[metric]}` : ""}`;
     };
-    const leaderRows = (rows, metric = "") => (rows || []).map((row, index) => {
+    const leaderRows = (rows, metric = "", contextForRow = null) => (rows || []).map((row, index) => {
       const target = linkForLeader(row);
       const player = target ? `<a href="${target}">${text(row.player || "Unknown player")}</a>` : text(row.player || row.weapon || "Unknown");
       const matchLink = row.match_id ? `<a href="${link("match", "id", row.match_id)}">Match ↗</a>` : "";
       const mapLink = row.map ? `<a href="${link("map", "id", row.map)}">${text(row.map)}</a>` : "";
-      return `<div class="table-row analytics-row"><span class="number muted">${index + 1}</span><span class="table-name">${player}<small class="table-mobile-meta">${mapLink}${row.round_num ? ` / ROUND ${fmt(row.round_num)}` : ""}${row.matches ? ` / ${fmt(row.matches)} GAMES` : ""}</small></span><strong>${valueWithUnit(row.value, metric)}${row.secondary != null ? `<small>${fmt(row.secondary)} TOTAL</small>` : ""}</strong><span>${matchLink || recordLink(row)}</span></div>`;
+      const rowContext = contextForRow ? contextForRow(row) : [mapLink, row.round_num ? `ROUND ${fmt(row.round_num)}` : "", row.matches ? `${fmt(row.matches)} GAMES` : ""].filter(Boolean).join(" / ");
+      return `<div class="table-row analytics-row"><span class="number muted">${index + 1}</span><span class="table-name">${player}${rowContext ? `<small class="analytics-context">${rowContext}</small>` : ""}</span><strong>${valueWithUnit(row.value, metric)}${row.secondary != null && !contextForRow ? `<small>${fmt(row.secondary)} TOTAL</small>` : ""}</strong><span>${matchLink || recordLink(row)}</span></div>`;
     }).join("") || message("No records in this measure.");
-    const recordSection = (title, rows, metric) => `${section("", title)}<div class="table-head analytics-row"><span>RANK</span><span>PLAYER / CONTEXT</span><span>VALUE</span><span>RECORD</span></div>${leaderRows(rows, metric)}`;
+    const recordSection = (title, rows, metric, contextForRow = null) => `${section("", title)}<div class="table-head analytics-row"><span>RANK</span><span>PLAYER / CONTEXT</span><span>VALUE</span><span>RECORD</span></div>${leaderRows(rows, metric, contextForRow)}`;
     const activity = data.activity || [];
     const activityMax = Math.max(1, ...activity.map((point) => Number(point.matches) || 0));
     const chartPoints = activity.map((point, index) => {
@@ -263,6 +264,30 @@ export function createUtilityViews({ get, set, pageHead, section, message, fmt, 
       content = `${section("", "Weapon totals")}${(selectedData?.totals || []).map((row) => `<div class="stat-line"><span>${text(weaponName(row.weapon))}</span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} MATCHES</strong></div>`).join("")}${section("", "Players by weapon")}${(selectedData?.leaders || []).map((row) => `<div class="stat-line"><span>${text(weaponName(row.weapon))} / <a href="${link("player", "id", row.id)}">${text(row.player)}</a></span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} G</strong></div>`).join("")}${section("", "Maps by weapon")}${(selectedData?.maps || []).map((row) => `<div class="stat-line"><span>${text(weaponName(row.weapon))} / <a href="${link("map", "id", row.map)}">${text(row.map)}</a></span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} G</strong></div>`).join("")}`;
     } else if (active === "mvps") {
       content = `${recordSection("Match MVPs", selectedData, "")}${recordSection("MVP efficiency", data.mvp_rate, "")}`;
+    } else if (active === "chaos") {
+      const titles = {
+        least_flag_touches: "Least Flag Touches In A Match",
+        suicides: "Most Suicides",
+        team_kills: "Most Team Kills",
+        team_damage: "Most Team Damage",
+        deaths: "Most Deaths",
+        worst_kdr: "Worst Career K/D",
+        team_kills_per_match: "Most Team Kills Per Match",
+        suicides_per_match: "Most Suicides Per Match",
+      };
+      const orderedKeys = ["least_flag_touches", "suicides", "team_kills", "team_damage", "deaths", "worst_kdr", "team_kills_per_match", "suicides_per_match"];
+      content = orderedKeys.map((key) => {
+        const rows = selectedData?.[key] || [];
+        const isShame = key === "least_flag_touches";
+        const metric = isShame ? "touches" : key;
+        const context = isShame ? (row) => {
+          const seconds = Math.max(0, Number(row.played_seconds) || 0);
+          const minutes = Math.floor(seconds / 60);
+          const duration = `${minutes}M ${String(Math.floor(seconds % 60)).padStart(2, "0")}S GAME TIME`;
+          return [duration, row.class_name && text(row.class_name), row.map && `<a href="${link("map", "id", row.map)}">${text(row.map)}</a>`].filter(Boolean).join(" / ");
+        } : null;
+        return recordSection(titles[key], rows, metric, context);
+      }).join("");
     } else {
       content = Object.entries(selectedData || {}).map(([key, rows]) => recordSection(key.replaceAll("_", " "), rows, key)).join("") || message("No analytics data is available for this section.");
     }

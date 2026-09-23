@@ -489,6 +489,15 @@ main {
 .analytics-row {
   grid-template-columns: 52px minmax(180px, 1fr) minmax(100px, .5fr) minmax(70px, .35fr);
 }
+.analytics-context {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font: 10px var(--mono);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
 .identity-table {
   display: grid;
   grid-template-columns: minmax(180px, 1.4fr) minmax(120px, .8fr) minmax(110px, .5fr) minmax(120px, .65fr) minmax(80px, .4fr);
