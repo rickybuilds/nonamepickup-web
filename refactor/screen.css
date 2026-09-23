@@ -843,6 +843,11 @@ main {
 .leaderboard-table {
   grid-template-columns: 40px minmax(160px, 1fr) 85px 90px 90px 90px;
 }
+.players-table {
+  grid-template-columns: 40px 290px 72px 76px 94px 100px;
+  width: fit-content;
+  max-width: 100%;
+}
 .maps-table {
   grid-template-columns: 40px minmax(160px, 1fr) 110px 120px 24px;
 }
