@@ -786,6 +786,10 @@ main {
   font: 12px var(--mono);
   color: var(--ink);
 }
+.control-bar select option {
+  color: var(--ink);
+  background: var(--panel);
+}
 .control-bar input {
   min-width: 250px;
   flex: 1;

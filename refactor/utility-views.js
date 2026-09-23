@@ -1,5 +1,35 @@
 const queryParams = () => new URLSearchParams(location.search);
 const text = (value) => String(value ?? "—").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+const weaponName = (id) => window.nnHelpers?.weaponName?.(id) || ({
+  "weapon-1": "Grenade",
+  "weapon-2": "Nailgren",
+  "weapon-3": "MIRV",
+  "weapon-4": "EMP",
+  "weapon-5": "Super Nailgun",
+  "weapon-6": "Nails",
+  "weapon-7": "Crowbar",
+  "weapon-8": "Spanner",
+  "weapon-9": "Medkit",
+  "weapon-10": "Single Shotgun",
+  "weapon-11": "Super Shotgun",
+  "weapon-12": "Rocket Launcher",
+  "weapon-13": "Assault Cannon",
+  "weapon-14": "Railgun",
+  "weapon-15": "Sentry Gun",
+  "weapon-16": "Dispenser",
+  "weapon-18": "Yellow Gren Launcher",
+  "weapon-19": "Blue Gren Launcher",
+  "weapon-20": "DetPack",
+  "weapon-21": "Flamethrower",
+  "weapon-22": "Napalm Grenade",
+  "weapon-24": "Hallucination Grenade",
+  "weapon-25": "Knife",
+  "weapon-26": "Headshot Sniper Rifle",
+  "weapon-27": "Sniper Rifle",
+  "weapon-28": "Auto Sniper Rifle",
+  "weapon-29": "Infection",
+  suicide: "Suicides",
+})[id] || id;
 
 export function createUtilityViews({ get, set, pageHead, section, message, fmt, date, link }) {
   async function tracker() {
@@ -230,7 +260,7 @@ export function createUtilityViews({ get, set, pageHead, section, message, fmt, 
       const rows = (selectedData?.details || []).map((row) => ({ ...row, player: row.map, id: "", secondary: row.total_kills }));
       content = `${recordSection("Map archive / games and combat", rows, "")}${section("", "Top players by map")}${(selectedData?.leaders || []).map((row) => `<div class="stat-line"><span><a href="${link("map", "id", row.map)}">${text(row.map)}</a> / <a href="${link("player", "id", row.id)}">${text(row.player)}</a></span><strong>${fmt(row.value)} / ${fmt(row.matches)} G</strong></div>`).join("")}`;
     } else if (active === "weapons") {
-      content = `${section("", "Weapon totals")}${(selectedData?.totals || []).map((row) => `<div class="stat-line"><span>${text(row.weapon)}</span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} MATCHES</strong></div>`).join("")}${section("", "Players by weapon")}${(selectedData?.leaders || []).map((row) => `<div class="stat-line"><span>${text(row.weapon)} / <a href="${link("player", "id", row.id)}">${text(row.player)}</a></span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} G</strong></div>`).join("")}${section("", "Maps by weapon")}${(selectedData?.maps || []).map((row) => `<div class="stat-line"><span>${text(row.weapon)} / <a href="${link("map", "id", row.map)}">${text(row.map)}</a></span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} G</strong></div>`).join("")}`;
+      content = `${section("", "Weapon totals")}${(selectedData?.totals || []).map((row) => `<div class="stat-line"><span>${text(weaponName(row.weapon))}</span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} MATCHES</strong></div>`).join("")}${section("", "Players by weapon")}${(selectedData?.leaders || []).map((row) => `<div class="stat-line"><span>${text(weaponName(row.weapon))} / <a href="${link("player", "id", row.id)}">${text(row.player)}</a></span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} G</strong></div>`).join("")}${section("", "Maps by weapon")}${(selectedData?.maps || []).map((row) => `<div class="stat-line"><span>${text(weaponName(row.weapon))} / <a href="${link("map", "id", row.map)}">${text(row.map)}</a></span><strong>${fmt(row.value)} KILLS / ${fmt(row.matches)} G</strong></div>`).join("")}`;
     } else if (active === "mvps") {
       content = `${recordSection("Match MVPs", selectedData, "")}${recordSection("MVP efficiency", data.mvp_rate, "")}`;
     } else {
