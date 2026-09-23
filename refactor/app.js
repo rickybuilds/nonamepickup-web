@@ -6,6 +6,7 @@ const state = {
   page: 0,
   speedPage: 0,
   speedQuery: "",
+  speedClass: "",
   period: 30,
   matchQuery: "",
   map: "",
@@ -97,6 +98,37 @@ const safeUrl = (value) => {
   }
 };
 const old = (page) => `../${page}`;
+let supporterIds = new Set();
+const supporterMark = (discordId) =>
+  discordId && supporterIds.has(String(discordId))
+    ? '<span class="supporter-diamond" role="img" aria-label="Server Supporter" title="Server Supporter">💎</span>'
+    : "";
+const playerIdentity = (player, options = {}) => {
+  const name = options.name ?? player?.playerName ?? player?.player ?? player?.name ?? player?.display_name ?? player?.id ?? "Unknown runner";
+  const discordId = options.discordId ?? player?.discordId ?? player?.discord_id ?? player?.id;
+  const target = options.href ?? (discordId ? link("player", "id", discordId) : "");
+  const content = `<span class="identity-name">${esc(name)}</span>${supporterMark(discordId)}`;
+  return target ? `<a class="player-identity" href="${esc(target)}">${content}</a>` : `<span class="player-identity">${content}</span>`;
+};
+const runnerUrl = (runner) => {
+  const identifier = runner?.discordId || runner?.steamId || runner?.steamid;
+  return identifier ? link("speedrun-player", "id", identifier) : "";
+};
+const replayUrl = (run, map = "") => {
+  if (!run?.hasReplay) return "";
+  const runId = run.runId ?? run.id;
+  return runId != null
+    ? `${old("speedrun-replay.html")}?runId=${encodeURIComponent(runId)}`
+    : `${old("speedrun-replay.html")}?map=${encodeURIComponent(run.map || map)}&classId=${encodeURIComponent(run.classId ?? "")}&steamid=${encodeURIComponent(run.steamId || "")}`;
+};
+const replayAction = (run, map = "") => {
+  const url = replayUrl(run, map);
+  return url ? `<a class="record-action" href="${esc(url)}">Replay ↗</a>` : "";
+};
+const externalLink = (url, label) => {
+  const href = url && safeUrl(url);
+  return href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)} ↗ <span class="sr-external">EXTERNAL</span></a>` : esc(label);
+};
 const MIN_LEADERBOARD_GAMES = 10;
 const qualifiedRatings = (rows) =>
   (rows || []).filter(
@@ -110,7 +142,7 @@ const queueNamesMarkup = (queue) =>
     ? queue.players
         .map(
           (player) =>
-            `<span title="${esc(player.name || player.id)}">${esc(player.name || player.id)}</span>`,
+            `<span title="${esc(player.name || player.id)}">${playerIdentity(player, { name: player.name || player.id, href: player.id ? link("player", "id", player.id) : "" })}</span>`,
         )
         .join("")
     : queue
@@ -128,7 +160,7 @@ const matchRow = (m) =>
     ? `<div class="match-row"><span class="match-date">${date(m.created_at)}</span><span class="match-map">Rating adjustment<small class="match-mobile-meta">${date(m.created_at)} / ADMIN</small></span><span class="score">${Number(m.delta) > 0 ? "+" : ""}${fmt(m.delta)}</span><span class="tag">ADMIN</span><span class="row-arrow"></span></div>`
     : `<a class="match-row" href="${link("match", "id", m.id)}"><span class="match-date">${date(m.created_at)}</span><span class="match-map">${esc(m.map_name || "Unknown map")}<small class="match-mobile-meta">${date(m.created_at)} / ${esc(matchStatus(m))}</small></span>${score(m)}<span class="tag">${esc(matchStatus(m))}</span><span class="row-arrow">↗</span></a>`;
 const rankRow = (r, position) =>
-  `<a class="rank-row" href="${link("player", "id", r.id)}"><span class="rank-number">${fmt(position + 1)}</span><span class="rank-name">${esc(r.player)}</span><span class="rank-elo">${elo(r.elo)}</span><span class="rank-games">${fmt(r.games)} G</span></a>`;
+  `<a class="rank-row" href="${link("player", "id", r.id)}"><span class="rank-number">${fmt(position + 1)}</span><span class="rank-name">${playerIdentity(r, { href: "" })}</span><span class="rank-elo">${elo(r.elo)}</span><span class="rank-games">${fmt(r.games)} G</span></a>`;
 function set(html) {
   root.innerHTML = html;
   root.setAttribute("aria-busy", "false");
@@ -155,13 +187,15 @@ function wireNav() {
   document.querySelectorAll(".primary-nav a").forEach((a) => {
     if (
       a.dataset.view === view ||
-      (["match", "player", "map", "speedrun-map"].includes(view) &&
+      (["match", "player", "map", "speedrun-map", "speedrun-player", "speedrun-catalog"].includes(view) &&
         a.dataset.view ===
           {
             match: "matches",
             player: "players",
             map: "maps",
             "speedrun-map": "speedruns",
+            "speedrun-player": "speedruns",
+            "speedrun-catalog": "speedruns",
           }[view])
     )
       a.setAttribute("aria-current", "page");
@@ -229,7 +263,7 @@ async function live() {
     return `<div class="match-row"><span class="match-date">${esc(m.serverKey || "SERVER")}</span><span class="match-map">${esc(m.map_name || m.map || "Map unknown")}<small class="match-mobile-meta">${esc(liveRoundLabel(m))}</small></span><span class="live-score"><span class="score"><span class="blue">${esc(points.team1 ?? "—")}</span> : <span class="red">${esc(points.team2 ?? "—")}</span></span><small>TEAM 1 / TEAM 2</small></span><span class="tag">${esc(m.timeleft || "IN PROGRESS")}</span><a class="row-arrow" href="${old("live.html")}" aria-label="Open live spectator">↗</a></div>`;
   };
   set(
-    `${pageHead("01", "Live", "Queue and game server state from the latest check.")}<div class="profile-ribbon"><span>QUEUE / ${fmt(q.count)} OF ${fmt(q.max)}</span><span>CHECKED ${checked}</span></div><div class="data-strip"><div class="strip-cell"><span class="micro">PLAYERS QUEUED</span><strong>${fmt(q.count)}</strong></div><div class="strip-cell"><span class="micro">SLOTS REMAINING</span><strong>${fmt(Math.max(0, (q.max || 8) - (q.count || 0)))}</strong></div><div class="strip-cell"><span class="micro">ACTIVE MATCHES</span><strong>${fmt(matches.length)}</strong></div><div class="strip-cell"><span class="micro">QUEUE CAPACITY</span><strong>${fmt(q.max || 8)}</strong></div></div>${section("02", "On the server")}${matches.length ? matches.map(liveMatchRow).join("") : message("No match is active on a connected server.")} ${section("03", "In queue")}${q.players?.length ? q.players.map((p, i) => `<div class="stat-line"><span><span class="number muted">${String(i + 1).padStart(2, "0")} / </span>${esc(p.name || p.id)}</span><span class="number">QUEUED</span></div>`).join("") : message("No players are currently queued.")}<div class="live-actions" role="group" aria-label="Live actions"><button type="button" id="refresh-live"><span>01</span><strong>Refresh snapshot</strong><span>↻</span></button><a href="${old("live.html")}"><span>02</span><strong>Live spectator</strong><span>↗</span></a><a href="${old("pickup-live.html")}"><span>03</span><strong>Browser live viewer</strong><span>↗</span></a></div>`,
+    `${pageHead("01", "Live", "Queue and game server state from the latest check.")}<div class="profile-ribbon"><span>QUEUE / ${fmt(q.count)} OF ${fmt(q.max)}</span><span>CHECKED ${checked}</span></div><div class="data-strip"><div class="strip-cell"><span class="micro">PLAYERS QUEUED</span><strong>${fmt(q.count)}</strong></div><div class="strip-cell"><span class="micro">SLOTS REMAINING</span><strong>${fmt(Math.max(0, (q.max || 8) - (q.count || 0)))}</strong></div><div class="strip-cell"><span class="micro">ACTIVE MATCHES</span><strong>${fmt(matches.length)}</strong></div><div class="strip-cell"><span class="micro">QUEUE CAPACITY</span><strong>${fmt(q.max || 8)}</strong></div></div>${section("02", "On the server")}${matches.length ? matches.map(liveMatchRow).join("") : message("No match is active on a connected server.")} ${section("03", "In queue")}${q.players?.length ? q.players.map((p, i) => `<div class="stat-line"><span><span class="number muted">${String(i + 1).padStart(2, "0")} / </span>${playerIdentity(p, { name: p.name || p.id })}</span><span class="number">QUEUED</span></div>`).join("") : message("No players are currently queued.")}<div class="live-actions" role="group" aria-label="Live actions"><button type="button" id="refresh-live"><span>01</span><strong>Refresh snapshot</strong><span>↻</span></button><a href="${old("live.html")}"><span>02</span><strong>Live spectator</strong><span>↗</span></a><a href="${old("pickup-live.html")}"><span>03</span><strong>Browser live viewer</strong><span>↗</span></a></div>`,
   );
   document.querySelector("#refresh-live").onclick = live;
 }
@@ -296,9 +330,9 @@ async function match() {
   const response = await get(`match/${encodeURIComponent(id)}`);
   const m = response.match;
   const team = (label, players) =>
-    `<section class="detail-section">${section("", label)}${(players || []).length ? (players || []).map((p) => `<div class="stat-line"><a href="${link("player", "id", p.id)}">${esc(p.name || p.player || p.id)}</a><strong>${p.hidden ? "PRIVATE" : p.current_elo == null ? "" : elo(p.current_elo)}</strong></div>`).join("") : message("Roster unavailable.")}</section>`;
+    `<section class="detail-section">${section("", label)}${(players || []).length ? (players || []).map((p) => `<div class="stat-line"><a href="${link("player", "id", p.id)}">${playerIdentity(p, { name: p.name || p.player || p.id, href: "" })}</a><strong>${p.hidden ? "PRIVATE" : p.current_elo == null ? "" : elo(p.current_elo)}</strong></div>`).join("") : message("Roster unavailable.")}</section>`;
   set(
-    `<div class="detail-hero"><div><span class="eyebrow">MATCH / ${esc(m.id)}</span><h1>${esc(m.map_name || "Unknown map")}</h1></div><div class="match-score"><div class="big-score"><span class="team-blue">${esc(m.score_blue ?? "—")}</span><span>:</span><span class="team-red">${esc(m.score_red ?? "—")}</span></div><small>BLUE : RED</small></div></div><div class="detail-meta"><span>${date(m.created_at)}</span><span>${esc(m.status)}</span><span>WINNER / ${esc(m.winner || "—")}</span></div><div class="detail-columns">${team("BLUE / ROSTER · CURRENT ELO", m.blueTeam)}${team("RED / ROSTER · CURRENT ELO", m.redTeam)}</div>${section("03", "Player performance")}<div class="table-head leaderboard-table"><span></span><span>PLAYER</span><span>KILLS</span><span>DEATHS</span><span>CAPS</span><span>DAMAGE</span></div>${(m.player_stats || []).map((p) => `<div class="table-row leaderboard-table"><span class="number ${String(p.team).toUpperCase().includes("BLUE") ? "team-blue" : "team-red"}">■</span><span class="table-name" title="${esc(p.display_name)}">${esc(p.display_name)}<small class="table-mobile-meta">D ${fmt(p.deaths)} · C ${fmt(p.caps)} · DMG ${fmt(p.damage)}</small></span><span class="number" data-label="KILLS">${fmt(p.kills)}</span><span class="number">${fmt(p.deaths)}</span><span class="number">${fmt(p.caps)}</span><span class="number">${fmt(p.damage)}</span></div>`).join("") || message("Detailed player statistics unavailable.")}${section("04", "Rounds")}${(m.rounds || []).map((r) => `<div class="stat-line"><span>ROUND ${fmt(r.round_num)} / ${esc(r.map_name || m.map_name)}</span><strong>${fmt(r.team1_score)} : ${fmt(r.team2_score)}</strong></div>`).join("") || message("Round data unavailable.")}<div class="action-row inline-links"><a href="${old("match.html")}?id=${encodeURIComponent(id)}">Full legacy breakdown ↗</a>${m.hampalyzer_url ? `<a href="${esc(safeUrl(m.hampalyzer_url))}" target="_blank" rel="noopener noreferrer">Hampalyzer ↗</a>` : ""}${m.tfcstats_url ? `<a href="${esc(safeUrl(m.tfcstats_url))}" target="_blank" rel="noopener noreferrer">TFCStats ↗</a>` : ""}<a href="${old("pickup-replay.html")}?matchId=${encodeURIComponent(id)}&round=1">Round 1 replay ↗</a></div>`,
+    `<div class="detail-hero"><div><span class="eyebrow">MATCH / ${esc(m.id)}</span><h1>${esc(m.map_name || "Unknown map")}</h1></div><div class="match-score"><div class="big-score"><span class="team-blue">${esc(m.score_blue ?? "—")}</span><span>:</span><span class="team-red">${esc(m.score_red ?? "—")}</span></div><small>BLUE : RED</small></div></div><div class="detail-meta"><span>${date(m.created_at)}</span><span>${esc(m.status)}</span><span>WINNER / ${esc(m.winner || "—")}</span></div><div class="detail-columns">${team("BLUE / ROSTER · CURRENT ELO", m.blueTeam)}${team("RED / ROSTER · CURRENT ELO", m.redTeam)}</div>${section("03", "Player performance")}<div class="table-head leaderboard-table"><span></span><span>PLAYER</span><span>KILLS</span><span>DEATHS</span><span>CAPS</span><span>DAMAGE</span></div>${(m.player_stats || []).map((p) => `<div class="table-row leaderboard-table"><span class="number ${String(p.team).toUpperCase().includes("BLUE") ? "team-blue" : "team-red"}">■</span><span class="table-name" title="${esc(p.display_name)}">${playerIdentity(p, { name: p.display_name, discordId: p.discord_id || p.id || "", href: "" })}<small class="table-mobile-meta">D ${fmt(p.deaths)} · C ${fmt(p.caps)} · DMG ${fmt(p.damage)}</small></span><span class="number" data-label="KILLS">${fmt(p.kills)}</span><span class="number">${fmt(p.deaths)}</span><span class="number">${fmt(p.caps)}</span><span class="number">${fmt(p.damage)}</span></div>`).join("") || message("Detailed player statistics unavailable.")}${section("04", "Rounds")}${(m.rounds || []).map((r) => `<div class="stat-line"><span>ROUND ${fmt(r.round_num)} / ${esc(r.map_name || m.map_name)}</span><strong>${fmt(r.team1_score)} : ${fmt(r.team2_score)}</strong></div>`).join("") || message("Round data unavailable.")}<div class="action-row inline-links"><a href="${old("match.html")}?id=${encodeURIComponent(id)}">Full legacy breakdown ↗</a>${m.hampalyzer_url ? `<a href="${esc(safeUrl(m.hampalyzer_url))}" target="_blank" rel="noopener noreferrer">Hampalyzer ↗</a>` : ""}${m.tfcstats_url ? `<a href="${esc(safeUrl(m.tfcstats_url))}" target="_blank" rel="noopener noreferrer">TFCStats ↗</a>` : ""}<a href="${old("pickup-replay.html")}?matchId=${encodeURIComponent(id)}&round=1">Round 1 replay ↗</a></div>`,
   );
 }
 async function players() {
@@ -344,7 +378,7 @@ function playerTable(rows) {
     ? rows
         .map(
           (p) =>
-            `<a class="table-row leaderboard-table" href="${link("player", "id", p.id)}"><span class="number muted">${fmt(p.visibleRank)}</span><span class="table-name" title="${esc(p.player)}">${esc(p.player)}<small class="table-mobile-meta">${fmt(p.games)} G · ${esc(p.record)} · ${esc((p.recent_results || []).join(" "))}</small></span><span class="number" data-label="ELO">${elo(p.elo)}</span><span class="number">${fmt(p.games)}</span><span class="number">${esc(p.record)}</span><span class="number">${esc((p.recent_results || []).join(" "))}</span></a>`,
+            `<a class="table-row leaderboard-table" href="${link("player", "id", p.id)}"><span class="number muted">${fmt(p.visibleRank)}</span><span class="table-name" title="${esc(p.player)}">${playerIdentity(p, { href: "" })}<small class="table-mobile-meta">${fmt(p.games)} G · ${esc(p.record)} · ${esc((p.recent_results || []).join(" "))}</small></span><span class="number" data-label="ELO">${elo(p.elo)}</span><span class="number">${fmt(p.games)}</span><span class="number">${esc(p.record)}</span><span class="number">${esc((p.recent_results || []).join(" "))}</span></a>`,
         )
         .join("")
     : message("No player fits this filter.");
@@ -361,7 +395,7 @@ async function player() {
     h = d.hampalyzer;
   const recentRows = Array.isArray(recent?.data) ? recent.data : [];
   set(
-    `<div class="profile-ribbon"><span>PLAYER FILE / ${esc(p.id)}</span><span>${r.hidden ? "RATING PRIVATE" : "CURRENT RATING"}</span></div><div class="detail-hero player-detail"><div><span class="eyebrow">IDENTITY / NONAME</span><h1 class="${String(p.name || "").length > 20 ? "very-long-title" : String(p.name || "").length > 12 ? "long-title" : ""}">${esc(p.name)}</h1></div><div class="detail-stat"><b>${r.hidden ? "PRIVATE" : elo(r.elo)}</b><small>CURRENT ELO</small></div></div><div class="profile-values"><div><small>MATCHES</small><b>${fmt(r.games)}</b></div><div><small>WIN RATE</small><b>${fmt(r.win_pct)}%</b></div><div><small>RECORD</small><b>${esc(r.record)}</b></div><div><small>PEAK ELO</small><b>${r.hidden ? "—" : elo(r.peak_elo)}</b></div></div><div class="detail-columns"><section class="detail-section">${section("02", "Combat")}${[
+    `<div class="profile-ribbon"><span>PLAYER FILE / ${esc(p.id)}</span><span>${r.hidden ? "RATING PRIVATE" : "CURRENT RATING"}</span></div><div class="detail-hero player-detail"><div><span class="eyebrow">IDENTITY / NONAME</span><h1 class="${String(p.name || "").length > 20 ? "very-long-title" : String(p.name || "").length > 12 ? "long-title" : ""}">${playerIdentity(p, { href: "" })}</h1></div><div class="detail-stat"><b>${r.hidden ? "PRIVATE" : elo(r.elo)}</b><small>CURRENT ELO</small></div></div><div class="profile-values"><div><small>MATCHES</small><b>${fmt(r.games)}</b></div><div><small>WIN RATE</small><b>${fmt(r.win_pct)}%</b></div><div><small>RECORD</small><b>${esc(r.record)}</b></div><div><small>PEAK ELO</small><b>${r.hidden ? "—" : elo(r.peak_elo)}</b></div></div><div class="detail-columns"><section class="detail-section">${section("02", "Combat")}${[
       ["Kills", h.kills],
       ["Deaths", h.deaths],
       ["K / D", h.kdr],
@@ -437,7 +471,7 @@ async function map() {
         .slice(0, 25)
         .map(
           (r, i) =>
-            `<a class="rank-row" href="${link("player", "id", r.id)}"><span class="rank-number">${i + 1}</span><span class="rank-name">${esc(r.player)}</span><span class="rank-elo">${fmt(r.w)}</span><span class="rank-games">${fmt(r.gp)} G</span></a>`,
+            `<a class="rank-row" href="${link("player", "id", r.id)}"><span class="rank-number">${i + 1}</span><span class="rank-name">${playerIdentity(r, { href: "" })}</span><span class="rank-elo">${fmt(r.w)}</span><span class="rank-games">${fmt(r.gp)} G</span></a>`,
         )
         .join("") || message("No player data recorded.")
     }</section></div><div class="action-row"><a href="${old("map.html")}?map=${encodeURIComponent(id)}">Full map intel ↗</a></div>`,
@@ -448,9 +482,10 @@ async function speedruns() {
   const recentRecords = (summary.recentWorldRecords || []).slice(0, 8);
   const topRunners = (summary.topRunners || []).slice(0, 8);
   set(
-    `${pageHead("05", "Speedruns", "Movement records across conc, bhop, and other TFC maps.")}<div class="data-strip speedrun-summary"><div class="strip-cell"><span class="micro">MAPS</span><strong>${fmt(summary.maps)}</strong></div><div class="strip-cell"><span class="micro">COMPLETED RUNS</span><strong>${fmt(summary.runs)}</strong></div><div class="strip-cell"><span class="micro">RUNNERS</span><strong>${fmt(summary.runners)}</strong></div><div class="strip-cell"><span class="micro">CURRENT RECORDS</span><strong>${fmt(summary.records)}</strong></div></div>
-    <div class="split speedrun-ledgers"><section>${section("02", "Recent world records")}${recentRecords.length ? recentRecords.map((record) => `<a class="record-row" href="${link("speedrun-map", "id", record.map)}"><b>${esc(record.map)}</b><span title="${esc(record.playerName || "Unknown runner")}">${esc(record.playerName || "Unknown runner")}</span><span>${esc(record.bestTimeDisplay)}</span><span>↗</span></a>`).join("") : message("No recent world records available.")}</section><section>${section("03", "Record holders")}${topRunners.length ? topRunners.map((runner, index) => `<a class="rank-row" href="${old("speedrun-player.html")}?id=${encodeURIComponent(runner.discordId)}"><span class="rank-number">${index + 1}</span><span class="rank-name" title="${esc(runner.playerName)}">${esc(runner.playerName)}</span><span class="rank-elo">${fmt(runner.currentRecords)}</span><span class="rank-games">RECORDS</span></a>`).join("") : message("Runner standings unavailable.")}</section></div>
-    ${section("04", "Map record index")}<div class="control-bar"><input id="speed-map-filter" type="search" placeholder="Search all speedrun maps" aria-label="Search speedrun maps" value="${esc(state.speedQuery)}"><span class="micro">SERVER-SIDE SEARCH</span></div><div id="speed-map-list" aria-live="polite"></div><div class="action-row"><button type="button" id="speed-prev" disabled>← Previous maps</button><span class="micro" id="speed-page-status">LOADING MAPS</span><button type="button" id="speed-next" disabled>More maps →</button></div><div class="action-row"><a href="${old("speedruns.html")}">Full run archive ↗</a></div>`,
+    `${pageHead("05", "Speedruns", "Current timer records across conc, bhop, and other TFC maps.")}<div class="data-strip speedrun-summary"><div class="strip-cell"><span class="micro">MAPS / ENABLED</span><strong>${fmt(summary.maps)} / ${fmt(summary.enabledMaps)}</strong></div><div class="strip-cell"><span class="micro">COMPLETED RUNS</span><strong>${fmt(summary.runs)}</strong></div><div class="strip-cell"><span class="micro">RUNNERS</span><strong>${fmt(summary.runners)}</strong></div><div class="strip-cell"><span class="micro">CURRENT RECORDS</span><strong>${fmt(summary.records)}</strong></div></div>
+    <div class="split speedrun-ledgers"><section>${section("02", "Recent world records")}${recentRecords.length ? recentRecords.map((record) => `<div class="sr-record-line"><a href="${link("speedrun-map", "id", record.map)}">${esc(record.map)}</a><span>${speedrunRunner(record)}<small>${esc(speedrunClass(record))} / ${date(record.achievedAt)}</small></span><strong>${esc(record.bestTimeDisplay)}</strong>${replayAction(record)}</div>`).join("") : message("No recent world records available.")}</section><section>${section("03", "Record holders")}${topRunners.length ? topRunners.map((runner, index) => `<a class="rank-row" href="${runnerUrl(runner)}"><span class="rank-number">${index + 1}</span><span class="rank-name" title="${esc(runner.playerName)}">${playerIdentity(runner, { href: "" })}</span><span class="rank-elo">${fmt(runner.currentRecords)}</span><span class="rank-games">RECORDS</span></a>`).join("") : message("Runner standings unavailable.")}</section></div>
+    ${section("04", "Latest completions")}<div class="sr-run-ledger">${(summary.recentRuns || []).slice(0, 8).map((run) => speedrunLine(run)).join("") || message("No recent runs.")}</div>${section("05", "Most active maps")}<div class="sr-run-ledger">${(summary.popularMaps || []).slice(0, 8).map((map) => `<a class="sr-popular-line" href="${link("speedrun-map", "id", map.map)}"><strong>${esc(map.displayName || map.map)}</strong><span>${esc(map.category)} / ${fmt(map.totalRunners)} RUNNERS</span><b>${fmt(map.totalRuns)} RUNS ↗</b></a>`).join("") || message("No map activity.")}</div>
+    ${section("06", "Map record index")}<div class="control-bar"><input id="speed-map-filter" type="search" placeholder="Search all speedrun maps" aria-label="Search speedrun maps" value="${esc(state.speedQuery)}"><select id="speed-class-map-filter" aria-label="Filter maps by class"><option value="">All classes</option>${[[1,"Scout"],[2,"Sniper"],[3,"Soldier"],[4,"Demoman"],[5,"Medic"],[6,"Heavy"],[7,"Pyro"],[8,"Spy"],[9,"Engineer"],["civilian","Civilian"]].map(([value,label]) => `<option value="${value}" ${state.speedClass === String(value) ? "selected" : ""}>${label}</option>`).join("")}</select><span class="micro">SERVER-SIDE SEARCH</span></div><div id="speed-map-list" aria-live="polite"></div><div class="action-row"><button type="button" id="speed-prev" disabled>← Previous maps</button><span class="micro" id="speed-page-status">LOADING MAPS</span><button type="button" id="speed-next" disabled>More maps →</button></div><div class="action-row"><a href="${link("speedrun-catalog")}">Server map catalogue ↗</a><a href="${old("speedruns.html")}">Full run archive ↗</a></div>`,
   );
   let timer;
   document.querySelector("#speed-map-filter").oninput = (e) => {
@@ -459,6 +494,11 @@ async function speedruns() {
     state.speedQuery = e.target.value;
     state.speedPage = 0;
     timer = setTimeout(loadSpeedrunMaps, 250);
+  };
+  document.querySelector("#speed-class-map-filter").onchange = (e) => {
+    state.speedClass = e.target.value;
+    state.speedPage = 0;
+    loadSpeedrunMaps();
   };
   document.querySelector("#speed-prev").onclick = () => {
     state.speedPage--;
@@ -483,7 +523,7 @@ async function loadSpeedrunMaps() {
   status.textContent = "READING MAPS";
   try {
     const response = await get(
-      `speedruns/maps?limit=100&offset=${state.speedPage * 100}&paginated=1&q=${encodeURIComponent(state.speedQuery)}`,
+      `speedruns/maps?limit=100&offset=${state.speedPage * 100}&paginated=1&q=${encodeURIComponent(state.speedQuery)}&class_id=${encodeURIComponent(state.speedClass)}`,
     );
     if (request !== speedRequest) return;
     const maps = response.items || [];
@@ -503,17 +543,110 @@ function speedMapList(rows) {
     ? rows
         .map(
           (m) =>
-            `<a class="map-row" href="${link("speedrun-map", "id", m.map)}"><b>${esc(m.displayName || m.map)}</b><span>${fmt(m.totalRuns)} RUNS</span><span>${esc(m.worldRecordDisplay || "—")}</span><span>↗</span></a>`,
+            `<a class="map-row" href="${link("speedrun-map", "id", m.map)}"><b>${esc(m.displayName || m.map)}</b><span>${esc(m.category || "OTHER")} / ${fmt(m.totalRuns)} RUNS</span><span>${esc(m.worldRecordDisplay || "—")}</span><span>↗</span></a>`,
         )
         .join("")
     : message("No speedrun maps fit this search.");
 }
+const speedrunClass = (row) => row?.class?.name || row?.className || `Class ${row?.classId ?? row?.class?.id ?? "—"}`;
+const speedrunRunner = (row) => playerIdentity(row, {
+  name: row?.playerName || row?.player?.name || row?.steamId || "Unknown runner",
+  discordId: row?.discordId ?? row?.player?.discordId ?? "",
+  href: runnerUrl({
+    discordId: row?.discordId || row?.player?.discordId,
+    steamId: row?.steamId || row?.player?.steamId,
+  }),
+});
+const speedrunLine = (run, map = "") =>
+  `<div class="sr-run-line"><a href="${link("speedrun-map", "id", run.map || map)}">${esc(run.map || map)}</a><span>${speedrunRunner(run)} / ${esc(speedrunClass(run))}</span><strong>${esc(run.timeDisplay || run.bestTimeDisplay || "—")}</strong>${replayAction(run, map)}</div>`;
+function mapComparison(comparisons, classId) {
+  const comparison = (comparisons || []).find((entry) => String(entry.class?.id) === String(classId));
+  if (!comparison) return message("No imported comparison for this class.");
+  const internal = comparison.internal;
+  const externals = comparison.externals || [];
+  return `<div class="sr-comparison"><div class="sr-comparison-head"><span class="eyebrow">${esc(comparison.class?.name || "CLASS")} / CURRENT RULESET</span><strong>${esc(String(comparison.status || "unavailable").replaceAll("_", " ").toUpperCase())}</strong></div><div class="sr-comparison-line"><span>NONAME RECORD</span><b>${esc(internal?.time?.display || "—")}</b><span>${internal ? speedrunRunner(internal) : "No local record"}</span></div>${externals.length ? externals.map((record) => `<div class="sr-comparison-line"><span>${esc(record.source?.label || record.source?.id || "EXTERNAL")}</span><b>${esc(record.time?.display || "—")}</b><span>${esc(record.player?.name || "Unknown runner")} / ${externalLink(record.sourceUrl, "Source record")}</span></div>`).join("") : `<div class="sr-comparison-line"><span>EXTERNAL BASELINE</span><b>—</b><span>No imported record for this class.</span></div>`}</div>`;
+}
 async function speedrunMap() {
   if (!id) throw Error("Speedrun map missing");
-  const m = await get(`speedruns/maps/${encodeURIComponent(id)}`);
+  const [m, comparisonResponse, progression] = await Promise.all([
+    get(`speedruns/maps/${encodeURIComponent(id)}`),
+    get(`speedruns/comparisons/maps/${encodeURIComponent(id)}`).catch(() => null),
+    get(`speedruns/maps/${encodeURIComponent(id)}/progression`).catch(() => null),
+  ]);
+  const comparisons = comparisonResponse?.comparisons || [];
+  const classes = [...new Map([
+    ...(m.leaderboard || []).map((row) => [String(row.classId), speedrunClass(row)]),
+    ...comparisons.map((row) => [String(row.class?.id), row.class?.name]),
+  ]).entries()].filter(([key]) => key && key !== "undefined");
+  const selected = classes.find(([key]) => comparisons.some((row) => String(row.class?.id) === key))?.[0] || classes[0]?.[0] || "";
   set(
-    `<div class="detail-hero"><div><span class="eyebrow">SPEEDRUN MAP / ${esc(m.category)}</span><h1>${esc(m.displayName || m.map)}</h1></div><div class="detail-stat"><b>${esc(m.summary?.worldRecordDisplay || "—")}</b><small>WORLD RECORD TIME</small></div></div><div class="profile-values"><div><small>RUNS</small><b>${fmt(m.summary?.totalRuns)}</b></div><div><small>ATTEMPTS</small><b>${fmt(m.summary?.totalAttempts)}</b></div><div><small>RUNNERS</small><b>${fmt(m.summary?.totalRunners)}</b></div><div><small>RECORDS</small><b>${fmt(m.summary?.totalRecords)}</b></div></div>${section("02", "Leaderboard")}${(m.leaderboard || []).map((r, i) => `<div class="record-row"><b>${fmt(i + 1)} / ${esc(r.playerName || "Unknown")}</b><span>${esc(r.className || "CLASS")}</span><span>${esc(r.bestTimeDisplay)}</span>${r.hasReplay ? `<a href="${old("speedrun-replay.html")}?map=${encodeURIComponent(id)}&class=${encodeURIComponent(r.classId || "")}&steamid=${encodeURIComponent(r.steamId || "")}">↗</a>` : "<span></span>"}</div>`).join("") || message("No records on this map.")}<div class="action-row"><a href="${old("speedrun-map.html")}?map=${encodeURIComponent(id)}">Full speedrun map ↗</a></div>`,
+    `<div class="detail-hero"><div><span class="eyebrow">SPEEDRUN MAP / ${esc(m.category)}</span><h1>${esc(m.displayName || m.map)}</h1></div><div class="detail-stat"><b>${esc(m.summary?.worldRecordDisplay || "—")}</b><small>WORLD RECORD TIME</small></div></div><div class="detail-meta"><span>${m.enabled ? "ENABLED" : "DISABLED"} / CURRENT TIMER</span><span>DIFFICULTY ${m.difficulty == null ? "—" : `D${esc(m.difficulty)}`}</span><span>LAST RUN ${date(m.summary?.lastRunAt)}</span></div><div class="profile-values"><div><small>COMPLETED RUNS</small><b>${fmt(m.summary?.totalRuns)}</b></div><div><small>ATTEMPTS</small><b>${fmt(m.summary?.totalAttempts)}</b></div><div><small>RUNNERS</small><b>${fmt(m.summary?.totalRunners)}</b></div><div><small>RECORDS</small><b>${fmt(m.summary?.totalRecords)}</b></div></div>${section("02", "Class record / community baseline")}<div class="control-bar"><select id="speed-class-filter" aria-label="Filter records and comparisons by class"><option value="">All classes</option>${classes.map(([key, label]) => `<option value="${esc(key)}" ${key === selected ? "selected" : ""}>${esc(label)}</option>`).join("")}</select><span class="micro">CURRENT RULESET / COMPLETED RUNS</span></div><div id="speed-comparison">${comparisonResponse ? mapComparison(comparisons, selected) : message("Imported comparisons unavailable.", "error")}</div>${section("03", "Leaderboard")}<div id="speed-leaderboard"></div>${section("04", "Recent completions")}<div class="sr-run-ledger">${(m.recentRuns || []).slice(0, 20).map((run) => speedrunLine(run, id)).join("") || message("No recent runs.")}</div>${section("05", "Record progression")}<div class="sr-run-ledger">${(m.worldRecordProgression || []).slice(0, 25).map((run) => speedrunLine(run, id)).join("") || message("No record breaks recorded.")}</div><div class="action-row"><a href="${old("speedrun-map.html")}?map=${encodeURIComponent(id)}">Full chart and history ↗</a><a href="${link("speedrun-catalog")}">Server map catalogue ↗</a></div>`,
   );
+  const renderRecords = () => {
+    const choice = document.querySelector("#speed-class-filter").value;
+    const records = (m.leaderboard || []).filter((row) => !choice || String(row.classId) === choice);
+    document.querySelector("#speed-leaderboard").innerHTML = records.length
+      ? records.map((row) => `<div class="sr-record-line"><span class="number muted">#${fmt(row.rank)}</span><span>${speedrunRunner(row)}<small>${esc(speedrunClass(row))} / ${fmt(row.attempts)} ATTEMPTS / SET ${date(row.achievedAt)}</small></span><strong>${esc(row.bestTimeDisplay)}</strong>${replayAction(row, id)}</div>`).join("")
+      : message("No records for this class.");
+    document.querySelector("#speed-comparison").innerHTML = comparisonResponse ? mapComparison(comparisons, choice || selected) : message("Imported comparisons unavailable.", "error");
+  };
+  document.querySelector("#speed-class-filter").onchange = renderRecords;
+  renderRecords();
+}
+async function speedrunPlayer() {
+  if (!id) throw Error("Runner ID missing");
+  const runner = await get(`speedruns/players/${encodeURIComponent(id)}`);
+  const p = runner.player || {};
+  const s = runner.summary || {};
+  const personalBests = runner.personalBests || [];
+  set(`<div class="profile-ribbon"><span>RUNNER FILE / CURRENT RULESET</span><span>${fmt(s.globalRank)} / ${fmt(s.globalRunnerCount)} RUNNERS</span></div><div class="detail-hero player-detail"><div><span class="eyebrow">SPEEDRUN / RUNNER</span><h1>${playerIdentity(p, { name: p.playerName || id, discordId: p.discordId, href: "" })}</h1></div><div class="detail-stat"><b>${fmt(s.currentRecords)}</b><small>CURRENT RECORDS</small></div></div><div class="detail-meta"><span>${(p.steamIds || []).map(esc).join(" / ") || "STEAM ID UNLINKED"}</span><span>LAST RUN ${date(s.lastRunAt)}</span></div><div class="profile-values"><div><small>COMPLETED RUNS</small><b>${fmt(s.totalRuns)}</b></div><div><small>MAPS COMPLETED</small><b>${fmt(s.mapsCompleted)}</b></div><div><small>WORLD RECORDS</small><b>${fmt(s.worldRecords)}</b></div><div><small>BEST RANK</small><b>${s.bestRecordRank ? `#${fmt(s.bestRecordRank)}` : "—"}</b></div></div>${section("02", "Personal bests")}<div class="sr-run-ledger">${personalBests.map((record) => `<div class="sr-record-line"><a href="${link("speedrun-map", "id", record.map)}">${esc(record.map)}</a><span>${esc(speedrunClass(record))}<small>RANK #${fmt(record.rank)} / ${fmt(record.attempts)} ATTEMPTS / SET ${date(record.achievedAt)}</small></span><strong>${esc(record.bestTimeDisplay)}</strong>${replayAction(record)}</div>`).join("") || message("No personal bests.")}</div>${section("03", "World records")}<div class="sr-run-ledger">${(runner.worldRecords || []).map((record) => `<div class="sr-record-line"><a href="${link("speedrun-map", "id", record.map)}">${esc(record.map)}</a><span>${esc(speedrunClass(record))}</span><strong>${esc(record.bestTimeDisplay)}</strong>${replayAction(record)}</div>`).join("") || message("No current world records.")}</div>${section("04", "Recent runs")}<div class="sr-run-ledger">${(runner.recentActivity || []).slice(0, 30).map((run) => speedrunLine(run)).join("") || message("No recent runs.")}</div><div class="action-row"><a href="${old("speedrun-player.html")}?id=${encodeURIComponent(id)}">Full runner history and progress ↗</a>${p.discordId ? `<a href="${link("player", "id", p.discordId)}">Pickup player file ↗</a>` : ""}</div>`);
+}
+async function speedrunCatalog() {
+  const [maps, comparisons] = await Promise.all([
+    get("speedruns/server-maps"),
+    (async () => {
+      const items = [];
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const page = await get(`speedruns/comparisons/leaderboard?limit=500&offset=${offset}`);
+        items.push(...(page.items || []));
+        offset += page.items?.length || 0;
+        hasMore = Boolean(page.pagination?.hasMore && page.items?.length);
+      }
+      return { items };
+    })().catch(() => null),
+  ]);
+  const rows = Array.isArray(maps) ? maps : [];
+  const byMap = new Map();
+  for (const comparison of comparisons?.items || []) {
+    const key = String(comparison.map?.id || "").toLowerCase();
+    if (!key) continue;
+    const sourceRows = byMap.get(key) || [];
+    sourceRows.push(...(comparison.externals || []));
+    byMap.set(key, sourceRows);
+  }
+  set(`${pageHead("05", "Server map catalogue", "Server coverage, timer setup, and imported community baselines.")}<div class="lede"><span>${fmt(rows.length)} SERVER MAPS</span><span>CURRENT TIMER / IMPORTED SOURCES</span></div>${section("02", "Community reference sources")}<div class="sr-reference-register"><div><span>SQUISHY'S BATCAVE</span>${externalLink("http://squishysbatcave.com/", "Source site")}</div><div><span>CHURCH OF CONC</span>${externalLink("https://churchofconc.servehalflife.com/CofC.php?tab=stats&subtab=speedruns", "Speedrun records")}</div></div>${section("03", "Server map inventory")}<div class="control-bar"><input id="catalog-search" type="search" placeholder="Find a server map" aria-label="Search server maps"><select id="catalog-status" aria-label="Filter timer setup"><option value="">All setup states</option><option value="logged">Logged in DB</option><option value="configured">Configured</option><option value="not_logged">Not logged</option><option value="missing_start">Missing start</option><option value="missing_finish">Missing finish</option><option value="needs_setup">Needs setup</option><option value="records">With records</option></select></div><div id="catalog-rows"></div><div class="action-row"><a href="${link("speedruns")}">← Speedruns</a><a href="${old("speedrun-maps.html")}">Full catalogue and map stats ↗</a></div>`);
+  const draw = () => {
+    const query = document.querySelector("#catalog-search").value.trim().toLowerCase();
+    const filter = document.querySelector("#catalog-status").value;
+    const visible = rows.filter((row) => {
+      const status = row.setup_status || row.setupStatus || "";
+      return (!query || `${row.map} ${(row.servers || []).join(" ")}`.toLowerCase().includes(query)) && (!filter || (filter === "records" ? Number(row.totalRecords) > 0 : filter === "needs_setup" ? status !== "configured" : filter === "logged" ? status !== "not_logged" : status === filter));
+    });
+    document.querySelector("#catalog-rows").innerHTML = visible.length ? visible.map((row) => {
+      const records = byMap.get(String(row.map).toLowerCase()) || [];
+      const fastest = (source) => records.filter((record) => record.source?.id === source).sort((a,b) => a.time.milliseconds - b.time.milliseconds)[0];
+      const ref = (source, label) => {
+        const record = fastest(source);
+        return record ? `<span>${esc(label)} ${esc(record.time?.display || "—")} / ${externalLink(record.sourceUrl, "record")}</span>` : "";
+      };
+      return `<div class="sr-catalog-line"><a href="${link("speedrun-map", "id", row.map)}"><strong>${esc(row.map)}</strong><small>${esc(row.setup_status || row.setupStatus || "UNKNOWN")} / ${esc((row.servers || []).join(", ") || "SERVER UNKNOWN")}</small></a><span>${fmt(row.totalRuns)} RUNS / ${fmt(row.totalRecords)} RECORDS</span><div class="sr-catalog-refs">${ref("squishy", "SQUISHY")}${ref("churchofconc", "CHURCH OF CONC")}</div></div>`;
+    }).join("") : message("No server maps fit this filter.");
+  };
+  document.querySelector("#catalog-search").oninput = draw;
+  document.querySelector("#catalog-status").onchange = draw;
+  draw();
 }
 async function analytics() {
   const response = await get("analytics?limit=10");
@@ -541,7 +674,7 @@ async function compare() {
     }
   }
   set(
-    `${pageHead("07", "Compare", "Two player histories, one shared record.")}<form class="compare-form" id="compare-form"><label>PLAYER ONE / NAME OR ID<input name="p1" required value="${esc(data?.players?.p1?.name || p1)}" autocomplete="off"></label><label>PLAYER TWO / NAME OR ID<input name="p2" required value="${esc(data?.players?.p2?.name || p2)}" autocomplete="off"></label><button type="submit">COMPARE ↗</button></form><div id="compare-input-error" class="notice empty">Enter exact player names or IDs. Duplicate names require IDs.</div>${error ? message(error, "error") : ""}${data ? `<div class="compare-versus"><div><span class="eyebrow">PLAYER / ONE</span><h2><a href="${link("player", "id", data.players.p1.id)}">${esc(data.players.p1.name)}</a></h2><b>${data.players.p1.hidden ? "PRIVATE" : elo(data.players.p1.elo)}</b></div><div><span class="eyebrow">PLAYER / TWO</span><h2><a href="${link("player", "id", data.players.p2.id)}">${esc(data.players.p2.name)}</a></h2><b>${data.players.p2.hidden ? "PRIVATE" : elo(data.players.p2.elo)}</b></div></div><div class="profile-values"><div><small>MATCHES TOGETHER</small><b>${fmt(data.stats.teammate.gp)}</b></div><div><small>WINS TOGETHER</small><b>${fmt(data.stats.teammate.w)}</b></div><div><small>HEAD TO HEAD</small><b>${fmt(data.stats.opponent.gp)}</b></div><div><small>H2H WINS</small><b>${fmt(data.stats.opponent.p1_w)}:${fmt(data.stats.opponent.p2_w)}</b></div></div>${section("03", "Shared matches")}${(data.matches || []).map(matchRow).join("") || message("No shared matches recorded.")}` : message("Choose two players to read shared matches and results.")}<div class="action-row"><a href="${old("compare.html")}">Original comparison ↗</a></div>`,
+    `${pageHead("07", "Compare", "Two player histories, one shared record.")}<form class="compare-form" id="compare-form"><label>PLAYER ONE / NAME OR ID<input name="p1" required value="${esc(data?.players?.p1?.name || p1)}" autocomplete="off"></label><label>PLAYER TWO / NAME OR ID<input name="p2" required value="${esc(data?.players?.p2?.name || p2)}" autocomplete="off"></label><button type="submit">COMPARE ↗</button></form><div id="compare-input-error" class="notice empty">Enter exact player names or IDs. Duplicate names require IDs.</div>${error ? message(error, "error") : ""}${data ? `<div class="compare-versus"><div><span class="eyebrow">PLAYER / ONE</span><h2><a href="${link("player", "id", data.players.p1.id)}">${playerIdentity(data.players.p1, { href: "" })}</a></h2><b>${data.players.p1.hidden ? "PRIVATE" : elo(data.players.p1.elo)}</b></div><div><span class="eyebrow">PLAYER / TWO</span><h2><a href="${link("player", "id", data.players.p2.id)}">${playerIdentity(data.players.p2, { href: "" })}</a></h2><b>${data.players.p2.hidden ? "PRIVATE" : elo(data.players.p2.elo)}</b></div></div><div class="profile-values"><div><small>MATCHES TOGETHER</small><b>${fmt(data.stats.teammate.gp)}</b></div><div><small>WINS TOGETHER</small><b>${fmt(data.stats.teammate.w)}</b></div><div><small>HEAD TO HEAD</small><b>${fmt(data.stats.opponent.gp)}</b></div><div><small>H2H WINS</small><b>${fmt(data.stats.opponent.p1_w)}:${fmt(data.stats.opponent.p2_w)}</b></div></div>${section("03", "Shared matches")}${(data.matches || []).map(matchRow).join("") || message("No shared matches recorded.")}` : message("Choose two players to read shared matches and results.")}<div class="action-row"><a href="${old("compare.html")}">Original comparison ↗</a></div>`,
   );
   document.querySelector("#compare-form").onsubmit = async (e) => {
     e.preventDefault();
@@ -681,7 +814,7 @@ function setupSearch() {
           ? response.data
               .map(
                 (p) =>
-                  `<a href="${link("player", "id", p.id)}"><strong>${esc(p.player)}</strong><span class="number">${p.hidden ? "PRIVATE" : elo(p.elo)} ↗</span></a>`,
+                  `<a href="${link("player", "id", p.id)}"><strong>${playerIdentity(p, { href: "" })}</strong><span class="number">${p.hidden ? "PRIVATE" : elo(p.elo)} ↗</span></a>`,
               )
               .join("")
           : message("No players found.");
@@ -698,6 +831,12 @@ function setupSearch() {
 async function render() {
   loading();
   try {
+    try {
+      const supporters = await get("supporters");
+      supporterIds = new Set((supporters.supporters || []).map(String));
+    } catch {
+      supporterIds = new Set();
+    }
     await (
       {
         overview,
@@ -710,6 +849,8 @@ async function render() {
         map,
         speedruns,
         "speedrun-map": speedrunMap,
+        "speedrun-player": speedrunPlayer,
+        "speedrun-catalog": speedrunCatalog,
         analytics,
         compare,
         archive,

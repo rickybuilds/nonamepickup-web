@@ -822,7 +822,6 @@ function createSpeedrunsRouter({ logRouteError }) {
         m.finish_y,
         m.finish_z,
         COALESCE(run_stats.totalRuns, 0) AS totalRuns,
-        COALESCE(attempt_stats.totalAttempts, 0) AS totalAttempts,
         COALESCE(run_stats.totalRunners, 0) AS totalRunners,
         COALESCE(record_stats.totalRecords, 0) AS totalRecords,
         run_stats.lastRunAt,
