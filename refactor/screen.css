@@ -901,6 +901,10 @@ main {
   vertical-align: baseline;
 }
 .identity-name { min-width: 0; overflow-wrap: anywhere; }
+.rank-name .player-identity,
+.table-name .player-identity { width: 100%; }
+.rank-name .identity-name,
+.table-name .identity-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .supporter-diamond {
   display: inline-block;
   flex: none;
