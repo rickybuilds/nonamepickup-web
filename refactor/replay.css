@@ -15,6 +15,11 @@
   font-size: clamp(36px, 5vw, 76px);
   white-space: nowrap;
 }
+@media (min-width: 1101px) {
+  .replay-record-head .detail-stat b {
+    font-size: clamp(36px, 4.1vw, 64px);
+  }
+}
 .replay-record-meta {
   flex-wrap: wrap;
 }
