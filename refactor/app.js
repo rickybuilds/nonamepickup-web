@@ -118,8 +118,8 @@ const replayUrl = (run, map = "") => {
   if (!run?.hasReplay) return "";
   const runId = run.runId ?? run.id;
   return runId != null
-    ? `${old("speedrun-replay.html")}?runId=${encodeURIComponent(runId)}`
-    : `${old("speedrun-replay.html")}?map=${encodeURIComponent(run.map || map)}&classId=${encodeURIComponent(run.classId ?? "")}&steamid=${encodeURIComponent(run.steamId || "")}`;
+    ? `./replay.html?runId=${encodeURIComponent(runId)}`
+    : `./replay.html?map=${encodeURIComponent(run.map || map)}&classId=${encodeURIComponent(run.classId ?? "")}&steamid=${encodeURIComponent(run.steamId || "")}`;
 };
 const replayAction = (run, map = "") => {
   const url = replayUrl(run, map);

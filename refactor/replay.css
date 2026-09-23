@@ -1,0 +1,344 @@
+.replay-page {
+  overflow: auto;
+  background: var(--paper);
+}
+.replay-record {
+  max-width: 1920px;
+}
+.replay-record-head > div:first-child {
+  min-width: 0;
+}
+.replay-record-head h1 {
+  overflow-wrap: anywhere;
+}
+.replay-record-head .detail-stat b {
+  font-size: clamp(36px, 5vw, 76px);
+  white-space: nowrap;
+}
+.replay-record-meta {
+  flex-wrap: wrap;
+}
+.replay-record-meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.replay-record-links {
+  border-bottom: 2px solid var(--ink);
+}
+.replay-stage {
+  height: min(760px, calc(100vh - 92px));
+  min-height: 560px;
+  background: var(--live-bg);
+  border-bottom: 2px solid var(--ink);
+}
+.replay-stage :is(button, select) {
+  font-family: var(--mono);
+  font-weight: 500;
+  border-radius: 0;
+  box-shadow: none;
+}
+.replay-stage :is(button, a):focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 2px;
+}
+.replay-topbar,
+.replay-stats,
+.replay-controls,
+.replay-status,
+.replay-input-hud,
+.replay-grenade-hud,
+.replay-compare-panel,
+.replay-compare-legend,
+.replay-free-roam-help {
+  border: 1px solid #667066;
+  border-radius: 0;
+  color: var(--live-ink);
+  background: rgba(12, 16, 14, .94);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.replay-topbar {
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid #667066;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 18px;
+}
+.replay-topbar > div:first-child {
+  min-width: 0;
+}
+.replay-topbar h2 {
+  margin: 2px 0;
+  color: var(--live-ink);
+  font: 700 clamp(18px, 2.2vw, 30px)/1 var(--font);
+  letter-spacing: -.04em;
+  overflow-wrap: anywhere;
+}
+.replay-topbar p,
+.replay-topbar .speedrun-kicker {
+  color: #d4d7cc;
+  font: 11px/1.3 var(--mono);
+}
+.replay-topbar .speedrun-kicker {
+  color: var(--acid);
+  letter-spacing: .08em;
+}
+.replay-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+.replay-actions :is(button, a),
+.replay-button,
+.replay-speed button,
+.replay-fov button,
+.replay-compare-panel button {
+  min-height: 42px;
+  border: 1px solid #667066;
+  border-radius: 0;
+  color: var(--live-ink);
+  background: var(--live-bg);
+  font: 11px var(--mono);
+  text-transform: uppercase;
+  padding: 8px 10px;
+}
+.replay-actions :is(button, a):hover,
+.replay-button:hover,
+.replay-speed button:hover {
+  background: #303831;
+  text-decoration: none;
+}
+.replay-button.active,
+.replay-speed button.active,
+.replay-compare-button.active {
+  border-color: var(--acid);
+  color: var(--accent-ink);
+  background: var(--acid);
+}
+.replay-stats {
+  top: 104px;
+  right: 16px;
+  width: min(390px, calc(100% - 32px));
+  gap: 0;
+  padding: 0;
+}
+.replay-stats div {
+  border: 0;
+  border-right: 1px solid #667066;
+  border-bottom: 1px solid #667066;
+  border-radius: 0;
+  background: transparent;
+}
+.replay-stats span,
+.replay-speedometer span,
+.replay-speedometer small {
+  color: #d4d7cc;
+  font: 10px var(--mono);
+}
+.replay-stats strong,
+.replay-speedometer strong {
+  color: var(--live-ink);
+  font-family: var(--mono);
+  font-weight: 500;
+}
+.replay-input-hud {
+  right: 16px;
+  bottom: 132px;
+}
+.replay-speedometer,
+.replay-input-hud kbd {
+  border: 1px solid #667066;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.replay-input-hud kbd {
+  color: var(--live-ink);
+  font-family: var(--mono);
+}
+.replay-input-hud kbd.pressed {
+  border-color: var(--acid);
+  color: var(--accent-ink);
+  background: var(--acid);
+  box-shadow: none;
+}
+.replay-controls {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  gap: 7px;
+  border: 0;
+  border-top: 1px solid #667066;
+  padding: 12px 16px;
+}
+.replay-button,
+.replay-button.secondary,
+.replay-speed button {
+  min-width: 0;
+  color: var(--live-ink);
+  background: transparent;
+}
+.replay-button.active,
+.replay-speed button.active {
+  color: var(--accent-ink);
+  background: var(--acid);
+}
+.replay-fov-label,
+.replay-scrubber {
+  color: var(--live-ink);
+  font: 11px var(--mono);
+}
+.replay-scrubber input {
+  accent-color: var(--acid);
+}
+.replay-compare-panel {
+  top: 104px;
+  left: 16px;
+  width: min(390px, calc(100% - 32px));
+}
+.replay-compare-heading strong,
+.replay-compare-panel p,
+.replay-compare-panel label,
+#replay-compare-status {
+  color: var(--live-ink);
+  font-family: var(--mono);
+}
+.replay-compare-panel select {
+  color: var(--live-ink);
+  background: var(--live-bg);
+  border-radius: 0;
+}
+.replay-compare-legend .primary-dot {
+  background: var(--acid);
+}
+.replay-compare-legend .compare-dot {
+  background: var(--blue);
+}
+.replay-status {
+  color: var(--live-ink);
+  font: 12px var(--mono);
+}
+.replay-free-roam-help strong {
+  color: var(--acid);
+  font-family: var(--mono);
+}
+.replay-free-roam-touch button {
+  border: 1px solid var(--acid);
+  border-radius: 0;
+  color: var(--live-ink);
+  background: var(--live-bg);
+  box-shadow: none;
+  font-family: var(--mono);
+}
+.replay-free-roam-touch button.pressed {
+  color: var(--accent-ink);
+  background: var(--acid);
+  box-shadow: none;
+}
+.replay-grenade-hud {
+  border-radius: 0;
+}
+@media (max-width: 1100px) {
+  .replay-stage {
+    height: 740px;
+  }
+  .replay-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .replay-fov,
+  .replay-speed,
+  .replay-scrubber {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .replay-page .masthead {
+    display: grid;
+  }
+  .replay-stage {
+    height: 850px;
+    min-height: 850px;
+  }
+  .replay-topbar {
+    top: 0;
+    left: 0;
+    right: 0;
+    display: block;
+    padding: 10px 12px;
+  }
+  .replay-topbar h2 {
+    font-size: 18px;
+  }
+  .replay-topbar p {
+    font-size: 10px;
+  }
+  .replay-actions {
+    justify-content: flex-start;
+    margin-top: 8px;
+    gap: 5px;
+  }
+  .replay-actions :is(button, a) {
+    min-height: 42px;
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  .replay-stats {
+    top: 130px;
+    left: auto;
+    right: 8px;
+    width: min(270px, calc(100% - 16px));
+  }
+  .replay-input-hud {
+    top: 230px;
+    bottom: auto;
+    right: 8px;
+  }
+  .replay-controls {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px;
+  }
+  .replay-compare-panel {
+    top: 130px;
+    left: 8px;
+  }
+  .replay-record-meta {
+    gap: 5px 15px;
+  }
+  .replay-record-meta span {
+    font-size: 12px;
+  }
+  .replay-record-links {
+    padding: 10px 20px;
+  }
+}
+@media (max-width: 430px) {
+  .replay-record-head .detail-stat b {
+    font-size: 35px;
+  }
+  .replay-stage {
+    height: 900px;
+    min-height: 900px;
+  }
+  .replay-topbar .speedrun-kicker,
+  #replay-subtitle {
+    display: none;
+  }
+  .replay-stats {
+    top: 115px;
+  }
+  .replay-input-hud {
+    top: 215px;
+  }
+  .replay-controls {
+    gap: 5px;
+  }
+  .replay-button,
+  .replay-speed button {
+    font-size: 10px;
+  }
+}

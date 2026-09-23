@@ -2963,8 +2963,15 @@ async function init() {
     $("replay-subtitle").textContent = `${replay.playerName || replay.steamid || "Unknown"} · ${runTime(replay.timeMs)} · ${state.normalized.length.toLocaleString()} frames${projectileSummary}`;
     $("replay-duration").textContent = runTime(replay.timeMs);
     $("replay-slider").max = String(Math.max(1, Math.round(state.duration * 1000)));
-    $("replay-map-link").href = `speedrun-map.html?map=${encodeURIComponent(replay.map || "")}`;
-    document.title = `NoName TFC | ${replay.map || "Speedrun"} Replay`;
+    $("replay-map-link").href = document.body.dataset.refactorReplay === "true"
+      ? `./refactor/?view=speedrun-map&id=${encodeURIComponent(replay.map || "")}`
+      : `speedrun-map.html?map=${encodeURIComponent(replay.map || "")}`;
+    document.title = document.body.dataset.refactorReplay === "true"
+      ? `${replay.map || "Speedrun"} Replay / NoName Pickup 2080`
+      : `NoName TFC | ${replay.map || "Speedrun"} Replay`;
+    document.dispatchEvent(new CustomEvent("speedrun-replay:ready", {
+      detail: { replay, frameCount: state.normalized.length, projectileCount: state.projectileCount }
+    }));
 
     buildSceneForReplay();
     const cameraButton = $("replay-camera-mode");
@@ -2984,6 +2991,7 @@ async function init() {
     console.error("[speedrun-replay]", error);
     setPlaying(false);
     setStatus(error.message || "Replay unavailable.");
+    document.dispatchEvent(new CustomEvent("speedrun-replay:error", { detail: { error } }));
   }
 }
 
