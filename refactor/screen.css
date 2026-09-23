@@ -498,6 +498,14 @@ main {
   letter-spacing: 0;
   line-height: 1.4;
 }
+.analytics-row > strong > small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font: 10px var(--mono);
+  font-weight: 400;
+  line-height: 1.4;
+}
 .identity-table {
   display: grid;
   grid-template-columns: minmax(180px, 1.4fr) minmax(120px, .8fr) minmax(110px, .5fr) minmax(120px, .65fr) minmax(80px, .4fr);
