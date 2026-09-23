@@ -1030,15 +1030,9 @@ async function render() {
         "speedrun-map": speedrunMap,
         "speedrun-player": speedrunPlayer,
         "speedrun-catalog": speedrunCatalog,
-        analytics,
         compare,
         archive,
         ...utilityViews,
-        tracker,
-        kicked,
-        odds,
-        mvp,
-        honors,
       }[view] || overview
     )();
   } catch (error) {
