@@ -844,9 +844,12 @@ main {
   grid-template-columns: 40px minmax(160px, 1fr) 85px 90px 90px 90px;
 }
 .players-table {
-  grid-template-columns: 40px 290px 72px 76px 94px 100px;
-  width: fit-content;
+  grid-template-columns: 40px minmax(180px, 320px) 78px 82px 96px 170px;
+  width: 100%;
   max-width: 100%;
+}
+.players-table > :last-child {
+  white-space: nowrap;
 }
 .maps-table {
   grid-template-columns: 40px minmax(160px, 1fr) 110px 120px 24px;
