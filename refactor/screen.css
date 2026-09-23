@@ -893,26 +893,25 @@ main {
   font: 12px var(--mono);
 }
 .player-identity {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.25em;
-  min-width: 0;
+  display: inline;
   max-width: 100%;
   vertical-align: baseline;
 }
 .identity-name { min-width: 0; overflow-wrap: anywhere; }
 .rank-name .player-identity,
-.table-name .player-identity { width: 100%; }
+.table-name .player-identity { display: inline-flex; align-items: baseline; gap: .25em; width: 100%; min-width: 0; }
 .rank-name .identity-name,
 .table-name .identity-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .supporter-diamond {
   display: inline-block;
-  flex: none;
+  margin-left: .25em;
   font-size: 0.72em;
   line-height: 1;
   vertical-align: 0.05em;
   filter: saturate(0.8);
 }
+.rank-name .supporter-diamond,
+.table-name .supporter-diamond { flex: none; margin-left: 0; }
 .sr-external { font: 9px var(--mono); color: var(--muted); letter-spacing: .04em; }
 .sr-record-line,
 .sr-run-line,
@@ -925,6 +924,7 @@ main {
   border-bottom: 1px solid var(--line);
   min-width: 0;
 }
+#runner-pbs .sr-record-line[hidden] { display: none; }
 .sr-record-line > span,
 .sr-run-line > span { min-width: 0; overflow-wrap: anywhere; }
 .sr-record-line small,
