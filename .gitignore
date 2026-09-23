@@ -71,3 +71,4 @@ api/test/replay.test.js
 /samples
 elo.db-shm
 elo.db-wal
+/.codex-remote-attachments
