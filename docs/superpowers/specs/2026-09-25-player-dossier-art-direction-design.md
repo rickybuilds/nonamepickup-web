@@ -12,23 +12,22 @@ The rest of the page alternates deliberately between analytical scale, game imag
 
 ### Information chapters
 
-1. **Identity and standing:** portrait-led masthead; name is the strongest typographic anchor. Retain Steam identity, supporter identity/diamond, current ELO, ranks, last-20 movement, and recent-form outcomes. No conventional profile card.
-2. **Career snapshot:** a primary ELO/rank/trajectory grouping; record, peak, and win rate as secondary measures; streak, MVPs, and PUG frequency as tertiary metadata. Preserve hidden-rating behavior.
-3. **Performance:** give K/D a clear focal position and make kills/deaths legible as a relationship. Group damage, captures, and conc jumps by relative importance instead of six identical tiles. Retain all displayed totals.
-4. **Play-style fingerprint:** visibly communicate offense/defense time balance and class distribution before the user reads labels. Keep the existing filters, kill-event metrics, class/weapon breakdown, top weapons, and class-time controls. Use only team blue/red as semantic accents.
-5. **Recent matches:** make imagery and result state the strongest page interruption after the opening. Use an editorial lead match and compact match strips/contact-sheet treatment for remaining visible matches. Preserve map, image, result, score, ELO delta, date/ID, players, pagination, Project 2080 match links, Hampalyzer, and TFCStats links.
-6. **ELO history:** present the current SVG trend as a wide career visualization with readable trajectory, current value, peak/low context, and time context. Keep chart furniture minimal and avoid implying unavailable measurements.
-7. **Activity:** retain the day-by-two-hour heatmap as a compact archival fingerprint. Give it a distinct surface/shape from the ELO chart.
-8. **Relationships:** compose teammates and opponents as an explicit “with you / against you” matchup sheet, with supporter-aware identities and visible shared-match/win-loss signals.
-9. **Map tendencies:** use an asymmetric image-led map atlas that distinguishes most played, best record, and toughest maps by scale and semantic color. Retain win rate and W/L/T/game counts, all-map expansion, and map navigation.
-10. **Connected records:** retain all existing onward links and make this a quiet closing index.
+1. **Identity and standing:** portrait-led masthead; name is the strongest typographic anchor. Retain Steam identity, supporter identity/diamond, current ELO, ranks, last-20 movement, recent-form outcomes, and the compact career record summary. No conventional profile card.
+2. **ELO career trajectory:** follow identity and standing with the existing career trend. Present it as a wide visualization with readable trajectory, current value, peak/low context, and date context. Keep chart furniture minimal and avoid implying unavailable measurements. Preserve hidden-rating behavior and supporting career values.
+3. **Recent matches:** follow the trajectory with the strongest image/result interruption. Use an editorial lead match and compact match strips/contact-sheet treatment for remaining visible matches. Preserve map, image, result, score, ELO delta, date/ID, players, pagination, Project 2080 match links, Hampalyzer, and TFCStats links.
+4. **Performance:** give K/D a clear focal position and make kills/deaths legible as a relationship. Group damage, captures, and conc jumps by relative importance instead of six identical tiles. Retain all displayed totals.
+5. **Play-style fingerprint:** visibly communicate offense/defense time balance and class distribution before the user reads labels. Keep the existing filters, kill-event metrics, class/weapon breakdown, top weapons, and class-time controls. Use only team blue/red as semantic accents.
+6. **Activity:** retain the day-by-two-hour heatmap as a compact archival fingerprint. Give it a distinct surface/shape from the ELO chart.
+7. **Relationships:** compose teammates and opponents as an explicit “with you / against you” matchup sheet, with supporter-aware identities and visible shared-match/win-loss signals.
+8. **Map tendencies:** use an asymmetric image-led map atlas that distinguishes most played, best record, and toughest maps by scale and semantic color. Retain win rate and W/L/T/game counts, all-map expansion, and map navigation.
+9. **Connected records:** retain all existing onward links and make this a quiet closing index.
 
 ## Composition and responsive behavior
 
 - Recompose the page into chapter wrappers in `refactor/player-detail.js`, preserving existing API calls, query parameters, element IDs used by controls, deep links, pagination, and result semantics.
 - Use `refactor/player-detail.css` for the dossier art direction; do not change shared navigation, global palette, or other views.
-- Desktop: asymmetrical masthead; compact career band; unequal analytical groupings; one broad ELO visual; image-forward match and map chapters. Use negative space at chapter transitions rather than adding more rules everywhere.
-- Mobile: preserve Project 2080 navigation and use an intentional single-column reading sequence prioritizing identity, standing, ELO trajectory, recent matches, and core performance before deeper combat and archive detail. Keep map crops meaningful, chart labels legible, and controls usable without horizontally squeezed desktop tables.
+- Desktop and mobile share the narrative order: identity/standing, ELO career trajectory, recent matches, performance, play style, activity, relationships, map tendencies, connected records. Desktop uses asymmetrical masthead, compact career band, unequal analytical groupings, a broad ELO visual, and image-forward match/map chapters. Use negative space at chapter transitions rather than adding rules everywhere.
+- Mobile preserves Project 2080 navigation and adapts each chapter in that same sequence. Keep map crops meaningful, chart labels legible, and controls usable without horizontally squeezed desktop tables.
 - Keep DOM reading order aligned with the visual reading sequence; do not duplicate the underlying data or use CSS order to create a conflicting reading order.
 - Preserve the current implementation's support for day/night themes and reduced-motion/global type rules.
 
@@ -38,7 +37,7 @@ The rest of the page alternates deliberately between analytical scale, game imag
 - **Trajectory-first chronology:** opens with an oversized ELO timeline and places identity beside it. This emphasizes career movement but makes a graph compete with, or precede, the requested identity anchor.
 - **Map-atlas-first:** leads with large map imagery and environment groups. It creates an atmospheric surface but delays the player and overweights one analytical dimension.
 
-The identity-first approach was selected and approved in chat on 2026-09-25.
+The identity-first approach was selected and approved in chat on 2026-09-25. On 2026-09-25 the user approved the written spec and specified that desktop should use the same story order as mobile, moving ELO trajectory and recent matches earlier than performance and play-style analysis.
 
 ## Boundaries and acceptance
 
