@@ -162,3 +162,221 @@
   .dossier-all-maps > a { grid-template-columns: minmax(0, 1fr) 50px 65px; }
   .dossier-all-maps > a span:nth-child(3) { display: none; }
 }
+
+/* Player dossier: give each kind of record its own visual surface. */
+.dossier-header {
+  display: grid;
+  grid-template-columns: minmax(290px, .8fr) minmax(0, 1.5fr);
+  grid-template-areas: "identity standing" "form standing";
+  align-items: center;
+  gap: 14px 3vw;
+  padding: 22px 3.3vw;
+  border: 0;
+  background: var(--panel);
+}
+.dossier-identity { grid-area: identity; gap: 18px; }
+.dossier-avatar { width: 106px; height: 106px; border-width: 0; background: var(--soft); }
+.dossier-avatar span { font-size: 48px; }
+.dossier-identity h1 { font-size: clamp(40px, 4.1vw, 68px); }
+.dossier-standing {
+  grid-area: standing;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+  border: 0;
+}
+.dossier-standing > div,
+.dossier-standing > div + div {
+  min-height: 76px;
+  padding: 11px 12px 9px;
+  border: 0;
+  background: var(--paper);
+}
+.dossier-standing > div:first-child { grid-column: span 2; background: var(--reverse-bg); }
+.dossier-standing > div:first-child b { color: var(--blue); }
+.dossier-standing b { font-size: clamp(27px, 2.25vw, 38px); }
+.dossier-standing small { margin-top: 7px; }
+.dossier-form { grid-area: form; border: 0; padding: 0; margin: 0; gap: 10px; }
+.dossier-form > div { gap: 3px; }
+.dossier-form i { width: 22px; height: 10px; border: 0; }
+.dossier-form > span:last-child { color: var(--muted); }
+.dossier-stat-rule {
+  background: var(--reverse-bg);
+  border: 0;
+  padding: 1px 3.3vw;
+  gap: 1px;
+}
+.dossier-stat-rule > div,
+.dossier-stat-rule > div:first-child,
+.dossier-stat-rule > div:last-child {
+  padding: 13px 14px 12px;
+  border: 0;
+  background: var(--reverse-bg);
+  color: var(--reverse-ink);
+}
+.dossier-stat-rule small { color: color-mix(in srgb, var(--reverse-ink) 70%, var(--reverse-bg)); }
+.dossier-performance { background: var(--paper); border: 0; padding: 8px 3.3vw; gap: 12px; }
+.dossier-performance-numbers { background: var(--reverse-bg); color: var(--reverse-ink); padding: 1px; gap: 1px; }
+.dossier-performance-numbers > div,
+.dossier-performance-numbers > div:nth-child(3n + 1) {
+  padding: 18px 16px;
+  border: 0;
+  background: var(--reverse-bg);
+}
+.dossier-performance-numbers > div:first-child b { color: var(--blue); }
+.dossier-performance-numbers > div:nth-child(5) b { color: var(--red); }
+.dossier-performance-numbers small { color: color-mix(in srgb, var(--reverse-ink) 70%, var(--reverse-bg)); }
+.dossier-class-distribution { padding: 17px 20px; background: var(--panel); }
+.dossier-class-distribution > div { border: 0; padding: 5px 0; }
+.dossier-class-distribution > div > i,
+.dossier-class-bars > div > i { height: 8px; background: color-mix(in srgb, var(--ink) 12%, var(--soft)); }
+.dossier-class-distribution > div > i > i { background: var(--blue); }
+.dossier-role { padding: 18px 2vw 19px; background: var(--panel); }
+.dossier-role-offense { background: color-mix(in srgb, var(--blue) 10%, var(--panel)); }
+.dossier-role-defense { background: color-mix(in srgb, var(--red) 9%, var(--panel)); }
+.dossier-role:first-child { border: 0; }
+.dossier-role-head { align-items: center; }
+.dossier-role-head h3 { display: flex; align-items: center; gap: 10px; font-size: 25px; }
+.dossier-role-head h3::before { content: ""; display: block; width: 9px; height: 24px; background: var(--blue); }
+.dossier-role-defense .dossier-role-head h3::before { background: var(--red); }
+.dossier-role-head > span { font-size: 10px; }
+.dossier-role-metrics { margin: 10px 0 8px; border: 0; gap: 5px; }
+.dossier-role-metrics > div,
+.dossier-role-metrics > div:first-child { padding: 10px 8px; border: 0; background: color-mix(in srgb, var(--paper) 76%, transparent); }
+.dossier-role-metrics b { color: var(--blue); font-size: clamp(24px, 2vw, 32px); }
+.dossier-role-defense .dossier-role-metrics b { color: var(--red); }
+.dossier-role-metrics small { margin-top: 5px; }
+.dossier-top-weapon { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px 12px; align-items: baseline; padding: 7px 0 10px; }
+.dossier-top-weapon > span:first-child { color: var(--muted); }
+.dossier-top-weapon strong { font-size: 16px; }
+.dossier-class-bars > div { border: 0; padding: 4px 0; }
+.dossier-role-offense .dossier-class-bars > div > i > i { background: var(--blue); }
+.dossier-role-defense .dossier-class-bars > div > i > i { background: var(--red); }
+.dossier-granular-lists { background: var(--panel); border: 0; }
+.dossier-granular-lists details > summary { background: var(--reverse-bg); color: var(--reverse-ink); border: 0; }
+.dossier-granular-lists summary span { color: var(--muted); }
+.dossier-weapon-group { border: 0; padding: 14px 2vw; }
+.dossier-weapon-group h4 { color: var(--blue); }
+.dossier-two-lists { gap: 1px; background: var(--paper); }
+.dossier-two-lists > div,
+.dossier-two-lists > div:first-child { border: 0; padding: 16px 2vw; background: var(--panel); }
+.dossier-two-lists h3 { display: flex; align-items: center; gap: 8px; }
+.dossier-two-lists > div:first-child h3::before,
+.dossier-two-lists > div:last-child h3::before { content: ""; width: 8px; height: 19px; background: var(--blue); }
+.dossier-two-lists > div:last-child h3::before { background: var(--acid); }
+.dossier-two-lists > div > div { border: 0; border-top: 1px solid var(--line); }
+.dossier-match {
+  grid-template-columns: minmax(220px, 27%) minmax(0, 1fr);
+  margin: 0 3.3vw 10px;
+  border: 0;
+  background: var(--panel);
+}
+.dossier-match-image { min-height: 156px; }
+.dossier-match-image img { filter: saturate(.82) contrast(1.08); }
+.dossier-match-main { padding: 13px 20px; }
+.dossier-match-scoreline { justify-content: flex-start; gap: 15px !important; }
+.dossier-match-scoreline > strong { font-size: 28px !important; }
+.dossier-outcome { padding: 5px 8px; font-weight: 500; }
+.dossier-delta { margin-left: auto; padding: 4px 8px; background: var(--paper); }
+.dossier-teams { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.dossier-team-line { min-width: 0; }
+.dossier-team-line > b { margin-bottom: 5px; }
+.dossier-team-detail { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 7px; align-items: center; }
+.dossier-team-detail > span:last-child { line-height: 1.35; }
+.dossier-team-faces { display: flex; padding-left: 4px; }
+.dossier-team-faces i { display: grid; place-items: center; width: 22px; height: 22px; margin-left: -4px; overflow: hidden; border: 1px solid var(--panel); background: var(--soft); font: 9px var(--mono); font-style: normal; }
+.dossier-team-faces img { width: 100%; height: 100%; object-fit: cover; }
+.dossier-match-main nav { gap: 8px 16px; }
+.dossier-chart { padding: 14px 3.3vw 12px; border: 0; background: var(--panel); }
+.dossier-chart svg { height: 190px; }
+.dossier-chart polygon { fill: color-mix(in srgb, var(--blue) 13%, transparent); }
+.dossier-chart polyline { stroke-width: 3.5; }
+.dossier-chart circle { fill: var(--blue); stroke: var(--panel); stroke-width: 3; }
+.dossier-chart > div { padding-top: 6px; }
+.dossier-activity { margin-top: 1px; padding: 18px 3.3vw; border: 0; background: var(--reverse-bg); color: var(--reverse-ink); }
+.dossier-activity h3 { margin-bottom: 7px; }
+.dossier-activity p { color: color-mix(in srgb, var(--reverse-ink) 72%, var(--reverse-bg)); }
+.dossier-heatmap-row i { height: 19px; background: color-mix(in srgb, var(--blue) var(--heat), var(--reverse-bg)); }
+.dossier-heatmap-hours { color: color-mix(in srgb, var(--reverse-ink) 76%, var(--reverse-bg)); }
+.dossier-relationships { gap: 1px; background: var(--paper); border: 0; }
+.dossier-relationships > div,
+.dossier-relationships > div:first-child { border: 0; padding: 16px 2vw; background: color-mix(in srgb, var(--blue) 8%, var(--panel)); }
+.dossier-relationships > div:last-child { background: color-mix(in srgb, var(--red) 8%, var(--panel)); }
+.dossier-relationships > div > div { border: 0; border-top: 1px solid var(--line); padding: 7px 0; }
+.dossier-person { align-items: center; }
+.dossier-person-link { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.dossier-person-avatar { display: grid; place-items: center; width: 34px; height: 34px; flex: none; overflow: hidden; background: var(--soft); font: 12px var(--mono); }
+.dossier-person-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dossier-person-link > span:last-child { min-width: 0; }
+.dossier-person-result { display: grid; grid-template-columns: auto auto; gap: 0 7px; align-items: center; text-align: right; }
+.dossier-person-result strong { color: var(--blue); font-size: 17px; }
+.dossier-relationships > div:last-child .dossier-person-result strong { color: var(--red); }
+.dossier-person-result small { grid-column: 1 / -1; }
+.dossier-person-result > i { grid-column: 1 / -1; display: block; height: 4px; margin-top: 4px; background: color-mix(in srgb, var(--ink) 12%, var(--soft)); }
+.dossier-person-result > i > i { display: block; height: 100%; background: var(--blue); }
+.dossier-relationships > div:last-child .dossier-person-result > i > i { background: var(--red); }
+.dossier-map-sets { gap: 1px; background: var(--paper); border: 0; }
+.dossier-map-sets > div,
+.dossier-map-sets > div:not(:last-child) { border: 0; padding: 17px 1.5vw; background: var(--panel); }
+.dossier-map-image { height: 114px; }
+.dossier-map-image img { filter: saturate(.86) contrast(1.08); }
+.dossier-map-tile { padding: 0 0 8px; border: 0; }
+.dossier-map-stats { display: grid; grid-template-columns: auto 1fr auto; gap: 0 8px; align-items: baseline; margin-top: 7px; }
+.dossier-map-stats strong { color: var(--map-color); font-size: 24px; line-height: 1; }
+.dossier-map-stats > span, .dossier-map-stats small { font: 10px var(--mono); color: var(--muted); }
+.dossier-map-stats small { grid-column: 2 / -1; }
+.dossier-map-meter { display: block; height: 5px; margin-top: 6px; background: var(--soft); }
+.dossier-map-meter > i { display: block; height: 100%; background: var(--map-color); }
+
+@media (max-width: 900px) {
+  .dossier-performance { padding: 8px 3.3vw; }
+  .dossier-performance-numbers > div,
+  .dossier-performance-numbers > div:nth-child(3n + 1) { padding: 15px 12px; }
+  .dossier-map-sets > div,
+  .dossier-map-sets > div:not(:last-child) { padding: 15px 2vw; }
+  .dossier-map-image { height: 96px; }
+}
+@media (max-width: 760px) {
+  .dossier-header { grid-template-columns: minmax(0, 1fr); grid-template-areas: "identity" "standing" "form"; gap: 15px; padding: 16px 3.3vw; }
+  .dossier-avatar { width: 66px; height: 66px; }
+  .dossier-identity h1 { font-size: clamp(30px, 7vw, 48px); }
+  .dossier-standing { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .dossier-standing > div,
+  .dossier-standing > div + div { min-height: 62px; padding: 8px 6px; }
+  .dossier-standing > div:first-child { grid-column: span 1; }
+  .dossier-standing b { font-size: clamp(19px, 5vw, 27px); }
+  .dossier-standing small { font-size: 9px; }
+  .dossier-stat-rule { padding: 1px 3.3vw; gap: 1px; }
+  .dossier-stat-rule > div,
+  .dossier-stat-rule > div:first-child,
+  .dossier-stat-rule > div:last-child { padding: 11px 9px; }
+  .dossier-performance { padding: 7px 3.3vw; gap: 7px; }
+  .dossier-performance-numbers > div,
+  .dossier-performance-numbers > div:nth-child(3n + 1) { padding: 13px 9px; }
+  .dossier-role { padding: 15px 3.3vw; }
+  .dossier-role-metrics { gap: 3px; }
+  .dossier-role-metrics > div,
+  .dossier-role-metrics > div:first-child { padding: 8px 5px; }
+  .dossier-top-weapon { grid-template-columns: 1fr auto; }
+  .dossier-top-weapon > span:last-child { grid-column: 2; }
+  .dossier-match { grid-template-columns: 100px minmax(0, 1fr); margin: 0 3.3vw 8px; }
+  .dossier-match-image { min-height: 200px; }
+  .dossier-match-main { padding: 10px 11px; }
+  .dossier-match-scoreline { gap: 7px !important; }
+  .dossier-match-scoreline > strong { font-size: 19px !important; }
+  .dossier-delta { padding: 3px 5px; }
+  .dossier-teams { grid-template-columns: 1fr; gap: 6px; }
+  .dossier-team-detail { grid-template-columns: 1fr; gap: 3px; }
+  .dossier-team-faces { display: none; }
+  .dossier-chart { padding: 10px 3.3vw; }
+  .dossier-chart svg { height: 150px; }
+  .dossier-activity { padding: 15px 3.3vw; }
+  .dossier-heatmap-row i { height: 14px; }
+  .dossier-relationships > div,
+  .dossier-relationships > div:first-child,
+  .dossier-map-sets > div,
+  .dossier-map-sets > div:not(:last-child) { padding: 14px 3.3vw; }
+  .dossier-person-result { min-width: 72px; }
+  .dossier-map-image { height: 126px; }
+  .dossier-map-stats { grid-template-columns: auto 1fr auto; }
+}
