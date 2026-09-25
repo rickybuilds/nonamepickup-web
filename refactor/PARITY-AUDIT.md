@@ -1,6 +1,6 @@
 # Project 2080 production parity audit
 
-**Updated:** 2026-09-23
+**Updated:** 2026-09-25
 **Scope:** Full source review of the legacy user-facing pages, Project 2080, and relevant API routes. The parity implementation in this working tree is updated; no production data or database schema was changed. No test files were created or modified. Existing tests and static checks are run separately and recorded below.
 
 ## Result
@@ -17,7 +17,7 @@ Privacy and operator boundaries remain explicit. The tracker searches public ide
 | Browser spectator and pickup live viewer | 2080 shell pages embed the existing browser client and pickup live renderer; the live/replay engines retain camera, HUD, scrubber, POV, effects, clips, share and download controls | PASS | Their complex canvases remain specialized embedded experiences. |
 | Match history | Search, result/map/player filters, paged records, and deep-linked match details | PASS | Filters and page are URL-backed; list filters apply to fetched records as indicated in the UI. |
 | Match detail and pickup replay | Rosters, scores, dates/status, identities, privacy/rating, combat rows, rounds, round/no-name MVPs, reports, map navigation; replay metadata is discovered per available round and opens the 2080 replay wrapper | PASS | Replay discovery depends on the replay metadata API at deployment. No round number is hardcoded. |
-| Player leaderboard/profile | Qualified leaderboard/search, private rating treatment, supporter identity, current rating/rank/record, all classes, map records, extended recent history, speedrun relation, Steam links, comparison and event-history links | PASS | Full recent history is bounded by the existing API maximum; progressive display shows all records returned by that API. |
+| Player leaderboard/profile | Qualified leaderboard/search and a new 2080 player dossier: identity and standing, performance and class-time distribution, granular combat with map/match filters, visual recent-match history, ELO trend, activity heatmap, relationships, map tendencies, and connected records | PASS | Source/API and rendered legacy comparisons are recorded below. |
 | Player event detail | Map/class/weapon/objective filters, paged chronological events, match/source links | PASS | Uses the existing granular-event route. |
 | Tracker/identity | Search name, Steam/Discord IDs and aliases; paginated directory; current server, connections, last seen, alias history, player-file navigation | OWNER DECISION REQUIRED | Safe alias/history UI is implemented. Raw IP and shared-IP lookups remain excluded pending a decision on audience and authorization; new `/public` API routes also require deployment and smoke verification. |
 | Maps index/detail | Searchable archive, map average, score/outcome charts, sortable player records, rivalry and winning-duo ledgers, speedrun relation, paged match-history windows, progressive map-regular list | VERIFICATION REQUIRED | Backward-compatible API offset/count addition in `api/src/routes/maps.js` must be deployed and older match-history windows smoke-tested in production. |
@@ -37,6 +37,28 @@ Privacy and operator boundaries remain explicit. The tracker searches public ide
 | Status/health | No separate legacy user page identified; API health remains an operational endpoint | OWNER DECISION REQUIRED | Confirm whether a user-facing status page is wanted; the currently identified routes expose operational details and should not be added to public navigation by assumption. |
 | Original-site escape | Explicit “Original site” links remain | INTENTIONAL | Same-origin exit to the root legacy homepage. |
 
+## Player profile parity accounting
+
+The legacy `player.html` profile supplies the information architecture; `refactor/?view=player&id=<player-id>` supplies the Project 2080 visual language. The new dossier uses the existing `/api/player/:id/v3`, `/recent`, `/permap`, and `/granular` responses without duplicating stored data or changing production API behavior.
+
+| Legacy section or capability | 2080 treatment | Classification |
+|---|---|---|
+| Avatar, player/display and Steam identity, profile link, supporter marker | Identity header with existing supporter identity component, avatar, and Steam relationship | Migrated |
+| Online dot / live status | No reliable per-player online-status field in the public profile response; a static dot would imply presence that is not established | Intentionally omitted |
+| Current ELO, overall rank, ELO tier, last-20 movement, recent form | Ruled standing strip and ten-match result sequence; private ELO remains hidden | Transformed |
+| Peak ELO, record, win rate, best streak, MVPs, PUGs/week | Compact stat rule immediately below the standing | Migrated |
+| K/D, kills, deaths, damage, captures, conc jumps, class time | Performance figures and a proportional class-time distribution | Transformed |
+| Map and match kill-event filters | Map selector, recent-match selector, and match-ID entry backed by the granular API and URL state | Migrated |
+| Offense/defense; frags, touches, SG, conc and flag-carrier kills per match; class time and top weapon | Paired role comparisons with metrics, class-time bars, and named weapons | Transformed |
+| Class/weapon breakdown, favorite victims, alias history | Expandable dense class/weapon ledger and two ruled people/name columns | Transformed |
+| Recent matches with map imagery, result, score, ELO delta, teams, Hampalyzer, TFCStats, match detail and pagination | Five-match editorial history pages with map images, team/rating semantics and all available report actions | Transformed |
+| ELO trend and day/hour activity heatmap | 2080 SVG trend and a 7×12 local-time activity matrix | Transformed |
+| Best teammates and toughest opponents | Ruled relationship columns from completed match rosters | Transformed |
+| Most-played, best and worst maps; complete per-map history | Image-led tendency groups and an expandable complete map ledger | Transformed |
+| Speedrun relation, identity history, player comparison and event drilldown | Connected-record links within Project 2080 | Migrated |
+
+Rendered comparison used the production legacy profile for `wheaties` and a local Project 2080 preview backed by the existing production read APIs. The 2080 dossier was inspected at 1440px desktop and 390px mobile, including combat, recent matches, trend, relationships, and map tendencies. The `alchimy_lg` filter reproduced the legacy offense values (20.3 frags, 18.6 touches, 6.0 sentry kills per match); match filtering, URL restoration with Back/Forward, and match-history pagination were exercised. A direct link to supporter `Moreno` confirmed the diamond and private-rating treatment in both 2080 themes. Player Detail is **PASS** for the documented user-facing sections. The page still requires deployment before the public `/refactor/` URL will show this revision.
+
 ## Sensitive identity boundary
 
 The legacy identity API and UI contain current/historical IP addresses and shared-IP relationships, and the existing route mounting does not establish a clear authorization gate in this repository. The new Project 2080 tracker only uses the added `public` identity responses, which exclude raw IP and IP-derived relationships. Do not migrate precise location, raw IP, or shared-IP browsing until the owner confirms the audience and authorization policy.
@@ -53,10 +75,11 @@ The integrations intentionally load the existing `pickup-live.html`, `pickup-rep
 
 ## URL state and responsive behavior
 
-Useful list searches, filters, pages, selected map/player/match entities, analytics grouping, speedrun class/category/rank filters, identity search/page, and comparison players use query parameters. `popstate` restores the selected Project 2080 view by reloading its URL. Ephemeral search-dialog/expanded controls are intentionally not encoded. The new ledgers reuse current desktop density and narrow layouts and add rules in `refactor/screen.css`; the embedded 3D runtimes remain their purpose-built responsive canvases. This change set has source-level responsive review only; a rendered desktop/mobile browser pass on the deployed build remains required.
+Useful list searches, filters, pages, selected map/player/match entities, analytics grouping, speedrun class/category/rank filters, identity search/page, and comparison players use query parameters. `popstate` restores the selected Project 2080 view by reloading its URL. Ephemeral search-dialog/expanded controls are intentionally not encoded. The new player dossier uses scoped rules in `refactor/player-detail.css`; the embedded 3D runtimes remain their purpose-built responsive canvases. The player dossier received a local rendered desktop/mobile pass backed by production read APIs. Other previously documented responsive/deployment checks remain open.
 
 ## Validation
 
+- 2026-09-25 player dossier: local rendered comparison against the legacy production profile at 1440px and 390px, with `wheaties` (including filtered `alchimy_lg` analytics and match pagination) and supporter `Moreno` (private rating and diamond); day/night compositions inspected. JavaScript syntax and `git diff --check` passed. No automated tests were run for this change, per repository instructions.
 - Existing production APIs: server-map catalogue (1,049 entries), `2fort` map detail/progression (71 runs, 21 leaderboard entries, 23 progression points), and analytics (all requested data groups) returned successfully on 2026-09-23.
 - Branch-local API edits not yet in production: privacy-safe identity routes and map-history offset/count support; deploy by pulling and restarting the API before relying on those production paths.
 - Static JavaScript syntax checks passed for all `api/src` scripts and Project 2080 scripts; `git diff --check` passed.

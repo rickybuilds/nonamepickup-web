@@ -1,4 +1,5 @@
 import { createUtilityViews } from "./utility-views.js";
+import { renderPlayerDossier } from "./player-detail.js";
 
 const root = document.querySelector("#content");
 const params = new URLSearchParams(location.search);
@@ -416,53 +417,7 @@ function playerTable(rows) {
     : message("No player fits this filter.");
 }
 async function player() {
-  if (!id) throw Error("Player ID missing");
-  const [response, recent, permap, speedrun] = await Promise.all([
-    get(`player/${encodeURIComponent(id)}/v3`),
-    get(`player/${encodeURIComponent(id)}/recent?limit=5000`).catch(() => null),
-    get(`player/${encodeURIComponent(id)}/permap`).catch(() => null),
-    get(`speedruns/players/${encodeURIComponent(id)}`).catch(() => null),
-  ]);
-  const d = response.data,
-    p = d.player,
-    r = d.ratings,
-    h = d.hampalyzer;
-  const recentRows = Array.isArray(recent?.data) ? recent.data : [];
-  const mapRows = Array.isArray(permap?.data) ? permap.data : [];
-  const speedSummary = speedrun?.summary || {};
-  const historyLimit = Math.max(25, Number(params.get("historyLimit") || 100));
-  set(
-    `<div class="profile-ribbon"><span>PLAYER FILE / ${esc(p.id)}</span><span>${r.hidden ? "RATING PRIVATE" : "CURRENT RATING"}</span></div><div class="detail-hero player-detail"><div><span class="eyebrow">IDENTITY / NONAME</span><h1 class="${String(p.name || "").length > 20 ? "very-long-title" : String(p.name || "").length > 12 ? "long-title" : ""}">${playerIdentity(p, { href: "" })}</h1></div><div class="detail-stat"><b>${r.hidden ? "PRIVATE" : elo(r.elo)}</b><small>CURRENT ELO / ${r.hidden ? "UNRANKED" : `RANK #${fmt(r.rank)}`}</small></div></div><div class="profile-values"><div><small>MATCHES</small><b>${fmt(r.games)}</b></div><div><small>WIN RATE</small><b>${fmt(r.win_pct)}%</b></div><div><small>RECORD</small><b>${esc(r.record)}</b></div><div><small>PEAK ELO</small><b>${r.hidden ? "—" : elo(r.peak_elo)}</b></div><div><small>BEST STREAK</small><b>${fmt(r.best_streak)}</b></div><div><small>PUGS / WEEK</small><b>${fmt(r.pugs_per_week)}</b></div></div><div class="detail-columns"><section class="detail-section">${section("02", "Combat")}${[
-      ["Kills", h.kills],
-      ["Deaths", h.deaths],
-      ["K / D", h.kdr],
-      ["Damage", h.damage],
-      ["Captures", h.caps],
-      ["Conc jumps", h.conc_jumps],
-      ["MVP games", h.mvp_games],
-    ]
-      .map(
-        ([name, value]) =>
-          `<div class="stat-line"><span>${name}</span><strong>${fmt(value)}</strong></div>`,
-      )
-      .join(
-        "",
-      )}</section><section class="detail-section">${section("03", "Classes")}${
-      (d.classes || []).length
-        ? d.classes
-            .map(
-              (c) =>
-                `<div class="stat-line"><span>${esc(c.class)}</span><strong>${fmt(c.hours)} H / ${fmt(c.pct)}%</strong></div>`,
-            )
-            .join("")
-        : message("No class data available.")
-    }</section></div>${p.profileurl ? `<div class="action-row"><a href="${esc(safeUrl(p.profileurl))}" target="_blank" rel="noopener noreferrer">Steam profile ↗</a>${p.steam_id64 ? `<a href="https://steamcommunity.com/profiles/${encodeURIComponent(p.steam_id64)}" target="_blank" rel="noopener noreferrer">Steam identity ↗</a>` : ""}</div>` : ""}${section("04", "Map record")}${mapRows.length ? mapRows.map((row) => `<a class="map-row" href="${link("map", "id", row.map)}"><b>${esc(row.map)}</b><span>${fmt(row.gp)} GAMES / ${fmt(row.win_pct)}% W</span><span>${fmt(row.w)} W · ${fmt(row.l)} L · ${fmt(row.t)} T</span><span>${fmt(row.avg_delta)} AVG ELO Δ ↗</span></a>`).join("") : message(permap ? "No per-map history recorded." : "Per-map history is unavailable.")}${section("05", "Speedrun record")}${speedrun ? `<div class="detail-meta"><span>${fmt(speedSummary.totalRuns)} RUNS</span><span>${fmt(speedSummary.mapsCompleted)} MAPS</span><span>${fmt(speedSummary.worldRecords)} WORLD RECORDS</span><span>GLOBAL RANK / ${fmt(speedSummary.globalRank)}</span></div><div class="action-row"><a href="${link("speedrun-player", "id", id)}">Speedrun runner file ↗</a></div>` : message("No linked speedrun profile found.")}${section("06", `Recent appearances / ${fmt(recentRows.length)} loaded`)}${recentRows.length ? recentRows.slice(0, historyLimit).map(matchRow).join("") : message(recent ? "No recent matches recorded." : "Recent match service unavailable.")}<div class="action-row"><button type="button" id="player-history-more" ${historyLimit >= recentRows.length ? "disabled" : ""}>Show older matches ↓</button><span class="micro">${fmt(Math.min(historyLimit, recentRows.length))} / ${fmt(recentRows.length)} LOADED</span><a href="${link("player-events", "id", id)}">Combat event history ↗</a><a href="${link("tracker")}&q=${encodeURIComponent(p.name || id)}">Identity history ↗</a><a href="${link("compare")}&p1=${encodeURIComponent(id)}">Compare player ↗</a></div>`,
-  );
-  document.querySelector("#player-history-more").onclick = () => {
-    const url = new URL(location.href);
-    url.searchParams.set("historyLimit", String(historyLimit + 100));
-    location.href = url;
-  };
+  await renderPlayerDossier({ id, get, set, section, message, fmt, elo, date, link, esc, safeUrl, playerIdentity, persistViewState });
 }
 async function maps() {
   const response = await get("mapaverages");
