@@ -33,12 +33,12 @@ const ratio = (total, count) => count ? (num(total) / count).toFixed(1) : "—";
 const imagePath = (name) => `../assets/images/maps/${encodeURIComponent(String(name || "").trim())}.webp`;
 
 function chart(rows, esc, date) {
-  const points = rows.filter((r) => r.after != null).slice(0, 100).reverse();
+  const points = rows.filter((r) => r.after != null).reverse();
   if (points.length < 2) return '<p class="dossier-empty">Not enough rated matches to draw a trend.</p>';
   const values = points.map((r) => num(r.after));
   const low = Math.min(...values), high = Math.max(...values), range = Math.max(20, high - low);
   const coords = values.map((v, i) => `${24 + i * 852 / (values.length - 1)},${188 - (v - low) * 150 / range}`).join(" ");
-  return `<div class="dossier-chart"><div class="dossier-chart-topline"><span>${points.length} RATED MATCHES</span><span>${date(points[0].created_at)} — ${date(points.at(-1).created_at)}</span></div><svg viewBox="0 0 900 225" role="img" aria-label="ELO over the last ${points.length} rated matches, from ${Math.round(values[0])} to ${Math.round(values.at(-1))}"><line x1="24" y1="38" x2="876" y2="38"/><line x1="24" y1="113" x2="876" y2="113"/><line x1="24" y1="188" x2="876" y2="188"/><polygon points="24,188 ${esc(coords)} 876,188"/><polyline points="${esc(coords)}"/><circle cx="876" cy="${188 - (values.at(-1) - low) * 150 / range}" r="5"/></svg><div><span>${Math.round(low)} LOW</span><strong>${Math.round(values.at(-1))} CURRENT</strong><span>${Math.round(high)} HIGH</span></div></div>`;
+  return `<div class="dossier-chart"><div class="dossier-chart-topline"><span>FULL HISTORY / ${points.length} RATED MATCHES</span><span>${date(points[0].created_at)} — ${date(points.at(-1).created_at)}</span></div><svg viewBox="0 0 900 225" role="img" aria-label="ELO across the full ${points.length}-match rated record, from ${Math.round(values[0])} to ${Math.round(values.at(-1))}"><line x1="24" y1="38" x2="876" y2="38"/><line x1="24" y1="113" x2="876" y2="113"/><line x1="24" y1="188" x2="876" y2="188"/><polygon points="24,188 ${esc(coords)} 876,188"/><polyline points="${esc(coords)}"/><circle cx="876" cy="${188 - (values.at(-1) - low) * 150 / range}" r="5"/></svg><div><span>${Math.round(low)} LOW</span><strong>${Math.round(values.at(-1))} CURRENT</strong><span>${Math.round(high)} HIGH</span></div></div>`;
 }
 
 function heatmap(rows, esc) {
@@ -101,8 +101,15 @@ function roleMarkup(data, role, helpers) {
   return `<div class="dossier-role dossier-role-${role}"><div class="dossier-role-head"><h3>${role === "offense" ? "Offense" : "Defense"}</h3><span>${hours.toFixed(1)} H CLASS TIME</span></div><div class="dossier-role-metrics">${metrics.map(([name, value]) => `<div><b>${esc(value)}</b><small>${name}</small></div>`).join("")}</div><div class="dossier-top-weapon"><span>TOP KILL WEAPON</span><strong>${top ? esc(label(top.weapon)) : "—"}</strong><span>${top ? `${fmt(top.kills)} KILLS` : "NO EVENT DATA"}</span></div><div class="dossier-class-bars">${time.sort((a, b) => num(b.seconds) - num(a.seconds)).slice(0, 5).map((r) => `<div><span>${esc(label(r.class))}</span><i><i style="width:${Math.max(2, num(r.seconds) / classTotal * 100)}%"></i></i><strong>${num(r.hours).toFixed(1)} H</strong></div>`).join("")}</div></div>`;
 }
 
+function favoriteVictimsMarkup(data, helpers) {
+  const { fmt, link, esc, playerIdentity } = helpers;
+  if (!data?.source?.granularAvailable) return '<p class="dossier-empty">Favorite victims are unavailable for this selection.</p>';
+  const rows = data.favoriteVictims || [];
+  return rows.length ? rows.slice(0, 10).map((r) => `<div><span>${r.victimId && String(r.victimId) !== String(r.victimSteamId || "") && /^\d{16,20}$/.test(String(r.victimId)) ? playerIdentity({ id: r.victimId, name: r.victimName }, { href: link("player", "id", r.victimId) }) : esc(r.victimName)}</span><strong>${fmt(r.kills)} K</strong></div>`).join("") : '<p class="dossier-empty">No events in this selection.</p>';
+}
+
 function granularMarkup(data, helpers) {
-  const { esc, fmt, link, playerIdentity } = helpers;
+  const { esc, fmt, link } = helpers;
   if (!data?.source?.granularAvailable) return '<p class="dossier-empty">Granular kill events are not available for this player or filter.</p>';
   const byClass = new Map();
   for (const row of data.classWeapons || []) {
@@ -111,7 +118,6 @@ function granularMarkup(data, helpers) {
     byClass.get(key).push(row);
   }
   const groups = [...byClass.entries()].sort((a, b) => b[1].reduce((n, r) => n + num(r.kills), 0) - a[1].reduce((n, r) => n + num(r.kills), 0));
-  const list = (rows, render) => rows.length ? rows.slice(0, 10).map(render).join("") : '<p class="dossier-empty">No events in this selection.</p>';
   const roleTimes = (data.roleClassTime || []).reduce((out, row) => {
     const role = String(row.role || "").toLowerCase();
     if (role === "offense" || role === "defense") out[role] += num(row.seconds);
@@ -121,7 +127,7 @@ function granularMarkup(data, helpers) {
   const offenseShare = roleTotal ? roleTimes.offense / roleTotal * 100 : 50;
   const defenseShare = 100 - offenseShare;
   const roleBalance = `<div class="dossier-role-balance" aria-label="Offense ${(roleTimes.offense / 3600).toFixed(1)} hours, defense ${(roleTimes.defense / 3600).toFixed(1)} hours"><div class="dossier-role-balance-bar"><i class="offense" style="width:${offenseShare}%"></i><i class="defense" style="width:${defenseShare}%"></i></div><div><span><b>${(roleTimes.offense / 3600).toFixed(1)} H</b> OFFENSE</span><span><b>${(roleTimes.defense / 3600).toFixed(1)} H</b> DEFENSE</span></div></div>`;
-  return `${roleBalance}<div class="dossier-role-pair">${roleMarkup(data, "offense", helpers)}${roleMarkup(data, "defense", helpers)}</div><div class="dossier-granular-lists"><details><summary>Class / weapon breakdown <span>${groups.length} CLASSES</span></summary><div class="dossier-weapon-ledger">${groups.map(([name, rows]) => `<div class="dossier-weapon-group"><h4>${esc(label(name))}<span>${fmt(rows.reduce((n, r) => n + num(r.kills), 0))} KILLS</span></h4>${rows.sort((a, b) => num(b.kills) - num(a.kills)).map((r) => `<div><span>${esc(label(r.weapon))}</span><span>${fmt(r.kills)} K</span><span>${fmt(r.matchesWithKill)} M</span><strong>${num(r.killsPerMatch).toFixed(1)} K/M</strong></div>`).join("")}</div>`).join("")}</div></details><div class="dossier-two-lists"><div><h3>Favorite victims</h3>${list(data.favoriteVictims || [], (r) => `<div><span>${r.victimId && String(r.victimId) !== String(r.victimSteamId || "") && /^\d{16,20}$/.test(String(r.victimId)) ? playerIdentity({ id: r.victimId, name: r.victimName }, { href: link("player", "id", r.victimId) }) : esc(r.victimName)}</span><strong>${fmt(r.kills)} K</strong></div>`)}</div><div><h3>Alias history</h3>${list(data.aliasHistory || [], (r) => `<div><span>${esc(r.name)}</span><strong>${fmt(r.kills)} K</strong></div>`)}</div></div></div>`;
+  return `${roleBalance}<div class="dossier-role-pair">${roleMarkup(data, "offense", helpers)}${roleMarkup(data, "defense", helpers)}</div><div class="dossier-granular-lists"><details><summary>Class / weapon breakdown <span>${groups.length} CLASSES</span></summary><div class="dossier-weapon-ledger">${groups.map(([name, rows]) => `<div class="dossier-weapon-group"><h4>${esc(label(name))}<span>${fmt(rows.reduce((n, r) => n + num(r.kills), 0))} KILLS</span></h4>${rows.sort((a, b) => num(b.kills) - num(a.kills)).map((r) => `<div><span>${esc(label(r.weapon))}</span><span>${fmt(r.kills)} K</span><span>${fmt(r.matchesWithKill)} M</span><strong>${num(r.killsPerMatch).toFixed(1)} K/M</strong></div>`).join("")}</div>`).join("")}</div></details></div>`;
 }
 
 export async function renderPlayerDossier(helpers) {
@@ -151,7 +157,7 @@ export async function renderPlayerDossier(helpers) {
   const classMax = Math.max(1, ...classes.map((c) => num(c.seconds)));
   const killMax = Math.max(1, num(h.kills), num(h.deaths));
   const perf = `<div class="dossier-performance"><div class="dossier-performance-lead"><div class="dossier-kdr"><small>KILLS / DEATHS</small><strong>${fmt(h.kdr)}</strong><span>K / D</span></div><div class="dossier-kill-comparison"><div><span>KILLS</span><strong>${fmt(h.kills)}</strong><i><i style="width:${num(h.kills) / killMax * 100}%"></i></i></div><div><span>DEATHS</span><strong>${fmt(h.deaths)}</strong><i><i style="width:${num(h.deaths) / killMax * 100}%"></i></i></div></div></div><div class="dossier-performance-support"><div class="dossier-damage-total"><small>DAMAGE DEALT</small><strong>${fmt(h.damage)}</strong></div><div><small>CAPTURES</small><strong>${fmt(h.caps)}</strong></div><div><small>CONC JUMPS</small><strong>${fmt(h.conc_jumps)}</strong></div></div></div>`;
-  const classDistribution = `<div class="dossier-class-distribution"><h3>Class time</h3>${classes.length ? classes.slice().sort((a, b) => num(b.seconds) - num(a.seconds)).map((c) => `<div class="${roleOf(c.class)}"><span>${esc(label(c.class))}</span><i><i style="width:${Math.max(2, num(c.seconds) / classMax * 100)}%"></i></i><strong>${num(c.pct).toFixed(1)}%</strong></div>`).join("") : message("No class-time data available.")}</div>`;
+  const classDistribution = `<div class="dossier-class-distribution"><h3>Class time</h3>${classes.length ? classes.slice().sort((a, b) => num(b.seconds) - num(a.seconds)).map((c) => `<div class="${roleOf(c.class)}"><span>${esc(label(c.class))}</span><i><i style="width:${Math.max(2, num(c.seconds) / classMax * 100)}%"></i></i><strong>${num(c.pct).toFixed(1)}%</strong></div>`).join("") : message("No class-time data available.")}<section class="dossier-favorite-victims"><h3>Favorite victims</h3><div class="dossier-favorite-victims-list" id="dossier-favorite-victims" aria-live="polite">${message("Reading kill-event record…")}</div></section></div>`;
   const mapOptions = [...new Set(matches.map((m) => m.map_name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const query = new URLSearchParams(location.search);
   let combatMap = mapOptions.includes(query.get("combatMap")) ? query.get("combatMap") : "";
@@ -190,16 +196,19 @@ export async function renderPlayerDossier(helpers) {
   const loadGranular = async () => {
     const body = document.querySelector("#dossier-granular");
     body.innerHTML = message("Reading kill-event record…");
+    document.querySelector("#dossier-favorite-victims").innerHTML = message("Reading kill-event record…");
     const scope = `${combatMap}|${combatMatch}`;
     const path = `player/${key}/granular?limit=50&includeSample=1${combatMap ? `&map=${encodeURIComponent(combatMap)}` : ""}${combatMatch ? `&matchId=${encodeURIComponent(combatMatch)}` : ""}`;
     try {
       const response = await get(path);
       if (!document.contains(body) || scope !== `${combatMap}|${combatMatch}`) return;
       body.innerHTML = granularMarkup(response.data, helpers);
+      document.querySelector("#dossier-favorite-victims").innerHTML = favoriteVictimsMarkup(response.data, helpers);
       document.querySelector("#dossier-combat-scope").textContent = `${fmt(response.data?.sample?.matches)} MATCHES / ${fmt(response.data?.sample?.enemyKills)} ENEMY KILLS`;
     } catch {
       if (scope !== `${combatMap}|${combatMatch}`) return;
       body.innerHTML = message("Kill-event details are unavailable. Try another map or match.", "error");
+      document.querySelector("#dossier-favorite-victims").innerHTML = message("Favorite victims are unavailable for this selection.", "error");
     }
   };
   updateMatchOptions();

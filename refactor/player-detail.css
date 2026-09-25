@@ -109,6 +109,12 @@
 .dossier-class-distribution > div > i > i, .dossier-class-bars > div > i > i { display: block; height: 100%; background: var(--blue); }
 .dossier-class-distribution > div.defense > i > i { background: var(--red); }
 .dossier-class-distribution strong, .dossier-class-bars strong { text-align: right; font-weight: 500; }
+.dossier-favorite-victims { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--ink); }
+.dossier-favorite-victims h3 { margin-bottom: 8px; font-size: 15px; }
+.dossier-favorite-victims-list > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 10px; min-width: 0; padding: 7px 0; border-top: 1px solid var(--line); font: 9px var(--mono); }
+.dossier-favorite-victims-list > div span { min-width: 0; overflow-wrap: anywhere; }
+.dossier-favorite-victims-list > div strong { flex: none; font-weight: 500; }
+.dossier-favorite-victims-list .dossier-empty { padding: 7px 0; }
 .dossier-style-events { min-width: 0; background: var(--panel); }
 .dossier-role-balance { padding: 14px 18px 10px; background: var(--reverse-bg); color: var(--reverse-ink); }
 .dossier-role-balance-bar { display: flex; height: 8px; background: color-mix(in srgb, var(--reverse-ink) 14%, var(--reverse-bg)); }
