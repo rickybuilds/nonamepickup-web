@@ -3,6 +3,53 @@
 // Path: /assets/js/main.js
 // =============================================
 
+(() => {
+  const storageKey = "nn-effects-disabled";
+  const root = document.documentElement;
+
+  let effectsDisabled = false;
+  try {
+    effectsDisabled = localStorage.getItem(storageKey) === "true";
+  } catch {}
+
+  const applyPreference = disabled => {
+    effectsDisabled = disabled;
+    root.classList.toggle("effects-off", disabled);
+    document.querySelectorAll(".site-effects-toggle").forEach(button => {
+      button.setAttribute("aria-pressed", String(disabled));
+      button.setAttribute("aria-label", disabled ? "Turn site glow and motion on" : "Turn site glow and motion off");
+      button.title = disabled ? "Turn glow and motion on" : "Turn glow and motion off";
+    });
+  };
+
+  applyPreference(effectsDisabled);
+
+  document.querySelectorAll(".nn-logo").forEach(logo => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "site-effects-toggle";
+    button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.2 11.6 7l4.8 1.5-4.8 1.6-1.6 4.7-1.5-4.7-4.8-1.6L8.5 7 10 2.2Z"/><path class="effects-off-mark" d="m4 16 12-12"/></svg>';
+    button.addEventListener("click", () => {
+      const next = !effectsDisabled;
+      applyPreference(next);
+      try {
+        localStorage.setItem(storageKey, String(next));
+      } catch {}
+    });
+
+    const brand = document.createElement("div");
+    brand.className = "site-brand-control";
+    logo.parentNode.insertBefore(brand, logo);
+    brand.append(logo, button);
+  });
+
+  applyPreference(effectsDisabled);
+
+  window.addEventListener("storage", event => {
+    if (event.key === storageKey) applyPreference(event.newValue === "true");
+  });
+})();
+
 async function fetchJSON(url) {
   try {
     const res = await fetch(url, { cache: "no-store" });

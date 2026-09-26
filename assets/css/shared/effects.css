@@ -1,0 +1,83 @@
+.site-brand-control{display:flex;align-items:center;gap:7px;min-width:0;}
+.site-effects-toggle{display:grid;place-items:center;flex:0 0 auto;width:19px;height:19px;padding:0;border:1px solid transparent;border-radius:50%;background:transparent;color:rgba(157,178,201,.52);cursor:pointer;opacity:.62;transition:color .16s ease,opacity .16s ease,border-color .16s ease,background .16s ease;}
+.site-effects-toggle svg{width:13px;height:13px;fill:currentColor;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+.site-effects-toggle .effects-off-mark{display:none;fill:none;}
+.site-effects-toggle:hover,.site-effects-toggle:focus-visible{color:#a8c5df;opacity:1;border-color:rgba(148,170,194,.32);background:rgba(148,170,194,.08);outline:none;}
+.site-effects-toggle:focus-visible{box-shadow:0 0 0 2px rgba(148,170,194,.28);}
+html.effects-off .site-effects-toggle{color:#9bb1c8;opacity:.95;}
+html.effects-off .site-effects-toggle .effects-off-mark{display:block;}
+
+html.effects-off body *,
+html.effects-off body *::before,
+html.effects-off body *::after{
+  --page-atmosphere-left:transparent!important;
+  --page-atmosphere-right:transparent!important;
+  --page-glow-left:transparent!important;
+  --page-glow-right:transparent!important;
+  --page-hero-accent:transparent!important;
+  --page-hero-accent-2:transparent!important;
+  --shell-glow:transparent!important;
+  --shell-sheen-color:transparent!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+  filter:none!important;
+}
+html.effects-off .index-page,
+html.effects-off .matches-page,
+html.effects-off .leaderboard-page,
+html.effects-off .analytics-page,
+html.effects-off .player-page,
+html.effects-off .player-v3-page,
+html.effects-off .map-page,
+html.effects-off .map-v2-page,
+html.effects-off .compare-page,
+html.effects-off .player-v2-page,
+html.effects-off .live-page,
+html.effects-off .live2-page,
+html.effects-off .speedruns-page,
+html.effects-off .vegas-page,
+html.effects-off .kicked-page,
+html.effects-off .coolest-dude-page,
+html.effects-off .identities-page{background:#030711!important;animation:none!important;}
+html.effects-off .index-page::before,
+html.effects-off .index-page::after,
+html.effects-off .matches-page::before,
+html.effects-off .matches-page::after,
+html.effects-off .leaderboard-page::before,
+html.effects-off .leaderboard-page::after,
+html.effects-off .analytics-page::before,
+html.effects-off .analytics-page::after,
+html.effects-off .player-page::before,
+html.effects-off .player-page::after,
+html.effects-off .player-v3-page::before,
+html.effects-off .player-v3-page::after,
+html.effects-off .map-page::before,
+html.effects-off .map-page::after,
+html.effects-off .map-v2-page::before,
+html.effects-off .map-v2-page::after,
+html.effects-off .compare-page::before,
+html.effects-off .compare-page::after,
+html.effects-off .player-v2-page::before,
+html.effects-off .player-v2-page::after,
+html.effects-off .live-page::before,
+html.effects-off .live2-page::before,
+html.effects-off .speedruns-page::before,
+html.effects-off .speedruns-page::after,
+html.effects-off .vegas-page::before,
+html.effects-off .vegas-page::after,
+html.effects-off .kicked-page::before,
+html.effects-off .kicked-page::after,
+html.effects-off .coolest-dude-page::before,
+html.effects-off .coolest-dude-page::after,
+html.effects-off .site-bg-glow{display:none!important;}
+html.effects-off .coolest-dude-card::before,
+html.effects-off .coolest-dude-card::after{display:none!important;}
+html.effects-off .site-nav .nav-live,
+html.effects-off .site-nav .live-dot,
+html.effects-off .supporter-badge{animation:none!important;}
+
+@media(max-width:700px){
+  .site-brand-control{gap:4px;}
+  .site-effects-toggle{width:17px;height:17px;}
+  .site-effects-toggle svg{width:12px;height:12px;}
+}
