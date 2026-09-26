@@ -1552,3 +1552,27 @@
     gap: .35rem;
   }
 }
+
+/* Keep the viewer full-height while allowing the carry summary below it to scroll into view. */
+.replay-v2.replay-page {
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.replay-v2 .replay-main {
+  height: auto;
+  min-height: 0;
+}
+
+.replay-v2 .pickup-replay-stage {
+  height: calc(100vh - var(--site-header-height, 72px));
+  min-height: 520px;
+}
+
+@media (max-width: 760px) {
+  .replay-v2 .pickup-replay-stage {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
