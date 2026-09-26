@@ -1470,3 +1470,85 @@
 .replay-v2 .pickup-selected-player {
   display: none;
 }
+.flag-carry-summary {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 1rem auto 2rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(20, 27, 39, .96), rgba(10, 14, 22, .96));
+  color: #e2e8f0;
+}
+
+.flag-carry-summary > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: .8rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .16);
+}
+
+.flag-carry-summary > header div,
+.flag-carry-row > div {
+  display: grid;
+  gap: .25rem;
+}
+
+.flag-carry-summary > header span {
+  color: #facc15;
+  font: 800 .7rem/1.2 Orbitron, sans-serif;
+  letter-spacing: .09em;
+}
+
+.flag-carry-summary > header small,
+.flag-carry-row small,
+.flag-carry-rows > p {
+  color: #94a3b8;
+  font-size: .78rem;
+}
+
+.flag-carry-summary > header strong {
+  color: #f8fafc;
+  font: 800 1.15rem/1.2 Orbitron, sans-serif;
+  white-space: nowrap;
+}
+
+.flag-carry-rows {
+  display: grid;
+  gap: .55rem;
+  padding-top: .75rem;
+}
+
+.flag-carry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .55rem .65rem;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, .06);
+}
+
+.flag-carry-row strong {
+  color: #f8fafc;
+  font-size: .88rem;
+}
+
+.flag-carry-row > strong {
+  color: #fde68a;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .flag-carry-summary {
+    width: calc(100% - 1rem);
+    padding: .85rem;
+  }
+
+  .flag-carry-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: .35rem;
+  }
+}

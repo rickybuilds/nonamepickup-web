@@ -2941,7 +2941,106 @@ function selectAnalysisEvent(event) {
   });
 }
 
+function playerPositionAt(track, time) {
+  const frame = trackFrame(track, time, true, Number.POSITIVE_INFINITY);
+  if (!frame) return null;
+  return [value(frame, 1), value(frame, 2), value(frame, 3)];
+}
+
+function playerDistanceDuring(track, startTime, endTime) {
+  const points = [];
+  const start = playerPositionAt(track, startTime);
+  if (!start) return 0;
+  points.push(start);
+  const { frames, stride } = track;
+  for (let offset = 0; offset < frames.length; offset += stride) {
+    const time = frames[offset];
+    if (time <= startTime || time >= endTime) continue;
+    points.push([frames[offset + 1], frames[offset + 2], frames[offset + 3]]);
+  }
+  const end = playerPositionAt(track, endTime);
+  if (end) points.push(end);
+  let distance = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    distance += Math.hypot(
+      current[0] - previous[0], current[1] - previous[1], current[2] - previous[2]
+    );
+  }
+  return distance;
+}
+
+function flagCarryDistanceRows() {
+  const rows = [];
+  for (const objective of state.objectives) {
+    const { frames, stride } = objective;
+    let activeSession = 0;
+    let startTime = 0;
+    let carryNumber = 0;
+    const addCarry = (sessionId, start, end) => {
+      const player = state.playerBySession.get(sessionId);
+      if (!player || end < start) return;
+      carryNumber += 1;
+      rows.push({
+        objectiveId: objective.objectiveId,
+        carryNumber,
+        sessionId,
+        start,
+        end,
+        distance: playerDistanceDuring(player, start, end)
+      });
+    };
+    for (let offset = 0; offset < frames.length; offset += stride) {
+      const time = frames[offset];
+      const carrier = Math.round(frames[offset + 2]) || 0;
+      if (carrier === activeSession) continue;
+      if (activeSession) addCarry(activeSession, startTime, time);
+      activeSession = carrier;
+      startTime = time;
+    }
+    if (activeSession && frames.length) {
+      addCarry(activeSession, startTime, frames[frames.length - stride]);
+    }
+  }
+  return rows.sort((a, b) => a.start - b.start || a.objectiveId - b.objectiveId);
+}
+
+function renderFlagCarryDistanceSummary() {
+  const totalElement = $("flag-carry-total");
+  const rowsElement = $("flag-carry-rows");
+  if (!totalElement || !rowsElement) return;
+  const rows = flagCarryDistanceRows();
+  const total = rows.reduce((sum, row) => sum + row.distance, 0);
+  totalElement.textContent = `${Math.round(total).toLocaleString()} units`;
+  rowsElement.replaceChildren();
+  if (!rows.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "No recorded flag carries in this replay.";
+    rowsElement.appendChild(empty);
+    return;
+  }
+  for (const row of rows) {
+    const item = document.createElement("article");
+    item.className = "flag-carry-row";
+    const copy = document.createElement("div");
+    const title = document.createElement("strong");
+    const roster = analysisRosterRow(row.sessionId);
+    const objective = state.objectiveDefinitions.get(row.objectiveId);
+    const flagTeam = teamInfo(objectiveTeam(objective, row.objectiveId)).name;
+    title.textContent = `${flagTeam} flag · ${roster?.name || `Player ${row.sessionId}`}`;
+    const detail = document.createElement("small");
+    detail.textContent = `${formatTime(row.start)}–${formatTime(row.end)} · Carry ${row.carryNumber}`;
+    const distance = document.createElement("strong");
+    distance.textContent = `${Math.round(row.distance).toLocaleString()} units`;
+    copy.append(title, detail);
+    item.append(copy, distance);
+    rowsElement.appendChild(item);
+  }
+}
+
 function renderAnalysisTimeline(force = false) {
+  renderFlagCarryDistanceSummary();
   state.analysisEvents = buildAnalysisEvents();
   const events = visibleAnalysisEvents();
   state.visibleAnalysisEvents = events;
