@@ -1,4 +1,5 @@
-.site-brand-control{display:flex;align-items:center;gap:7px;min-width:0;}
+.site-brand-control{display:flex;flex:0 0 auto;align-items:center;gap:7px;width:max-content;min-width:max-content;}
+.site-brand-control>.nn-logo{flex-shrink:0;white-space:nowrap;}
 .site-effects-toggle{display:grid;place-items:center;flex:0 0 auto;width:19px;height:19px;padding:0;border:1px solid transparent;border-radius:50%;background:transparent;color:rgba(157,178,201,.52);cursor:pointer;opacity:.62;transition:color .16s ease,opacity .16s ease,border-color .16s ease,background .16s ease;}
 .site-effects-toggle svg{width:13px;height:13px;fill:currentColor;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
 .site-effects-toggle .effects-off-mark{display:none;fill:none;}
