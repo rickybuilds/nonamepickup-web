@@ -393,8 +393,10 @@ archives for the backfill.
 
 The public profile endpoints are
 `GET /api/player/<player_id>/flag-carry` for the summary and
-`GET /api/player/<player_id>/flag-carries` for paged carry details. Both accept
-optional `map` and `matchId` filters. Class filters do not change the carry
+`GET /api/player/<player_id>/flag-carry-matches` for paged match totals.
+`GET /api/player/<player_id>/flag-carries` provides paged carries for the
+selected match. All three accept optional `map` and `matchId` filters. Class
+filters do not change the carry
 figures: a flag carry is counted regardless of the player's class, and the
 profile labels the card accordingly.
 

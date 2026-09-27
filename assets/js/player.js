@@ -10,12 +10,18 @@ let currentRatings=null;
 let currentPlayerId=null;
 let currentFlagCarry=null;
 let flagCarryLoading=false;
+let flagCarryMatches=[];
+let flagCarryMatchesHasMore=false;
+let flagCarryMatchesLoading=false;
+let flagCarryMatchesError=false;
+let flagCarryOpenMatchId="";
 let flagCarryDetails=[];
 let flagCarryDetailsOpen=false;
 let flagCarryDetailsHasMore=false;
 let flagCarryDetailsLoading=false;
 let flagCarryDetailsError=false;
 let flagCarryRequestSeq=0;
+let flagCarryMatchRequestSeq=0;
 let currentGranular=null;
 let currentGranularBase=null;
 let currentGranularEvents=null;
@@ -268,6 +274,8 @@ async function loadPlayerV3(){
 
   currentPlayerId=playerId;
   currentFlagCarry=null;
+  flagCarryMatches=[];
+  flagCarryOpenMatchId="";
   flagCarryDetails=[];
   flagCarryDetailsOpen=false;
   const enc=encodeURIComponent(playerId);
@@ -662,25 +670,44 @@ function flagCarryTileHtml(){
   return '<div class="role-flag-carry" title="All classes; verified pickup replays only">'+
     '<span>Flag Carry Distance</span><strong>'+escapeHtml(value)+'</strong>'+
     '<small>'+escapeHtml(detail)+'</small>'+
-    (summary?.carries?'<button type="button" data-flag-carry-toggle="1" aria-expanded="'+(flagCarryDetailsOpen?"true":"false")+'">'+(flagCarryDetailsOpen?"Hide carries":"View carries")+'</button>':"")+
+    (summary?.carries?'<button type="button" data-flag-carry-toggle="1" aria-expanded="'+(flagCarryDetailsOpen?"true":"false")+'">'+(flagCarryDetailsOpen?"Hide matches":"View matches")+'</button>':"")+
+  '</div>';
+}
+
+function flagCarryMatchDetailsHtml(){
+  const rows=flagCarryDetails.map(carry=>{
+    const link='pickup-replay.html?matchId='+encodeURIComponent(carry.matchId)+'&round='+encodeURIComponent(carry.round);
+    return '<a class="flag-carry-profile-row" href="'+escapeAttr(link)+'">'+
+      '<span>'+escapeHtml(carry.map)+' · Round '+escapeHtml(carry.round)+' · Carry '+escapeHtml(carry.carryNumber)+'</span>'+
+      '<span>'+flagCarryTimestamp(carry.startMs)+'–'+flagCarryTimestamp(carry.endMs)+'</span>'+
+      '<strong>'+escapeHtml(carry.meters)+' m</strong>'+
+    '</a>';
+  }).join("");
+  return '<div class="flag-carry-match-carries">'+
+    (rows||'<p>'+(flagCarryDetailsLoading?"Loading carries...":flagCarryDetailsError?"Could not load carries.":"No carries in this match.")+'</p>')+
+    (flagCarryDetailsError?'<button type="button" data-flag-carry-more="1">Retry</button>':"")+
+    (flagCarryDetailsHasMore?'<button type="button" data-flag-carry-more="1"'+(flagCarryDetailsLoading?' disabled':'')+'>Load more carries</button>':"")+
   '</div>';
 }
 
 function flagCarryDetailsHtml(){
   if(!flagCarryDetailsOpen)return"";
-  const rows=flagCarryDetails.map(carry=>{
-    const link='pickup-replay.html?matchId='+encodeURIComponent(carry.matchId)+'&round='+encodeURIComponent(carry.round);
-    return '<a class="flag-carry-profile-row" href="'+escapeAttr(link)+'">'+
-      '<span>'+escapeHtml(carry.map)+' · '+escapeHtml(carry.matchId)+' · Round '+escapeHtml(carry.round)+' · Carry '+escapeHtml(carry.carryNumber)+'</span>'+
-      '<span>'+flagCarryTimestamp(carry.startMs)+'–'+flagCarryTimestamp(carry.endMs)+'</span>'+
-      '<strong>'+escapeHtml(carry.meters)+' m</strong>'+
-    '</a>';
+  const matches=flagCarryMatches.map(match=>{
+    const expanded=flagCarryOpenMatchId===match.matchId;
+    return '<div class="flag-carry-match">'+
+      '<button type="button" class="flag-carry-match-toggle" data-flag-carry-match="'+escapeAttr(match.matchId)+'" aria-expanded="'+(expanded?'true':'false')+'">'+
+        '<span class="flag-carry-match-name"><strong>'+escapeHtml(match.matchId)+'</strong><small>'+escapeHtml(match.maps)+' · '+escapeHtml(match.rounds)+' '+(match.rounds===1?'round':'rounds')+'</small></span>'+
+        '<span class="flag-carry-match-total"><strong>'+escapeHtml(match.meters)+' m</strong><small>'+escapeHtml(match.carries)+' '+(match.carries===1?'carry':'carries')+' · '+flagCarryTimeLabel(match.milliseconds)+'</small></span>'+
+        '<span class="flag-carry-match-chevron" aria-hidden="true">'+(expanded?'−':'+')+'</span>'+
+      '</button>'+
+      (expanded?flagCarryMatchDetailsHtml():"")+
+    '</div>';
   }).join("");
   return '<section class="flag-carry-profile-details" aria-label="Recorded flag carries">'+
-    '<div class="flag-carry-profile-heading"><strong>Recorded flag carries</strong><span>All classes · replay data</span></div>'+
-    (rows||'<p>'+(flagCarryDetailsLoading?"Loading carries...":flagCarryDetailsError?"Could not load carries.":"No carries in this selection.")+'</p>')+
-    (flagCarryDetailsError?'<button type="button" data-flag-carry-more="1">Retry</button>':"")+
-    (flagCarryDetailsHasMore?'<button type="button" data-flag-carry-more="1"'+(flagCarryDetailsLoading?' disabled':'')+'>Load more</button>':"")+
+    '<div class="flag-carry-profile-heading"><strong>Recorded flag carries by match</strong><span>Open one match to see its carries</span></div>'+
+    (matches||'<p>'+(flagCarryMatchesLoading?"Loading matches...":flagCarryMatchesError?"Could not load matches.":"No carries in this selection.")+'</p>')+
+    (flagCarryMatchesError?'<button type="button" data-flag-carry-matches-more="1">Retry</button>':"")+
+    (flagCarryMatchesHasMore?'<button type="button" data-flag-carry-matches-more="1"'+(flagCarryMatchesLoading?' disabled':'')+'>Load more matches</button>':"")+
   '</section>';
 }
 
@@ -1732,12 +1759,12 @@ function scheduleGranularSummaryLoad(playerId,options={}){
   });
 }
 
-function flagCarryUrl(playerId,details=false,offset=0){
+function flagCarryUrl(playerId,mode="summary",offset=0,selectedMatchId=""){
   const params=new URLSearchParams();
   if(granularMapFilter)params.set("map",granularMapFilter);
-  if(granularMatchFilter)params.set("matchId",granularMatchFilter);
-  if(details)params.set("offset",String(offset));
-  const route=details?"flag-carries":"flag-carry";
+  if(selectedMatchId||granularMatchFilter)params.set("matchId",selectedMatchId||granularMatchFilter);
+  if(mode!=="summary")params.set("offset",String(offset));
+  const route=mode==="matches"?"flag-carry-matches":mode==="carries"?"flag-carries":"flag-carry";
   return "/api/player/"+encodeURIComponent(playerId)+"/"+route+"?"+params.toString();
 }
 
@@ -1747,6 +1774,12 @@ async function loadFlagCarrySummary(playerId){
   const match=granularMatchFilter;
   currentFlagCarry=null;
   flagCarryLoading=true;
+  flagCarryMatches=[];
+  flagCarryMatchesHasMore=false;
+  flagCarryMatchesLoading=false;
+  flagCarryMatchesError=false;
+  flagCarryOpenMatchId="";
+  flagCarryMatchRequestSeq++;
   flagCarryDetails=[];
   flagCarryDetailsOpen=false;
   flagCarryDetailsHasMore=false;
@@ -1761,16 +1794,44 @@ async function loadFlagCarrySummary(playerId){
   renderPlayerGranular(currentGranular);
 }
 
-async function loadFlagCarryDetails(){
-  if(!currentPlayerId||flagCarryDetailsLoading)return;
+async function loadFlagCarryMatches(){
+  if(!currentPlayerId||flagCarryMatchesLoading)return;
   const sequence=flagCarryRequestSeq;
+  const playerId=String(currentPlayerId);
+  const map=granularMapFilter;
+  const match=granularMatchFilter;
+  const offset=flagCarryMatches.length;
+  flagCarryMatchesLoading=true;
+  flagCarryMatchesError=false;
+  renderPlayerGranular(currentGranular);
+  const result=await fetchJSON(flagCarryUrl(playerId,"matches",offset));
+  if(sequence!==flagCarryRequestSeq||String(currentPlayerId)!==playerId||
+      map!==granularMapFilter||match!==granularMatchFilter)return;
+  flagCarryMatchesLoading=false;
+  if(result?.ok){
+    flagCarryMatches.push(...(result.data?.matches||[]));
+    flagCarryMatchesHasMore=!!result.data?.hasMore;
+  }else{
+    flagCarryMatchesError=true;
+  }
+  renderPlayerGranular(currentGranular);
+}
+
+async function loadFlagCarryDetails(){
+  const selectedMatchId=flagCarryOpenMatchId;
+  if(!currentPlayerId||!selectedMatchId||flagCarryDetailsLoading)return;
+  const sequence=flagCarryRequestSeq;
+  const matchSequence=flagCarryMatchRequestSeq;
+  const playerId=String(currentPlayerId);
   const map=granularMapFilter;
   const match=granularMatchFilter;
   const offset=flagCarryDetails.length;
   flagCarryDetailsLoading=true;
   renderPlayerGranular(currentGranular);
-  const result=await fetchJSON(flagCarryUrl(currentPlayerId,true,offset));
-  if(sequence!==flagCarryRequestSeq||map!==granularMapFilter||match!==granularMatchFilter)return;
+  const result=await fetchJSON(flagCarryUrl(playerId,"carries",offset,selectedMatchId));
+  if(sequence!==flagCarryRequestSeq||matchSequence!==flagCarryMatchRequestSeq||
+      String(currentPlayerId)!==playerId||
+      selectedMatchId!==flagCarryOpenMatchId||map!==granularMapFilter||match!==granularMatchFilter)return;
   flagCarryDetailsLoading=false;
   if(result?.ok){
     flagCarryDetails.push(...(result.data?.carries||[]));
@@ -1933,7 +1994,28 @@ function bindGranularControls(){
   card.addEventListener("click",event=>{
     if(event.target.closest("[data-flag-carry-toggle]")){
       flagCarryDetailsOpen=!flagCarryDetailsOpen;
-      if(flagCarryDetailsOpen&&!flagCarryDetails.length)loadFlagCarryDetails();
+      if(flagCarryDetailsOpen&&!flagCarryMatches.length&&!flagCarryMatchesLoading)loadFlagCarryMatches();
+      if(!flagCarryDetailsOpen){
+        flagCarryOpenMatchId="";
+        flagCarryMatchRequestSeq++;
+      }
+      renderPlayerGranular(currentGranular);
+      return;
+    }
+    if(event.target.closest("[data-flag-carry-matches-more]")){
+      loadFlagCarryMatches();
+      return;
+    }
+    const flagCarryMatchButton=event.target.closest("[data-flag-carry-match]");
+    if(flagCarryMatchButton){
+      const matchId=flagCarryMatchButton.dataset.flagCarryMatch||"";
+      flagCarryOpenMatchId=flagCarryOpenMatchId===matchId?"":matchId;
+      flagCarryMatchRequestSeq++;
+      flagCarryDetails=[];
+      flagCarryDetailsHasMore=false;
+      flagCarryDetailsLoading=false;
+      flagCarryDetailsError=false;
+      if(flagCarryOpenMatchId)loadFlagCarryDetails();
       renderPlayerGranular(currentGranular);
       return;
     }

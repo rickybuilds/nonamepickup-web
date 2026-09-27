@@ -54,6 +54,45 @@ function createPickupFlagCarryRouter({ db, logger = console }) {
     }
   });
 
+  router.get("/player/:playerId/flag-carry-matches", (req, res) => {
+    const filters = filtersFor(req);
+    if (!filters) return res.status(400).json({ ok: false, error: "invalid_flag_carry_filter" });
+    const offset = Math.max(0, Math.min(10000, Math.trunc(Number(req.query.offset) || 0)));
+    try {
+      const { where, params } = sqlFilters(filters);
+      const rows = db.prepare(`
+        SELECT r.match_id, GROUP_CONCAT(DISTINCT r.map) AS maps,
+               COUNT(DISTINCT r.round_number) AS rounds,
+               SUM(rp.carry_count) AS carries,
+               SUM(rp.carry_ms) AS milliseconds,
+               SUM(rp.distance_units) AS distance_units,
+               MAX(r.started_at_epoch) AS latest_round_epoch
+        FROM pickup_flag_carry_players rp
+        JOIN pickup_flag_carry_rounds r
+          ON r.match_id = rp.match_id AND r.round_number = rp.round_number
+        WHERE ${where}
+        GROUP BY r.match_id
+        HAVING SUM(rp.carry_count) > 0
+        ORDER BY latest_round_epoch DESC, r.match_id DESC
+        LIMIT 13 OFFSET ?
+      `).all(...params, offset);
+      return res.json({ ok: true, data: {
+        matches: rows.slice(0, 12).map(row => ({
+          matchId: row.match_id,
+          maps: row.maps || "",
+          rounds: Number(row.rounds || 0),
+          carries: Number(row.carries || 0),
+          milliseconds: Number(row.milliseconds || 0),
+          meters: Math.round(Number(row.distance_units || 0) / TFC_UNITS_PER_METER)
+        })),
+        hasMore: rows.length > 12
+      } });
+    } catch (error) {
+      logger.error?.("[pickup flag carry] match_list_failed", error);
+      return res.status(500).json({ ok: false, error: "flag_carry_unavailable" });
+    }
+  });
+
   router.get("/player/:playerId/flag-carries", (req, res) => {
     const filters = filtersFor(req);
     if (!filters) return res.status(400).json({ ok: false, error: "invalid_flag_carry_filter" });
