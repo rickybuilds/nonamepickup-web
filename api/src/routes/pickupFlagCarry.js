@@ -74,10 +74,10 @@ function createPickupFlagCarryRouter({ db, logger = console }) {
         GROUP BY r.match_id
         HAVING SUM(rp.carry_count) > 0
         ORDER BY latest_round_epoch DESC, r.match_id DESC
-        LIMIT 13 OFFSET ?
+        LIMIT 6 OFFSET ?
       `).all(...params, offset);
       return res.json({ ok: true, data: {
-        matches: rows.slice(0, 12).map(row => ({
+        matches: rows.slice(0, 5).map(row => ({
           matchId: row.match_id,
           maps: row.maps || "",
           rounds: Number(row.rounds || 0),
@@ -85,7 +85,7 @@ function createPickupFlagCarryRouter({ db, logger = console }) {
           milliseconds: Number(row.milliseconds || 0),
           meters: Math.round(Number(row.distance_units || 0) / TFC_UNITS_PER_METER)
         })),
-        hasMore: rows.length > 12
+        hasMore: rows.length > 5
       } });
     } catch (error) {
       logger.error?.("[pickup flag carry] match_list_failed", error);

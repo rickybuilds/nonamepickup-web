@@ -11,6 +11,8 @@ let currentPlayerId=null;
 let currentFlagCarry=null;
 let flagCarryLoading=false;
 let flagCarryMatches=[];
+let flagCarryMatchesOffset=0;
+let flagCarryMatchesRetryOffset=0;
 let flagCarryMatchesHasMore=false;
 let flagCarryMatchesLoading=false;
 let flagCarryMatchesError=false;
@@ -22,6 +24,7 @@ let flagCarryDetailsLoading=false;
 let flagCarryDetailsError=false;
 let flagCarryRequestSeq=0;
 let flagCarryMatchRequestSeq=0;
+const flagCarryMatchPageSize=5;
 let currentGranular=null;
 let currentGranularBase=null;
 let currentGranularEvents=null;
@@ -275,6 +278,8 @@ async function loadPlayerV3(){
   currentPlayerId=playerId;
   currentFlagCarry=null;
   flagCarryMatches=[];
+  flagCarryMatchesOffset=0;
+  flagCarryMatchesRetryOffset=0;
   flagCarryOpenMatchId="";
   flagCarryDetails=[];
   flagCarryDetailsOpen=false;
@@ -703,11 +708,17 @@ function flagCarryDetailsHtml(){
       (expanded?flagCarryMatchDetailsHtml():"")+
     '</div>';
   }).join("");
+  const pageControls=matches&&(flagCarryMatchesOffset>0||flagCarryMatchesHasMore)
+    ? '<div class="flag-carry-match-pages">'+
+        '<button type="button" data-flag-carry-page="prev"'+(flagCarryMatchesOffset===0||flagCarryMatchesLoading?' disabled':'')+'>Previous</button>'+
+        '<span>Matches '+(flagCarryMatchesOffset+1)+'–'+(flagCarryMatchesOffset+flagCarryMatches.length)+'</span>'+
+        '<button type="button" data-flag-carry-page="next"'+(!flagCarryMatchesHasMore||flagCarryMatchesLoading?' disabled':'')+'>Next</button>'+
+      '</div>' : "";
   return '<section class="flag-carry-profile-details" aria-label="Recorded flag carries">'+
     '<div class="flag-carry-profile-heading"><strong>Recorded flag carries by match</strong><span>Open one match to see its carries</span></div>'+
     (matches||'<p>'+(flagCarryMatchesLoading?"Loading matches...":flagCarryMatchesError?"Could not load matches.":"No carries in this selection.")+'</p>')+
-    (flagCarryMatchesError?'<button type="button" data-flag-carry-matches-more="1">Retry</button>':"")+
-    (flagCarryMatchesHasMore?'<button type="button" data-flag-carry-matches-more="1"'+(flagCarryMatchesLoading?' disabled':'')+'>Load more matches</button>':"")+
+    (flagCarryMatchesError?'<button type="button" data-flag-carry-page="retry">Retry</button>':"")+
+    pageControls+
   '</section>';
 }
 
@@ -1775,6 +1786,8 @@ async function loadFlagCarrySummary(playerId){
   currentFlagCarry=null;
   flagCarryLoading=true;
   flagCarryMatches=[];
+  flagCarryMatchesOffset=0;
+  flagCarryMatchesRetryOffset=0;
   flagCarryMatchesHasMore=false;
   flagCarryMatchesLoading=false;
   flagCarryMatchesError=false;
@@ -1794,23 +1807,32 @@ async function loadFlagCarrySummary(playerId){
   renderPlayerGranular(currentGranular);
 }
 
-async function loadFlagCarryMatches(){
+async function loadFlagCarryMatches(offset=0){
   if(!currentPlayerId||flagCarryMatchesLoading)return;
   const sequence=flagCarryRequestSeq;
   const playerId=String(currentPlayerId);
   const map=granularMapFilter;
   const match=granularMatchFilter;
-  const offset=flagCarryMatches.length;
+  offset=Math.max(0,offset);
+  flagCarryMatchesRetryOffset=offset;
   flagCarryMatchesLoading=true;
   flagCarryMatchesError=false;
+  flagCarryOpenMatchId="";
+  flagCarryMatchRequestSeq++;
+  flagCarryDetails=[];
+  flagCarryDetailsHasMore=false;
+  flagCarryDetailsLoading=false;
+  flagCarryDetailsError=false;
   renderPlayerGranular(currentGranular);
   const result=await fetchJSON(flagCarryUrl(playerId,"matches",offset));
   if(sequence!==flagCarryRequestSeq||String(currentPlayerId)!==playerId||
       map!==granularMapFilter||match!==granularMatchFilter)return;
   flagCarryMatchesLoading=false;
   if(result?.ok){
-    flagCarryMatches.push(...(result.data?.matches||[]));
-    flagCarryMatchesHasMore=!!result.data?.hasMore;
+    const fetchedMatches=result.data?.matches||[];
+    flagCarryMatches=fetchedMatches.slice(0,flagCarryMatchPageSize);
+    flagCarryMatchesOffset=offset;
+    flagCarryMatchesHasMore=fetchedMatches.length>flagCarryMatchPageSize||!!result.data?.hasMore;
   }else{
     flagCarryMatchesError=true;
   }
@@ -1994,7 +2016,7 @@ function bindGranularControls(){
   card.addEventListener("click",event=>{
     if(event.target.closest("[data-flag-carry-toggle]")){
       flagCarryDetailsOpen=!flagCarryDetailsOpen;
-      if(flagCarryDetailsOpen&&!flagCarryMatches.length&&!flagCarryMatchesLoading)loadFlagCarryMatches();
+      if(flagCarryDetailsOpen&&!flagCarryMatches.length&&!flagCarryMatchesLoading)loadFlagCarryMatches(0);
       if(!flagCarryDetailsOpen){
         flagCarryOpenMatchId="";
         flagCarryMatchRequestSeq++;
@@ -2002,12 +2024,17 @@ function bindGranularControls(){
       renderPlayerGranular(currentGranular);
       return;
     }
-    if(event.target.closest("[data-flag-carry-matches-more]")){
-      loadFlagCarryMatches();
+    const flagCarryPageButton=event.target.closest("[data-flag-carry-page]");
+    if(flagCarryPageButton){
+      const action=flagCarryPageButton.dataset.flagCarryPage;
+      const offset=action==="prev"?flagCarryMatchesOffset-flagCarryMatchPageSize:
+        action==="next"?flagCarryMatchesOffset+flagCarryMatchPageSize:flagCarryMatchesRetryOffset;
+      loadFlagCarryMatches(offset);
       return;
     }
     const flagCarryMatchButton=event.target.closest("[data-flag-carry-match]");
     if(flagCarryMatchButton){
+      if(flagCarryMatchesLoading)return;
       const matchId=flagCarryMatchButton.dataset.flagCarryMatch||"";
       flagCarryOpenMatchId=flagCarryOpenMatchId===matchId?"":matchId;
       flagCarryMatchRequestSeq++;

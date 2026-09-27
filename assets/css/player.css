@@ -105,7 +105,7 @@
 .role-kpi-metrics .role-flag-carry span,.role-kpi-metrics .role-flag-carry strong{color:#fde047}
 .role-kpi-metrics .role-flag-carry small{display:block;margin-top:4px;line-height:1.35;white-space:normal}
 .role-flag-carry button,.flag-carry-profile-details>button,.flag-carry-match-carries>button{margin-top:6px;border:0;background:none;color:#93c5fd;font:inherit;font-size:11px;font-weight:900;cursor:pointer;padding:0;text-decoration:underline}
-.role-flag-carry button:focus-visible,.flag-carry-profile-details a:focus-visible,.flag-carry-profile-details>button:focus-visible,.flag-carry-match-carries>button:focus-visible,.flag-carry-match-toggle:focus-visible{outline:2px solid #67e8f9;outline-offset:2px}
+.role-flag-carry button:focus-visible,.flag-carry-profile-details a:focus-visible,.flag-carry-profile-details>button:focus-visible,.flag-carry-match-carries>button:focus-visible,.flag-carry-match-toggle:focus-visible,.flag-carry-match-pages button:focus-visible{outline:2px solid #67e8f9;outline-offset:2px}
 .flag-carry-profile-details{margin-top:10px;padding:10px;border:1px solid rgba(250,204,21,.2);border-radius:10px;background:rgba(8,13,27,.6)}
 .flag-carry-profile-heading{display:flex;justify-content:space-between;gap:12px;margin-bottom:9px;color:#fde047;font-size:12px}
 .flag-carry-profile-heading span{color:#8ea0c7;font-size:10px}
@@ -120,6 +120,9 @@
 .flag-carry-match-total strong{color:#fde047}
 .flag-carry-match-chevron{color:#93c5fd;font-size:18px;font-weight:900;line-height:1;text-align:center}
 .flag-carry-match-carries{max-height:420px;overflow-y:auto;padding:4px 10px 10px;border-top:1px solid rgba(77,166,255,.18)}
+.flag-carry-match-pages{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:10px;color:#9aacca;font-size:11px}
+.flag-carry-match-pages button{border:1px solid rgba(77,166,255,.3);border-radius:7px;background:rgba(77,166,255,.1);color:#bfdbfe;padding:5px 9px;font:inherit;font-weight:850;cursor:pointer}
+.flag-carry-match-pages button:disabled{opacity:.4;cursor:default}
 .flag-carry-profile-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:8px 4px;border-top:1px solid rgba(77,166,255,.12);color:#cbd5e1;font-size:11px;text-decoration:none}
 .flag-carry-profile-row:hover{background:rgba(77,166,255,.08)}
 .flag-carry-profile-row strong{color:#fde047}
