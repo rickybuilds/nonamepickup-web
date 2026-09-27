@@ -10,8 +10,6 @@ const { PickupStorage } = require("../src/pickup/storage");
 const { createFlagCarryAccumulator, measureCarryDistances, recordedFlagCarries, summarizeFlagCarries } = require("../src/pickup/flagCarry");
 const { createFlagCarryStore } = require("../src/pickup/flagCarryStore");
 
-const OBJECTIVE_HEADER = "snapshot,time_ms,objective_id,state,carrier_session,solid,effects,x,y,z,yaw";
-
 async function readMember(archivePath, member, consume) {
   const child = spawn("tar", ["--zstd", "-xOf", archivePath, member], {
     stdio: ["ignore", "pipe", "pipe"]
@@ -37,20 +35,30 @@ async function readCarryFromArchive(archivePath) {
   const carries = await readMember(archivePath, "objectives.csv", async stream => {
     const lines = readline.createInterface({ input: stream, crlfDelay: Infinity });
     const carry = createFlagCarryAccumulator();
-    let sawHeader = false;
+    let headers = null;
+    let indexes = null;
     try {
       for await (const line of lines) {
-        if (!sawHeader) {
-          if (line.replace(/\r$/, "") !== OBJECTIVE_HEADER) throw new Error("Unexpected objectives.csv header");
-          sawHeader = true;
+        if (!headers) {
+          headers = line.replace(/^\uFEFF/, "").replace(/\r$/, "").split(",")
+            .map(name => name.trim().toLowerCase());
+          indexes = ["time_ms", "objective_id", "carrier_session"]
+            .map(name => headers.indexOf(name));
+          if (indexes.includes(-1)) {
+            throw new Error(`Unsupported objectives.csv header: ${headers.join(",")}`);
+          }
           continue;
         }
         if (!line) continue;
         const fields = line.replace(/\r$/, "").split(",");
-        if (fields.length !== 11) throw new Error("Invalid objectives.csv row");
-        carry.add({ time_ms: fields[1], objective_id: fields[2], carrier_session: fields[4] });
+        if (fields.length !== headers.length) throw new Error("Invalid objectives.csv row");
+        carry.add({
+          time_ms: fields[indexes[0]],
+          objective_id: fields[indexes[1]],
+          carrier_session: fields[indexes[2]]
+        });
       }
-      if (!sawHeader) throw new Error("Empty objectives.csv");
+      if (!headers) throw new Error("Empty objectives.csv");
       return carry.finish();
     } finally {
       lines.close();
