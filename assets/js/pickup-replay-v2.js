@@ -167,6 +167,7 @@ const state = {
   lastEventSecond: -1,
   killFeedEvents: [],
   lastKillFeedRenderKey: "",
+  expandedFlagCarrySessions: new Set(),
   analysisEvents: [],
   visibleAnalysisEvents: [],
   analysisFilter: "all",
@@ -3013,7 +3014,9 @@ function renderFlagCarryDistanceSummary() {
   if (!totalElement || !rowsElement) return;
   const rows = flagCarryDistanceRows();
   const total = rows.reduce((sum, row) => sum + row.distance, 0);
-  totalElement.textContent = `${Math.round(total / TFC_UNITS_PER_METER).toLocaleString()} meters`;
+  const meters = distance => Math.round(distance / TFC_UNITS_PER_METER);
+  const meterLabel = distance => `${meters(distance).toLocaleString()} ${meters(distance) === 1 ? "meter" : "meters"}`;
+  totalElement.textContent = meterLabel(total);
   rowsElement.replaceChildren();
   if (!rows.length) {
     const empty = document.createElement("p");
@@ -3021,21 +3024,91 @@ function renderFlagCarryDistanceSummary() {
     rowsElement.appendChild(empty);
     return;
   }
+  const players = new Map();
   for (const row of rows) {
-    const item = document.createElement("article");
-    item.className = "flag-carry-row";
-    const copy = document.createElement("div");
-    const title = document.createElement("strong");
     const roster = analysisRosterRow(row.sessionId);
-    const objective = state.objectiveDefinitions.get(row.objectiveId);
-    const flagTeam = teamInfo(objectiveTeam(objective, row.objectiveId)).name;
-    title.textContent = `${flagTeam} flag · ${roster?.name || `Player ${row.sessionId}`}`;
+    const playerName = roster?.name || `Player ${row.sessionId}`;
+    const key = playerName.trim().toLowerCase() || `session:${row.sessionId}`;
+    if (!players.has(key)) players.set(key, { key, playerName, distance: 0, carries: [] });
+    const player = players.get(key);
+    player.distance += row.distance;
+    player.carries.push(row);
+  }
+  const playerRows = [...players.values()].sort((a, b) =>
+    b.distance - a.distance || a.playerName.localeCompare(b.playerName)
+  );
+  for (const [playerIndex, player] of playerRows.entries()) {
+    const item = document.createElement("article");
+    item.className = "flag-carry-player";
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "flag-carry-player-toggle";
+    toggle.setAttribute("aria-expanded", String(state.expandedFlagCarrySessions.has(player.key)));
+    toggle.setAttribute("aria-label", `${player.playerName}, ${meterLabel(player.distance)} total. Show individual flag carries.`);
+    const copy = document.createElement("span");
+    copy.className = "flag-carry-player-copy";
+    const name = document.createElement("strong");
+    name.textContent = player.playerName;
     const detail = document.createElement("small");
-    detail.textContent = `${formatTime(row.start)}–${formatTime(row.end)} · Carry ${row.carryNumber}`;
+    detail.textContent = `${player.carries.length} ${player.carries.length === 1 ? "carry" : "carries"}`;
+    copy.append(name, detail);
     const distance = document.createElement("strong");
-    distance.textContent = `${Math.round(row.distance / TFC_UNITS_PER_METER).toLocaleString()} meters`;
-    copy.append(title, detail);
-    item.append(copy, distance);
+    distance.className = "flag-carry-player-distance";
+    distance.textContent = meterLabel(player.distance);
+    const caret = document.createElement("span");
+    caret.className = "flag-carry-player-caret";
+    caret.setAttribute("aria-hidden", "true");
+    caret.textContent = state.expandedFlagCarrySessions.has(player.key) ? "−" : "+";
+    toggle.append(copy, distance, caret);
+
+    const details = document.createElement("div");
+    details.className = "flag-carry-player-details";
+    details.id = `flag-carry-details-${playerIndex}`;
+    toggle.setAttribute("aria-controls", details.id);
+    details.hidden = !state.expandedFlagCarrySessions.has(player.key);
+    toggle.addEventListener("click", () => {
+      const expanded = !state.expandedFlagCarrySessions.has(player.key);
+      if (expanded) state.expandedFlagCarrySessions.add(player.key);
+      else state.expandedFlagCarrySessions.delete(player.key);
+      toggle.setAttribute("aria-expanded", String(expanded));
+      caret.textContent = expanded ? "−" : "+";
+      details.hidden = !expanded;
+    });
+    for (const row of player.carries) {
+      const carry = document.createElement("article");
+      carry.className = "flag-carry-row";
+      const carryCopy = document.createElement("div");
+      carryCopy.className = "flag-carry-detail-copy";
+      const objective = state.objectiveDefinitions.get(row.objectiveId);
+      const flagTeam = teamInfo(objectiveTeam(objective, row.objectiveId)).name;
+      const carryTitle = document.createElement("strong");
+      carryTitle.textContent = `${flagTeam} flag · Carry ${row.carryNumber}`;
+      const jump = document.createElement("button");
+      jump.type = "button";
+      jump.className = "flag-carry-jump";
+      jump.textContent = formatTime(row.start);
+      jump.title = `Jump to one second before ${player.playerName} picked up the flag`;
+      jump.setAttribute("aria-label", `${jump.title} at ${formatTime(row.start)}`);
+      jump.addEventListener("click", () => {
+        const limit = LIVE_MODE ? state.liveEdge : state.duration;
+        state.playbackTime = Math.min(limit, Math.max(0, row.start - 1));
+        if (LIVE_MODE) state.followLive = false;
+        selectPlayer(row.sessionId);
+        setCameraMode("pov");
+        updateScene();
+      });
+      const carryTime = document.createElement("small");
+      carryTime.textContent = `Pickup · carried until ${formatTime(row.end)}`;
+      carryCopy.appendChild(carryTitle);
+      const carryDistance = document.createElement("strong");
+      carryDistance.textContent = meterLabel(row.distance);
+      const timeGroup = document.createElement("div");
+      timeGroup.className = "flag-carry-time-group";
+      timeGroup.append(jump, carryTime);
+      carry.append(carryCopy, timeGroup, carryDistance);
+      details.appendChild(carry);
+    }
+    item.append(toggle, details);
     rowsElement.appendChild(item);
   }
 }
