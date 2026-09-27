@@ -11,6 +11,7 @@ const { TextDecoder } = require("node:util");
 const { parseCsv, parseCsvDocument, normalizeRoster } = require("./csv");
 const { validateManifest } = require("./manifest");
 const { pickupError } = require("./errors");
+const { createFlagCarryAccumulator, measureCarryDistances, recordedFlagCarries, summarizeFlagCarries } = require("./flagCarry");
 
 const REQUIRED_FILES = Object.freeze([
   "roster.csv",
@@ -737,6 +738,7 @@ async function validateArchive({
     }
   );
   const validateObjectiveTimeline = timelineRowValidator("objective_id");
+  const flagCarry = createFlagCarryAccumulator();
   await validateCsvStream(
     extractor.files.get("objectives.csv").path,
     "objectives",
@@ -744,6 +746,7 @@ async function validateArchive({
     (row, headers) => {
       validateNumericRow(row, headers);
       validateObjectiveTimeline(row);
+      flagCarry.add(row);
     }
   );
 
@@ -989,7 +992,17 @@ async function validateArchive({
 
   const rosterText = await fsp.readFile(extractor.files.get("roster.csv").path, "utf8");
   const roster = normalizeRoster(parseCsv(rosterText, "roster"));
-  return { manifest, roster, complete, extractedBytes: extractor.totalBytes };
+  const flagCarries = flagCarry.finish();
+  const seenSessions = flagCarries.length
+    ? await measureCarryDistances(
+      fs.createReadStream(extractor.files.get("players.csv").path, { encoding: "utf8" }),
+      flagCarries
+    )
+    : new Set();
+  const recordedCarries = recordedFlagCarries(flagCarries, seenSessions);
+  const flagCarryBySession = summarizeFlagCarries(recordedCarries);
+  return { manifest, roster, complete, flagCarries: recordedCarries,
+    flagCarryBySession, extractedBytes: extractor.totalBytes };
 }
 
 module.exports = {

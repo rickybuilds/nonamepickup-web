@@ -11,6 +11,7 @@ const { createAnalyticsMiddleware } = require("./middleware/analytics");
 const { registerErrorHandlers } = require("./middleware/errors");
 const { checkSpeedrunDatabase } = require("./db/mariadb");
 const { createPickupReplaysRouter, createPickupReplayViewerRouter } = require("./routes/pickupReplays");
+const { createPickupFlagCarryRouter } = require("./routes/pickupFlagCarry");
 const { createPickupLiveIngestRouter, createPickupLiveViewerRouter } = require("./routes/pickupLive");
 const { registerRelayStatusRoute } = require("./live/udpRelay");
 
@@ -24,6 +25,7 @@ function createApp({
   statements,
   pickupIngestion,
   pickupReplayViewer,
+  pickupPool,
   pickupLive
 }) {
   const {
@@ -92,6 +94,7 @@ function createApp({
   app.use("/api", createPickupReplayViewerRouter({
     viewer: pickupReplayViewer
   }));
+  app.use("/api", createPickupFlagCarryRouter({ db, pool: pickupPool }));
   if (pickupLive) {
     app.use("/api/pickup-live/viewer", compression({
       threshold: 1024,

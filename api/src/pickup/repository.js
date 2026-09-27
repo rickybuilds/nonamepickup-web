@@ -114,6 +114,7 @@ class PickupRepository {
             projectile_row_count = ?,
             objective_row_count = ?,
             event_row_count = ?,
+            flag_carry_processed_at = NOW(3),
             updated_at = NOW()
         WHERE id = ?
       `, [
@@ -135,6 +136,7 @@ class PickupRepository {
       ]);
 
       await connection.execute("DELETE FROM pickup_round_players WHERE round_pk = ?", [roundPk]);
+      await connection.execute("DELETE FROM pickup_flag_carries WHERE round_pk = ?", [roundPk]);
       for (const session of input.roster) {
         const [playerResult] = await connection.execute(`
           INSERT INTO pickup_players
@@ -163,8 +165,9 @@ class PickupRepository {
             (round_pk, player_pk, session_id, initial_slot, team_number, team_name,
              primary_class_id, is_bot, joined_ms, left_ms, kills, deaths, assists,
              suicides, damage_dealt, damage_taken, flag_pickups, flag_drops,
-             flag_captures, flag_returns, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+             flag_captures, flag_returns, flag_carry_ms, flag_carry_count, flag_carry_distance_units,
+             created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         `, [
           roundPk,
           playerResult.insertId,
@@ -185,8 +188,20 @@ class PickupRepository {
           session.flagPickups,
           session.flagDrops,
           session.flagCaptures,
-          session.flagReturns
+          session.flagReturns,
+          input.flagCarryBySession?.get(session.sessionIndex)?.milliseconds || 0,
+          input.flagCarryBySession?.get(session.sessionIndex)?.carries || 0,
+          input.flagCarryBySession?.get(session.sessionIndex)?.distanceUnits || 0
         ]);
+      }
+
+      for (const carry of input.flagCarries || []) {
+        await connection.execute(`
+          INSERT INTO pickup_flag_carries
+            (round_pk, session_id, objective_id, carry_number, start_ms, end_ms, distance_units)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [roundPk, carry.sessionId, carry.objectiveId, carry.carryNumber,
+          carry.startMs, carry.endMs, carry.distanceUnits]);
       }
 
       promotedPath = await promote();

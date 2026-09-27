@@ -8,6 +8,14 @@ let currentClasses=[];
 let currentHampa=null;
 let currentRatings=null;
 let currentPlayerId=null;
+let currentFlagCarry=null;
+let flagCarryLoading=false;
+let flagCarryDetails=[];
+let flagCarryDetailsOpen=false;
+let flagCarryDetailsHasMore=false;
+let flagCarryDetailsLoading=false;
+let flagCarryDetailsError=false;
+let flagCarryRequestSeq=0;
 let currentGranular=null;
 let currentGranularBase=null;
 let currentGranularEvents=null;
@@ -259,6 +267,9 @@ async function loadPlayerV3(){
   }
 
   currentPlayerId=playerId;
+  currentFlagCarry=null;
+  flagCarryDetails=[];
+  flagCarryDetailsOpen=false;
   const enc=encodeURIComponent(playerId);
   resetGranularState();
   renderPlayerGranularLoading();
@@ -599,9 +610,11 @@ function roleKpiPanel(data){
   const offenseAvg=data.offenseAverages||{};
   const extraClass=data.role==="offense"?" role-kpi-offense":" role-kpi-defense";
   const classTimeTile='<div><span>Class Time</span><strong>'+escapeHtml(data.hours?data.hours.toFixed(1)+"H":"-")+'</strong></div>';
+  const flagCarryTile=data.role==="offense"?flagCarryTileHtml():"";
   const metricsHtml=data.role==="offense"
     ? avgTile("Frags / Match",averageValue(data.eventKills,data.matches),"role-skill-tile role-skill-frags")+
       avgTile("Touches / Match",averageValue(offenseAvg.touches,offenseAvg.matches),"role-skill-tile role-skill-touches")+
+      flagCarryTile+
       avgTile("SG Kills / Match",averageValue(offenseAvg.guns,offenseAvg.matches),"role-skill-tile role-skill-sg")+
       classTimeTile+
       '<div class="role-kpi-wide"><span>Top Kill Weapon</span><strong>'+topWeapon+'</strong></div>'
@@ -619,7 +632,56 @@ function roleKpiPanel(data){
     '<div class="role-kpi-metrics">'+
       metricsHtml+
     '</div>'+
+    (data.role==="offense"?flagCarryDetailsHtml():"")+
   '</article>';
+}
+
+function flagCarryTimeLabel(milliseconds){
+  const seconds=Math.round(Number(milliseconds||0)/1000);
+  const hours=Math.floor(seconds/3600);
+  const minutes=Math.floor((seconds%3600)/60);
+  const remaining=seconds%60;
+  return hours?`${hours}h ${minutes}m`:minutes?`${minutes}m ${remaining}s`:`${remaining}s`;
+}
+
+function flagCarryTimestamp(milliseconds){
+  const value=Math.max(0,Math.round(Number(milliseconds||0)));
+  const minutes=Math.floor(value/60000);
+  const seconds=Math.floor((value%60000)/1000);
+  return `${minutes}:${String(seconds).padStart(2,"0")}.${String(value%1000).padStart(3,"0")}`;
+}
+
+function flagCarryTileHtml(){
+  const summary=currentFlagCarry;
+  const value=flagCarryLoading?"Loading...":summary?.recordedRounds
+    ? `${Number(summary.meters||0).toLocaleString()} m`
+    : summary?"—":"Unavailable";
+  const detail=summary?.recordedRounds
+    ? `${Number(summary.carries||0).toLocaleString()} carries · ${flagCarryTimeLabel(summary.milliseconds)} · ${summary.recordedRounds} recorded rounds`
+    : summary?"No recorded replay rounds":"Replay data";
+  return '<div class="role-flag-carry" title="All classes; verified pickup replays only">'+
+    '<span>Flag Carry Distance</span><strong>'+escapeHtml(value)+'</strong>'+
+    '<small>'+escapeHtml(detail)+'</small>'+
+    (summary?.carries?'<button type="button" data-flag-carry-toggle="1" aria-expanded="'+(flagCarryDetailsOpen?"true":"false")+'">'+(flagCarryDetailsOpen?"Hide carries":"View carries")+'</button>':"")+
+  '</div>';
+}
+
+function flagCarryDetailsHtml(){
+  if(!flagCarryDetailsOpen)return"";
+  const rows=flagCarryDetails.map(carry=>{
+    const link='pickup-replay.html?matchId='+encodeURIComponent(carry.matchId)+'&round='+encodeURIComponent(carry.round);
+    return '<a class="flag-carry-profile-row" href="'+escapeAttr(link)+'">'+
+      '<span>'+escapeHtml(carry.map)+' · '+escapeHtml(carry.matchId)+' · Round '+escapeHtml(carry.round)+' · Carry '+escapeHtml(carry.carryNumber)+'</span>'+
+      '<span>'+flagCarryTimestamp(carry.startMs)+'–'+flagCarryTimestamp(carry.endMs)+'</span>'+
+      '<strong>'+escapeHtml(carry.meters)+' m</strong>'+
+    '</a>';
+  }).join("");
+  return '<section class="flag-carry-profile-details" aria-label="Recorded flag carries">'+
+    '<div class="flag-carry-profile-heading"><strong>Recorded flag carries</strong><span>All classes · replay data</span></div>'+
+    (rows||'<p>'+(flagCarryDetailsLoading?"Loading carries...":flagCarryDetailsError?"Could not load carries.":"No carries in this selection.")+'</p>')+
+    (flagCarryDetailsError?'<button type="button" data-flag-carry-more="1">Retry</button>':"")+
+    (flagCarryDetailsHasMore?'<button type="button" data-flag-carry-more="1"'+(flagCarryDetailsLoading?' disabled':'')+'>Load more</button>':"")+
+  '</section>';
 }
 
 function roleKpiStripHtml(){
@@ -628,7 +690,8 @@ function roleKpiStripHtml(){
   }
 
   const roles=["offense","defense"].map(roleKpiData);
-  const hasAnyRoleData=roles.some(role=>role.seconds>0||role.eventKills>0||role.objectiveKills>0||role.topWeapon);
+  const hasAnyRoleData=roles.some(role=>role.seconds>0||role.eventKills>0||role.objectiveKills>0||role.topWeapon)||
+    Number(currentFlagCarry?.recordedRounds||0)>0;
   if(!hasAnyRoleData){
     return '<div class="role-kpi-strip"><div class="empty-v3">Loading role profile...</div></div>';
   }
@@ -1652,6 +1715,7 @@ function scheduleGranularSummaryLoad(playerId,options={}){
     renderPlayerGranularLoading();
   }
   granularSummaryLoading=true;
+  loadFlagCarrySummary(requestedPlayerId);
   requestAnimationFrame(()=>{
     setTimeout(async()=>{
       const url=granularSummaryUrl(requestedPlayerId,false);
@@ -1666,6 +1730,56 @@ function scheduleGranularSummaryLoad(playerId,options={}){
       if(granularVictimFilter)loadGranularVictimBreakdown();
     },0);
   });
+}
+
+function flagCarryUrl(playerId,details=false,offset=0){
+  const params=new URLSearchParams();
+  if(granularMapFilter)params.set("map",granularMapFilter);
+  if(granularMatchFilter)params.set("matchId",granularMatchFilter);
+  if(details)params.set("offset",String(offset));
+  const route=details?"flag-carries":"flag-carry";
+  return "/api/player/"+encodeURIComponent(playerId)+"/"+route+"?"+params.toString();
+}
+
+async function loadFlagCarrySummary(playerId){
+  const sequence=++flagCarryRequestSeq;
+  const map=granularMapFilter;
+  const match=granularMatchFilter;
+  currentFlagCarry=null;
+  flagCarryLoading=true;
+  flagCarryDetails=[];
+  flagCarryDetailsOpen=false;
+  flagCarryDetailsHasMore=false;
+  flagCarryDetailsLoading=false;
+  flagCarryDetailsError=false;
+  renderPlayerGranular(currentGranular);
+  const result=await fetchJSON(flagCarryUrl(playerId));
+  if(sequence!==flagCarryRequestSeq||String(currentPlayerId)!==String(playerId)||
+      map!==granularMapFilter||match!==granularMatchFilter)return;
+  flagCarryLoading=false;
+  currentFlagCarry=result?.ok?result.data:null;
+  renderPlayerGranular(currentGranular);
+}
+
+async function loadFlagCarryDetails(){
+  if(!currentPlayerId||flagCarryDetailsLoading)return;
+  const sequence=flagCarryRequestSeq;
+  const map=granularMapFilter;
+  const match=granularMatchFilter;
+  const offset=flagCarryDetails.length;
+  flagCarryDetailsLoading=true;
+  renderPlayerGranular(currentGranular);
+  const result=await fetchJSON(flagCarryUrl(currentPlayerId,true,offset));
+  if(sequence!==flagCarryRequestSeq||map!==granularMapFilter||match!==granularMatchFilter)return;
+  flagCarryDetailsLoading=false;
+  if(result?.ok){
+    flagCarryDetails.push(...(result.data?.carries||[]));
+    flagCarryDetailsHasMore=!!result.data?.hasMore;
+    flagCarryDetailsError=false;
+  }else{
+    flagCarryDetailsError=true;
+  }
+  renderPlayerGranular(currentGranular);
 }
 
 function reloadGranularForActiveFilter(){
@@ -1817,6 +1931,16 @@ function bindGranularControls(){
     reloadGranularForActiveFilter();
   });
   card.addEventListener("click",event=>{
+    if(event.target.closest("[data-flag-carry-toggle]")){
+      flagCarryDetailsOpen=!flagCarryDetailsOpen;
+      if(flagCarryDetailsOpen&&!flagCarryDetails.length)loadFlagCarryDetails();
+      renderPlayerGranular(currentGranular);
+      return;
+    }
+    if(event.target.closest("[data-flag-carry-more]")){
+      loadFlagCarryDetails();
+      return;
+    }
     const classFilterButton=event.target.closest("[data-granular-class-filter]");
     if(classFilterButton){
       setGranularClassFilter(classFilterButton.dataset.granularClassFilter||"");
@@ -1985,7 +2109,9 @@ function renderPlayerGranular(data,eventsData){
   if(!body)return;
 
   if(!currentGranular||!currentGranular.source?.granularAvailable){
-    body.innerHTML='<div class="empty-v3">No granular kill-event data yet.</div>';
+    body.innerHTML=currentFlagCarry?.recordedRounds
+      ? '<article class="role-kpi-panel role-kpi-offense"><div class="role-kpi-title"><h3>Offense</h3></div><div class="role-kpi-metrics">'+flagCarryTileHtml()+'</div>'+flagCarryDetailsHtml()+'</article>'
+      : '<div class="empty-v3">'+(granularSummaryLoading?"Loading granular kill events...":"No granular kill-event data yet.")+'</div>';
     return;
   }
 

@@ -80,6 +80,7 @@ const app = createApp({
   statements,
   pickupIngestion,
   pickupReplayViewer,
+  pickupPool: getPickupPool(config),
   pickupLive
 });
 

@@ -101,6 +101,19 @@
 .role-kpi-metrics .role-skill-conced strong,.role-kpi-metrics .role-skill-conced span{color:#fca5a5}
 .role-kpi-metrics .role-skill-fc{border-color:rgba(168,85,247,.42);background:linear-gradient(145deg,rgba(168,85,247,.14),rgba(15,23,42,.55))}
 .role-kpi-metrics .role-skill-fc strong,.role-kpi-metrics .role-skill-fc span{color:#c4b5fd}
+.role-kpi-metrics .role-flag-carry{border-color:rgba(250,204,21,.4);background:linear-gradient(145deg,rgba(250,204,21,.12),rgba(15,23,42,.55))}
+.role-kpi-metrics .role-flag-carry span,.role-kpi-metrics .role-flag-carry strong{color:#fde047}
+.role-kpi-metrics .role-flag-carry small{display:block;margin-top:4px;line-height:1.35;white-space:normal}
+.role-flag-carry button,.flag-carry-profile-details>button{margin-top:6px;border:0;background:none;color:#93c5fd;font:inherit;font-size:10px;font-weight:900;cursor:pointer;padding:0;text-decoration:underline}
+.role-flag-carry button:focus-visible,.flag-carry-profile-details a:focus-visible,.flag-carry-profile-details>button:focus-visible{outline:2px solid #67e8f9;outline-offset:2px}
+.flag-carry-profile-details{margin-top:10px;padding:10px;border:1px solid rgba(250,204,21,.2);border-radius:10px;background:rgba(8,13,27,.6)}
+.flag-carry-profile-heading{display:flex;justify-content:space-between;gap:12px;margin-bottom:7px;color:#fde047;font-size:11px}
+.flag-carry-profile-heading span{color:#8ea0c7;font-size:10px}
+.flag-carry-profile-details p{color:#8ea0c7;font-size:11px}
+.flag-carry-profile-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:8px 4px;border-top:1px solid rgba(77,166,255,.12);color:#cbd5e1;font-size:11px;text-decoration:none}
+.flag-carry-profile-row:hover{background:rgba(77,166,255,.08)}
+.flag-carry-profile-row strong{color:#fde047}
+@media(max-width:650px){.flag-carry-profile-row{grid-template-columns:1fr auto}.flag-carry-profile-row span:nth-child(2){grid-column:1}}
 
 /* ---------- Player V4 granular ---------- */
 .granular-empty{color:var(--muted);font-size:12px;font-weight:850;padding:12px;border:1px dashed rgba(77,166,255,.17);border-radius:12px;text-align:center}
