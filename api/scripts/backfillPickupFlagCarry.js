@@ -10,6 +10,21 @@ const { PickupStorage } = require("../src/pickup/storage");
 const { createFlagCarryAccumulator, measureCarryDistances, recordedFlagCarries, summarizeFlagCarries } = require("../src/pickup/flagCarry");
 const { createFlagCarryStore } = require("../src/pickup/flagCarryStore");
 
+const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function retrySqliteBusy(label, action) {
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      return action();
+    } catch (error) {
+      if (!/^SQLITE_(BUSY|LOCKED)(_|$)/.test(String(error.code || "")) || attempt === 12) throw error;
+      const delayMs = Math.min(attempt * 1000, 10000);
+      console.warn(`${label}: SQLite is busy; retrying in ${delayMs / 1000}s (${attempt}/12)`);
+      await sleep(delayMs);
+    }
+  }
+}
+
 async function readMember(archivePath, member, consume) {
   const child = spawn("tar", ["--zstd", "-xOf", archivePath, member], {
     stdio: ["ignore", "pipe", "pipe"]
@@ -75,7 +90,8 @@ async function readCarryFromArchive(archivePath) {
 async function main() {
   config.validatePickupConfiguration();
   const pool = getPickupPool(config);
-  const db = createDatabase(config.ELO_DB, config.ANALYTICS_RETENTION_DAYS);
+  const db = await retrySqliteBusy("Opening elo.db", () =>
+    createDatabase(config.ELO_DB, config.ANALYTICS_RETENTION_DAYS));
   const flagCarryStore = createFlagCarryStore(db);
   const storage = new PickupStorage(config.PICKUP_STORAGE_PATH, { publicRoot: config.PUBLIC_DIR });
   try {
@@ -92,9 +108,14 @@ async function main() {
       ORDER BY a.id
     `);
     let completed = 0;
+    let skipped = 0;
     for (const artifact of artifacts) {
       const sha256 = String(artifact.sha256);
-      if (flagCarryStore.hasRound(artifact.match_id, artifact.round_number, sha256)) continue;
+      if (await retrySqliteBusy(`Checking artifact ${artifact.artifact_id}`, () =>
+        flagCarryStore.hasRound(artifact.match_id, artifact.round_number, sha256))) {
+        skipped += 1;
+        continue;
+      }
       const archivePath = storage.artifactPath(artifact.storage_key);
       const { carries, summaries } = await readCarryFromArchive(archivePath);
       const [sessions] = await pool.execute(`
@@ -103,7 +124,7 @@ async function main() {
         JOIN pickup_players p ON p.id = rp.player_pk
         WHERE rp.round_pk = ?
       `, [artifact.round_pk]);
-      flagCarryStore.saveRound({
+      const round = {
         matchId: artifact.match_id,
         round: artifact.round_number,
         map: artifact.map,
@@ -114,11 +135,17 @@ async function main() {
         })),
         flagCarryBySession: summaries,
         flagCarries: carries
-      });
+      };
+      const saved = await retrySqliteBusy(`Saving artifact ${artifact.artifact_id}`, () =>
+        flagCarryStore.saveRound(round));
+      if (!saved) {
+        skipped += 1;
+        continue;
+      }
       completed += 1;
-      console.log(`Processed artifact ${artifact.artifact_id} (${completed}/${artifacts.length})`);
+      console.log(`Processed artifact ${artifact.artifact_id} (${completed} new, ${skipped} already saved)`);
     }
-    console.log(`Flag carry backfill complete: ${completed} rounds`);
+    console.log(`Flag carry backfill complete: ${completed} new, ${skipped} already saved, ${artifacts.length} total`);
   } finally {
     db.close();
     await closePickupPool();

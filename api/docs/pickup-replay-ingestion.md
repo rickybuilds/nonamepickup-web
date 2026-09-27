@@ -391,6 +391,27 @@ rerun after an interruption. It reads `objectives.csv` and `players.csv` from
 each private archive without exposing them as static files. Keep the original
 archives for the backfill.
 
+For ongoing recovery on the website host, install the included systemd units
+after the initial backfill finishes:
+
+```bash
+cd /var/www/tfcbot
+install -D -m 644 deploy/systemd/tfc-pickup-flag-carry-recovery.service \
+  /etc/systemd/system/tfc-pickup-flag-carry-recovery.service
+install -D -m 644 deploy/systemd/tfc-pickup-flag-carry-recovery.timer \
+  /etc/systemd/system/tfc-pickup-flag-carry-recovery.timer
+systemctl daemon-reload
+systemctl enable --now tfc-pickup-flag-carry-recovery.timer
+systemctl list-timers tfc-pickup-flag-carry-recovery.timer --no-pager
+```
+
+The timer checks every 15 minutes for complete, verified replay rounds missing
+from `elo.db`. Already saved rounds are skipped; each new round is committed
+separately. SQLite lock errors are retried before the service fails, and a later
+timer run can resume after any remaining failure. The unit expects this checkout
+at `/var/www/tfcbot` and a `node` command on the service's PATH. Inspect runs
+with `journalctl -u tfc-pickup-flag-carry-recovery.service -n 50 --no-pager`.
+
 The public profile endpoints are
 `GET /api/player/<player_id>/flag-carry` for the summary and
 `GET /api/player/<player_id>/flag-carry-matches` for paged match totals.

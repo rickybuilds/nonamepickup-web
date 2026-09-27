@@ -1,0 +1,15 @@
+[Unit]
+Description=Recover missing pickup flag carry stats in elo.db
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/var/www/tfcbot/api
+UMask=0077
+ExecStart=/usr/bin/env node scripts/backfillPickupFlagCarry.js
+TimeoutStartSec=0
+NoNewPrivileges=true
+PrivateTmp=true

@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for missing pickup flag carry stats every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+RandomizedDelaySec=1min
+Persistent=true
+Unit=tfc-pickup-flag-carry-recovery.service
+
+[Install]
+WantedBy=timers.target
