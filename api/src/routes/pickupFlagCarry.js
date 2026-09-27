@@ -3,15 +3,8 @@
 const express = require("express");
 const { TFC_UNITS_PER_METER } = require("../pickup/flagCarry");
 
-function createPickupFlagCarryRouter({ db, pool, logger = console }) {
+function createPickupFlagCarryRouter({ db, logger = console }) {
   const router = express.Router();
-
-  function steamIdsFor(playerId) {
-    return [...new Set(db.prepare(`
-      SELECT steam_id FROM player_steam_ids
-      WHERE CAST(discord_id AS TEXT) = ? AND steam_id IS NOT NULL AND steam_id != ''
-    `).all(playerId).map(row => String(row.steam_id)))];
-  }
 
   function filtersFor(req) {
     const playerId = String(req.params.playerId || "");
@@ -23,42 +16,32 @@ function createPickupFlagCarryRouter({ db, pool, logger = console }) {
     return { playerId, map, matchId };
   }
 
-  function sqlFilters(steamIds, map, matchId) {
-    const clauses = [`p.steamid IN (${steamIds.map(() => "?").join(", ")})`];
-    const params = [...steamIds];
-    if (map) { clauses.push("r.map = ?"); params.push(map); }
-    if (matchId) { clauses.push("m.match_id = ?"); params.push(matchId); }
+  function sqlFilters(filters) {
+    const clauses = [`EXISTS (
+      SELECT 1 FROM player_steam_ids psi
+      WHERE CAST(psi.discord_id AS TEXT) = ? AND psi.steam_id = rp.steam_id
+    )`];
+    const params = [filters.playerId];
+    if (filters.map) { clauses.push("r.map = ?"); params.push(filters.map); }
+    if (filters.matchId) { clauses.push("r.match_id = ?"); params.push(filters.matchId); }
     return { where: clauses.join(" AND "), params };
   }
 
-  router.get("/player/:playerId/flag-carry", async (req, res) => {
+  router.get("/player/:playerId/flag-carry", (req, res) => {
     const filters = filtersFor(req);
-    if (!filters) {
-      return res.status(400).json({ ok: false, error: "invalid_flag_carry_filter" });
-    }
-
+    if (!filters) return res.status(400).json({ ok: false, error: "invalid_flag_carry_filter" });
     try {
-      const steamIds = steamIdsFor(filters.playerId);
-      if (!steamIds.length) {
-        return res.json({ ok: true, data: { milliseconds: 0, carries: 0, meters: 0, recordedRounds: 0 } });
-      }
-      const { where, params } = sqlFilters(steamIds, filters.map, filters.matchId);
-      const [rows] = await pool.execute(`
-        SELECT COALESCE(SUM(rp.flag_carry_ms), 0) AS milliseconds,
-               COALESCE(SUM(rp.flag_carry_count), 0) AS carries,
-               COALESCE(SUM(rp.flag_carry_distance_units), 0) AS distance_units,
-               COUNT(DISTINCT r.id) AS recorded_rounds
-        FROM pickup_round_players rp
-        JOIN pickup_players p ON p.id = rp.player_pk
-        JOIN pickup_rounds r ON r.id = rp.round_pk
-        JOIN pickup_matches m ON m.id = r.match_pk
-        JOIN pickup_artifacts a ON a.round_pk = r.id
-          AND a.artifact_kind = 'round_replay' AND a.status = 'verified' AND a.is_primary = 1
+      const { where, params } = sqlFilters(filters);
+      const row = db.prepare(`
+        SELECT COALESCE(SUM(rp.carry_ms), 0) AS milliseconds,
+               COALESCE(SUM(rp.carry_count), 0) AS carries,
+               COALESCE(SUM(rp.distance_units), 0) AS distance_units,
+               COUNT(DISTINCT r.match_id || '/' || r.round_number) AS recorded_rounds
+        FROM pickup_flag_carry_players rp
+        JOIN pickup_flag_carry_rounds r
+          ON r.match_id = rp.match_id AND r.round_number = rp.round_number
         WHERE ${where}
-          AND r.status = 'complete'
-          AND r.flag_carry_processed_at IS NOT NULL
-      `, params);
-      const row = rows[0] || {};
+      `).get(...params) || {};
       return res.json({ ok: true, data: {
         milliseconds: Number(row.milliseconds || 0),
         carries: Number(row.carries || 0),
@@ -71,28 +54,26 @@ function createPickupFlagCarryRouter({ db, pool, logger = console }) {
     }
   });
 
-  router.get("/player/:playerId/flag-carries", async (req, res) => {
+  router.get("/player/:playerId/flag-carries", (req, res) => {
     const filters = filtersFor(req);
     if (!filters) return res.status(400).json({ ok: false, error: "invalid_flag_carry_filter" });
     const offset = Math.max(0, Math.min(10000, Math.trunc(Number(req.query.offset) || 0)));
     try {
-      const steamIds = steamIdsFor(filters.playerId);
-      if (!steamIds.length) return res.json({ ok: true, data: { carries: [], hasMore: false } });
-      const { where, params } = sqlFilters(steamIds, filters.map, filters.matchId);
-      const [rows] = await pool.execute(`
-        SELECT m.match_id, r.round_number, r.map, fc.objective_id, fc.carry_number,
+      const { where, params } = sqlFilters(filters);
+      const rows = db.prepare(`
+        SELECT r.match_id, r.round_number, r.map, fc.objective_id, fc.carry_number,
                fc.start_ms, fc.end_ms, fc.distance_units
         FROM pickup_flag_carries fc
-        JOIN pickup_round_players rp ON rp.round_pk = fc.round_pk AND rp.session_id = fc.session_id
-        JOIN pickup_players p ON p.id = rp.player_pk
-        JOIN pickup_rounds r ON r.id = fc.round_pk
-        JOIN pickup_matches m ON m.id = r.match_pk
-        JOIN pickup_artifacts a ON a.round_pk = r.id
-          AND a.artifact_kind = 'round_replay' AND a.status = 'verified' AND a.is_primary = 1
-        WHERE ${where} AND r.status = 'complete' AND r.flag_carry_processed_at IS NOT NULL
-        ORDER BY r.started_at DESC, fc.start_ms DESC, fc.id DESC
+        JOIN pickup_flag_carry_players rp
+          ON rp.match_id = fc.match_id AND rp.round_number = fc.round_number
+          AND rp.session_id = fc.session_id
+        JOIN pickup_flag_carry_rounds r
+          ON r.match_id = fc.match_id AND r.round_number = fc.round_number
+        WHERE ${where}
+        ORDER BY r.started_at_epoch DESC, fc.start_ms DESC,
+                 fc.objective_id DESC, fc.carry_number DESC
         LIMIT 51 OFFSET ?
-      `, [...params, offset]);
+      `).all(...params, offset);
       return res.json({ ok: true, data: {
         carries: rows.slice(0, 50).map(row => ({
           matchId: row.match_id,

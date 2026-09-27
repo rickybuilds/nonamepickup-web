@@ -22,6 +22,7 @@ const { getPickupPool, closePickupPool } = require("./db/pickupMariadb");
 const { PickupRepository } = require("./pickup/repository");
 const { PickupStorage } = require("./pickup/storage");
 const { PickupIngestion } = require("./pickup/ingestion");
+const { createFlagCarryStore } = require("./pickup/flagCarryStore");
 const { PickupReplayViewer } = require("./pickup/viewer");
 const { PickupLiveService } = require("./pickup/live");
 const { attachUdpRelay } = require("./live/udpRelay");
@@ -42,7 +43,8 @@ const pickupIngestion = new PickupIngestion({
     zstdCommand: config.PICKUP_ZSTD_COMMAND
   },
   storage: new PickupStorage(config.PICKUP_STORAGE_PATH, { publicRoot: config.PUBLIC_DIR }),
-  repository: new PickupRepository(getPickupPool(config))
+  repository: new PickupRepository(getPickupPool(config)),
+  flagCarryStore: createFlagCarryStore(db)
 });
 const pickupReplayViewer = new PickupReplayViewer({
   pool: getPickupPool(config),
@@ -80,7 +82,6 @@ const app = createApp({
   statements,
   pickupIngestion,
   pickupReplayViewer,
-  pickupPool: getPickupPool(config),
   pickupLive
 });
 

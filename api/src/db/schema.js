@@ -27,6 +27,45 @@ function initializeSchema(db) {
 
   CREATE INDEX IF NOT EXISTS idx_steam_profiles_steam_id64
     ON steam_profiles(steam_id64);
+
+  CREATE TABLE IF NOT EXISTS pickup_flag_carry_rounds (
+    match_id TEXT NOT NULL,
+    round_number INTEGER NOT NULL,
+    map TEXT NOT NULL,
+    started_at_epoch INTEGER NOT NULL,
+    artifact_sha256 TEXT NOT NULL,
+    processed_at INTEGER NOT NULL,
+    PRIMARY KEY (match_id, round_number)
+  );
+
+  CREATE TABLE IF NOT EXISTS pickup_flag_carry_players (
+    match_id TEXT NOT NULL,
+    round_number INTEGER NOT NULL,
+    session_id INTEGER NOT NULL,
+    steam_id TEXT NOT NULL,
+    carry_ms INTEGER NOT NULL DEFAULT 0,
+    carry_count INTEGER NOT NULL DEFAULT 0,
+    distance_units REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (match_id, round_number, session_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_pickup_flag_carry_players_steam
+    ON pickup_flag_carry_players(steam_id, match_id, round_number);
+
+  CREATE TABLE IF NOT EXISTS pickup_flag_carries (
+    match_id TEXT NOT NULL,
+    round_number INTEGER NOT NULL,
+    session_id INTEGER NOT NULL,
+    objective_id INTEGER NOT NULL,
+    carry_number INTEGER NOT NULL,
+    start_ms INTEGER NOT NULL,
+    end_ms INTEGER NOT NULL,
+    distance_units REAL NOT NULL,
+    PRIMARY KEY (match_id, round_number, objective_id, carry_number)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_pickup_flag_carries_session
+    ON pickup_flag_carries(match_id, round_number, session_id);
 `);
 
   db.exec(`

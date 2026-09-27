@@ -376,17 +376,19 @@ count, carry time, and the number of recorded rounds covering the player.
 Individual carries retain their replay match/round, objective, start/end time,
 and unrounded distance. Missing replay telemetry is shown as unavailable, not
 as zero. Profile Steam IDs are resolved through the existing `player_steam_ids`
-links; the pickup metrics stay in MariaDB and do not change `elo.db`.
+links. The metrics are stored in three new tables in `elo.db`, created when the
+updated API starts. No MariaDB schema change is needed; MariaDB continues to
+hold the existing replay archive records.
 
-Before deploying the updated API, apply
-`api/migrations/004_pickup_flag_carry.sql` **once** to the pickup MariaDB
-database. New verified uploads calculate these summaries during ingestion.
-Then, with the same pickup database and storage environment as the API, run
+New verified uploads calculate these summaries during ingestion. If the SQLite
+write fails after the archive is accepted, the failure is logged and the
+backfill can recover that round. With the same `ELO_DB`, pickup database and
+storage environment as the API, run
 `node api/scripts/backfillPickupFlagCarry.js` on the website host to calculate
-summaries for already stored archives. The script processes only rounds with a
-null `flag_carry_processed_at`, commits one round at a time, and can be rerun
-after an interruption. It reads `objectives.csv` and `players.csv` from each
-private archive without exposing them as static files. Keep the original
+summaries for already stored archives. The script skips rounds already recorded
+with the same archive hash in `elo.db`, commits one round at a time, and can be
+rerun after an interruption. It reads `objectives.csv` and `players.csv` from
+each private archive without exposing them as static files. Keep the original
 archives for the backfill.
 
 The public profile endpoints are

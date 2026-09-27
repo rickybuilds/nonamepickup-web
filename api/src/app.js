@@ -25,7 +25,6 @@ function createApp({
   statements,
   pickupIngestion,
   pickupReplayViewer,
-  pickupPool,
   pickupLive
 }) {
   const {
@@ -94,7 +93,7 @@ function createApp({
   app.use("/api", createPickupReplayViewerRouter({
     viewer: pickupReplayViewer
   }));
-  app.use("/api", createPickupFlagCarryRouter({ db, pool: pickupPool }));
+  app.use("/api", createPickupFlagCarryRouter({ db }));
   if (pickupLive) {
     app.use("/api/pickup-live/viewer", compression({
       threshold: 1024,
