@@ -70,6 +70,7 @@ const PLAYER_CROUCH_VISUAL_HEIGHT = 40;
 // One complete phase is a left + right step. TFC players cover roughly this
 // distance during a natural run cycle; a shorter value makes their feet churn.
 const PLAYER_STRIDE_LENGTH = 240;
+const TFC_UNITS_PER_METER = 76;
 const PLAYER_MOTION_RESPONSE = 12;
 const PLAYER_AIR_HOLD_SECONDS = 0.18;
 const CARRIED_OBJECTIVE_BACK_OFFSET = 2;
@@ -3012,7 +3013,7 @@ function renderFlagCarryDistanceSummary() {
   if (!totalElement || !rowsElement) return;
   const rows = flagCarryDistanceRows();
   const total = rows.reduce((sum, row) => sum + row.distance, 0);
-  totalElement.textContent = `${Math.round(total).toLocaleString()} units`;
+  totalElement.textContent = `${Math.round(total / TFC_UNITS_PER_METER).toLocaleString()} meters`;
   rowsElement.replaceChildren();
   if (!rows.length) {
     const empty = document.createElement("p");
@@ -3032,7 +3033,7 @@ function renderFlagCarryDistanceSummary() {
     const detail = document.createElement("small");
     detail.textContent = `${formatTime(row.start)}–${formatTime(row.end)} · Carry ${row.carryNumber}`;
     const distance = document.createElement("strong");
-    distance.textContent = `${Math.round(row.distance).toLocaleString()} units`;
+    distance.textContent = `${Math.round(row.distance / TFC_UNITS_PER_METER).toLocaleString()} meters`;
     copy.append(title, detail);
     item.append(copy, distance);
     rowsElement.appendChild(item);
