@@ -82,7 +82,7 @@ function renderLastTenMarker(result, isMvp = false) {
   const label = { W: "Win", L: "Loss", T: "Tie", "?": "Unknown" }[value] + (isMvp ? " and MVP" : "");
   const mvpClass = isMvp && (value === "W" || value === "L") ? ` last10-mvp-${value.toLowerCase()}` : "";
   const frown = isMvp && value === "L"
-    ? '<svg viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="7.5"/><path d="M6.2 6.8h.01M11.8 6.8h.01M5.7 12.6c.8-1.6 1.9-2.4 3.3-2.4s2.5.8 3.3 2.4"/></svg>'
+    ? '<svg viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="8"/><path class="face-eyes" d="M6.2 7h.01M11.8 7h.01"/><path class="face-mouth" d="M5.5 13c.8-1.7 2-2.5 3.5-2.5s2.7.8 3.5 2.5"/></svg>'
     : "";
   return `<i class="last10-${value === "?" ? "unknown" : value.toLowerCase()}${mvpClass}" role="img" aria-label="${escapeAttr(label)}" title="${escapeAttr(label)}">${frown}</i>`;
 }
