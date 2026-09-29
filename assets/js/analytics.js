@@ -168,8 +168,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
     return `
       <article class="analytics-card ${featured ? "analytics-card-featured" : ""}">
-        <div class="analytics-card-head"><h3>${escapeHtml(title)}</h3>${note ? `<span>${escapeHtml(note)}</span>` : ""}</div>
-        ${toolbar}
+        <div class="analytics-card-head${toolbar ? " analytics-card-head-controls" : ""}">
+          <div class="analytics-card-title"><h3>${escapeHtml(title)}</h3>${note ? `<span>${escapeHtml(note)}</span>` : ""}</div>
+          ${toolbar}
+        </div>
         <ol>${list || `<li class="analytics-empty">No data yet</li>`}</ol>
       </article>
     `;
@@ -188,7 +190,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         "MVPs by Result",
         data?.[selected],
         `mvp-${selected}`,
-        "Completed matches with MVP; counted once per player per match",
+        "Completed matches",
         false,
         true,
         0,

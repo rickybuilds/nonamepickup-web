@@ -81,6 +81,8 @@
 
 .analytics-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .analytics-grid-featured{grid-template-columns:repeat(3,minmax(0,1fr))}
+.analytics-grid-featured>div{display:flex;min-width:0}
+.analytics-grid-featured>div>.analytics-card{flex:1}
 .analytics-grid-featured .analytics-card{border-color:rgba(251,191,36,.38)}
 .analytics-card{overflow:hidden;transition:transform .2s ease,border-color .2s ease}
 .analytics-card:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.42)}
@@ -98,10 +100,13 @@
 .analytics-page-button:hover:not(:disabled){border-color:rgba(248,113,113,.65);background:rgba(127,29,29,.3)}
 .analytics-page-button:disabled{opacity:.4;cursor:not-allowed}
 .analytics-card-head{min-height:70px;padding:16px 18px 12px;border-bottom:1px solid rgba(148,163,184,.1)}
+.analytics-card-title{min-width:0}
+.analytics-card-head-controls{box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.analytics-card-head-controls .analytics-card-title{flex:1 0 130px}
 .analytics-card-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
 .analytics-card-head span{display:block;margin-top:5px;color:var(--analytics-subtle);font:700 10px/1.4 "Inter",sans-serif}
-.analytics-mvp-result-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:10px 15px;border-bottom:1px solid rgba(148,163,184,.1)}
-.analytics-mvp-result-switch button{min-height:32px;border:1px solid rgba(148,163,184,.24);border-radius:8px;background:rgba(148,163,184,.06);color:#b6c4d8;font:800 11px "Inter",sans-serif;cursor:pointer}
+.analytics-mvp-result-switch{display:flex;flex:0 0 auto;gap:4px}
+.analytics-mvp-result-switch button{min-width:46px;min-height:30px;padding:0 7px;border:1px solid rgba(148,163,184,.24);border-radius:8px;background:rgba(148,163,184,.06);color:#b6c4d8;font:800 11px "Inter",sans-serif;cursor:pointer}
 .analytics-mvp-result-switch button:hover{border-color:rgba(148,163,184,.5);color:#f8fafc}
 .analytics-mvp-result-switch button:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}
 .analytics-mvp-result-switch button[data-mvp-result="wins"][aria-pressed="true"]{border-color:#4ade80;background:rgba(74,222,128,.16);color:#bbf7d0}
