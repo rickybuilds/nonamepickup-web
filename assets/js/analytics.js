@@ -131,6 +131,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function rowContext(row, type, recordType) {
     const details = [];
+    const mvpRateUnits = {
+      "mvp-games": ["game", "games"],
+      "mvp-wins": ["win", "wins"],
+      "mvp-losses": ["loss", "losses"],
+      "mvp-ties": ["tie", "ties"]
+    };
     if (recordType === "round") {
       if (row.map) details.push(escapeHtml(row.map));
       if (row.round_num) details.push(`Round ${number.format(row.round_num)}`);
@@ -138,6 +144,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (row.map) details.push(escapeHtml(row.map));
     } else if (recordType === "mvp-rate") {
       details.push(`${number.format(row.secondary || 0)} MVPs / ${number.format(row.matches || 0)} games`);
+    } else if (mvpRateUnits[recordType]) {
+      const games = Number(row.matches || 0);
+      details.push(games > 0
+        ? `<span class="analytics-mvp-efficiency">${decimal.format(100 * Number(row.value || 0) / games)}%</span> of ${number.format(games)} ${mvpRateUnits[recordType][games === 1 ? 0 : 1]}`
+        : "Efficiency unavailable");
     } else if (recordType === "least-flag-touches") {
       details.push(`${formatDuration(row.played_seconds || 0)} game time`);
       if (row.class_name) details.push(escapeHtml(row.class_name));
@@ -177,15 +188,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
-  function renderMvpLeaders(data, qualificationNote) {
+  function renderMvpLeaders(data) {
     const target = document.getElementById("analytics-mvp-leaders");
     if (!target) return;
     const views = {
-      total: { label: "Total", title: "Match MVPs", rows: data.mvps, type: "MVP games", note: "Total matches where player earned MVP" },
-      wins: { label: "Wins", title: "MVP Wins", rows: data.mvp_results?.wins, type: "mvp-wins", note: "Completed matches" },
-      losses: { label: "Loss", title: "MVP Losses", rows: data.mvp_results?.losses, type: "mvp-losses", note: "Completed matches" },
-      ties: { label: "Ties", title: "MVP Ties", rows: data.mvp_results?.ties, type: "mvp-ties", note: "Completed matches" },
-      efficiency: { label: "Efficiency", title: "MVP Efficiency", rows: data.mvp_rate, type: "percent", note: qualificationNote, recordType: "mvp-rate" }
+      total: { label: "Total", title: "Match MVPs", rows: data.mvps, type: "MVP games", note: "MVP games out of all completed games", recordType: "mvp-games" },
+      wins: { label: "Wins", title: "MVP Wins", rows: data.mvp_results?.wins, type: "mvp-wins", note: "MVP wins out of all wins", recordType: "mvp-wins" },
+      losses: { label: "Loss", title: "MVP Losses", rows: data.mvp_results?.losses, type: "mvp-losses", note: "MVP losses out of all losses", recordType: "mvp-losses" },
+      ties: { label: "Ties", title: "MVP Ties", rows: data.mvp_results?.ties, type: "mvp-ties", note: "MVP ties out of all ties", recordType: "mvp-ties" }
     };
     let selected = "total";
     const render = () => {
@@ -667,7 +677,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderPerGame(data, qualificationNote);
       renderWeapons(data);
       renderMaps(data, minimumMapGames, Number(data.qualification?.minimum_map_archive_games || 25));
-      renderMvpLeaders(data, qualificationNote);
+      renderMvpLeaders(data);
       renderSection("analytics-combat", data.combat, sections.combat, qualificationNote);
       renderSection("analytics-flags", data.flags, sections.flags, qualificationNote);
       renderSection("analytics-roles", data.roles, sections.roles, qualificationNote);

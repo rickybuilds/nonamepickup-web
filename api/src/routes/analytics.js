@@ -239,10 +239,11 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           SELECT
             MAX(player_id) AS player_id,
             MAX(player) AS player,
-            COUNT(DISTINCT match_id) AS value
-          FROM mvp_rows
-          WHERE identity IS NOT NULL AND identity != ''
-          GROUP BY identity
+            COUNT(DISTINCT mr.match_id) AS value
+          FROM mvp_rows mr
+          JOIN matches m ON m.match_id = mr.match_id AND m.status = 'completed'
+          WHERE mr.identity IS NOT NULL AND mr.identity != ''
+          GROUP BY mr.identity
           ORDER BY value DESC, player COLLATE NOCASE
           LIMIT ?
         `, limit));
@@ -335,6 +336,54 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           }
           return results;
         });
+
+        const mvpLeaders = [mvps, ...Object.values(mvpResults)];
+        const mvpLeaderIds = [...new Set(mvpLeaders.flatMap(rows => rows.map(row => row.id).filter(Boolean)))];
+        if (mvpLeaderIds.length) {
+          const gameCounts = timedAnalytics("analytics:mvpGameCounts", () => db.prepare(`
+            WITH player_games AS (
+              SELECT DISTINCT
+                CAST(rc.player_id AS TEXT) AS player_id,
+                m.match_id,
+                m.winner,
+                m.blue_ids,
+                m.red_ids
+              FROM rating_changes rc
+              JOIN matches m ON m.match_id = rc.match_id
+              WHERE m.status = 'completed'
+                AND rc.player_id IN (${mvpLeaderIds.map(() => "?").join(", ")})
+            ),
+            roster_games AS (
+              SELECT
+                player_id,
+                winner,
+                EXISTS (
+                  SELECT 1 FROM json_each(blue_ids)
+                  WHERE CAST(value AS TEXT) = player_id
+                ) AS on_blue,
+                EXISTS (
+                  SELECT 1 FROM json_each(red_ids)
+                  WHERE CAST(value AS TEXT) = player_id
+                ) AS on_red
+              FROM player_games
+            )
+            SELECT
+              player_id,
+              COUNT(*) AS games,
+              SUM(CASE WHEN (winner = 'BLUE' AND on_blue) OR (winner = 'RED' AND on_red) THEN 1 ELSE 0 END) AS wins,
+              SUM(CASE WHEN (winner = 'BLUE' AND on_red) OR (winner = 'RED' AND on_blue) THEN 1 ELSE 0 END) AS losses,
+              SUM(CASE WHEN winner = 'TIE' THEN 1 ELSE 0 END) AS ties
+            FROM roster_games
+            WHERE on_blue OR on_red
+            GROUP BY player_id
+          `).all(...mvpLeaderIds));
+          const countsByPlayer = new Map(gameCounts.map(row => [String(row.player_id), row]));
+          for (const [view, rows] of [["games", mvps], ...Object.entries(mvpResults)]) {
+            for (const row of rows) {
+              row.matches = row.id ? Number(countsByPlayer.get(row.id)?.[view] || 0) : null;
+            }
+          }
+        }
 
         let roundRowsCache = null;
         let playerTotalsCache = null;

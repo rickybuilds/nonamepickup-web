@@ -110,7 +110,6 @@
 .analytics-mvp-view-switch button[data-mvp-view="wins"][aria-pressed="true"]{border-color:#4ade80;background:rgba(74,222,128,.16);color:#bbf7d0}
 .analytics-mvp-view-switch button[data-mvp-view="losses"][aria-pressed="true"]{border-color:#fb7185;background:rgba(251,113,133,.16);color:#fecdd3}
 .analytics-mvp-view-switch button[data-mvp-view="ties"][aria-pressed="true"]{border-color:#facc15;background:rgba(250,204,21,.16);color:#fef08a}
-.analytics-mvp-view-switch button[data-mvp-view="efficiency"][aria-pressed="true"]{border-color:#7dd3fc;background:rgba(125,211,252,.14);color:#e0f2fe}
 .analytics-card ol{margin:0;padding:0;list-style:none}
 .analytics-card li{display:grid;grid-template-columns:26px minmax(90px,1fr) auto;gap:10px;align-items:center;min-height:56px;padding:9px 15px;border-top:1px solid rgba(148,163,184,.07)}
 .analytics-card li:first-child{border-top:0}
@@ -122,6 +121,7 @@
 .analytics-player a{color:#dbeafe}
 .analytics-card li>strong{max-width:180px;color:#f8fafc;font:800 13px ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right}
 .analytics-card small{display:block;margin-top:3px;color:var(--analytics-subtle);font:700 9px/1.35 "Inter",sans-serif}
+.analytics-mvp-efficiency{color:#93c5fd;font-weight:900}
 .analytics-record-links{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px;margin-top:5px}
 .analytics-card .analytics-link-pill{display:inline-flex;padding:4px 6px;border:1px solid rgba(96,165,250,.28);border-radius:999px;background:rgba(59,130,246,.07);color:#93c5fd;font:900 8px/1 "Inter",sans-serif}
 .analytics-card .analytics-link-pill.hampalyzer{border-color:rgba(52,211,153,.28);color:#6ee7b7}
@@ -219,9 +219,8 @@
   .analytics-weapon-total-card .analytics-player{white-space:normal}
 }
 @media(max-width:550px){
-  .analytics-mvp-view-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+  .analytics-mvp-view-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
   .analytics-mvp-view-switch button{min-width:0}
-  .analytics-mvp-view-switch button:last-child{grid-column:span 2}
 }
 @media(max-width:440px){
   .analytics-spotlight{padding-inline:12px}
