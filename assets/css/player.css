@@ -717,11 +717,12 @@
 .player2-page .leaderboard-last10 .last10-l{border-color:#fb7185;background:rgba(251,113,133,.32);box-shadow:0 0 8px rgba(251,113,133,.28)}
 .player2-page .leaderboard-last10 .last10-t{border-color:#facc15;background:rgba(250,204,21,.32);box-shadow:0 0 8px rgba(250,204,21,.24)}
 .player2-page .leaderboard-last10 .last10-mvp-w{border-color:#c084fc;background:rgba(192,132,252,.35);box-shadow:0 0 8px rgba(192,132,252,.32)}
-.player2-page .leaderboard-last10 .last10-mvp-l{display:inline-flex;width:21px;height:21px;align-items:center;justify-content:center;border:0;background:none;box-shadow:none}
-.player2-page .leaderboard-last10 .last10-mvp-l svg{width:21px;height:21px;fill:none;stroke:#fb7185;stroke-linecap:round;stroke-linejoin:round}
+.player2-page .leaderboard-last10 .last10-mvp-face{display:inline-flex;width:21px;height:21px;align-items:center;justify-content:center;border:0;background:none;box-shadow:none}
+.player2-page .leaderboard-last10 .last10-mvp-face svg{width:21px;height:21px;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .player2-page .leaderboard-last10 .last10-mvp-l circle{fill:#fb7185}
-.player2-page .leaderboard-last10 .last10-mvp-l path{stroke:#24111b;stroke-width:1.8}
-.player2-page .leaderboard-last10 .last10-mvp-l .face-eyes{stroke-width:2.6}
+.player2-page .leaderboard-last10 .last10-mvp-t circle{fill:#facc15}
+.player2-page .leaderboard-last10 .last10-mvp-face path{stroke:#24111b;stroke-width:1.8}
+.player2-page .leaderboard-last10 .last10-mvp-face .face-eyes{stroke-width:2.6}
 .player2-hidden-line{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .player-v3-page .player2-scoreboard{

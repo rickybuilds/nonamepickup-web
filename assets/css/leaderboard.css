@@ -476,7 +476,7 @@
   box-shadow: 0 0 8px rgba(192, 132, 252, .32);
 }
 
-.leaderboard-last10 .last10-mvp-l {
+.leaderboard-last10 .last10-mvp-face {
   display: inline-flex;
   width: 20px;
   height: 20px;
@@ -487,18 +487,18 @@
   box-shadow: none;
 }
 
-.leaderboard-last10 .last10-mvp-l svg {
+.leaderboard-last10 .last10-mvp-face svg {
   width: 20px;
   height: 20px;
   fill: none;
-  stroke: #fb7185;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .leaderboard-last10 .last10-mvp-l circle { fill: #fb7185; }
-.leaderboard-last10 .last10-mvp-l path { stroke: #24111b; stroke-width: 1.8; }
-.leaderboard-last10 .last10-mvp-l .face-eyes { stroke-width: 2.6; }
+.leaderboard-last10 .last10-mvp-t circle { fill: #facc15; }
+.leaderboard-last10 .last10-mvp-face path { stroke: #24111b; stroke-width: 1.8; }
+.leaderboard-last10 .last10-mvp-face .face-eyes { stroke-width: 2.6; }
 
 .leaderboard-player-link,
 .leaderboard-player-link > span,

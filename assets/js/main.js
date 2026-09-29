@@ -80,11 +80,13 @@ function escapeAttr(value) {
 function renderLastTenMarker(result, isMvp = false) {
   const value = ["W", "L", "T"].includes(String(result || "").toUpperCase()) ? String(result).toUpperCase() : "?";
   const label = { W: "Win", L: "Loss", T: "Tie", "?": "Unknown" }[value] + (isMvp ? " and MVP" : "");
-  const mvpClass = isMvp && (value === "W" || value === "L") ? ` last10-mvp-${value.toLowerCase()}` : "";
-  const frown = isMvp && value === "L"
-    ? '<svg viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="8"/><path class="face-eyes" d="M6.2 7h.01M11.8 7h.01"/><path class="face-mouth" d="M5.5 13c.8-1.7 2-2.5 3.5-2.5s2.7.8 3.5 2.5"/></svg>'
+  const mvpFace = isMvp && (value === "L" || value === "T");
+  const mvpClass = isMvp && value !== "?" ? ` last10-mvp-${value.toLowerCase()}` : "";
+  const mouth = value === "L" ? "M5.5 13c.8-1.7 2-2.5 3.5-2.5s2.7.8 3.5 2.5" : "M5.8 12h6.4";
+  const face = mvpFace
+    ? `<svg viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="8"/><path class="face-eyes" d="M6.2 7h.01M11.8 7h.01"/><path class="face-mouth" d="${mouth}"/></svg>`
     : "";
-  return `<i class="last10-${value === "?" ? "unknown" : value.toLowerCase()}${mvpClass}" role="img" aria-label="${escapeAttr(label)}" title="${escapeAttr(label)}">${frown}</i>`;
+  return `<i class="last10-${value === "?" ? "unknown" : value.toLowerCase()}${mvpClass}${mvpFace ? " last10-mvp-face" : ""}" role="img" aria-label="${escapeAttr(label)}" title="${escapeAttr(label)}">${face}</i>`;
 }
 
 function avatarInitial(name) {
