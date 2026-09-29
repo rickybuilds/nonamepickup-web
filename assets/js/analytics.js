@@ -177,32 +177,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
-  function renderMvpResults(data) {
-    const target = document.getElementById("analytics-mvp-results");
+  function renderMvpLeaders(data, qualificationNote) {
+    const target = document.getElementById("analytics-mvp-leaders");
     if (!target) return;
-    const labels = { wins: "Wins", losses: "Loss", ties: "Ties" };
-    let selected = "losses";
+    const views = {
+      total: { label: "Total", title: "Match MVPs", rows: data.mvps, type: "MVP games", note: "Total matches where player earned MVP" },
+      wins: { label: "Wins", title: "MVP Wins", rows: data.mvp_results?.wins, type: "mvp-wins", note: "Completed matches" },
+      losses: { label: "Loss", title: "MVP Losses", rows: data.mvp_results?.losses, type: "mvp-losses", note: "Completed matches" },
+      ties: { label: "Ties", title: "MVP Ties", rows: data.mvp_results?.ties, type: "mvp-ties", note: "Completed matches" },
+      efficiency: { label: "Efficiency", title: "MVP Efficiency", rows: data.mvp_rate, type: "percent", note: qualificationNote, recordType: "mvp-rate" }
+    };
+    let selected = "total";
     const render = () => {
-      const toolbar = `<div class="analytics-mvp-result-switch" role="group" aria-label="Filter MVPs by match result">
-        ${Object.entries(labels).map(([key, label]) => `<button type="button" data-mvp-result="${key}" aria-pressed="${key === selected}">${label}</button>`).join("")}
+      const view = views[selected];
+      const toolbar = `<div class="analytics-mvp-view-switch" role="group" aria-label="MVP ranking view">
+        ${Object.entries(views).map(([key, item]) => `<button type="button" data-mvp-view="${key}" aria-pressed="${key === selected}">${item.label}</button>`).join("")}
       </div>`;
       target.innerHTML = renderCard(
-        "MVPs by Result",
-        data?.[selected],
-        `mvp-${selected}`,
-        "Completed matches",
-        false,
+        view.title,
+        view.rows,
+        view.type,
+        view.note,
+        view.recordType || false,
         true,
         0,
         toolbar
       );
     };
     target.addEventListener("click", event => {
-      const button = event.target.closest("[data-mvp-result]");
+      const button = event.target.closest("[data-mvp-view]");
       if (!button || !target.contains(button)) return;
-      selected = button.dataset.mvpResult;
+      selected = button.dataset.mvpView;
       render();
-      target.querySelector(`[data-mvp-result="${selected}"]`)?.focus();
+      target.querySelector(`[data-mvp-view="${selected}"]`)?.focus();
     });
     render();
   }
@@ -660,9 +667,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderPerGame(data, qualificationNote);
       renderWeapons(data);
       renderMaps(data, minimumMapGames, Number(data.qualification?.minimum_map_archive_games || 25));
-      document.getElementById("analytics-mvps").innerHTML = renderCard("Match MVPs", data.mvps, "MVP games", "Total matches where player earned MVP", false, true);
-      document.getElementById("analytics-mvp-rate").innerHTML = renderCard("MVP Efficiency", data.mvp_rate, "percent", qualificationNote, "mvp-rate", true);
-      renderMvpResults(data.mvp_results);
+      renderMvpLeaders(data, qualificationNote);
       renderSection("analytics-combat", data.combat, sections.combat, qualificationNote);
       renderSection("analytics-flags", data.flags, sections.flags, qualificationNote);
       renderSection("analytics-roles", data.roles, sections.roles, qualificationNote);
