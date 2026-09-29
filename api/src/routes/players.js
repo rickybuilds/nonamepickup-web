@@ -1386,6 +1386,26 @@ router.get("/player/:id/recent", (req, res) => {
     `).all(pid);
 
     const playersByMatch = loadMatchPlayers(matches, { includeRatings: false });
+    const steamIds = db.prepare(`
+      SELECT steam_id
+      FROM player_steam_ids
+      WHERE CAST(discord_id AS TEXT) = ?
+        AND steam_id IS NOT NULL
+        AND steam_id != ''
+    `).all(pid).map(row => String(row.steam_id));
+    let mvpMatchIds = new Set();
+    if (steamIds.length) {
+      try {
+        const ids = steamIds.map(() => "?").join(",");
+        mvpMatchIds = new Set(db.prepare(`
+          SELECT DISTINCT match_id
+          FROM match_round_mvps
+          WHERE mvp_player_key IN (${ids}) OR steam_id IN (${ids})
+        `).all(...steamIds, ...steamIds).map(row => String(row.match_id)));
+      } catch (mvpError) {
+        if (!String(mvpError?.message || "").includes("no such table")) throw mvpError;
+      }
+    }
     const out = matches.map(row => {
       const serialized = serializeMatch(row, playersByMatch, { includeTfcstats: true });
       const player =
@@ -1393,6 +1413,7 @@ router.get("/player/:id/recent", (req, res) => {
         serialized.redTeam.find(entry => String(entry.id) === pid);
       return {
         ...serialized,
+        is_mvp: mvpMatchIds.has(String(row.match_id)),
         before: player?.before ?? null,
         after: player?.after ?? null,
         delta: player?.delta ?? 0

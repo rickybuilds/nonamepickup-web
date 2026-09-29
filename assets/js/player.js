@@ -204,13 +204,13 @@ function getPlayerResult(match,playerId){
 function renderPlayerLastTen(rows,playerId){
   const results=(Array.isArray(rows)?rows:[]).slice(0,10).map(match=>{
     const result=getPlayerResult(match,playerId);
-    return result==="Win"?"W":result==="Loss"?"L":result==="Tie"?"T":"?";
+    return {
+      result:result==="Win"?"W":result==="Loss"?"L":result==="Tie"?"T":"?",
+      is_mvp:!!match.is_mvp
+    };
   });
   const padded=[...results,...Array(Math.max(0,10-results.length)).fill("?")].slice(0,10);
-  setHtml("player2-last10",padded.map(value=>{
-    const cls=value==="?"?"unknown":value.toLowerCase();
-    return '<i class="last10-'+cls+'" title="'+escapeAttr(value==="?"?"Unknown":value)+'"></i>';
-  }).join(""));
+  setHtml("player2-last10",padded.map(entry=>renderLastTenMarker(entry?.result??entry,!!entry?.is_mvp)).join(""));
 }
 
 function fitPlayerName(){

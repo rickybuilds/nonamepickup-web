@@ -470,6 +470,33 @@
   box-shadow: 0 0 8px rgba(250, 204, 21, .24);
 }
 
+.leaderboard-last10 .last10-mvp-w {
+  border-color: #c084fc;
+  background: #a855f7;
+  box-shadow: 0 0 8px rgba(192, 132, 252, .5);
+}
+
+.leaderboard-last10 .last10-mvp-l {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.leaderboard-last10 .last10-mvp-l svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: #fb7185;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .leaderboard-player-link,
 .leaderboard-player-link > span,
 .leaderboard-player-link b {

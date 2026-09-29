@@ -77,6 +77,16 @@ function escapeAttr(value) {
   );
 }
 
+function renderLastTenMarker(result, isMvp = false) {
+  const value = ["W", "L", "T"].includes(String(result || "").toUpperCase()) ? String(result).toUpperCase() : "?";
+  const label = { W: "Win", L: "Loss", T: "Tie", "?": "Unknown" }[value] + (isMvp ? " and MVP" : "");
+  const mvpClass = isMvp && (value === "W" || value === "L") ? ` last10-mvp-${value.toLowerCase()}` : "";
+  const frown = isMvp && value === "L"
+    ? '<svg viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="7.5"/><path d="M6.2 6.8h.01M11.8 6.8h.01M5.7 12.6c.8-1.6 1.9-2.4 3.3-2.4s2.5.8 3.3 2.4"/></svg>'
+    : "";
+  return `<i class="last10-${value === "?" ? "unknown" : value.toLowerCase()}${mvpClass}" role="img" aria-label="${escapeAttr(label)}" title="${escapeAttr(label)}">${frown}</i>`;
+}
+
 function avatarInitial(name) {
   return String(name || "?").trim().charAt(0).toUpperCase() || "?";
 }
@@ -544,15 +554,12 @@ async function loadLeaderboard() {
   }
 
   function renderLastTen(row) {
-    const raw = Array.isArray(row.recent_results) ? row.recent_results.slice(-10).reverse() : [];
+    const raw = Array.isArray(row.recent_form) ? row.recent_form.slice(-10).reverse()
+      : Array.isArray(row.recent_results) ? row.recent_results.slice(-10).reverse() : [];
     const padded = [...raw, ...Array(Math.max(0, 10 - raw.length)).fill("?")].slice(0, 10);
     return `
       <span class="leaderboard-last10" aria-label="Last 10 results">
-        ${padded.map(result => {
-          const value = ["W", "L", "T"].includes(String(result || "").toUpperCase()) ? String(result).toUpperCase() : "?";
-          const cls = value === "?" ? "unknown" : value.toLowerCase();
-          return `<i class="last10-${cls}" title="${escapeAttr(value === "?" ? "Unknown" : value)}"></i>`;
-        }).join("")}
+        ${padded.map(entry => renderLastTenMarker(entry?.result ?? entry, !!entry?.is_mvp)).join("")}
       </span>
     `;
   }

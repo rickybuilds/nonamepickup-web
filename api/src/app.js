@@ -222,7 +222,14 @@ function createApp({
               AND m.status = 'completed'
               ${days > 0 ? "AND m.created_at >= ?" : ""}
           )
-          SELECT *
+          SELECT recent.*, EXISTS (
+            SELECT 1
+            FROM player_steam_ids psi
+            JOIN match_round_mvps mvp
+              ON mvp.mvp_player_key = psi.steam_id OR mvp.steam_id = psi.steam_id
+            WHERE CAST(psi.discord_id AS TEXT) = CAST(recent.player_id AS TEXT)
+              AND mvp.match_id = recent.match_id
+          ) AS is_mvp
           FROM recent
           WHERE rn <= 20
           ORDER BY player_id, ts ASC, match_id ASC
@@ -257,7 +264,8 @@ function createApp({
             after: row.after == null ? null : Number(row.after),
             before: row.before == null ? null : Number(row.before),
             delta: Number(row.delta || 0),
-            result
+            result,
+            is_mvp: !!row.is_mvp
           });
           historyByPlayer.set(playerId, list);
         }
@@ -268,6 +276,7 @@ function createApp({
           row.elo_delta_recent = null;
           row.elo_trend = [];
           row.recent_results = [];
+          row.recent_form = [];
           continue;
         }
 
@@ -283,6 +292,10 @@ function createApp({
         row.elo_delta_recent = Math.round(current - baseline);
         row.elo_trend = trend;
         row.recent_results = history.slice(-10).map(item => item.result || "?");
+        row.recent_form = history.slice(-10).map(item => ({
+          result: item.result || "?",
+          is_mvp: item.is_mvp
+        }));
       }
 
       res.json({
