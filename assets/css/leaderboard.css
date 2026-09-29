@@ -444,8 +444,10 @@
 }
 
 .leaderboard-last10 i {
-  width: 9px;
-  height: 9px;
+  box-sizing: border-box;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
   border: 2px solid rgba(148, 163, 184, .45);
   border-radius: 999px;
   background: transparent;
@@ -478,8 +480,8 @@
 
 .leaderboard-last10 .last10-mvp-face {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -488,8 +490,8 @@
 }
 
 .leaderboard-last10 .last10-mvp-face svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
