@@ -147,11 +147,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else if (row.matches != null && type !== "games") {
       details.push(`${number.format(row.matches)} matches`);
     }
-    const unit = type === "decimal" || type === "percent" || type === "time" ? "" : ` ${escapeHtml(type)}`;
+    const mvpUnits = {
+      "mvp-wins": ["MVP win", "MVP wins"],
+      "mvp-losses": ["MVP loss", "MVP losses"],
+      "mvp-ties": ["MVP tie", "MVP ties"]
+    };
+    const unit = mvpUnits[type]
+      ? ` ${mvpUnits[type][Number(row.value) === 1 ? 0 : 1]}`
+      : type === "decimal" || type === "percent" || type === "time" ? "" : ` ${escapeHtml(type)}`;
     return `${formatValue(row.value, type)}${unit}${details.length ? `<small>${details.join(" · ")}</small>` : ""}${recordLinks(row)}`;
   }
 
-  function renderCard(title, rows, type, note, recordType = false, featured = false, rankOffset = 0) {
+  function renderCard(title, rows, type, note, recordType = false, featured = false, rankOffset = 0, toolbar = "") {
     const list = (rows || []).map((row, index) => `
       <li class="${index === 0 && rankOffset === 0 ? "is-leader" : ""}">
         <span class="analytics-rank">${index + rankOffset + 1}</span>
@@ -162,9 +169,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `
       <article class="analytics-card ${featured ? "analytics-card-featured" : ""}">
         <div class="analytics-card-head"><h3>${escapeHtml(title)}</h3>${note ? `<span>${escapeHtml(note)}</span>` : ""}</div>
+        ${toolbar}
         <ol>${list || `<li class="analytics-empty">No data yet</li>`}</ol>
       </article>
     `;
+  }
+
+  function renderMvpResults(data) {
+    const target = document.getElementById("analytics-mvp-results");
+    if (!target) return;
+    const labels = { wins: "Wins", losses: "Loss", ties: "Ties" };
+    let selected = "losses";
+    const render = () => {
+      const toolbar = `<div class="analytics-mvp-result-switch" role="group" aria-label="Filter MVPs by match result">
+        ${Object.entries(labels).map(([key, label]) => `<button type="button" data-mvp-result="${key}" aria-pressed="${key === selected}">${label}</button>`).join("")}
+      </div>`;
+      target.innerHTML = renderCard(
+        "MVPs by Result",
+        data?.[selected],
+        `mvp-${selected}`,
+        "Completed matches with MVP; counted once per player per match",
+        false,
+        true,
+        0,
+        toolbar
+      );
+    };
+    target.addEventListener("click", event => {
+      const button = event.target.closest("[data-mvp-result]");
+      if (!button || !target.contains(button)) return;
+      selected = button.dataset.mvpResult;
+      render();
+      target.querySelector(`[data-mvp-result="${selected}"]`)?.focus();
+    });
+    render();
   }
 
   function renderSection(id, data, config, qualificationNote) {
@@ -622,6 +660,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderMaps(data, minimumMapGames, Number(data.qualification?.minimum_map_archive_games || 25));
       document.getElementById("analytics-mvps").innerHTML = renderCard("Match MVPs", data.mvps, "MVP games", "Total matches where player earned MVP", false, true);
       document.getElementById("analytics-mvp-rate").innerHTML = renderCard("MVP Efficiency", data.mvp_rate, "percent", qualificationNote, "mvp-rate", true);
+      renderMvpResults(data.mvp_results);
       renderSection("analytics-combat", data.combat, sections.combat, qualificationNote);
       renderSection("analytics-flags", data.flags, sections.flags, qualificationNote);
       renderSection("analytics-roles", data.roles, sections.roles, qualificationNote);

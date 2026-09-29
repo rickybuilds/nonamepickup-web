@@ -287,6 +287,55 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           LIMIT ?
         `, MIN_PERFORMANCE_GAMES, limit));
 
+        const mvpResults = timedAnalytics("analytics:mvpResults", () => {
+          const rows = db.prepare(`${MVP_CTES},
+            player_matches AS (
+              SELECT
+                mr.player_id,
+                mr.player,
+                mr.match_id,
+                m.winner,
+                EXISTS (
+                  SELECT 1 FROM json_each(m.blue_ids)
+                  WHERE CAST(value AS TEXT) = CAST(mr.player_id AS TEXT)
+                ) AS on_blue,
+                EXISTS (
+                  SELECT 1 FROM json_each(m.red_ids)
+                  WHERE CAST(value AS TEXT) = CAST(mr.player_id AS TEXT)
+                ) AS on_red
+              FROM mvp_rows mr
+              JOIN matches m ON m.match_id = mr.match_id AND m.status = 'completed'
+              WHERE mr.player_id IS NOT NULL AND m.winner IN ('BLUE', 'RED', 'TIE')
+            ),
+            outcomes AS (
+              SELECT
+                player_id,
+                player,
+                match_id,
+                CASE
+                  WHEN winner = 'TIE' THEN 'ties'
+                  WHEN (winner = 'BLUE' AND on_blue) OR (winner = 'RED' AND on_red) THEN 'wins'
+                  ELSE 'losses'
+                END AS outcome
+              FROM player_matches
+              WHERE on_blue OR on_red
+            )
+            SELECT
+              outcome,
+              player_id,
+              MAX(player) AS player,
+              COUNT(DISTINCT match_id) AS value
+            FROM outcomes
+            GROUP BY outcome, player_id
+            ORDER BY outcome, value DESC, player COLLATE NOCASE
+          `).all();
+          const results = { wins: [], losses: [], ties: [] };
+          for (const row of rows) {
+            if (results[row.outcome].length < limit) results[row.outcome].push(serializeLeader(row));
+          }
+          return results;
+        });
+
         let roundRowsCache = null;
         let playerTotalsCache = null;
         let playerRoundTotalsCache = null;
@@ -1051,6 +1100,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             activity,
             mvps,
             mvp_rate: mvpRate,
+            mvp_results: mvpResults,
             per_game: perGame,
             combat,
             flags,

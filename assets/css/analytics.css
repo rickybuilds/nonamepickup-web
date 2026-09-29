@@ -80,7 +80,7 @@
 .analytics-teaser-row strong{color:#f8fafc;font:800 12px ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right}
 
 .analytics-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.analytics-grid-featured{grid-template-columns:repeat(2,minmax(0,1fr))}
+.analytics-grid-featured{grid-template-columns:repeat(3,minmax(0,1fr))}
 .analytics-grid-featured .analytics-card{border-color:rgba(251,191,36,.38)}
 .analytics-card{overflow:hidden;transition:transform .2s ease,border-color .2s ease}
 .analytics-card:hover{transform:translateY(-2px);border-color:rgba(96,165,250,.42)}
@@ -100,6 +100,13 @@
 .analytics-card-head{min-height:70px;padding:16px 18px 12px;border-bottom:1px solid rgba(148,163,184,.1)}
 .analytics-card-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
 .analytics-card-head span{display:block;margin-top:5px;color:var(--analytics-subtle);font:700 10px/1.4 "Inter",sans-serif}
+.analytics-mvp-result-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:10px 15px;border-bottom:1px solid rgba(148,163,184,.1)}
+.analytics-mvp-result-switch button{min-height:32px;border:1px solid rgba(148,163,184,.24);border-radius:8px;background:rgba(148,163,184,.06);color:#b6c4d8;font:800 11px "Inter",sans-serif;cursor:pointer}
+.analytics-mvp-result-switch button:hover{border-color:rgba(148,163,184,.5);color:#f8fafc}
+.analytics-mvp-result-switch button:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}
+.analytics-mvp-result-switch button[data-mvp-result="wins"][aria-pressed="true"]{border-color:#4ade80;background:rgba(74,222,128,.16);color:#bbf7d0}
+.analytics-mvp-result-switch button[data-mvp-result="losses"][aria-pressed="true"]{border-color:#fb7185;background:rgba(251,113,133,.16);color:#fecdd3}
+.analytics-mvp-result-switch button[data-mvp-result="ties"][aria-pressed="true"]{border-color:#facc15;background:rgba(250,204,21,.16);color:#fef08a}
 .analytics-card ol{margin:0;padding:0;list-style:none}
 .analytics-card li{display:grid;grid-template-columns:26px minmax(90px,1fr) auto;gap:10px;align-items:center;min-height:56px;padding:9px 15px;border-top:1px solid rgba(148,163,184,.07)}
 .analytics-card li:first-child{border-top:0}
