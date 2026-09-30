@@ -171,7 +171,7 @@
 .granular-summary-strip .granular-record-kpi span{display:grid;gap:3px;color:var(--text);font-size:inherit;letter-spacing:0;text-transform:none}
 .granular-record-kpi b{display:block;color:var(--text);font-size:20px;font-weight:950;line-height:1}
 .granular-record-kpi em{display:block;color:#8ea0c7;font-style:normal;font-size:9px;font-weight:950;letter-spacing:.08em;line-height:1;text-transform:uppercase}
-.granular-grid{--granular-panel-height:388px;display:grid;grid-template-columns:minmax(0,2.7fr) repeat(3,minmax(180px,.7fr));gap:14px;align-items:start}
+.granular-grid{--granular-panel-height:388px;display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(220px,1fr));gap:14px;align-items:start}
 .granular-panel{min-width:0;padding:14px;display:flex;flex-direction:column}
 .granular-panel-head{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
 .granular-panel-head h3{margin:0;color:#e0f2fe;font-size:13px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
@@ -1029,7 +1029,7 @@
 }
 .player2-analytics-card{border-radius:14px!important}
 .player2-page .player-granular-header{align-items:center}
-.player2-page .granular-grid{grid-template-columns:minmax(0,2.35fr) repeat(3,minmax(180px,.5fr))}
+.player2-page .granular-grid{grid-template-columns:minmax(0,1.55fr) repeat(3,minmax(260px,.72fr))}
 .player2-page .granular-controls input,
 .player2-page .granular-controls select,
 .player2-page .granular-controls button{border-radius:8px}
