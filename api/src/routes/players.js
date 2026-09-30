@@ -254,6 +254,31 @@ function fastKillEventIdentityWhere(identity,alias=""){
   };
 }
 
+function fastKillEventVictimIdentityWhere(identity,alias=""){
+  const prefix=alias?alias+".":"";
+  const requested=String(identity.requestedId||identity.id||"");
+  if(requested.startsWith("STEAM_")){
+    const steamIds=identity.steamIds.length?identity.steamIds:[requested];
+    return{
+      sql:`${prefix}victim_steam_id IN (${placeholders(steamIds)})`,
+      params:steamIds
+    };
+  }
+  if(identity.steamIds.length){
+    return{
+      sql:`(${prefix}victim_discord_id=? OR (
+        (${prefix}victim_discord_id IS NULL OR ${prefix}victim_discord_id='')
+        AND ${prefix}victim_steam_id IN (${placeholders(identity.steamIds)})
+      ))`,
+      params:[identity.id,...identity.steamIds]
+    };
+  }
+  return{
+    sql:`${prefix}victim_discord_id=?`,
+    params:[identity.id]
+  };
+}
+
 function timedGranularQuery(label,fn){
   console.time(label);
   try{
@@ -358,6 +383,7 @@ function emptyGranularPayload(identity,granularAvailable=false){
     objectiveSummary:[],
     objectiveClassSummary:[],
     favoriteVictims:[],
+    biggestRivals:[],
     aliasHistory:[],
     matchDrilldown:[]
   };
@@ -372,8 +398,11 @@ function buildGranularPlayerPayload(identity,options={}){
   const weaponFilter=options.weapon?cleanString(options.weapon,100):"";
   const objectiveFilter=options.objective?cleanString(options.objective,40).toLowerCase():"";
   const victimFilter=options.victim?cleanString(options.victim,120):"";
+  const rivalFilter=options.rival?cleanString(options.rival,120):"";
   const officialOnly=String(options.official||"")==="1";
-  const identityWhere=fastKillEventIdentityWhere(identity,"e");
+  const eventIdentity=rivalFilter?resolvePlayerIdentity(rivalFilter):identity;
+  const identityWhere=fastKillEventIdentityWhere(eventIdentity,"e");
+  const profileVictimWhere=fastKillEventVictimIdentityWhere(identity,"e");
   const officialWhere=officialKillConfidenceWhere("e");
   const matchFilters=[];
   const matchParams=[];
@@ -407,12 +436,16 @@ function buildGranularPlayerPayload(identity,options={}){
     )`);
     matchParams.push(victimFilter,victimFilter,victimFilter,victimFilter);
   }
+  if(rivalFilter){
+    matchFilters.push(`AND ${profileVictimWhere.sql}`);
+    matchParams.push(...profileVictimWhere.params);
+  }
   if(officialOnly){
     matchFilters.push(`AND ${officialWhere}`);
     matchParams.push(...OFFICIAL_KILL_CLASS_CONFIDENCES);
   }
   const matchFilter=matchFilters.join("\n        ");
-  const timingPrefix=`granular:${identity.id}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}`;
+  const timingPrefix=`granular:${identity.id}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}${rivalFilter?":rival:"+rivalFilter:""}`;
 
   return safeTableRead(()=>{
     ensureGranularIndexes();
@@ -464,10 +497,10 @@ function buildGranularPlayerPayload(identity,options={}){
             ${matchFilter}
         )
     `).get(
-      identity.id,
-      identity.id,
-      identity.id,
-      identity.id,
+      eventIdentity.id,
+      eventIdentity.id,
+      eventIdentity.id,
+      eventIdentity.id,
       ...identityWhere.params,
       ...matchParams
     )):null;
@@ -515,18 +548,18 @@ function buildGranularPlayerPayload(identity,options={}){
       GROUP BY cm.class
       ORDER BY matches DESC,cm.class
     `).all(
-      identity.id,
-      identity.id,
-      identity.id,
-      identity.id,
+      eventIdentity.id,
+      eventIdentity.id,
+      eventIdentity.id,
+      eventIdentity.id,
       ...identityWhere.params,
       ...OFFICIAL_KILL_CLASS_CONFIDENCES,
       ...matchParams
     ));
 
-    const classTimeSteamIds=identity.steamIds.length
-      ? identity.steamIds
-      : (identity.steam_id?[identity.steam_id]:[]);
+    const classTimeSteamIds=eventIdentity.steamIds.length
+      ? eventIdentity.steamIds
+      : (eventIdentity.steam_id?[eventIdentity.steam_id]:[]);
     const classTimeMatchFilters=[];
     const classTimeMatchParams=[];
     if(matchId){
@@ -541,7 +574,7 @@ function buildGranularPlayerPayload(identity,options={}){
       classTimeMatchFilters.push("AND LOWER(c.class_name)=?");
       classTimeMatchParams.push(classFilter);
     }
-    if(classFilter||weaponFilter||objectiveFilter||victimFilter||officialOnly){
+    if(classFilter||weaponFilter||objectiveFilter||victimFilter||rivalFilter||officialOnly){
       classTimeMatchFilters.push(`AND c.match_id IN (
           SELECT DISTINCT e.match_id
           FROM match_kill_events e
@@ -586,7 +619,7 @@ function buildGranularPlayerPayload(identity,options={}){
       statsMatchFilters.push("AND s.match_id IN (SELECT match_id FROM matches WHERE map_name=?)");
       statsMatchParams.push(mapName);
     }
-    if(classFilter||weaponFilter||objectiveFilter||victimFilter||officialOnly){
+    if(classFilter||weaponFilter||objectiveFilter||victimFilter||rivalFilter||officialOnly){
       statsMatchFilters.push(`AND s.match_id IN (
           SELECT DISTINCT e.match_id
           FROM match_kill_events e
@@ -777,6 +810,39 @@ function buildGranularPlayerPayload(identity,options={}){
 	  ORDER BY v.kills DESC,victim_name
 	`).all(...identityWhere.params,...matchParams));
 
+    const biggestRivals=rivalFilter?[]:timedGranularQuery(`${timingPrefix}:biggestRivals`,()=>db.prepare(`
+      WITH rivals AS (
+        SELECT
+          e.attacker_discord_id,
+          e.attacker_steam_id,
+          e.attacker_key,
+          MAX(e.attacker_name) AS attacker_name,
+          COUNT(*) AS kills
+        FROM match_kill_events e
+        WHERE ${profileVictimWhere.sql}
+          AND COALESCE(e.is_enemy_kill,1)=1
+          ${matchFilter}
+        GROUP BY e.attacker_discord_id,e.attacker_steam_id,e.attacker_key
+        ORDER BY kills DESC
+        LIMIT 25
+      )
+      SELECT
+        r.attacker_discord_id,
+        r.attacker_steam_id,
+        r.attacker_key,
+        COALESCE(
+          NULLIF(p.display_name,''),
+          NULLIF(r.attacker_name,''),
+          NULLIF(r.attacker_key,''),
+          'Unknown'
+        ) AS attacker_name,
+        r.kills
+      FROM rivals r
+      LEFT JOIN ratings p
+        ON p.player_id=r.attacker_discord_id
+      ORDER BY r.kills DESC,attacker_name
+    `).all(...profileVictimWhere.params,...matchParams));
+
     const aliasHistory=timedGranularQuery(`${timingPrefix}:aliasHistory`,()=>db.prepare(`
       SELECT
         COALESCE(NULLIF(e.attacker_name,''),'Unknown') AS name,
@@ -912,6 +978,13 @@ function buildGranularPlayerPayload(identity,options={}){
         victimName:row.victim_name,
         kills:Number(row.kills||0)
       })),
+      biggestRivals:biggestRivals.map(row=>({
+        attackerId:row.attacker_discord_id||row.attacker_steam_id||row.attacker_key||null,
+        attackerSteamId:row.attacker_steam_id||null,
+        attackerKey:row.attacker_key||null,
+        attackerName:row.attacker_name,
+        kills:Number(row.kills||0)
+      })),
       aliasHistory:aliasHistory.map(row=>({
         name:row.name,
         kills:Number(row.kills||0)
@@ -937,6 +1010,7 @@ router.get("/player/:id/granular",(req,res)=>{
       weapon:req.query.weapon,
       objective:req.query.objective,
       victim:req.query.victim,
+      rival:req.query.rival,
       official:req.query.official
     });
 
@@ -964,8 +1038,11 @@ router.get("/player/:id/granular/events",(req,res)=>{
     const weaponFilter=req.query.weapon?cleanString(req.query.weapon,100):"";
     const objectiveFilter=req.query.objective?cleanString(req.query.objective,40).toLowerCase():"";
     const victimFilter=req.query.victim?cleanString(req.query.victim,120):"";
+    const rivalFilter=req.query.rival?cleanString(req.query.rival,120):"";
     const officialOnly=req.query.official==="1";
-    const identityWhere=fastKillEventIdentityWhere(identity,"e");
+    const eventIdentity=rivalFilter?resolvePlayerIdentity(rivalFilter):identity;
+    const identityWhere=fastKillEventIdentityWhere(eventIdentity,"e");
+    const profileVictimWhere=fastKillEventVictimIdentityWhere(identity,"e");
     const matchFilters=[];
     const matchParams=[];
     if(matchId){
@@ -998,12 +1075,16 @@ router.get("/player/:id/granular/events",(req,res)=>{
       )`);
       matchParams.push(victimFilter,victimFilter,victimFilter,victimFilter);
     }
+    if(rivalFilter){
+      matchFilters.push(`AND ${profileVictimWhere.sql}`);
+      matchParams.push(...profileVictimWhere.params);
+    }
     if(officialOnly){
       matchFilters.push(`AND ${officialKillConfidenceWhere("e")}`);
       matchParams.push(...OFFICIAL_KILL_CLASS_CONFIDENCES);
     }
     const matchFilter=matchFilters.join("\n          ");
-    const timingPrefix=`granular:${identity.id}:events${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}`;
+    const timingPrefix=`granular:${identity.id}:events${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}${rivalFilter?":rival:"+rivalFilter:""}`;
 
     const data=safeTableRead(()=>{
       ensureGranularIndexes();

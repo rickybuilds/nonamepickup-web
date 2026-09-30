@@ -1481,9 +1481,9 @@ function renderGranularVictims(rows){
       victimName:row.victimName||"Unknown"
     };
     const active=isCurrentGranularVictimFilter(filter);
-    return '<div class="granular-row granular-victim-row '+(active?"active":"")+'" role="button" tabindex="0" title="Filter class weapon breakdown" data-granular-victim-filter="'+escapeAttr(JSON.stringify(filter))+'">'+
+    return '<div class="granular-row granular-victim-row '+(active?"active":"")+'">'+
       '<span><b>#'+(index+1)+' '+granularVictimLink(row)+'</b></span>'+
-      '<strong>'+fmt(row.kills)+' kills</strong>'+
+      '<button type="button" class="granular-kill-filter" title="Filter analytics to this matchup" data-granular-victim-filter="'+escapeAttr(JSON.stringify(filter))+'">'+fmt(row.kills)+' kills</button>'+
     '</div>';
   }).join("")+'</div>';
 }
@@ -1491,6 +1491,29 @@ function renderGranularVictims(rows){
 function granularVictimLink(row){
   const name=row?.victimName||"Unknown";
   const id=row?.victimId||row?.victimDiscordId||row?.victimSteamId||row?.victimKey||"";
+  if(!id||id==="unresolved")return escapeHtml(name);
+  return '<a class="granular-player-link" href="'+escapeAttr("player.html?id="+encodeURIComponent(id))+'">'+escapeHtml(name)+'</a>';
+}
+
+function renderGranularRivals(rows){
+  const rivals=Array.isArray(rows)?rows:[];
+  if(!rivals.length)return '<div class="granular-empty">No rival data found.</div>';
+  return '<div class="granular-list">'+rivals.slice(0,16).map((row,index)=>{
+    const filter={
+      rival:row.attackerId||row.attackerSteamId||row.attackerKey||row.attackerName||"",
+      rivalName:row.attackerName||"Unknown"
+    };
+    const active=isCurrentGranularVictimFilter(filter);
+    return '<div class="granular-row granular-rival-row '+(active?"active":"")+'">'+
+      '<span><b>#'+(index+1)+' '+granularRivalLink(row)+'</b></span>'+
+      '<button type="button" class="granular-kill-filter" title="Filter analytics to this matchup" data-granular-victim-filter="'+escapeAttr(JSON.stringify(filter))+'">'+fmt(row.kills)+' kills</button>'+
+    '</div>';
+  }).join("")+'</div>';
+}
+
+function granularRivalLink(row){
+  const name=row?.attackerName||"Unknown";
+  const id=row?.attackerId||row?.attackerDiscordId||row?.attackerSteamId||row?.attackerKey||"";
   if(!id||id==="unresolved")return escapeHtml(name);
   return '<a class="granular-player-link" href="'+escapeAttr("player.html?id="+encodeURIComponent(id))+'">'+escapeHtml(name)+'</a>';
 }
@@ -1591,6 +1614,7 @@ function granularEventsUrl(offset=0,scope="class"){
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
   if(granularClassFilter&&!filter?.class)params.set("class",granularClassFilter);
   if(scope==="class"&&granularVictimFilter?.victim)params.set("victim",granularVictimFilter.victim);
+  if(scope==="class"&&granularVictimFilter?.rival)params.set("rival",granularVictimFilter.rival);
   if(filter?.class)params.set("class",filter.class);
   if(filter?.weapon)params.set("weapon",filter.weapon);
   if(filter?.objective)params.set("objective",filter.objective);
@@ -1624,6 +1648,7 @@ function granularSummaryUrl(playerId,includeSample=false,extraFilters={}){
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
   if(granularClassFilter)params.set("class",granularClassFilter);
   if(extraFilters.victim)params.set("victim",extraFilters.victim);
+  if(extraFilters.rival)params.set("rival",extraFilters.rival);
   return "/api/player/"+encodeURIComponent(playerId)+"/granular?"+params.toString();
 }
 
@@ -1716,6 +1741,7 @@ function renderPlayerGranularLoading(){
     '<div class="granular-grid">'+
       '<section class="granular-panel granular-class-panel"><div class="granular-panel-head"><h3>Class Weapon Breakdown</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading granular class weapons...</div></div></section>'+
       '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading nemesis table...</div></div></section>'+
+      '<section class="granular-panel granular-rival-panel"><div class="granular-panel-head"><h3>Biggest Rivals</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading rival table...</div></div></section>'+
       '<section class="granular-panel granular-alias-panel"><div class="granular-panel-head"><h3>Alias History</h3><span>Loading</span></div><div class="granular-panel-scroll"><div class="granular-empty">Loading aliases...</div></div></section>'+
     '</div>';
   requestAnimationFrame(()=>applyGranularMapBackground(granularContextMapName()));
@@ -1897,14 +1923,14 @@ async function scheduleGranularSampleLoad(playerId){
 }
 
 async function loadGranularVictimBreakdown(){
-  if(!currentPlayerId||!granularVictimFilter?.victim)return;
+  if(!currentPlayerId||(!granularVictimFilter?.victim&&!granularVictimFilter?.rival))return;
   const requestSeq=++granularVictimRequestSeq;
   const requestedPlayerId=String(currentPlayerId||"");
   const requestedMapFilter=granularMapFilter;
   const requestedMatchFilter=granularMatchFilter;
   const requestedVictim=granularVictimFilterSignature();
   granularVictimLoading=true;
-  const result=await fetchJSON(granularSummaryUrl(requestedPlayerId,true,{victim:granularVictimFilter.victim}));
+  const result=await fetchJSON(granularSummaryUrl(requestedPlayerId,true,granularVictimFilter));
   granularVictimLoading=false;
   if(String(currentPlayerId)!==requestedPlayerId||requestedMapFilter!==granularMapFilter||requestedMatchFilter!==granularMatchFilter||requestedVictim!==granularVictimFilterSignature()||requestSeq!==granularVictimRequestSeq)return;
   const filtered=result?.ok?result.data:null;
@@ -1925,6 +1951,7 @@ async function loadGranularVictimBreakdown(){
     objectiveClassSummary:Array.isArray(filtered.objectiveClassSummary)?filtered.objectiveClassSummary:[],
     matchDrilldown:Array.isArray(filtered.matchDrilldown)?filtered.matchDrilldown:[],
     favoriteVictims:Array.isArray(base.favoriteVictims)?base.favoriteVictims:[],
+    biggestRivals:Array.isArray(base.biggestRivals)?base.biggestRivals:[],
     aliasHistory:Array.isArray(base.aliasHistory)?base.aliasHistory:[]
   };
   renderPlayerGranular(currentGranular);
@@ -2057,7 +2084,7 @@ function bindGranularControls(){
     }
 
     const victimRow=event.target.closest("[data-granular-victim-filter]");
-    if(victimRow&&!event.target.closest("a,button")){
+    if(victimRow){
       try{
         setGranularVictimFilter(JSON.parse(victimRow.dataset.granularVictimFilter||"{}"));
       }catch{
@@ -2182,6 +2209,7 @@ function bindGranularControls(){
 
     const victimRow=event.target.closest("[data-granular-victim-filter]");
     if(victimRow){
+      if(victimRow.tagName==="BUTTON")return;
       event.preventDefault();
       try{
         setGranularVictimFilter(JSON.parse(victimRow.dataset.granularVictimFilter||"{}"));
@@ -2226,8 +2254,9 @@ function renderPlayerGranular(data,eventsData){
 
   const sample=currentGranular.sample||{};
   const classEventState=granularEventViewState("class");
-  const classRowsLabel=granularVictimFilter?.victimName
-    ? "vs "+granularVictimFilter.victimName
+  const selectedOpponentName=granularVictimFilter?.victimName||granularVictimFilter?.rivalName;
+  const classRowsLabel=selectedOpponentName
+    ? "vs "+selectedOpponentName
     : fmt(currentGranular.classWeapons?.length)+" rows";
 
   body.innerHTML=
@@ -2235,6 +2264,7 @@ function renderPlayerGranular(data,eventsData){
     '<div class="granular-grid">'+
       '<section class="granular-panel granular-class-panel"><div class="granular-panel-head"><h3>Class Weapon Breakdown</h3><span>'+escapeHtml(granularVictimLoading?"Filtering...":classRowsLabel)+'</span></div><p class="granular-panel-help">What weapons this player gets kills with while playing each class.</p><div class="granular-panel-scroll">'+renderGranularClassWeapons(currentGranular.classWeapons,currentGranular.classSummary,classEventState.events,classEventState.eventCountLabel,classEventState.eventAction)+'</div></section>'+
       '<section class="granular-panel granular-victim-panel"><div class="granular-panel-head"><h3>Favorite Victims</h3><span>Most killed</span></div><p class="granular-panel-help">Players this player killed most.</p><div class="granular-panel-scroll">'+renderGranularVictims(currentGranular.favoriteVictims)+'</div></section>'+
+      '<section class="granular-panel granular-rival-panel"><div class="granular-panel-head"><h3>Biggest Rivals</h3><span>Killed you most</span></div><p class="granular-panel-help">Players who killed this player most.</p><div class="granular-panel-scroll">'+renderGranularRivals(currentGranular.biggestRivals)+'</div></section>'+
       '<section class="granular-panel granular-alias-panel"><div class="granular-panel-head"><h3>Alias History</h3><span>Event names</span></div><p class="granular-panel-help">Names used by this player in Hampalyzer events.</p><div class="granular-panel-scroll">'+renderGranularAliases(currentGranular.aliasHistory)+'</div></section>'+
     '</div>';
   requestAnimationFrame(()=>applyGranularMapBackground(granularContextMapName()));
