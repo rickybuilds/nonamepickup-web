@@ -848,6 +848,10 @@ function renderEloChartV3(eloValues,hidden){
   }
   if(!eloValues.length)return;
   if(eloChartV3)eloChartV3.destroy();
+  const palette=getComputedStyle(document.documentElement);
+  const accent=palette.getPropertyValue("--accent").trim();
+  const line=palette.getPropertyValue("--line").trim();
+  const muted=palette.getPropertyValue("--muted").trim();
 
   eloChartV3=new Chart(canvas.getContext("2d"),{
     type:"line",
@@ -856,8 +860,8 @@ function renderEloChartV3(eloValues,hidden){
       datasets:[{
         label:"Elo",
         data:eloValues.map(x=>x.elo),
-        borderColor:"#0ea5e9",
-        backgroundColor:"rgba(14,165,233,.15)",
+        borderColor:accent,
+        backgroundColor:"rgba(255,117,71,.10)",
         borderWidth:3,
         tension:.32,
         fill:true,
@@ -878,8 +882,8 @@ function renderEloChartV3(eloValues,hidden){
         }}}
       },
       scales:{
-        y:{grid:{color:"rgba(148,163,184,.13)"},ticks:{color:"#9ca3af"}},
-        x:{grid:{color:"rgba(148,163,184,.10)"},ticks:{color:"#9ca3af",maxTicksLimit:8}}
+        y:{grid:{color:line},ticks:{color:muted}},
+        x:{grid:{color:line},ticks:{color:muted,maxTicksLimit:8}}
       }
     }
   });

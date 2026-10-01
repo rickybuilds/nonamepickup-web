@@ -297,6 +297,15 @@ The brand mark is `NN//`, with warm orange slashes. The wordmark pairs
 `NONAME` with `ALL GAME`; the homepage keeps its NoName / All Game headline.
 This identity appears in the header and footer of every refactor route.
 
+### Match Archive Entries
+
+Each match is a separate charcoal block with a full 1px border and a 16px gap
+to the next entry. Map and score share the first line; match ID, reports, and
+time sit beneath. An internal divider separates the header from both rosters.
+Player names use the primary text color while team headings retain blue and red.
+The selected match has an orange outline and raised fill. On phones the two
+rosters stack within the same match boundary.
+
 ### Complete Leaderboard
 
 The leaderboard has a dedicated stylesheet after the shared styles and does
@@ -321,6 +330,8 @@ The queue is a bordered charcoal container with a condensed count, uppercase sna
 The queue refreshes every (15 seconds) while visible and immediately on returning to the tab. Manual refresh remains available. Loading, confirmed empty, full, and unavailable states use different text and counts; unavailable counts use an em dash. A genuine active match gains orange status emphasis and a watch destination.
 
 ### Match and Player Records
+
+Loaded player profiles use neutral labels, charcoal controls, and orange Elo history and activity intensity. Blue remains reserved for team identity. Profile KPI cells grow with their content; recent-match cards fit complete rosters. Map images stay fully visible with a transparent-to-dark bottom gradient behind their titles.
 
 Match rows use one-pixel bottom rules and a subtle background hover over (180ms). Desktop thumbnails are (76×49px), reducing at each smaller composition. A missing map image is represented by an outline map icon on a raised surface. Blue/red scores remain labeled. Entire rows link to their real destination.
 

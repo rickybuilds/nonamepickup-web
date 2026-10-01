@@ -21,7 +21,8 @@
 .refactor-page .matches2-panel{padding:20px;border:1px solid var(--line)}
 .refactor-page .matches2-panel-topline{margin-bottom:16px}
 .refactor-page .matches2-panel-topline span,.refactor-page .matches2-page-size span{font-size:12px;color:var(--muted);letter-spacing:0;font-weight:400}
-.refactor-page .matches2-card-scroll{max-height:780px}
+.refactor-page .matches2-card-scroll{max-height:780px;padding:0 8px 0 0;scrollbar-color:var(--line) var(--bg)}
+.refactor-page .matches2-card-list{gap:16px}
 .refactor-page .m2-card{border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;padding:16px 12px}
 .refactor-page .m2-card:hover,.refactor-page .m2-card.active{background:var(--raised);transform:none}
 .refactor-page .m2-card-map{font:600 18px var(--body);color:var(--ink)}
@@ -34,17 +35,30 @@
 .refactor-page :is(.m2-viewer-panel,.m2-viewer-map,.m2-viewer-roster,.m2-viewer-stat){background:var(--bg);border-color:var(--line);border-radius:6px}
 .refactor-page .m2-report-btn{background:var(--raised);border-color:var(--line);color:var(--ink)}
 .refactor-page .m2-report-full{background:var(--accent);color:var(--bg);border-color:var(--accent)}
-.refactor-page .matches2-match-card{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:18px 0;gap:14px}
-.refactor-page .matches2-match-card:is(:hover,.m2-card-selected){background:var(--raised);transform:none;border-color:var(--line)}
+.refactor-page .matches2-match-card{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:18px;gap:14px;transition:background .15s ease,border-color .15s ease}
+.refactor-page .matches2-match-card:hover{background:var(--raised);transform:none;border-color:var(--muted)}
+.refactor-page .matches2-match-card.m2-card-selected{background:var(--raised);border-color:var(--accent)}
+.refactor-page .m2-card-main{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"map score" "meta meta";gap:8px 16px}
+.refactor-page .m2-card-meta{gap:8px}
+.refactor-page .m2-card-meta>div{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
+.refactor-page .m2-expand-caret{color:var(--muted)}
+.refactor-page .m2-card-selected .m2-expand-caret{color:var(--accent)}
+.refactor-page .m2-card-teams{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding-top:12px;border-top:1px solid var(--line)}
+.refactor-page .matches2-match-card :is(.m2-card-main,.m2-card-meta,.m2-card-teams){background:none;border-radius:0}
+.refactor-page .matches2-match-card .m2-mini-report{margin:0;padding:2px 6px;background:var(--surface);border:1px solid var(--line);border-radius:4px;color:var(--muted);font-size:12px;font-weight:400;letter-spacing:0;text-transform:none}
 .refactor-page .m2-card-accent{display:none}
-.refactor-page .m2-card-map{border:0;background:none;padding:0;color:var(--ink);font-size:18px}
-.refactor-page .m2-card-meta time{font-size:12px;font-weight:400;letter-spacing:0;text-transform:none}
+.refactor-page .m2-card-map{border:0;background:none;padding:0;color:var(--ink);font-size:20px;white-space:normal;overflow-wrap:anywhere}
+.refactor-page .m2-card-meta time{margin:0;font-size:13px;font-weight:400;letter-spacing:0;text-transform:none}
 .refactor-page .m2-card-id-row a{color:var(--muted);font-size:13px;font-weight:600}
 .refactor-page .m2-card-team{border:0;background:none;padding:0;border-radius:0}
 .refactor-page .m2-card-team-title{font-size:12px;font-weight:600;letter-spacing:0}
 .refactor-page .matches2-match-card .team-list a,.refactor-page .m2-viewer-roster .team-list a{font:500 13px var(--body);background:none;border:0;padding:3px 0;border-radius:0;max-width:100%}
+.refactor-page .matches2-match-card .team-list{gap:3px 12px}
+.refactor-page .matches2-match-card .team-list a{color:var(--ink);font-size:14px;line-height:1.3}
+.refactor-page .matches2-match-card .team-list a:hover{color:var(--accent);text-decoration:underline}
 .refactor-page .m2-card-score .score-blue,.refactor-page .m2-card-score .score-red{font:700 30px var(--display);padding:0;border:0;background:none;color:var(--blue);min-width:0}
 .refactor-page .m2-card-score .score-red{color:var(--red)}
+@media(max-width:640px){.refactor-page .matches2-match-card{padding:16px 14px}.refactor-page .m2-card-main{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"map score" "meta meta";gap:10px}.refactor-page .m2-card-score{min-width:0;gap:5px;flex-wrap:wrap;max-width:145px}.refactor-page .m2-card-score .score-blue,.refactor-page .m2-card-score .score-red{font-size:27px}.refactor-page .m2-card-score .winner-badge{display:none}.refactor-page .m2-card-teams{grid-template-columns:1fr;gap:12px}.refactor-page .m2-card-map{font-size:19px}}
 .refactor-page .m2-viewer-card,.refactor-page .m2-viewer-empty{background:var(--surface);border-color:var(--line);border-radius:10px}
 .refactor-page .m2-viewer-roster{background:var(--bg);border-color:var(--line)}
 .refactor-page .m2-viewer-roster strong,.refactor-page .m2-viewer-section-head,.refactor-page .m2-viewer-cap-event small{font-size:12px;font-weight:500;letter-spacing:0}
@@ -119,6 +133,7 @@
 .refactor-page.player2-page .player2-hero{background:none;border:0;padding:0;min-height:0;margin-bottom:24px}
 .refactor-page.player2-page .player2-overview-card{background:var(--surface);border:1px solid var(--line);border-radius:10px}
 .refactor-page.player2-page .player2-overview-card .identity-copy{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.refactor-page.player2-page .player2-name-row{grid-column:1;grid-row:1 / 3}
 .refactor-page .player2-last10-wrap{background:none;border-color:var(--line)}
 .refactor-page #player-name-v3{font:700 clamp(36px,4vw,64px)/1 var(--display);background:none;-webkit-text-fill-color:var(--ink);color:var(--ink);white-space:normal;overflow-wrap:anywhere}
 .refactor-page .player-mark{border:1px solid var(--line);background:var(--raised);border-radius:10px}
@@ -133,6 +148,21 @@
 .refactor-page.player2-page .identity-mini-kpi{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;background:none;padding:12px;border:0;border-right:1px solid var(--line);border-radius:0}
 .refactor-page.player2-page .identity-mini-kpi strong{font:700 24px/1.1 var(--display)}
 .refactor-page.player2-page .identity-mini-kpi span{font-size:12px;letter-spacing:0;font-weight:400;color:var(--muted)}
+.refactor-page.player2-page .player2-mini-kpis .identity-mini-kpi{height:auto;min-height:86px;padding:12px;border-radius:0;gap:6px;background:none}
+.refactor-page.player2-page .player2-mini-kpis .identity-mini-kpi strong{margin:0;overflow:visible;white-space:normal;flex-wrap:wrap;line-height:1.15}
+.refactor-page.player2-page :is(#player2-elo-rank,#kpi-peak-elo){color:var(--ink)!important}
+.refactor-page.player2-page #player2-current-elo{color:var(--accent)!important}
+.refactor-page.player2-page .recent-match-card{height:auto;min-height:0;background:var(--bg);border-radius:8px;gap:12px;grid-template-rows:auto 178px auto auto auto}
+.refactor-page.player2-page .recent-match-card:hover{border-color:var(--accent);transform:none}
+.refactor-page.player2-page .team-blue i{background:var(--blue)}
+.refactor-page.player2-page .team-red i{background:var(--red)}
+.refactor-page.player2-page :is(.player-profile-link,.recent-action,.match-id-pill,.role-class-pill,.granular-drill-row,.granular-weapon-row):is(:hover,:focus-visible){border-color:var(--accent);color:var(--ink)}
+.refactor-page.player2-page .heat-0,.refactor-page.player2-page .heat-scale i:nth-child(1){background:var(--raised)}
+.refactor-page.player2-page .heat-1{background:#503027}
+.refactor-page.player2-page .heat-2,.refactor-page.player2-page .heat-scale i:nth-child(2){background:#87412c}
+.refactor-page.player2-page .heat-3,.refactor-page.player2-page .heat-scale i:nth-child(3){background:#b65332}
+.refactor-page.player2-page .heat-4,.refactor-page.player2-page .heat-scale i:nth-child(4){background:#de683e}
+.refactor-page.player2-page .heat-5,.refactor-page.player2-page .heat-scale i:nth-child(5){background:var(--accent)}
 .refactor-page.player2-page .player-granular-card{background:var(--surface);border-color:var(--line)}
 .refactor-page .player-granular-header{background:none;border:0}
 .refactor-page .player-granular-header h2{font-size:28px;text-transform:none}
