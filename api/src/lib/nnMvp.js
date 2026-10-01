@@ -344,7 +344,14 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
       ranks: {},
       components: {}
     };
-  }).filter(player => player.player_key);
+  }).filter(player => player.player_key && (
+    // Class time alone can be recorded for spectators. Only count players
+    // with gameplay activity, including round-only and carrier-kill stats.
+    Object.values(player.raw).some(value => value !== 0)
+    || statRows.some(row => playerIdentity(row) === player.player_key && (
+      num(row.damage_taken) !== 0 || num(row.conc_jumps) !== 0
+    ))
+  ));
 
   if (players.length < MIN_PLAYERS) {
     return emptyPayload("Not enough player stat rows");
