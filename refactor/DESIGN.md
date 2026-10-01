@@ -265,7 +265,7 @@ and dividers rather than decorative elevated cards.
 
 Speedruns retain map and runner catalogs, class filters, personal records,
 record progression charts, and 3D replay comparisons. Community views retain
-their existing analytics, comparisons, missed-vote history, honors, predictions,
+their existing analytics, comparisons, missed-vote history, honors,
 MVP explanations, and identity-history controls. Administration retains its
 existing access rules and controls.
 

@@ -1,21 +1,21 @@
 /* Community records share the match-night palette, with layouts suited to each task. */
-body.vegas-page{background:var(--bg);color:var(--ink);animation:none}
-body.vegas-page main.vegas-wrap{width:min(1000px,calc(100% - 80px));max-width:1000px;margin-inline:auto;padding:44px 0 72px;text-align:left}
-body.vegas-page .vegas-wrap h1{font:700 clamp(48px,5vw,70px)/1 var(--display);letter-spacing:-.025em}
-body.vegas-page .sub{font-size:17px;color:var(--muted);opacity:1;margin:16px 0 28px}
-body.vegas-page .search-box{justify-content:flex-start;align-items:stretch}
-body.vegas-page .search-box input{flex:1;max-width:500px;background:var(--bg);border-color:var(--line);border-radius:6px}
-body.vegas-page .search-box button{background:var(--accent);color:var(--bg);font:700 15px var(--body);min-height:48px;border-radius:6px}
-body.vegas-page .odds-card{margin:0;padding:24px;background:var(--surface);border-color:var(--line);border-radius:10px;max-width:none}
-body.vegas-page .big-status{background:var(--raised);border-color:var(--line);border-radius:6px;color:var(--accent);font-size:16px}
-body.vegas-page .odds-grid{gap:0}
-body.vegas-page .odds-grid div{background:none;border:0;border-right:1px solid var(--line);border-radius:0;padding:18px}
-body.vegas-page .odds-grid div:last-child{border-right:0}
-body.vegas-page .odds-grid span{color:var(--muted);opacity:1;font-size:13px;text-transform:none}
-body.vegas-page .odds-grid strong{font:700 32px var(--display);color:var(--ink)}
-body.vegas-page .prediction{color:var(--ink);border-color:var(--line);font-weight:500}
-body.vegas-page .error{color:var(--red)}
-@media(max-width:700px){body.vegas-page .search-box{flex-direction:column}body.vegas-page .search-box input{max-width:none}}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 body.shadow-elo-page .sel-hero{grid-template-columns:minmax(0,1.4fr) minmax(0,.7fr);background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:0 0 30px;gap:32px}
 body.shadow-elo-page .sel-hero h1 span{color:var(--accent);background:none;-webkit-text-fill-color:var(--accent)}
 body.shadow-elo-page .sel-hero-copy>p:last-child{color:var(--muted);font-weight:400;font-size:16px}
@@ -346,7 +346,7 @@ body.identities-page .drawer-section .identities-history-table-wrap{border:0;bor
 body.identities-page .identities-modal-error{color:var(--red);font:400 14px/1.5 var(--body)}
 body.analytics-page .analytics-activity svg{overflow:hidden}
 
-/* Player comparison and return-history predictions keep the same direct data language. */
+/* Player comparisons keep the same direct data language. */
 body.compare-page .compare-header{display:flex;align-items:end;justify-content:space-between;gap:24px;padding:0 0 30px;margin-bottom:30px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none}
 body.compare-page .compare-header h1{font:700 clamp(48px,5vw,70px)/1 var(--display)}
 body.compare-page .compare-subtitle{margin-top:12px;color:var(--muted);font:400 17px/1.5 var(--body)}
@@ -402,8 +402,8 @@ body.compare-page .compare-table a{color:inherit;font-weight:500}
 body.compare-page .relation-pill{font:500 11px var(--body);letter-spacing:0;text-transform:none;border-radius:4px}
 body.compare-page .compare-table a.match-action-pill{font:500 11px var(--body);border:0;border-radius:4px;background:var(--raised);color:var(--muted)}
 body.compare-page .match-score{font:700 20px var(--display)}
-@media(max-width:900px){body.compare-page .compare-grid{grid-template-columns:1fr}body.compare-page .compare-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}body.compare-page .compare-kpi:nth-child(3){border-left:0;padding-left:0}body.compare-page .compare-kpi:nth-child(-n+2){padding-bottom:20px}body.vegas-page main.vegas-wrap{width:calc(100% - 48px)}}
-@media(max-width:640px){body.compare-page .compare-header{flex-direction:column;align-items:flex-start;gap:14px}body.compare-page .compare-header h1{font-size:48px}body.compare-page .compare-search-panel{padding:20px;gap:18px}body.compare-page .compare-player-card{padding:20px}body.compare-page .compare-player-card h2{font-size:36px}body.compare-page .compare-panel{padding:20px}body.compare-page .compare-panel-header{gap:8px}body.compare-page .compare-table tr{margin:0;padding:14px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none}body.compare-page .compare-table td{padding:8px 0;border:0}body.compare-page .compare-table td::before{color:var(--muted);font:500 11px var(--body);letter-spacing:0;text-transform:none}body.compare-page .compare-kpi strong{font-size:30px}body.vegas-page main.vegas-wrap{width:calc(100% - 32px);padding:30px 0 48px}body.vegas-page .vegas-wrap h1{font-size:48px}body.vegas-page .odds-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}body.vegas-page .odds-card{padding:20px}body.vegas-page .odds-grid strong{font-size:26px}}
+@media(max-width:900px){body.compare-page .compare-grid{grid-template-columns:1fr}body.compare-page .compare-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}body.compare-page .compare-kpi:nth-child(3){border-left:0;padding-left:0}body.compare-page .compare-kpi:nth-child(-n+2){padding-bottom:20px}}
+@media(max-width:640px){body.compare-page .compare-header{flex-direction:column;align-items:flex-start;gap:14px}body.compare-page .compare-header h1{font-size:48px}body.compare-page .compare-search-panel{padding:20px;gap:18px}body.compare-page .compare-player-card{padding:20px}body.compare-page .compare-player-card h2{font-size:36px}body.compare-page .compare-panel{padding:20px}body.compare-page .compare-panel-header{gap:8px}body.compare-page .compare-table tr{margin:0;padding:14px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none}body.compare-page .compare-table td{padding:8px 0;border:0}body.compare-page .compare-table td::before{color:var(--muted);font:500 11px var(--body);letter-spacing:0;text-transform:none}body.compare-page .compare-kpi strong{font-size:30px}}
 
 @media(max-width:1150px){
   :is(body.analytics-page,body.kicked-page,body.coolest-dude-page,body.identities-page,body.mvp-breakdown-page) main{width:calc(100% - 48px)!important}
