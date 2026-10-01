@@ -145,7 +145,7 @@ function buildReplay(db, limit, logRouteError) {
       red_ids: redIds,
       rating_changes: ratingsByMatch.get(matchId) || [],
       performance: {
-        available: mvp.available && playerStats.length === 8 && roundPlayerStats.length >= 8,
+        available: mvp.available && mvp.players.length === 8 && roundPlayerStats.length >= 8,
         formula_version: mvp.formula_version,
         reason: mvp.reason || (roundPlayerStats.length < 8 ? "Historical round statistics are unavailable" : null),
         players: mapPerformancePlayers(mvp, roster, links)
