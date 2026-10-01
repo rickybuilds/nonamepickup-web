@@ -1,0 +1,394 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-01T19:40:40.584Z",
+  "title": "Design System: NoName TFC Pickups",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Server Charcoal",
+        "tonalRamp": [
+          "oklch(15% 0.0026 247.98)",
+          "oklch(26% 0.0026 247.98)",
+          "oklch(38% 0.0026 247.98)",
+          "oklch(49% 0.0026 247.98)",
+          "oklch(61% 0.0026 247.98)",
+          "oklch(72% 0.0026 247.98)",
+          "oklch(84% 0.0026 247.98)",
+          "oklch(95% 0.0026 247.98)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Panel Charcoal",
+        "tonalRamp": [
+          "oklch(15% 0.0050 248.05)",
+          "oklch(26% 0.0050 248.05)",
+          "oklch(38% 0.0050 248.05)",
+          "oklch(49% 0.0050 248.05)",
+          "oklch(61% 0.0050 248.05)",
+          "oklch(72% 0.0050 248.05)",
+          "oklch(84% 0.0050 248.05)",
+          "oklch(95% 0.0050 248.05)"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised Charcoal",
+        "tonalRamp": [
+          "oklch(15% 0.0058 236.76)",
+          "oklch(26% 0.0058 236.76)",
+          "oklch(38% 0.0058 236.76)",
+          "oklch(49% 0.0058 236.76)",
+          "oklch(61% 0.0058 236.76)",
+          "oklch(72% 0.0058 236.76)",
+          "oklch(84% 0.0058 236.76)",
+          "oklch(95% 0.0058 236.76)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Warm White",
+        "tonalRamp": [
+          "oklch(15% 0.0099 87.47)",
+          "oklch(26% 0.0099 87.47)",
+          "oklch(38% 0.0099 87.47)",
+          "oklch(49% 0.0099 87.47)",
+          "oklch(61% 0.0099 87.47)",
+          "oklch(72% 0.0099 87.47)",
+          "oklch(84% 0.0099 87.47)",
+          "oklch(95% 0.0099 87.47)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Record Grey",
+        "tonalRamp": [
+          "oklch(15% 0.0054 228.84)",
+          "oklch(26% 0.0054 228.84)",
+          "oklch(38% 0.0054 228.84)",
+          "oklch(49% 0.0054 228.84)",
+          "oklch(61% 0.0054 228.84)",
+          "oklch(72% 0.0054 228.84)",
+          "oklch(84% 0.0054 228.84)",
+          "oklch(95% 0.0054 228.84)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Divider Grey",
+        "tonalRamp": [
+          "oklch(15% 0.0076 240.05)",
+          "oklch(26% 0.0076 240.05)",
+          "oklch(38% 0.0076 240.05)",
+          "oklch(49% 0.0076 240.05)",
+          "oklch(61% 0.0076 240.05)",
+          "oklch(72% 0.0076 240.05)",
+          "oklch(84% 0.0076 240.05)",
+          "oklch(95% 0.0076 240.05)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Match-Night Orange",
+        "tonalRamp": [
+          "oklch(15% 0.1793 38.62)",
+          "oklch(26% 0.1793 38.62)",
+          "oklch(38% 0.1793 38.62)",
+          "oklch(49% 0.1793 38.62)",
+          "oklch(61% 0.1793 38.62)",
+          "oklch(72% 0.1793 38.62)",
+          "oklch(84% 0.1793 38.62)",
+          "oklch(95% 0.1793 38.62)"
+        ]
+      },
+      "blue": {
+        "role": "secondary",
+        "displayName": "Blue Team",
+        "tonalRamp": [
+          "oklch(15% 0.1206 251.66)",
+          "oklch(26% 0.1206 251.66)",
+          "oklch(38% 0.1206 251.66)",
+          "oklch(49% 0.1206 251.66)",
+          "oklch(61% 0.1206 251.66)",
+          "oklch(72% 0.1206 251.66)",
+          "oklch(84% 0.1206 251.66)",
+          "oklch(95% 0.1206 251.66)"
+        ]
+      },
+      "red": {
+        "role": "secondary",
+        "displayName": "Red Team",
+        "tonalRamp": [
+          "oklch(15% 0.1382 20.78)",
+          "oklch(26% 0.1382 20.78)",
+          "oklch(38% 0.1382 20.78)",
+          "oklch(49% 0.1382 20.78)",
+          "oklch(61% 0.1382 20.78)",
+          "oklch(72% 0.1382 20.78)",
+          "oklch(84% 0.1382 20.78)",
+          "oklch(95% 0.1382 20.78)"
+        ]
+      },
+      "action-ink": {
+        "role": "neutral",
+        "displayName": "Action Charcoal",
+        "tonalRamp": [
+          "oklch(15% 0.0109 39.26)",
+          "oklch(26% 0.0109 39.26)",
+          "oklch(38% 0.0109 39.26)",
+          "oklch(49% 0.0109 39.26)",
+          "oklch(61% 0.0109 39.26)",
+          "oklch(72% 0.0109 39.26)",
+          "oklch(84% 0.0109 39.26)",
+          "oklch(95% 0.0109 39.26)"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Warm Orange Hover",
+        "tonalRamp": [
+          "oklch(15% 0.1390 39.72)",
+          "oklch(26% 0.1390 39.72)",
+          "oklch(38% 0.1390 39.72)",
+          "oklch(49% 0.1390 39.72)",
+          "oklch(61% 0.1390 39.72)",
+          "oklch(72% 0.1390 39.72)",
+          "oklch(84% 0.1390 39.72)",
+          "oklch(95% 0.1390 39.72)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero headline with responsive composition overrides."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Secondary story player-name headings use 26px condensed bold type with 1.1 line height."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Readable supporting prose and record content."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Compact metadata and status."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Bold primary and light actions."
+      },
+      "queue-count": {
+        "displayName": "Queue Count",
+        "purpose": "Tabular dominant queue count."
+      }
+    },
+    "shadows": [
+      {
+        "name": "navigation-flyout",
+        "value": "0 12px 30px #0005",
+        "purpose": "Separate the opened More menu from the page."
+      },
+      {
+        "name": "class-artwork",
+        "value": "drop-shadow(0 10px 24px #0009)",
+        "purpose": "Separate transparent class artwork from the TFC scene."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Class entrance and map image hover."
+      },
+      {
+        "name": "button-state",
+        "value": "background .2s, color .2s",
+        "purpose": "Primary and light button state feedback."
+      },
+      {
+        "name": "record-hover",
+        "value": "background .18s",
+        "purpose": "Subtle match-row hover."
+      },
+      {
+        "name": "map-hover",
+        "value": "transform .5s cubic-bezier(.16,1,.3,1)",
+        "purpose": "Scale scene imagery to 1.04 on hover."
+      },
+      {
+        "name": "class-entrance",
+        "value": "850ms",
+        "purpose": "Initial transparent class entrance."
+      },
+      {
+        "name": "class-fade",
+        "value": "opacity .18s ease",
+        "purpose": "Fade decorative artwork before replacement."
+      },
+      {
+        "name": "class-interval",
+        "value": "12000ms",
+        "purpose": "Automatic class change when playing and visible."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation:none; transition:none; scroll-behavior:auto",
+        "purpose": "Remove CSS motion; start automatic class rotation paused."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "min-width:1500px"
+      },
+      {
+        "name": "compact-desktop",
+        "value": "max-width:1150px"
+      },
+      {
+        "name": "tablet",
+        "value": "max-width:900px"
+      },
+      {
+        "name": "phone",
+        "value": "max-width:640px"
+      },
+      {
+        "name": "small-phone",
+        "value": "max-width:360px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Orange destination for getting into a game.",
+      "html": "<button class=\"ds-button\">Get in the game<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button>",
+      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:22px;min-height:48px;padding:13px 21px;border:0;border-radius:6px;font:700 15px/1.45 var(--body,Barlow,sans-serif);background:var(--accent,#ff7547);color:#17110f;text-decoration:none;cursor:pointer;transition:background .2s,color .2s}.ds-button svg{width:19px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-button:hover{background:#ff946f}.ds-button:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}.ds-button:disabled{opacity:.55;cursor:wait}@media(prefers-reduced-motion:reduce){.ds-button{transition:none}}"
+    },
+    {
+      "name": "Light Button",
+      "kind": "button",
+      "refersTo": "button-light",
+      "description": "Warm white action within the red-orange speedrun scene.",
+      "html": "<button class=\"ds-button ds-button-light\">Explore speedruns<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button>",
+      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:22px;min-height:48px;padding:13px 21px;border:0;border-radius:6px;font:700 15px/1.45 var(--body,Barlow,sans-serif);background:var(--accent,#ff7547);color:#17110f;text-decoration:none;cursor:pointer;transition:background .2s,color .2s}.ds-button svg{width:19px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-button:hover{background:#ff946f}.ds-button:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}.ds-button:disabled{opacity:.55;cursor:wait}@media(prefers-reduced-motion:reduce){.ds-button{transition:none}}.ds-button-light{background:var(--ink,#f1eee7);color:#27211d}.ds-button-light:hover{background:#fff}"
+    },
+    {
+      "name": "Text Link",
+      "kind": "button",
+      "refersTo": "text-link",
+      "description": "Compact secondary destination with an arrow and underline on hover.",
+      "html": "<a class=\"ds-text-link\" href=\"#matches\">Match history<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></a>",
+      "css": ".ds-text-link{display:inline-flex;align-items:center;gap:12px;color:var(--ink,#f1eee7);font:600 14px/1.45 var(--body,Barlow,sans-serif);text-decoration:none;text-underline-offset:5px}.ds-text-link svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-text-link:hover{text-decoration:underline;color:var(--accent,#ff7547)}.ds-text-link:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}"
+    },
+    {
+      "name": "Player Search",
+      "kind": "input",
+      "refersTo": "search-input",
+      "description": "Open underlined search with visible close action; the specimen does not perform a search.",
+      "html": "<div class=\"ds-search\"><label for=\"ds-player-search\">Find your people.</label><div class=\"ds-search-row\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M16 16l5 5 M17 10.5a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0\"/></svg><input id=\"ds-player-search\" type=\"search\" placeholder=\"Player name or ID\"/><button type=\"button\" aria-label=\"Close player search\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 6 12 12M6 18 18 6\"/></svg></button></div></div>",
+      "css": ".ds-search{color:var(--ink,#f1eee7)}.ds-search label{font:700 28px var(--display,'Barlow Condensed',sans-serif)}.ds-search-row{display:flex;gap:15px;align-items:center;border-bottom:1px solid var(--accent,#ff7547);margin-top:12px}.ds-search-row>svg,.ds-search-row button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}.ds-search input{flex:1;min-width:0;background:none;color:var(--ink,#f1eee7);border:0;padding:14px 0;font:400 20px/1.45 var(--body,Barlow,sans-serif);caret-color:var(--accent,#ff7547)}.ds-search input::placeholder{color:var(--muted,#aaaeb0)}.ds-search button{display:grid;place-items:center;min-height:44px;padding:8px;border:0;background:none;color:inherit;cursor:pointer}.ds-search button:hover{color:var(--accent,#ff7547)}.ds-search input:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}.ds-search button:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}.ds-search input:focus-visible{outline-offset:0}"
+    },
+    {
+      "name": "Primary Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Current page is orange with a bottom rule; compact layouts use an expandable menu.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Sample primary\"><a href=\"#home\" aria-current=\"page\">Home</a><a href=\"#matches\">Matches</a><a href=\"#players\">Players</a><a href=\"#speedruns\">Speedruns</a></nav>",
+      "css": ".ds-nav{display:flex;align-items:center;gap:28px;background:var(--bg,#101112);font:600 15px/1.45 var(--body,Barlow,sans-serif)}.ds-nav a{position:relative;padding-block:36px;color:var(--ink,#f1eee7);text-decoration:none}.ds-nav a[aria-current]{color:var(--accent,#ff7547)}.ds-nav a[aria-current]:after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--accent,#ff7547)}.ds-nav a:hover{color:var(--accent,#ff7547)}.ds-nav a:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}"
+    },
+    {
+      "name": "Match Filters",
+      "kind": "chip",
+      "refersTo": "filter",
+      "description": "Compact text filters with a raised selected state and aria-pressed semantics.",
+      "html": "<div class=\"ds-filters\" aria-label=\"Sample match filters\"><button aria-pressed=\"true\">All results</button><button aria-pressed=\"false\">Blue wins</button><button aria-pressed=\"false\">Red wins</button></div>",
+      "css": ".ds-filters{display:flex;gap:6px}.ds-filters button{padding:8px 12px;border:0;border-radius:5px;background:none;color:var(--muted,#aaaeb0);font:400 12px/1.45 var(--body,Barlow,sans-serif);cursor:pointer}.ds-filters button:hover{color:var(--ink,#f1eee7);background:var(--surface,#191b1d)}.ds-filters button[aria-pressed=true]{color:var(--ink,#f1eee7);background:var(--raised,#222527)}.ds-filters button:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}@media(max-width:640px){.ds-filters button{min-height:44px;padding:7px 9px}}"
+    },
+    {
+      "name": "Queue Panel",
+      "kind": "card",
+      "refersTo": "queue-card",
+      "description": "Static unavailable-state specimen; the application uses actual API counts and players.",
+      "html": "<aside class=\"ds-queue\"><div class=\"ds-queue-heading\"><h2>Next up.</h2><span>UNAVAILABLE</span></div><div class=\"ds-queue-count\">— <small>/ 8</small></div><p>The queue couldn’t be checked. Refresh to try again, or open Queue &amp; servers.</p><a class=\"ds-button\" href=\"#queue\">Queue &amp; servers<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></a></aside>",
+      "css": ".ds-queue{max-width:340px;padding:25px 25px 17px;background:var(--surface,#191b1d);border:1px solid var(--line,#34383b);border-radius:var(--radius,14px);color:var(--ink,#f1eee7);font:400 13px/1.45 var(--body,Barlow,sans-serif)}.ds-queue-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.ds-queue h2{margin:0;font:700 30px/1.06 var(--display,'Barlow Condensed',sans-serif);letter-spacing:-.015em}.ds-queue-heading>span{font-size:12px;font-weight:600;letter-spacing:.055em;color:var(--accent,#ff7547)}.ds-queue-count{margin-top:16px;font:700 80px/1 var(--display,'Barlow Condensed',sans-serif);font-variant-numeric:tabular-nums}.ds-queue-count small{font-size:32px;font-weight:400;color:var(--muted,#aaaeb0)}.ds-queue p{margin:12px 0 20px;color:var(--muted,#aaaeb0)}.ds-queue .ds-button{display:flex;justify-content:space-between}.ds-button{display:inline-flex;align-items:center;justify-content:center;gap:22px;min-height:48px;padding:13px 21px;border:0;border-radius:6px;font:700 15px/1.45 var(--body,Barlow,sans-serif);background:var(--accent,#ff7547);color:#17110f;text-decoration:none;cursor:pointer;transition:background .2s,color .2s}.ds-button svg{width:19px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-button:hover{background:#ff946f}.ds-button:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}.ds-button:disabled{opacity:.55;cursor:wait}@media(prefers-reduced-motion:reduce){.ds-button{transition:none}}"
+    },
+    {
+      "name": "Community Story Row",
+      "kind": "custom",
+      "refersTo": "story-row",
+      "description": "A complete player-record anchor; unavailable specimen values do not represent actual community statistics.",
+      "html": "<div class=\"ds-story-list\"><a class=\"ds-story-row\" href=\"#player\"><div class=\"ds-story-number\">—</div><div class=\"ds-story-copy\"><h3>Player name</h3><p>career matches and counting</p></div><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></a></div>",
+      "css": ".ds-story-list{border-block:1px solid var(--line,#34383b)}.ds-story-row{display:flex;align-items:center;gap:22px;position:relative;padding:24px 15px;color:var(--ink,#f1eee7);font:400 16px/1.45 var(--body,Barlow,sans-serif);text-decoration:none}.ds-story-row+.ds-story-row{border-top:1px solid var(--line,#34383b)}.ds-story-number{font:800 44px/1 var(--display,'Barlow Condensed',sans-serif);color:var(--accent,#ff7547);min-width:100px}.ds-story-copy{min-width:0}.ds-story-copy h3{margin:0;color:var(--ink,#f1eee7);font:700 26px/1.1 var(--display,'Barlow Condensed',sans-serif);overflow-wrap:anywhere}.ds-story-copy p{margin:5px 0 0;font-size:12px;color:var(--muted,#aaaeb0)}.ds-story-row>svg{margin-left:auto;flex-shrink:0;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-story-row:hover h3,.ds-story-row:hover>svg{color:var(--accent,#ff7547)}.ds-story-row:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}@media(max-width:1150px){.ds-story-row{gap:16px}.ds-story-number{min-width:90px;font-size:40px}}@media(max-width:900px){.ds-story-row{gap:12px;padding-inline:0}.ds-story-number{min-width:65px;font-size:34px}.ds-story-row>svg{display:none}}@media(max-width:640px){.ds-story-row{padding:21px 6px;gap:20px;min-height:114px}.ds-story-number{min-width:88px;font-size:42px}.ds-story-row>svg{display:block}}"
+    },
+    {
+      "name": "Match Record",
+      "kind": "custom",
+      "refersTo": "match-row",
+      "description": "Flat ruled result with explicit team labels and missing-map fallback; specimen values stay unavailable.",
+      "html": "<a class=\"ds-match\" href=\"#match\" aria-label=\"Unknown map, scores unavailable\"><span class=\"ds-thumb\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16\"/></svg></span><span class=\"ds-match-info\"><strong>Unknown map</strong><small>Date unavailable · 4v4</small></span><span class=\"ds-score\"><span class=\"ds-blue\"><small>BLUE</small>—</span><span class=\"ds-score-divider\">:</span><span class=\"ds-red\"><small>RED</small>—</span></span><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></a>",
+      "css": ".ds-match{display:grid;grid-template-columns:76px minmax(0,1fr) 118px 20px;gap:16px;align-items:center;padding-block:14px;border-bottom:1px solid var(--line,#34383b);color:var(--ink,#f1eee7);font:400 16px/1.45 var(--body,Barlow,sans-serif);text-decoration:none;transition:background .18s}.ds-match:hover{background:#1c1f21}.ds-match:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}.ds-match svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-thumb{width:76px;height:49px;display:grid;place-items:center;background:var(--raised,#222527);color:var(--muted,#aaaeb0);border-radius:5px}.ds-match-info{min-width:0}.ds-match-info strong{font-size:17px;font-weight:600;overflow-wrap:anywhere}.ds-match-info>small{display:block;font-size:12px;color:var(--muted,#aaaeb0);margin-top:3px}.ds-score{display:flex;gap:10px;align-items:baseline;justify-content:center;font:700 27px/1 var(--display,'Barlow Condensed',sans-serif);font-variant-numeric:tabular-nums}.ds-score>span:not(.ds-score-divider){display:grid;gap:3px;text-align:center}.ds-score small{font:600 11px/1 var(--body,Barlow,sans-serif);letter-spacing:.025em}.ds-blue{color:var(--blue,#79b9ff)}.ds-red{color:var(--red,#ff8d8d)}.ds-score-divider{font:400 15px var(--body,Barlow,sans-serif);color:#777e81;align-self:center;margin-top:10px}.ds-match>svg{color:var(--muted,#aaaeb0);width:16px}@media(max-width:640px){.ds-match{grid-template-columns:51px minmax(0,1fr) 96px 14px;gap:10px;padding-block:13px}.ds-thumb{width:51px;height:43px}.ds-match-info strong{font-size:15px}.ds-score{font-size:26px;gap:8px}}@media(prefers-reduced-motion:reduce){.ds-match{transition:none}}"
+    },
+    {
+      "name": "Class Controls",
+      "kind": "custom",
+      "refersTo": "class-controls",
+      "description": "Decorative artwork controls with a class name, next action, and pause action; application behavior is documented in DESIGN.md.",
+      "html": "<div class=\"ds-class-controls\" aria-label=\"Sample TFC class artwork\"><span>Soldier</span><button aria-label=\"Show another TFC class\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button><button aria-label=\"Pause class rotation\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 5v14M16 5v14\"/></svg></button></div>",
+      "css": ".ds-class-controls{display:inline-flex;align-items:center;gap:7px;background:#101112cc;border-radius:6px;padding-left:11px;color:var(--ink,#f1eee7);font:400 12px/1.45 var(--body,Barlow,sans-serif)}.ds-class-controls button{display:grid;place-items:center;width:44px;height:44px;border:0;background:none;color:var(--ink,#f1eee7);border-radius:6px;cursor:pointer}.ds-class-controls button:hover{background:var(--raised,#222527);color:var(--accent,#ff7547)}.ds-class-controls button:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}.ds-class-controls svg{width:17px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-class-controls button:disabled{opacity:.55;cursor:wait}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Match-Night Hub",
+    "overview": "The Match-Night Hub puts the community’s games and people in the foreground. Charcoal surfaces, warm white type, compressed headlines, and an orange action color give NoName the energy of a competitive TFC gathering. Real class cutouts and map scenes carry the identity.\n\nThe interface combines expressive imagery with compact, readable records. Numeric counts and player names are visually direct; dividers and tonal steps organize dense information. Controls remain plain enough to understand during a game night, with explicit loading, empty, and unavailable states.",
+    "keyCharacteristics": [
+      "Charcoal canvas and warm white reading surfaces.",
+      "Orange actions with separate red and blue team semantics.",
+      "Barlow Condensed display type paired with Barlow body text.",
+      "Authentic TFC scenes, class artwork, maps, and real player records.",
+      "Flat data lists beside restrained rounded containers."
+    ],
+    "rules": [
+      {
+        "name": "Action and Team",
+        "body": "Orange identifies actions and emphasis. Blue and red identify teams; accompany team color with a readable label.",
+        "section": "colors"
+      },
+      {
+        "name": "Condensed Emphasis",
+        "body": "Use Barlow Condensed for display headings and prominent counts. Keep descriptive copy, navigation, and metadata in Barlow.",
+        "section": "typography"
+      },
+      {
+        "name": "Flat Records",
+        "body": "Separate records with tone and one-pixel dividers. Reserve shadows for the navigation flyout and isolated class artwork.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use the source CSS custom properties for shared colors and font families.",
+      "Do combine authentic TFC imagery with dark overlays that protect the text.",
+      "Do keep team names visible alongside red and blue score colors.",
+      "Do show loading, empty, and unavailable data as distinct readable states.",
+      "Do preserve visible keyboard focus and user control over automatic class rotation.",
+      "Do use the implemented responsive grid changes instead of shrinking desktop rows indefinitely."
+    ],
+    "donts": [
+      "Don't substitute invented players, records, queue presence, or statistics for unavailable API data.",
+      "Don't use team blue or red as the primary action color.",
+      "Don't wrap every data record in an elevated card.",
+      "Don't make the class artwork or animation necessary to understand or operate the page.",
+      "Don't expose hidden ratings in standings or player search."
+    ]
+  }
+}

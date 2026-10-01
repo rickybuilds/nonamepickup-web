@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101112" />
+    <meta name="description" content="NoName TFC Pickups. Find the next game, follow the rivalries, and explore the competitive Team Fortress Classic community." />
+    <link rel="icon" href="../assets/images/favicon.ico" />
+    <link rel="preload" href="./fonts/barlow-condensed-extrabold.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="stylesheet" href="./site.css" />
+    <script type="module" src="./app.js"></script>
+    <title>NoName / All Game — TFC Pickups</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg>
+    <header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="./" aria-current="page">Home</a>
+          <a href="../matches.html">Matches</a>
+          <a href="../leaderboard.html">Players</a>
+          <a href="../speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="../analytics.html">Analytics</a><a href="../compare.html">Compare players</a><a href="../kicked.html">Missed votes</a><a href="../coolest-dude.html">Community honors</a><a href="../vegasodds.html">Match predictions</a><a href="../mvp-breakdown.html">MVP breakdown</a><a href="../tracker.html">Identity history</a><a href="../live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="../live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="./" aria-current="page">Home</a><a href="../matches.html">Matches</a><a href="../leaderboard.html">Players</a><a href="../speedruns.html">Speedruns</a><a href="../analytics.html">Analytics</a><a href="../compare.html">Compare</a><a href="../live.html">Live & servers</a><a href="#community">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="../kicked.html">Missed votes</a><a href="../coolest-dude.html">Community honors</a><a href="../vegasodds.html">Match predictions</a><a href="../mvp-breakdown.html">MVP breakdown</a><a href="../tracker.html">Identity history</a><a href="../live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+    <main id="main" class="wrap">
+      <section class="opening" aria-label="NoName community and next pickup">
+        <div class="hero">
+          <img class="hero-scene" src="../assets/images/home/home-hero.webp" alt="" fetchpriority="high" />
+          <div class="hero-copy"><h1>NO NAME.<br /><span>ALL GAME.</span></h1><p>Eight players. Two teams.<br />One more game.</p><div class="hero-actions"><a class="button" href="../live.html">Get in the game<svg class="icon"><use href="#i-arrow"/></svg></a><a class="text-link" href="#latest">See the latest matches<svg class="icon"><use href="#i-arrow"/></svg></a></div></div>
+          <img class="hero-soldier" src="../assets/images/classes/Soldierold_tfc.png" alt="" aria-hidden="true" />
+          <div class="hero-bottom"><span>TEAM FORTRESS CLASSIC</span><div class="hero-class-controls" aria-label="TFC class artwork"><span id="hero-class-name">Soldier</span><button id="next-class" type="button" aria-label="Show another TFC class" title="Next class" hidden><svg class="icon"><use href="#i-arrow"/></svg></button><button id="class-toggle" type="button" aria-label="Pause class rotation" title="Pause class rotation" hidden><svg class="icon"><use href="#i-pause"/></svg></button></div></div>
+        </div>
+        <aside class="queue" aria-labelledby="queue-heading">
+          <div class="queue-heading"><h2 id="queue-heading">Next up.</h2><span id="queue-status" class="live-label"><span class="status-dot"></span>CHECKING QUEUE</span></div>
+          <div class="queue-count"><span id="queue-count">—</span><span id="queue-max">/ 8</span><span class="queue-count-label">players<br />queued</span></div>
+          <div id="queue-slots" class="queue-slots" aria-label="Eight queue slots"><span class="queue-placeholder">Loading the queue…</span></div>
+          <p id="queue-message" class="queue-message" aria-live="polite">Checking who’s ready for the next pickup.</p>
+          <a class="button queue-action" href="../live.html">Queue & servers<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <div id="live-match" class="live-match"><span class="status-dot"></span><p>Checking for a live match…</p></div>
+          <div class="queue-updated"><span id="queue-updated">Refreshes every 15 seconds</span><button id="queue-refresh" type="button">Refresh</button></div>
+        </aside>
+      </section>
+      <div class="community-pulse" aria-label="Community activity"><p><strong id="total-matches">—</strong> matches. <strong id="total-players">—</strong> players. <span>A lot of unfinished rivalries.</span></p><p><span class="status-dot"></span><strong id="weekly-matches">—</strong> games this week</p></div>
+      <section id="latest" class="record-layout" aria-label="Recent matches and player standings">
+        <div class="match-section"><div class="section-heading"><h2>Fresh off the server.</h2><a class="text-link" href="../matches.html">Match history<svg class="icon"><use href="#i-arrow"/></svg></a></div>
+          <div class="match-toolbar"><div class="match-filters" aria-label="Filter recent matches"><button type="button" data-filter="all" aria-pressed="true">All results</button><button type="button" data-filter="BLUE" aria-pressed="false">Blue wins</button><button type="button" data-filter="RED" aria-pressed="false">Red wins</button></div><span>Latest 12 games</span></div>
+          <div id="matches" class="match-list" aria-live="polite"><p class="loading-state">Fetching the latest results…</p></div>
+        </div>
+        <aside class="ladder-section" aria-labelledby="ladder-heading"><div class="section-heading"><h2 id="ladder-heading">The ladder.</h2><a class="icon-link" href="../leaderboard.html" aria-label="View full player standings"><svg class="icon"><use href="#i-arrow"/></svg></a></div><p class="section-note">Current Elo · 10+ career games · public ratings</p><div id="leaderboard" class="ladder-list"><p class="loading-state">Loading the standings…</p></div><a class="ladder-footer text-link" href="../leaderboard.html">Find your place<svg class="icon"><use href="#i-arrow"/></svg></a></aside>
+      </section>
+      <section id="community" class="community-section" aria-labelledby="community-heading"><div class="section-heading"><h2 id="community-heading">The names behind the games.</h2><a class="text-link" href="../analytics.html">Community stats<svg class="icon"><use href="#i-arrow"/></svg></a></div><div id="community-stories" class="community-stories"><p class="loading-state">Finding the community’s latest stories…</p></div></section>
+      <section class="map-section" aria-labelledby="maps-heading"><div class="section-heading"><div><h2 id="maps-heading">Familiar ground. New grudges.</h2><p class="section-note">Some of the community’s most-played battlegrounds.</p></div><a class="text-link" href="../matches.html">Explore the matches<svg class="icon"><use href="#i-arrow"/></svg></a></div><div id="maps" class="map-grid"><p class="loading-state">Loading the battlegrounds…</p></div></section>
+      <section class="speedrun-banner" aria-labelledby="speedrun-heading"><img class="speedrun-scene" src="../assets/images/maps/concjumpTFC.webp" alt="" loading="lazy" /><div class="speedrun-copy"><h2 id="speedrun-heading">YOU VS.<br />THE CLOCK.</h2><p>Perfect the route. Land the conc.<br />Leave a time worth chasing.</p><a class="button button-light" href="../speedruns.html">Explore speedruns<svg class="icon"><use href="#i-arrow"/></svg></a></div><div class="speedrun-caption"><span>CONC JUMPS. CLEAN RUNS.</span><span>TEAM FORTRESS CLASSIC</span></div></section>
+      <div class="data-footer"><span>Live community data. Real games. Real players.</span><button id="reload-data" type="button">Refresh community data<svg class="icon"><use href="#i-arrow"/></svg></button><span id="data-message" role="status"></span></div>
+    </main>
+    <footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="../live.html">Live & servers</a><a href="../speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+  </body>
+</html>
