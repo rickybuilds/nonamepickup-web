@@ -12,17 +12,15 @@
   <meta name="twitter:card" content="summary">
   <title>NoName TFC Pickups | Leaderboard</title>
 
-  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
-  <link rel="stylesheet" href="../assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="./styles/leaderboard.css">
   <script src="./scripts/main.js?v=20260929mvpform4" defer></script>
 
 
 <link rel="stylesheet" href="./site.css">
 <link rel="stylesheet" href="./surfaces.css">
 <link rel="stylesheet" href="./pickup.css">
+<link rel="stylesheet" href="./styles/leaderboard.css?v=20261001b">
 <script type="module" src="./shell.js"></script>
 </head>
 
@@ -39,7 +37,7 @@
     </svg>
 <header class="site-header">
       <div class="header-inner wrap">
-        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">NN<span>//</span></span><span class="brand-name">NONAME<span>ALL GAME</span></span></a>
         <nav class="desktop-nav" aria-label="Primary">
           <a href="./">Home</a>
           <a href="matches.html">Matches</a>
@@ -110,13 +108,17 @@
         </aside>
       </section>
 
+      <div class="leaderboard-standings-head">
+        <h2>All standings</h2>
+        <p>Last 10: <span class="form-key form-win">Win</span><span class="form-key form-loss">Loss</span><span class="form-key form-tie">Tie</span><span class="form-key form-mvp">MVP</span></p>
+      </div>
       <div class="leaderboard-toolbar">
         <label for="leaderboard-filter">Filter standings</label>
         <input id="leaderboard-filter" type="search" placeholder="Search ranked players..." autocomplete="off">
         <span id="leaderboard-visible-count">Loading standings...</span>
       </div>
 
-      <div class="leaderboard-table-wrap">
+      <div class="leaderboard-table-wrap" role="region" aria-label="Player standings">
         <table class="leaderboard-table">
           <thead>
             <tr>
@@ -137,6 +139,6 @@
       </div>
     </section>
   </main>
-<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">NN<span>//</span></span><span class="brand-name">NONAME<span>ALL GAME</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
 </body>
 </html>

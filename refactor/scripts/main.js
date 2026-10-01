@@ -530,10 +530,12 @@ async function loadLeaderboard() {
       return `
         <article class="leaderboard-podium-card ${orderClass}">
           <img class="podium-rank" src="../assets/images/icons/webp/nn-rank-${place}.webp" alt="Rank ${place}" loading="lazy">
-          <a href="${playerCardLink(row)}" class="podium-avatar-link">
-            ${avatarHtml(row.player, row.avatarfull || row.avatarmedium || row.avatar, "nn-avatar-lg")}
-          </a>
-          <a class="podium-name" href="${playerCardLink(row)}">${escapeHtml(row.player)}${supporterBadge(row.id)}</a>
+          <div class="podium-player">
+            <a href="${playerCardLink(row)}" class="podium-avatar-link" aria-label="${escapeAttr(row.player)} profile">
+              ${avatarHtml(row.player, row.avatarfull || row.avatarmedium || row.avatar, "nn-avatar-lg")}
+            </a>
+            <a class="podium-name" href="${playerCardLink(row)}">${escapeHtml(row.player)}${supporterBadge(row.id)}</a>
+          </div>
           <strong>${Number(row.elo)} Elo</strong>
           <div class="podium-stats">
             <span><b>${row.winPct}</b><small>Win Rate</small></span>
@@ -586,12 +588,12 @@ async function loadLeaderboard() {
             <span><b>${escapeHtml(row.player)}${supporterBadge(row.id)}</b></span>
           </a>
         </td>
-        <td class="leaderboard-elo">${Number(row.elo)}</td>
-        <td>${renderEloTrend(row)}</td>
-        <td>${row.games.toLocaleString()}</td>
-        <td>${escapeHtml(row.winPct)}</td>
-        <td>${renderLastTen(row)}</td>
-        <td>${escapeHtml(row.record || "0-0-0")}</td>
+        <td class="leaderboard-elo" data-label="Elo">${Number(row.elo)}</td>
+        <td data-label="Elo trend">${renderEloTrend(row)}</td>
+        <td data-label="Games">${row.games.toLocaleString()}</td>
+        <td data-label="Win rate">${escapeHtml(row.winPct)}</td>
+        <td data-label="Last 10">${renderLastTen(row)}</td>
+        <td data-label="Record">${escapeHtml(row.record || "0-0-0")}</td>
       </tr>
     `).join("") || `<tr><td colspan="8" class="leaderboard-empty">No ranked players found.</td></tr>`;
 

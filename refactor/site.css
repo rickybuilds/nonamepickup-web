@@ -55,3 +55,5 @@ button:disabled{opacity:.55;cursor:wait}
   .hero-class-controls button{width:38px;height:44px}
   .hero-soldier{width:150px}
 }
+/* Keep the wordmark identical on the homepage and all data pages. */
+.brand .brand-mark,.brand .brand-mark span{font-family:var(--display);font-weight:800}

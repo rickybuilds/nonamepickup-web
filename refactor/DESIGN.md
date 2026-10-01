@@ -293,6 +293,21 @@ Search begins after two characters, debounces for (250ms), and cancels stale req
 
 ### Navigation
 
+The brand mark is `NN//`, with warm orange slashes. The wordmark pairs
+`NONAME` with `ALL GAME`; the homepage keeps its NoName / All Game headline.
+This identity appears in the header and footer of every refactor route.
+
+### Complete Leaderboard
+
+The leaderboard has a dedicated stylesheet after the shared styles and does
+not import the original global theme. Its three leaders reserve a column for
+the original rank artwork (96px wide, 144px tall; 88px by 132px on phones).
+Player identity, Elo, win rate, and games sit alongside that artwork.
+Highlights occupy four columns on desktop and two on phones. The standings
+use charcoal cells, tabular numbers, plain trend lines, and a last-ten legend
+with an outline marking MVP results. Below 700px, rows become labeled stat
+blocks with every column retained. Player filtering preserves the actual rank.
+
 Desktop links use Barlow semibold (15px), with orange text and a (3px) bottom rule for the current page. The More disclosure opens a (224px) raised panel. Hover uses orange. Mobile links use padded surface-colored cells; the expanded community tools retain the two-column structure. Search and the mobile menu close one another; Escape restores appropriate trigger focus.
 
 ### Filters
