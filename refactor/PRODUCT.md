@@ -18,9 +18,11 @@ The owner requested a fresh design that can eventually replace the main site.
 
 ## Capabilities and Constraints
 
-This first approved design pass covers the homepage. Existing matches,
-rankings, profiles, analytics, speedruns, and spectator tools remain reachable
-through their working pages. A later migration of those pages is open work.
+The approved match-night design covers the complete existing frontend under
+`/refactor/`: homepage, matches and reports, rankings and profiles, map history,
+live match center, analytics, player comparisons, community tools, speedruns,
+replays, browser spectator, rating administration, and server documentation.
+Preserve the mature data loaders, controls, URL parameters, and privacy rules.
 
 Use static HTML/CSS/JavaScript at `/refactor/` and the same-origin `/api/`.
 No nginx, backend, database, or main-site changes. Do not invent statistics,
@@ -46,4 +48,4 @@ Existing class cutouts, map imagery, and homepage environment art in
 - Live state must distinguish unavailable data from an empty queue.
 - Real community stories take priority over decoration.
 - Keep core information usable on phones and with a keyboard.
-- Preserve functioning destinations while the new design develops.
+- Keep internal destinations in `/refactor/`, with an explicit original-site link.

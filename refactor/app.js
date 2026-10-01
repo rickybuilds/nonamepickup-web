@@ -6,8 +6,8 @@ const number = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
 const format = (value) => number(value).toLocaleString('en-US');
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const arrow = '<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg>';
-const playerUrl = (id) => `../player.html?id=${encodeURIComponent(id)}`;
-const mapUrl = (map) => `../map.html?map=${encodeURIComponent(map)}`;
+const playerUrl = (id) => `player.html?id=${encodeURIComponent(id)}`;
+const mapUrl = (map) => `map.html?map=${encodeURIComponent(map)}`;
 const availableMaps = new Set(['waterwar_lg', 'mortality_lg', 'monkey_lg', 'mm_crossfaded2_b9', 'massive2_b7', 'hammer2_b4', 'demolish2_b6', 'siden_lg', 'demolish2_b4r', 'shutdown2_lg2', 'castra_b5', 'raiden9', 'brutalist_b8', '2mesa3_lg', 'nexus_b4', 'phantom_lg', 'toasted_b16', 'stowaway2_lg2', 'stormz2_lg', 'torch2', 'voltage_lg']);
 
 function mapImage(map) {
@@ -71,7 +71,7 @@ function renderMatches() {
     const color = match.winner === 'BLUE' ? 'team-blue' : match.winner === 'RED' ? 'team-red' : '';
     const blue = match.score_blue == null ? '—' : format(match.score_blue);
     const red = match.score_red == null ? '—' : format(match.score_red);
-    return `<a class="match-row" href="../match.html?id=${encodeURIComponent(match.id)}" aria-label="${escape(`${match.map_name || 'Unknown map'}, ${result.toLowerCase()}, blue ${blue} to red ${red}`)}">
+    return `<a class="match-row" href="match.html?id=${encodeURIComponent(match.id)}" aria-label="${escape(`${match.map_name || 'Unknown map'}, ${result.toLowerCase()}, blue ${blue} to red ${red}`)}">
       ${availableMaps.has(match.map_name) ? `<img class="match-thumb" src="${mapImage(match.map_name)}" alt="" loading="lazy" />` : '<span class="match-thumb match-thumb-fallback" aria-hidden="true"><svg class="icon"><use href="#i-map"/></svg></span>'}
       <div class="match-info"><div class="match-map">${escape(match.map_name || 'Unknown map')}</div><div class="match-meta">${escape(relativeDate(match.created_at))} · 4v4</div></div>
       <div class="match-score" aria-hidden="true"><span class="team-blue"><small>BLUE</small>${blue}</span><span class="score-divider">:</span><span class="team-red"><small>RED</small>${red}</span></div>
@@ -146,7 +146,7 @@ function renderQueue(queue) {
   const live = (Array.isArray(queue.liveMatches) ? queue.liveMatches : []).find((match) => match.active);
   $('live-match').classList.toggle('active', !!live);
   $('live-match').innerHTML = live
-    ? `<span class="status-dot"></span><a href="../live.html">Live now: ${escape(live.map || live.map_name || 'pickup in progress')} · Watch the game</a>`
+    ? `<span class="status-dot"></span><a href="live.html">Live now: ${escape(live.map || live.map_name || 'pickup in progress')} · Watch the game</a>`
     : '<span class="status-dot"></span><p>No match live. Next one’s yours.</p>';
   $('queue-updated').textContent = `Updated ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date())}`;
 }
@@ -217,7 +217,7 @@ $('player-search').addEventListener('input', () => {
       const players = Array.isArray(payload.data) ? payload.data : [];
       $('search-results').innerHTML = players.length ? players.map((row) => `<a class="search-result" href="${playerUrl(row.id)}">${avatar(row)}<strong>${escape(row.player)}</strong><span class="search-rating">${row.hidden || row.elo == null ? 'Private Elo' : `${Math.round(number(row.elo))} Elo`}</span>${arrow}</a>`).join('') : '<p>No players found. Try a different name or player ID.</p>';
     } catch {
-      if (!controller.signal.aborted && $('player-search').value.trim() === query) $('search-results').innerHTML = '<p>Player search is unavailable. Try again or visit <a href="../leaderboard.html">the player standings</a>.</p>';
+      if (!controller.signal.aborted && $('player-search').value.trim() === query) $('search-results').innerHTML = '<p>Player search is unavailable. Try again or visit <a href="leaderboard.html">the player standings</a>.</p>';
     }
   }, 250);
 });

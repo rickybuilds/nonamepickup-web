@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Compare two NoName TFC Pickup players as teammates and opponents.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/refactor/compare.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Compare Players | NoName TFC Pickups">
+  <meta property="og:description" content="Compare NoName TFC Pickup players across Elo, shared matches, teammate results, and head-to-head records.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/refactor/compare.html">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC Pickups | Compare</title>
+  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="../assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="./styles/compare.css">
+  <script src="./scripts/main.js?v=20260926effects1" defer></script>
+
+<link rel="stylesheet" href="./site.css">
+<link rel="stylesheet" href="./surfaces.css">
+<link rel="stylesheet" href="./community.css">
+<script type="module" src="./shell.js"></script>
+</head>
+<body class="refactor-page bg-[#0a0c10] compare-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+<svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg>
+<header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="./">Home</a>
+          <a href="matches.html">Matches</a>
+          <a href="leaderboard.html">Players</a>
+          <a href="speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="analytics.html">Analytics</a><a href="compare.html">Compare players</a><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="./">Home</a><a href="matches.html">Matches</a><a href="leaderboard.html">Players</a><a href="speedruns.html">Speedruns</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare</a><a href="live.html">Live & servers</a><a href="coolest-dude.html">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+
+  <main id="main" class="compare-main">
+    <section class="compare-shell">
+      <div class="compare-header">
+        <div>
+
+          <h1>Compare Players</h1>
+          <p class="compare-subtitle">Teammates, opponents, shared maps, and recent match history.</p>
+        </div>
+        <span id="compare-status" class="compare-status-pill">Pick two players</span>
+      </div>
+
+      <div class="compare-search-panel page-section">
+        <div class="compare-search-box">
+          <label for="compare-player-1">Player One</label>
+          <div class="compare-autocomplete-wrap">
+            <input id="compare-player-1" class="compare-player-input" type="text" placeholder="Search player one..." autocomplete="off">
+            <div id="compare-player-1-results" class="compare-autocomplete-results"></div>
+          </div>
+          <small id="compare-player-1-selected">No player selected</small>
+        </div>
+        <button id="compare-swap" class="compare-swap-btn" type="button" aria-label="Swap players" title="Swap players">⇄</button>
+        <div class="compare-search-box">
+          <label for="compare-player-2">Player Two</label>
+          <div class="compare-autocomplete-wrap">
+            <input id="compare-player-2" class="compare-player-input" type="text" placeholder="Search player two..." autocomplete="off">
+            <div id="compare-player-2-results" class="compare-autocomplete-results"></div>
+          </div>
+          <small id="compare-player-2-selected">No player selected</small>
+        </div>
+        <div class="compare-search-actions">
+          <button id="compare-run" class="compare-run-btn" type="button">Compare</button>
+          <button id="compare-reset" class="compare-reset-btn" type="button">Reset</button>
+        </div>
+      </div>
+
+      <div id="compare-empty" class="compare-empty">Pick two players to load teammate and opponent stats.</div>
+
+      <div id="compare-results" class="compare-results hidden">
+        <div class="compare-versus-hero">
+          <article class="compare-player-card blue-side">
+
+            <h2 id="compare-name-1">—</h2>
+            <p id="compare-elo-1">—</p>
+            <a id="compare-profile-1" class="compare-profile-link" href="player.html">View Profile</a>
+          </article>
+          <div class="compare-vs-badge" aria-hidden="true">VS</div>
+          <article class="compare-player-card red-side">
+
+            <h2 id="compare-name-2">—</h2>
+            <p id="compare-elo-2">—</p>
+            <a id="compare-profile-2" class="compare-profile-link" href="player.html">View Profile</a>
+          </article>
+        </div>
+
+        <section class="compare-verdict-panel page-section">
+          <div><span>VERDICT</span><h2 id="compare-verdict-title">Shared history loaded</h2></div>
+          <p id="compare-verdict-text">—</p>
+        </section>
+
+        <div class="compare-kpi-grid">
+          <div class="compare-kpi"><span>Games Together</span><strong id="compare-together-gp">—</strong><small id="compare-together-record">teammate record</small></div>
+          <div class="compare-kpi"><span>Together Win %</span><strong id="compare-together-win-pct">—</strong><small>in completed shared games</small></div>
+          <div class="compare-kpi"><span>Head-to-Head</span><strong id="compare-h2h-gp">—</strong><small id="compare-h2h-record">opponent record</small></div>
+          <div class="compare-kpi leader-kpi"><span>H2H Leader</span><strong id="compare-h2h-leader">—</strong><small id="compare-h2h-leader-detail">no meetings yet</small></div>
+        </div>
+
+        <div class="compare-grid">
+          <section class="compare-panel page-section">
+            <div class="compare-panel-header"><div><span>SAME TEAM</span><h2>Teammate Stats</h2></div><b id="compare-teammate-summary">Shared results</b></div>
+            <div id="compare-teammate-body" class="compare-stat-list"></div>
+          </section>
+          <section class="compare-panel opponent-panel">
+            <div class="compare-panel-header"><div><span>FACE TO FACE</span><h2>Opponent Stats</h2></div><b id="compare-opponent-summary">Rivalry results</b></div>
+            <div id="compare-opponent-body" class="compare-stat-list"></div>
+          </section>
+        </div>
+
+        <section class="compare-panel full-width">
+          <div class="compare-panel-header"><div><span>LAST 25</span><h2>Recent Shared Matches</h2></div><b>Completed matches</b></div>
+          <div class="compare-table-scroll">
+            <table class="compare-table match-table">
+              <thead><tr><th>Date</th><th>Map</th><th>Relation</th><th>Blue Team</th><th>Red Team</th><th>Score</th><th>Winner</th><th>Result</th><th>Links</th></tr></thead>
+              <tbody id="compare-matches-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+</body>
+</html>

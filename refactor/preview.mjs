@@ -4,7 +4,7 @@ import { dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.txt': 'text/plain; charset=utf-8' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.wasm': 'application/wasm', '.glb': 'model/gltf-binary', '.bin': 'application/octet-stream', '.pak': 'application/octet-stream', '.spr': 'application/octet-stream', '.data': 'application/octet-stream', '.txt': 'text/plain; charset=utf-8' };
 const port = Number(process.env.NONAME_PREVIEW_PORT || 4173);
 
 http.createServer(async (request, response) => {
@@ -20,7 +20,8 @@ http.createServer(async (request, response) => {
     const pathname = decodeURIComponent(url.pathname);
     const relative = pathname.endsWith('/') ? `${pathname}index.html` : pathname;
     const filename = resolve(root, `.${relative}`);
-    const type = types[extname(filename)];
+    const extension = extname(filename);
+    const type = types[extension] || (extension === '.pk3' || /^\.part\d+$/.test(extension) ? 'application/octet-stream' : null);
     if (!filename.startsWith(`${root}${sep}`) || !type) { response.writeHead(404); response.end('Not found'); return; }
     const data = await readFile(filename);
     response.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });

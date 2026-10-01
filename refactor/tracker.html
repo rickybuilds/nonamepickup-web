@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NoName TFC player and connection history tracker.">
+  <meta name="robots" content="noindex,nofollow">
+  <title>NoName TFC | Tracker</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="./styles/identities.css">
+
+
+  <script src="./scripts/main.js?v=20260926effects1" defer></script>
+  <script src="./scripts/identities.js?v=20260815tracker3" defer></script>
+<link rel="stylesheet" href="./site.css">
+<link rel="stylesheet" href="./surfaces.css">
+<link rel="stylesheet" href="./community.css">
+<script type="module" src="./shell.js"></script>
+</head>
+
+<body class="refactor-page identities-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+<svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg>
+<header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="./">Home</a>
+          <a href="matches.html">Matches</a>
+          <a href="leaderboard.html">Players</a>
+          <a href="speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="analytics.html">Analytics</a><a href="compare.html">Compare players</a><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="./">Home</a><a href="matches.html">Matches</a><a href="leaderboard.html">Players</a><a href="speedruns.html">Speedruns</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare</a><a href="live.html">Live & servers</a><a href="coolest-dude.html">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+
+  <main id="main" class="identities-main">
+    <section class="tracker-shell" aria-labelledby="tracker-title">
+      <header class="tracker-heading speedrun-hero">
+        <div><h1 id="tracker-title">TFC Tracker</h1><p class="tracker-subtitle">Search connection history across all NoName TFC servers</p><p id="identities-status" class="tracker-status" aria-live="polite">Loading player records...</p></div>
+        <div class="tracker-summary" aria-label="Player tracker totals">
+          <article class="tracker-stat"><div><strong id="identities-total">—</strong><span>Known players</span></div></article>
+          <article class="tracker-stat"><div><strong id="identities-connections">—</strong><span>Total connections</span></div></article>
+          <article class="tracker-stat"><div><strong id="identities-unlinked">—</strong><span>Unlinked players</span></div></article>
+          <article class="tracker-stat"><div><strong id="identities-updated">—</strong><span>Last updated</span></div></article>
+        </div>
+      </header>
+
+      <div id="identities-error" class="identities-error" role="alert" hidden></div>
+
+      <section class="tracker-workspace" aria-label="Tracker workspace">
+        <div id="tracker-players-view" class="tracker-view-panel" role="tabpanel">
+          <label class="tracker-search"><span class="tracker-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><use href="#i-search"/></svg></span><span class="sr-only">Search player records</span><input id="identities-filter" type="search" autocomplete="off" placeholder="Search name, SteamID, Discord ID, alias, or IP address..."><kbd>Ctrl K</kbd></label>
+          <div class="tracker-filters" role="tablist" aria-label="Player filters"><button class="tracker-filter is-active" type="button" data-filter="all">All <b data-count="all">—</b></button><button class="tracker-filter" type="button" data-filter="recent">Recently seen <b data-count="recent">—</b></button><button class="tracker-filter" type="button" data-filter="unlinked">Unlinked <b data-count="unlinked">—</b></button><button class="tracker-filter" type="button" data-filter="multiple_ips">Multiple IPs <b data-count="multiple_ips">—</b></button><button class="tracker-filter" type="button" data-filter="multiple_aliases">Multiple aliases <b data-count="multiple_aliases">—</b></button></div>
+
+          <section class="identities-panel" aria-labelledby="identities-table-title">
+            <div class="identities-toolbar"><div><h2 id="identities-table-title">Player records</h2></div><span id="identities-visible-count">Loading players...</span></div>
+            <div class="identities-table-wrap"><table class="identities-table"><thead><tr><th>Player</th><th>Identity</th><th>Last server</th><th>Connections</th><th>Last seen</th><th>History</th><th><span class="sr-only">Open</span></th></tr></thead><tbody id="identities-body"><tr><td colspan="7" class="identities-empty">Loading player identities...</td></tr></tbody></table></div>
+            <p id="identities-empty" class="identities-empty identities-no-results" hidden>No identities match that search.</p><nav id="identities-pagination" class="tracker-pagination" aria-label="Player pages"></nav>
+          </section>
+        </div>
+
+      </section>
+    </section>
+  </main>
+
+  <aside id="identity-drawer" class="identity-drawer" aria-labelledby="identity-drawer-title" aria-hidden="true" hidden><div class="identity-drawer-backdrop" data-close-drawer></div><section class="identity-drawer-panel"><header class="identity-drawer-header"><div class="identity-drawer-person"><span id="identity-drawer-avatar" class="identity-drawer-avatar">?</span><div><h2 id="identity-drawer-title">Player details</h2><span id="identity-drawer-discord" class="identity-drawer-discord">Loading...</span></div></div><button class="identity-drawer-close" type="button" data-close-drawer aria-label="Close player details">×</button></header><div id="identity-drawer-content" class="identity-drawer-content"><p class="identities-modal-loading">Select a player to inspect their history.</p></div></section></aside>
+
+  <dialog id="ip-modal" class="identities-modal identities-ip-modal" aria-labelledby="ip-modal-title"><div class="identities-modal-shell"><header class="identities-modal-header"><div><h2 id="ip-modal-title">Shared IP history</h2></div><button class="identities-modal-close" type="button" data-close-modal aria-label="Close IP history">×</button></header><div id="ip-modal-content" class="identities-modal-content"></div></div></dialog>
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+</body>
+</html>

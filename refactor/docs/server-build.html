@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NN//TFC step-by-step game server deployment guide.">
+  <title>NN//TFC Server Deployment Guide</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+
+  <link rel="stylesheet" href="/assets/css/style.css?v=20260615">
+  <link rel="stylesheet" href="./server-build.css">
+
+
+
+  <script src="./server-build.js" defer></script>
+<link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="../surfaces.css"><script type="module" src="../shell.js"></script></head>
+
+<body class="refactor-page matches-page server-build-page">
+  <a class="skip-link" href="#main">Skip to content</a><svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg><header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="../" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="../">Home</a>
+          <a href="../matches.html">Matches</a>
+          <a href="../leaderboard.html">Players</a>
+          <a href="../speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="../analytics.html">Analytics</a><a href="../compare.html">Compare players</a><a href="../kicked.html">Missed votes</a><a href="../coolest-dude.html">Community honors</a><a href="../vegasodds.html">Match predictions</a><a href="../mvp-breakdown.html">MVP breakdown</a><a href="../tracker.html">Identity history</a><a href="../live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="../live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="../">Home</a><a href="../matches.html">Matches</a><a href="../leaderboard.html">Players</a><a href="../speedruns.html">Speedruns</a><a href="../analytics.html">Analytics</a><a href="../compare.html">Compare</a><a href="../live.html">Live & servers</a><a href="../coolest-dude.html">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="../kicked.html">Missed votes</a><a href="../coolest-dude.html">Community honors</a><a href="../vegasodds.html">Match predictions</a><a href="../mvp-breakdown.html">MVP breakdown</a><a href="../tracker.html">Identity history</a><a href="../live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+
+  <main id="main">
+    <section class="matches-shell server-build-shell">
+      <header class="server-build-hero">
+        <div>
+
+          <h1>Server Deployment Guide</h1>
+          <p class="server-build-subtitle">A step-by-step checklist for building a new TFC game server and connecting it to the bot.</p>
+        </div>
+
+        <div class="server-build-actions">
+          <button id="resetProgress" class="server-build-button" type="button">Reset Progress</button>
+          <button id="expandAll" class="server-build-button" type="button">Expand All</button>
+        </div>
+      </header>
+
+      <section class="card setup-card" aria-labelledby="build-variables-title">
+        <div class="section-heading">
+          <p>CONFIGURATION</p>
+          <h2 id="build-variables-title">Build Variables</h2>
+        </div>
+        <p>Fill these in once. They are copied into the command examples below.</p>
+
+        <div class="var-grid">
+          <label for="varIp">New Server IP<input id="varIp" type="text" placeholder="&lt;IP_ADDRESS&gt;" autocomplete="off"></label>
+          <label for="varServer">Server Name<input id="varServer" type="text" placeholder="CENTRAL2" autocomplete="off"></label>
+          <label for="varDisplay">Display Name<input id="varDisplay" type="text" placeholder="TFC Central 2 Server" autocomplete="off"></label>
+          <label for="varRcon">RCON Password<input id="varRcon" type="password" placeholder="&lt;RCON_PASSWORD&gt;" autocomplete="off"></label>
+          <label for="varUrl">Server URL<input id="varUrl" type="text" placeholder="&lt;SERVER_URL&gt;" autocomplete="off"></label>
+        </div>
+
+        <p class="note">Do not save real secrets here if this page is public. Browser progress uses localStorage only.</p>
+      </section>
+
+      <section class="card progress-card" aria-label="Deployment progress">
+        <div class="progress-top">
+          <strong id="progressText">0% complete</strong>
+          <span id="stepCount">0 / 0 steps</span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-label="Deployment completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="progressBar"></div>
+        </div>
+      </section>
+
+      <section id="steps" class="steps" aria-label="Deployment steps"></section>
+    </section>
+  </main>
+
+  <template id="stepTemplate">
+    <article class="card step-card locked">
+      <button class="step-header" type="button" aria-expanded="false">
+        <span class="step-number"></span>
+        <span class="step-title"></span>
+        <span class="step-state">Locked</span>
+      </button>
+      <div class="step-body">
+        <div class="step-content"></div>
+        <label class="done-row">
+          <input class="done-check" type="checkbox">
+          <span>Mark this step complete</span>
+        </label>
+      </div>
+    </article>
+  </template>
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="../" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="../live.html">Live & servers</a><a href="../speedruns.html">Speedruns</a><a href="../../index.html">Original site</a></nav></div></footer></body>
+</html>

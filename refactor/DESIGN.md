@@ -36,6 +36,19 @@ typography:
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.45
+  data-title:
+    fontFamily: "'Barlow Condensed', sans-serif"
+    fontSize: "clamp(40px, 5vw, 64px)"
+    fontWeight: 700
+    lineHeight: 1.02
+  table:
+    fontFamily: "Barlow, sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
+  metadata:
+    fontFamily: "Barlow, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
   label:
     fontFamily: "Barlow, sans-serif"
     fontSize: "12px"
@@ -51,6 +64,8 @@ typography:
     fontWeight: 700
     lineHeight: 1
 rounded:
+  data-panel: "10px"
+  data-control: "8px"
   surface: "14px"
   menu: "12px"
   control: "6px"
@@ -155,7 +170,7 @@ The interface combines expressive imagery with compact, readable records. Numeri
 - Authentic TFC scenes, class artwork, maps, and real player records.
 - Flat data lists beside restrained rounded containers.
 
-This captures the implemented standalone frontend in `refactor/`. Token values are normative; component dimensions describe the current homepage patterns rather than a requirement that every future screen copy its composition.
+This captures the complete frontend in `refactor/`. Token values are normative; homepage imagery and dense record views share the same world while using compositions suited to their content.
 
 ## Colors
 
@@ -233,6 +248,36 @@ Main image containers, queue panels, and the featured story use the surface radi
 Image containers clip to their rounded boundaries; the hero class intentionally extends below the scene boundary and is clipped by the hero. Icons are simple outline SVGs, generally (20px), with (1.7px) strokes. Decorative class art stays outside the reading and accessibility hierarchy.
 
 ## Components
+
+### Data Pages and Specialist Views
+
+All routes use the same brand, navigation, player search, warm orange action color,
+and Barlow type families. `surfaces.css` supplies shared typography, dividers,
+forms, tables, focus states, and the charcoal palette. Route styles extend it for
+pickups, speedruns, community tools, and spectators.
+
+Match history combines filter controls, a scrollable archive, and a selected
+match report; phone layouts stack those areas. Standings combine a compact top
+three with a searchable table. Profiles retain detailed kill-event controls,
+recent games, charts, relationships, and match drawers. Map histories retain
+their authentic map preview and outcome charts. Summary metrics use flat strips
+and dividers rather than decorative elevated cards.
+
+Speedruns retain map and runner catalogs, class filters, personal records,
+record progression charts, and 3D replay comparisons. Community views retain
+their existing analytics, comparisons, missed-vote history, honors, predictions,
+MVP explanations, and identity-history controls. Administration retains its
+existing access rules and controls.
+
+Replay and spectator views prioritize the canvas. Charcoal controls, readable
+metadata, orange actions, and native red/blue teams connect their chrome to the
+rest of the site. Missing replay selection includes a recovery link to the
+match archive. The browser launcher keeps the existing runtime under `/live/`.
+
+Copied baseline layouts in `styles/` remove the original global effects and
+forced declarations; the root site's CSS is not altered. Keep `scripts/` route
+hooks intact when improving presentation. Internal links must resolve inside
+`/refactor/`; APIs and game assets remain shared at their existing root paths.
 
 ### Buttons and Links
 

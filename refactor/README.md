@@ -1,10 +1,12 @@
 # NoName / All Game
 
 This second attempt starts from `main` at `6f91252` on `codex/refactor2`.
-The first design pass is a working homepage: live queue, recent match results,
-current public Elo standings, community stories, map histories, and speedruns.
-The other views link to the existing working site while their redesign remains
-future work. The owner approved the match-night hub direction on 2026-10-01.
+The complete existing frontend now lives inside `refactor/`, using the approved
+match-night direction. Navigation stays inside the new site, including match
+reports, profiles, standings, map histories, analytics, comparisons, community
+tools, speedruns and replays, live match center, browser spectator, rating
+administration, and server documentation. Original root pages remain available.
+The owner approved the direction and delegated design decisions on 2026-10-01.
 
 Keep new frontend work inside `refactor/` so the deployed URL stays
 `https://nonamepickup.servehalflife.com/refactor/`. This uses the existing static
@@ -15,8 +17,13 @@ The previous Project 2080 attempt remains on `refactor/noname-2080`, with its
 current tip at `c6db6f1`. It has not been deleted or renamed. The root website and
 backend have not been changed by this reset.
 
-These files update the local workspace. The public `/refactor/` remains on
-the old version until the new branch is deployed to the existing web root.
+The public site updates after the server pulls the branch into its existing web
+root. No build step or nginx edit is needed:
+
+```sh
+cd /var/www/noname-2080
+git pull --ff-only origin codex/refactor2
+```
 
 Do not add, change, or run tests unless explicitly requested, per `AGENTS.md`.
 
@@ -27,6 +34,16 @@ From the repository root, run `node refactor/preview.mjs`, then open
 the website's static assets, and forwards public GET requests under `/api/` to
 the existing production API. It does not start the backend or use `.env`.
 Set `NONAME_PREVIEW_PORT` to use a different port.
+
+The preview supports static replay assets and spectator downloads. It forwards
+GET requests only; administration writes and live WebSocket connections require
+the deployed server. The browser spectator reuses the existing `/live/` runtime
+and assets, so that original directory must remain in the deployment.
+
+`shell.js` provides navigation and privacy-aware player search. Page behavior
+lives in `scripts/`; path-adapted baseline layouts live in `styles/`. Shared
+`surfaces.css` and the pickup, speedrun, community, and spectator styles provide
+the new appearance while preserving original route hooks and features.
 
 ## Assets
 

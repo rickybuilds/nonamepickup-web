@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="View a NoName TFC Pickup player's competitive profile, Elo trend, recent matches, teammates, rivals, aliases, and kill-event analytics.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/refactor/player.html">
+  <title>NoName TFC Pickups | Player Profile</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="../assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="./styles/player.css">
+  <script src="./scripts/main.js?v=20260929mvpform4" defer></script>
+  <script src="./scripts/player.js?v=20260930rivals1" defer></script>
+
+
+<link rel="stylesheet" href="./site.css">
+<link rel="stylesheet" href="./surfaces.css">
+<link rel="stylesheet" href="./pickup.css">
+<script type="module" src="./shell.js"></script>
+</head>
+
+<body class="refactor-page bg-[#0a0c10] text-gray-200 player-v3-page player2-page">
+
+
+
+
+
+<a class="skip-link" href="#main">Skip to content</a>
+<svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg>
+<header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="./">Home</a>
+          <a href="matches.html">Matches</a>
+          <a href="leaderboard.html">Players</a>
+          <a href="speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="analytics.html">Analytics</a><a href="compare.html">Compare players</a><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="./">Home</a><a href="matches.html">Matches</a><a href="leaderboard.html">Players</a><a href="speedruns.html">Speedruns</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare</a><a href="live.html">Live & servers</a><a href="coolest-dude.html">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+
+<main id="main" class="player-v3-main player2-main">
+  <section class="player-v3-shell player2-shell">
+
+    <section class="player-v3-hero player2-hero" aria-label="Player overview">
+      <div class="identity-card player2-overview-card">
+        <div class="identity-copy">
+          <div class="identity-name-row player2-name-row">
+            <div class="player-mark-wrap">
+              <div id="player-mark" class="player-mark nn-avatar nn-avatar-lg"><span class="nn-avatar-fallback">?</span></div>
+
+            </div>
+            <div class="player2-name-block">
+
+              <h1 id="player-name-v3">Loading...</h1>
+              <div id="steam-line" class="steam-line">SteamID: —</div>
+              <div id="player-profile-links" class="player-profile-links"></div>
+              <div class="player2-last10-wrap" aria-label="Recent form">
+                <span class="player2-last10-label">Last 10</span>
+                <span id="player2-last10" class="leaderboard-last10" aria-label="Last 10 results"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="player2-scoreboard">
+            <div class="player2-elo-primary">
+              <span>Current Elo</span>
+              <strong id="player2-current-elo">—</strong>
+            </div>
+            <div>
+              <span>Elo Rank</span>
+              <strong id="player2-elo-rank" class="blue">—</strong>
+            </div>
+            <div>
+              <span>Overall Rank</span>
+              <strong id="kpi-rank">—</strong>
+            </div>
+            <div>
+              <span id="kpi-elo-window-label">Last 20 Games</span>
+              <strong id="kpi-elo-window" class="muted">—</strong>
+            </div>
+          </div>
+
+          <div class="identity-mini-kpis player2-mini-kpis" aria-label="Player key stats">
+            <div class="identity-mini-kpi"><span>Peak Elo</span><strong id="kpi-peak-elo" class="blue">—</strong></div>
+            <div class="identity-mini-kpi"><span>Record - W/L/T</span><strong id="player2-record">—</strong></div>
+            <div class="identity-mini-kpi"><span>Win Rate</span><strong id="player2-win-pct" class="good">—</strong></div>
+            <div class="identity-mini-kpi"><span>Best Streak</span><strong id="kpi-best-streak" class="purple">—</strong></div>
+            <div class="identity-mini-kpi"><span>Game MVPs</span><strong id="kpi-mvps" class="gold">—</strong></div>
+            <div class="identity-mini-kpi"><span>PUGs / Week</span><strong id="kpi-pugs-week">—</strong></div>
+          </div>
+
+          <div id="player-elo-line" class="elo-line player2-hidden-line">Current Elo: — <span>Elo Tier: —</span></div>
+          <div id="player-record-line" class="record-line player2-hidden-line">Record: — | Win%: —</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="player-granular-card" class="v3-card player-granular-card player2-analytics-card" aria-label="Advanced kill event analytics">
+      <div class="v3-card-header player-granular-header">
+        <div>
+          <h2>Advanced Kill Event Analytics</h2>
+          <span>Built from individual Hampalyzer kill events with class attribution.</span>
+        </div>
+        <div class="granular-controls" aria-label="Granular event controls">
+          <label for="granular-map-select">Map</label>
+          <select id="granular-map-select" aria-label="Map filter" disabled>
+            <option value="">Maps unavailable</option>
+          </select>
+          <label for="granular-match-select">Match ID</label>
+          <select id="granular-match-select" aria-label="Recent match filter" disabled>
+            <option value="">Recent matches unavailable</option>
+          </select>
+          <label for="granular-match-filter">Filter</label>
+          <input id="granular-match-filter" type="text" placeholder="Filter match ID...">
+          <button id="granular-match-apply" type="button">Apply</button>
+          <button id="granular-match-clear" type="button">Clear</button>
+        </div>
+      </div>
+      <div id="player-granular-body" class="player-granular-body">
+        <div class="empty-v3">Loading granular kill events...</div>
+      </div>
+    </section>
+
+    <section class="v3-card recent-card player2-recent-card" aria-label="Recent matches">
+      <div class="v3-card-header player2-card-header">
+        <h2>Recent Matches</h2>
+        <a class="player2-view-link" href="matches.html">View All Matches</a>
+      </div>
+      <div id="recent-match-list" class="recent-match-list player2-recent-grid"></div>
+      <div id="recent-match-pager" class="player2-recent-pager" aria-label="Recent match pages"></div>
+    </section>
+
+    <section class="v3-main-grid player2-middle-grid" aria-label="Player activity and relationships">
+      <div class="v3-card player2-elo-card player2-middle-card">
+        <div class="v3-card-header player2-card-header">
+          <h2>Elo Trend</h2>
+          <span id="elo-chart-label">All Matches</span>
+        </div>
+        <div class="v3-chart-wrap player2-middle-chart-wrap">
+          <canvas id="elo-chart-v3"></canvas>
+        </div>
+      </div>
+
+      <div class="v3-card activity-card player2-middle-card">
+        <div class="v3-card-header"><h2>Activity Heatmap</h2><span>Day × Time</span></div>
+        <div id="activity-heatmap" class="activity-heatmap"></div>
+        <div class="heatmap-footer">
+          <span id="activity-peak">Peak: —</span>
+          <span class="heat-scale"><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+      </div>
+
+      <div class="v3-card list-card player2-middle-card">
+        <div class="v3-card-header"><h2>Best Teammates</h2><span>Same Team</span></div>
+        <div id="best-teammates" class="mini-list compact"></div>
+      </div>
+
+      <div class="v3-card list-card player2-middle-card">
+        <div class="v3-card-header"><h2>Nemesis List</h2><span>Against You</span></div>
+        <div id="toughest-opponents" class="mini-list compact"></div>
+      </div>
+    </section>
+
+    <section class="v3-card list-card player2-map-tendencies-card" aria-label="Map tendencies">
+      <div class="v3-card-header player2-card-header">
+        <h2>Map Tendencies</h2>
+        <span>Completed Pickups</span>
+      </div>
+      <div id="map-tendencies" class="map-tendency-grid"></div>
+    </section>
+
+  </section>
+</main>
+
+<div id="match-drawer-backdrop" class="match-drawer-backdrop"></div>
+
+<aside id="match-drawer" class="match-drawer">
+  <div class="match-drawer-head">
+    <div>
+      <div class="drawer-kicker">MATCH DETAIL</div>
+      <div id="match-drawer-title" class="match-drawer-title">Loading...</div>
+    </div>
+    <button id="match-drawer-close" class="match-drawer-close" type="button" aria-label="Close match drawer">×</button>
+  </div>
+
+  <div id="match-drawer-body" class="match-drawer-body">
+    <div class="drawer-loading">Loading match...</div>
+  </div>
+</aside>
+
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+</body>
+</html>

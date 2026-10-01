@@ -1,0 +1,61 @@
+/* Shared chrome and readable data surfaces for the complete /refactor/ site.
+   Original layout styles keep mature controls working; these rules own the design. */
+html:has(.refactor-page){font-size:16px;zoom:1;--text:var(--ink);--tfc-blue:var(--ink);--border:var(--line);--card:var(--surface);--panel:var(--surface);--site-header-height:94px;--timeline-flag-size:32px;--surface-radius-medium:8px;--surface-radius-large:10px;--surface-bg:var(--surface);--p2-blue:var(--accent);--p2-border:var(--line);--p2-border-soft:var(--line);--page-main-width:1440px;--page-gutter-desktop:40px;--page-gutter-mobile:16px;--mobile-page-gutter:16px;--page-top-gap:38px;--page-bottom-gap:56px}
+.refactor-page .hidden{display:none!important}.refactor-page .sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+body.refactor-page{background:var(--bg)!important;background-image:none!important;color:var(--ink)!important;font:400 16px/1.45 var(--body);overflow-x:clip;min-height:100vh}
+.refactor-page::before,.refactor-page::after,.refactor-page .site-bg-grid,.refactor-page .site-bg-glow{display:none!important}
+.refactor-page *{font-family:var(--body);text-shadow:none!important;box-shadow:none!important}
+.refactor-page a,.refactor-page a:visited{color:inherit;text-shadow:none}
+.refactor-page a:hover{color:var(--accent)}
+.refactor-page :is(h1,h2,h3,h4){font-family:var(--display)!important;color:var(--ink);font-weight:700;letter-spacing:-.015em;-webkit-text-fill-color:currentColor}
+.refactor-page main h1{font-size:clamp(40px,5vw,64px);line-height:1.02;background:none!important}
+.refactor-page main h2{font-size:28px;line-height:1.1}
+.refactor-page main h3{font-size:22px;line-height:1.15}
+.refactor-page :is([class*="kicker"],[class*="eyebrow"],[class*="-glow"]){display:none!important}
+.refactor-page :is(p,small){font-family:var(--body);font-weight:400}
+.refactor-page main{width:calc(100% - 80px);max-width:1440px;margin:0 auto;padding:38px 0 56px;position:relative;min-height:65vh}
+.refactor-page main#main{width:calc(100% - 80px);max-width:1440px}
+.refactor-page main :is([class$="-shell"],[class*="-shell "]){padding:0;border:0;border-radius:0;background:none;backdrop-filter:none}
+.refactor-page main :is([class$="-shell"],[class*="-shell "])::before,.refactor-page main :is([class$="-shell"],[class*="-shell "])::after{display:none}
+.refactor-page main :is(input,select,textarea){font:400 14px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;min-height:44px;padding:10px 12px;max-width:100%}
+.refactor-page input::placeholder,.refactor-page textarea::placeholder{color:var(--muted)}
+.refactor-page main :is(button,[class$="-btn"],[class$="-button"]){font-family:var(--body);font-weight:600;text-transform:none;letter-spacing:0;border-radius:6px}
+.refactor-page :is(button,input,select,textarea,summary,a):focus-visible{outline:2px solid var(--accent)!important;outline-offset:3px}
+.refactor-page main button:disabled{opacity:.45;cursor:not-allowed}
+.refactor-page main :where([class*="-card"],[class*="-panel"],[class*="-toolbar"],[class*="-filter-bar"]):where(:not(img):not(button):not(input)){background-color:var(--surface);background-image:none;border-color:var(--line);border-radius:10px;backdrop-filter:none}
+.refactor-page main :is([class*="-card"],[class*="-panel"])::before,.refactor-page main :is([class*="-card"],[class*="-panel"])::after{background-image:none}
+.refactor-page main :is([class*="-table-wrap"],[class*="table-scroll"]){border:1px solid var(--line);border-radius:8px;background:var(--surface);max-width:100%;overflow-x:auto}
+.refactor-page main table{font-family:var(--body);color:var(--ink);border-collapse:collapse;width:100%}
+.refactor-page main th{font:600 12px var(--body);color:var(--muted);background:var(--raised);padding:14px 12px;letter-spacing:.035em;border-color:var(--line)}
+.refactor-page main td{border-color:var(--line);font-size:14px;font-weight:400;padding:14px 12px}
+.refactor-page main tbody tr{background:transparent}
+.refactor-page main tbody tr:hover{background:var(--raised)}
+.refactor-page main td a:hover{text-decoration:underline;text-underline-offset:4px}
+.refactor-page .nn-avatar{background:var(--raised);border:1px solid var(--line);border-radius:8px}
+.refactor-page .nn-avatar-fallback{color:var(--ink);font-family:var(--display);font-weight:700}
+.refactor-page .supporter-badge{filter:none!important;animation:none!important}
+.refactor-page :is(.blue,.team-blue,.blue-team){color:var(--blue)!important}
+.refactor-page :is(.red,.team-red,.red-team,.bad){color:var(--red)!important}
+.refactor-page .good{color:var(--green)!important}
+.refactor-page :is(.gold,.purple){color:#f4bd86!important}
+.refactor-page :is([class*="empty"],[class*="loading"],[class*="subtitle"],[class*="updated"]){color:var(--muted);font-weight:400}
+.refactor-page .site-header{position:relative!important;inset:auto!important;width:100%;padding:0;background:var(--bg)!important;border:0;border-bottom:1px solid var(--line);backdrop-filter:none;z-index:20}
+.refactor-page .site-header::before,.refactor-page .site-header::after{display:none}
+.refactor-page .header-inner{height:94px;padding:0}
+.refactor-page .brand,.refactor-page .desktop-nav a,.refactor-page .more-links a,.refactor-page .mobile-nav a{color:var(--ink)}
+.refactor-page .brand-mark span,.refactor-page .desktop-nav a[aria-current],.refactor-page .mobile-nav a[aria-current]{color:var(--accent)}
+.refactor-page .brand-name>span{color:var(--muted)}
+.refactor-page .site-header .button{background:var(--accent);color:#17110f;border:0}
+.refactor-page .site-header button{border:0;border-radius:0;background:none;font-weight:400;text-transform:none}
+.refactor-page .search-input-row input{background:none;border:0;padding:14px 0;font-size:20px}
+.refactor-page .search-result{font-size:16px;font-weight:400;background:none;border-radius:0;border:0;border-bottom:1px solid var(--line)}
+.refactor-page .search-result:hover{background:var(--surface)}
+.refactor-page .site-footer{position:relative;clear:both;margin:0;padding:0;background:var(--bg);border-top:1px solid var(--line)}
+.refactor-page .site-footer p{font-size:14px}
+.refactor-page :is(.last10-w){background:var(--green)}
+.refactor-page :is(.last10-l){background:var(--red)}
+@media(max-width:900px){.refactor-page main{width:calc(100% - 44px);padding-block:28px 44px}.refactor-page .header-inner{height:80px}.refactor-page main h1{font-size:48px}}
+@media(max-width:640px){.refactor-page main{width:calc(100% - 32px);padding-top:24px}.refactor-page main h1{font-size:42px}.refactor-page main h2{font-size:26px}.refactor-page main td{font-size:13px}.refactor-page main th{font-size:12px}.refactor-page .header-inner{height:75px}}
+@media(max-width:900px){.refactor-page main#main{width:calc(100% - 44px)}}
+@media(max-width:640px){.refactor-page main#main{width:calc(100% - 32px)}}
+@media(prefers-reduced-motion:reduce){.refactor-page *{animation:none!important;transition:none!important}}

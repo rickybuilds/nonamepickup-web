@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>NoName TFC | Speedrun Replay</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="../assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="./styles/speedruns.css">
+  <link rel="stylesheet" href="./styles/speedrun-replay.css">
+  <script src="./scripts/main.js?v=20260926effects1" defer></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="./scripts/speedrun-replay.js?v=20260906avgspeed2"></script>
+
+<link rel="stylesheet" href="./site.css">
+<link rel="stylesheet" href="./surfaces.css">
+<link rel="stylesheet" href="./speedruns.css">
+<script type="module" src="./shell.js"></script>
+</head>
+
+<body class="refactor-page bg-[#0a0c10] speedruns-page replay-page replay-playing">
+  <a class="skip-link" href="#main">Skip to content</a>
+<svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg>
+<header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="./">Home</a>
+          <a href="matches.html">Matches</a>
+          <a href="leaderboard.html">Players</a>
+          <a href="speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="analytics.html">Analytics</a><a href="compare.html">Compare players</a><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="./">Home</a><a href="matches.html">Matches</a><a href="leaderboard.html">Players</a><a href="speedruns.html">Speedruns</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare</a><a href="live.html">Live & servers</a><a href="coolest-dude.html">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+
+  <main id="main" class="replay-main">
+    <section class="replay-stage" aria-label="Speedrun replay viewer">
+      <canvas id="replay-canvas"></canvas>
+      <div id="replay-status" class="replay-status">Loading replay...</div>
+      <div id="replay-grenade-hud" class="replay-grenade-hud" aria-hidden="true">
+        <img id="replay-grenade-hud-image" alt="" />
+        <span id="replay-grenade-hud-label">GRENADE</span>
+      </div>
+      <aside class="replay-input-hud" aria-label="Recorded player inputs">
+        <div class="replay-speedometer">
+          <div class="replay-speedometer-metric">
+            <span>SPEED</span>
+            <div><strong id="replay-speedometer-value">0</strong><small>HU/S</small></div>
+          </div>
+          <div class="replay-speedometer-metric">
+            <span>AVG SPEED</span>
+            <div><strong id="replay-speedometer-average-value">0</strong><small>HU/S</small></div>
+          </div>
+        </div>
+        <div class="replay-keyboard" aria-label="Movement keys">
+          <kbd data-input="forward">W</kbd>
+          <kbd data-input="left">A</kbd>
+          <kbd data-input="back">S</kbd>
+          <kbd data-input="right">D</kbd>
+        </div>
+        <div class="replay-input-actions">
+          <kbd data-input="duck">CTRL</kbd>
+          <kbd data-input="jump">SPACE</kbd>
+          <kbd data-input="attack">M1</kbd>
+          <kbd data-input="attack2">M2</kbd>
+        </div>
+      </aside>
+
+      <section class="replay-topbar" aria-label="Replay details">
+        <div>
+
+          <h1 id="replay-title">Speedrun Replay</h1>
+          <p id="replay-subtitle">-</p>
+        </div>
+        <div class="replay-actions">
+          <button id="replay-compare-toggle" type="button" class="replay-compare-button" aria-expanded="false" aria-controls="replay-compare-panel">Add run</button>
+          <button id="replay-export" type="button" class="replay-export-button">Export Replay</button>
+          <a id="replay-map-link" href="speedruns.html">Speedruns</a>
+        </div>
+      </section>
+
+      <section id="replay-compare-panel" class="replay-compare-panel" aria-label="Compare another run" hidden>
+        <div class="replay-compare-heading">
+          <div>
+            <span>RUN COMPARISON</span>
+            <strong>Add another run</strong>
+          </div>
+          <button id="replay-compare-close" type="button" aria-label="Close comparison picker">&times;</button>
+        </div>
+        <p>Choose a replay from this map. Both runs will start together at 0:00.</p>
+        <label>
+          <span>Run</span>
+          <select id="replay-compare-select" disabled>
+            <option>Loading runs...</option>
+          </select>
+        </label>
+        <div class="replay-compare-panel-actions">
+          <button id="replay-compare-add" type="button" disabled>Compare runs</button>
+          <button id="replay-compare-remove" type="button" class="secondary" hidden>Remove run</button>
+        </div>
+        <small id="replay-compare-status" role="status"></small>
+      </section>
+
+      <div id="replay-compare-legend" class="replay-compare-legend" hidden>
+        <span class="primary-dot"></span><strong id="replay-compare-primary">Primary run</strong>
+        <span class="compare-dot"></span><strong id="replay-compare-secondary">Comparison run</strong>
+        <span id="replay-compare-delta" class="replay-compare-delta"></span>
+      </div>
+
+      <div id="replay-free-roam-help" class="replay-free-roam-help" role="status" hidden>
+        <strong>FREE ROAM</strong><span>Click the replay to capture the mouse · WASD move · Q/E down/up</span>
+      </div>
+
+      <div id="replay-free-roam-touch" class="replay-free-roam-touch" aria-label="Free roam touch controls" hidden>
+        <div class="replay-touch-pad" role="group" aria-label="Camera movement">
+          <button type="button" class="forward" data-free-roam-key="KeyW" aria-label="Move forward">▲</button>
+          <button type="button" class="left" data-free-roam-key="KeyA" aria-label="Move left">◀</button>
+          <button type="button" class="back" data-free-roam-key="KeyS" aria-label="Move backward">▼</button>
+          <button type="button" class="right" data-free-roam-key="KeyD" aria-label="Move right">▶</button>
+        </div>
+        <div class="replay-touch-actions" role="group" aria-label="Camera height and mode">
+          <button type="button" data-free-roam-key="KeyE" aria-label="Move camera up">UP</button>
+          <button type="button" data-free-roam-key="KeyQ" aria-label="Move camera down">DOWN</button>
+          <button id="replay-free-roam-play" type="button" data-free-roam-action="play" aria-label="Pause replay">PAUSE</button>
+          <button type="button" data-free-roam-action="pov" aria-label="Return to player point of view">POV</button>
+        </div>
+      </div>
+
+      <section class="replay-stats" aria-label="Replay frame statistics">
+        <div><span>Speed</span><strong id="replay-stat-speed">-</strong></div>
+        <div><span>Position</span><strong id="replay-stat-position">-</strong></div>
+        <div><span>Look</span><strong id="replay-stat-look">-</strong></div>
+        <div><span>Buttons</span><strong id="replay-stat-buttons">-</strong></div>
+      </section>
+
+      <section class="replay-controls" aria-label="Playback controls">
+        <button id="replay-play" type="button" class="replay-button">Pause</button>
+        <button id="replay-restart" type="button" class="replay-button secondary">Restart</button>
+        <button id="replay-trail" type="button" class="replay-button secondary active">Trail</button>
+        <button id="replay-zones" type="button" class="replay-button secondary active">Zones</button>
+        <button id="replay-model-style" type="button" class="replay-button secondary" aria-pressed="false">Models: Classic</button>
+        <button id="replay-camera-mode" type="button" class="replay-button secondary" aria-pressed="false" disabled>Camera: POV</button>
+        <div class="replay-fov" role="group" aria-label="Camera field of view">
+          <button id="replay-fov-decrease" type="button" class="replay-button secondary">FOV -</button>
+          <span id="replay-fov-label" class="replay-fov-label">FOV: 75</span>
+          <button id="replay-fov-increase" type="button" class="replay-button secondary">FOV +</button>
+        </div>
+        <div class="replay-speed" role="group" aria-label="Playback speed">
+          <button type="button" data-speed="0.5">0.5x</button>
+          <button type="button" data-speed="1" class="active">1x</button>
+          <button type="button" data-speed="2">2x</button>
+        </div>
+        <label class="replay-scrubber">
+          <span id="replay-clock">0:00.000</span>
+          <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
+          <span id="replay-duration">0:00.000</span>
+        </label>
+      </section>
+    </section>
+  </main>
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Explore NoName TFC Pickup map statistics, outcomes, scores, top players, rivalries, and recent matches.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/refactor/map.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Map Intel | NoName TFC Pickups">
+  <meta property="og:description" content="Map statistics, outcomes, scores, top players, rivalries, and recent matches.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/refactor/map.html">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC Pickups | Map Intel</title>
+
+  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="../assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="./styles/map.css">
+  <script src="./scripts/main.js?v=20260926effects1" defer></script>
+  <script src="./scripts/maps.js?v=20260618i" defer></script>
+
+
+<link rel="stylesheet" href="./site.css">
+<link rel="stylesheet" href="./surfaces.css">
+<link rel="stylesheet" href="./pickup.css">
+<script type="module" src="./shell.js"></script>
+</head>
+
+<body class="refactor-page bg-[#0a0c10] map-v2-page">
+
+  <a class="skip-link" href="#main">Skip to content</a>
+<svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg>
+<header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="./">Home</a>
+          <a href="matches.html">Matches</a>
+          <a href="leaderboard.html">Players</a>
+          <a href="speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="analytics.html">Analytics</a><a href="compare.html">Compare players</a><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="./">Home</a><a href="matches.html">Matches</a><a href="leaderboard.html">Players</a><a href="speedruns.html">Speedruns</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare</a><a href="live.html">Live & servers</a><a href="coolest-dude.html">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+
+  <main id="main" class="page-main-spacing max-w-[1800px] mx-auto px-8 py-10">
+    <section class="map-v2-shell">
+
+      <section class="map-v2-hero">
+        <div class="map-v2-thumb-wrap">
+          <img id="map-v2-image" class="map-v2-image" src="" alt="Map preview">
+          <div id="map-v2-image-fallback" class="map-v2-image-fallback"><img src="../assets/images/maps/NoMap.webp" alt=""></div>
+        </div>
+
+        <div class="map-v2-title-block">
+
+          <h1 id="map-v2-name">Loading...</h1>
+          <p id="map-v2-subtitle" class="map-v2-subtitle">Deep stats and insights for every match on this map.</p>
+          <div class="map-v2-tags">
+            <span id="tag-popularity" class="tag tag-blue">LOADING</span>
+            <span id="tag-balance" class="tag tag-purple">BALANCE CHECK</span>
+            <span id="tag-style" class="tag tag-gray">MATCH PROFILE</span>
+          </div>
+        </div>
+
+        <aside class="map-v2-hero-intel">
+          <div class="hero-intel-card hero-intel-feature">
+            <span>Most Played By</span>
+            <strong id="map-v2-most-played-by">—</strong>
+            <small id="map-v2-most-played-games">— matches</small>
+          </div>
+
+          <div class="hero-intel-row">
+            <div class="hero-intel-card">
+              <span>First Played</span>
+              <strong id="map-v2-first-played">—</strong>
+            </div>
+
+            <div class="hero-intel-card">
+              <span>Total Players</span>
+              <strong id="map-v2-total-players">—</strong>
+            </div>
+          </div>
+        </aside>
+
+      </section>
+
+      <section class="map-v2-kpis">
+        <article class="map-v2-kpi">
+          <div class="kpi-icon blue">⚔</div>
+          <div>
+            <span>Total Games</span>
+            <strong id="kpi-total-games">—</strong>
+            <small id="kpi-total-sub">on this map</small>
+          </div>
+        </article>
+
+        <article class="map-v2-kpi">
+          <div class="kpi-icon purple">🏆</div>
+          <div>
+            <span>Avg Score</span>
+            <strong id="kpi-avg-score">—</strong>
+            <small>Team 1 - Team 2</small>
+          </div>
+        </article>
+
+        <article class="map-v2-kpi">
+          <div class="kpi-icon blue">🛡</div>
+          <div>
+            <span>Team 1 Win %</span>
+            <strong id="kpi-blue-win">—</strong>
+            <small id="kpi-blue-wins">— wins</small>
+          </div>
+        </article>
+
+        <article class="map-v2-kpi red-card">
+          <div class="kpi-icon red">🛡</div>
+          <div>
+            <span>Team 2 Win %</span>
+            <strong id="kpi-red-win">—</strong>
+            <small id="kpi-red-wins">— wins</small>
+          </div>
+        </article>
+
+        <article class="map-v2-kpi gold-card">
+          <div class="kpi-icon gold">🤝</div>
+          <div>
+            <span>Tie %</span>
+            <strong id="kpi-tie-win">—</strong>
+            <small id="kpi-ties">— ties</small>
+          </div>
+        </article>
+
+        <article class="map-v2-kpi teal-card">
+          <div class="kpi-icon teal">◎</div>
+          <div>
+            <span>Avg Margin</span>
+            <strong id="kpi-margin">—</strong>
+            <small id="kpi-margin-sub">score gap</small>
+          </div>
+        </article>
+      </section>
+
+      <section class="map-v2-top-grid">
+        <article class="map-v2-panel score-panel">
+          <div class="map-v2-panel-header">
+            <h2>Score Trend</h2>
+            <span id="score-trend-label">Last 25 Matches</span>
+          </div>
+          <div class="chart-box">
+            <canvas id="map-v2-score-chart"></canvas>
+          </div>
+        </article>
+
+        <article class="map-v2-panel outcome-panel">
+          <div class="map-v2-panel-header">
+            <h2>Outcome Breakdown</h2>
+            <span>Completed Matches</span>
+          </div>
+          <div class="outcome-layout">
+            <div class="donut-box">
+              <canvas id="map-v2-outcome-chart"></canvas>
+              <div class="donut-center">
+                <strong id="donut-total">—</strong>
+                <span>Total</span>
+              </div>
+            </div>
+            <div class="outcome-legend">
+              <div><b class="legend-blue"></b><span>Team 1 Wins</span><strong id="legend-blue">—</strong></div>
+              <div><b class="legend-red"></b><span>Team 2 Wins</span><strong id="legend-red">—</strong></div>
+              <div><b class="legend-tie"></b><span>Ties</span><strong id="legend-tie">—</strong></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="map-v2-panel players-panel">
+          <div class="map-v2-panel-header">
+            <h2>Top Players</h2>
+            <span>Map Performance</span>
+          </div>
+
+          <div class="map-v2-tabs">
+            <button class="active" data-sort="games">Most Games</button>
+            <button data-sort="winrate">Best Win Rate</button>
+            <button data-sort="wins">Most Wins</button>
+          </div>
+
+          <div class="map-v2-table-scroll mini-scroll">
+            <table class="map-v2-table compact">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Player</th>
+                  <th>Games</th>
+                  <th>Wins</th>
+                  <th>Win Rate</th>
+                </tr>
+              </thead>
+              <tbody id="map-v2-players-body"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="map-v2-bottom-grid">
+        <article class="map-v2-panel recent-panel">
+          <div class="map-v2-panel-header">
+            <h2 id="recent-title">Recent Matches</h2>
+            <span id="recent-label">Latest</span>
+          </div>
+
+          <div class="map-v2-table-scroll recent-scroll">
+            <table class="map-v2-table recent-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Score</th>
+                  <th>Winner</th>
+                  <th>Team 1 (Team 1)</th>
+                  <th>Team 2 (Team 2)</th>
+                  <th>Match ID</th>
+                </tr>
+              </thead>
+              <tbody id="map-v2-matches-body"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="map-v2-panel rivalry-panel">
+          <div class="map-v2-panel-header">
+            <h2>Map Rivalries</h2>
+            <span>Auto-built from recent games</span>
+          </div>
+
+          <div class="rivalry-grid">
+            <div class="rivalry-card">
+              <h3>⚔ Top Player Rivalries</h3>
+              <table class="map-v2-table mini">
+                <thead>
+                  <tr><th>Matchup</th><th>Meetings</th></tr>
+                </thead>
+                <tbody id="map-v2-rivalries-body"></tbody>
+              </table>
+            </div>
+
+            <div class="rivalry-card">
+              <h3>👥 Top Duo Synergies</h3>
+              <table class="map-v2-table mini">
+                <thead>
+                  <tr><th>Duo</th><th>Wins</th></tr>
+                </thead>
+                <tbody id="map-v2-duos-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
+
+    </section>
+  </main>
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+</body>
+</html>

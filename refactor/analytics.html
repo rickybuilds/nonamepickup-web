@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NoName TFC Pickup all-time combat, flag, class, role, round, MVP, and chaos records.">
+  <link rel="canonical" href="https://nonamepickup.servehalflife.com/refactor/analytics.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NoName Analytics | NoName TFC Pickups">
+  <meta property="og:description" content="All-time leaders and records from NoName TFC Pickup match statistics.">
+  <meta property="og:url" content="https://nonamepickup.servehalflife.com/refactor/analytics.html">
+  <meta name="twitter:card" content="summary">
+  <title>NoName TFC Pickups | Analytics</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="../assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="./styles/analytics.css">
+  <script src="./scripts/main.js?v=20260926effects1" defer></script>
+  <script src="./scripts/analytics.js?v=20260929mvprates2" defer></script>
+
+<link rel="stylesheet" href="./site.css">
+<link rel="stylesheet" href="./surfaces.css">
+<link rel="stylesheet" href="./community.css">
+<script type="module" src="./shell.js"></script>
+</head>
+
+<body class="refactor-page bg-[#0a0c10] analytics-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+<svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg>
+<header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="./">Home</a>
+          <a href="matches.html">Matches</a>
+          <a href="leaderboard.html">Players</a>
+          <a href="speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="analytics.html">Analytics</a><a href="compare.html">Compare players</a><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="./">Home</a><a href="matches.html">Matches</a><a href="leaderboard.html">Players</a><a href="speedruns.html">Speedruns</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare</a><a href="live.html">Live & servers</a><a href="coolest-dude.html">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+
+  <main id="main" class="page-main-spacing max-w-[1500px] mx-auto px-8 py-10">
+    <section class="analytics-shell">
+      <div class="analytics-hero">
+        <div>
+
+          <h1>NoName Analytics</h1>
+          <p class="analytics-subtitle">Performance leaders, career records, and the history of NoName TFC.</p>
+          <div id="analytics-updated" class="analytics-updated is-loading" role="status" aria-live="polite">
+            <span id="analytics-updated-text">Loading analytics...</span>
+            <span id="analytics-load-progress" class="analytics-load-progress" role="progressbar" aria-label="Loading analytics statistics"><span></span></span>
+          </div>
+        </div>
+
+        <div class="analytics-summary" aria-label="Analytics coverage">
+          <article>
+            <span>Completed Matches</span>
+            <strong id="analytics-match-count">—</strong>
+          </article>
+          <article>
+            <span>Stat Players</span>
+            <strong id="analytics-player-count">—</strong>
+          </article>
+          <article>
+            <span>Rounds Played</span>
+            <strong id="analytics-round-count">—</strong>
+          </article>
+          <article>
+            <span>Total Kills</span>
+            <strong id="analytics-kill-count">—</strong>
+          </article>
+        </div>
+      </div>
+
+      <div id="analytics-error" class="analytics-error" hidden></div>
+
+      <nav class="analytics-tabs card" role="tablist" aria-label="Analytics sections">
+        <button id="analytics-tab-overview" class="analytics-tab active" type="button" role="tab" aria-selected="true" aria-controls="analytics-panel-overview" data-analytics-tab="overview">Overview</button>
+        <button id="analytics-tab-per-game" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-per-game" data-analytics-tab="per-game" tabindex="-1">Per Game Stats</button>
+        <button id="analytics-tab-weapons" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-weapons" data-analytics-tab="weapons" tabindex="-1">Weapons</button>
+        <button id="analytics-tab-maps" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-maps" data-analytics-tab="maps" tabindex="-1">Maps</button>
+        <button id="analytics-tab-players" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-players" data-analytics-tab="players" tabindex="-1">Players</button>
+      </nav>
+
+      <div id="analytics-panel-overview" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-overview" data-analytics-panel="overview">
+        <section class="analytics-overview-grid" aria-label="Analytics overview">
+          <article class="card analytics-module analytics-activity-module">
+            <div class="analytics-module-head">
+              <div><h2>Completed Matches</h2></div>
+              <p>Last 12 months</p>
+            </div>
+            <div id="analytics-activity" class="analytics-activity" aria-label="Completed matches by month"></div>
+          </article>
+
+          <article class="card analytics-module">
+            <div class="analytics-module-head">
+              <div><h2>Rankings Spotlight</h2></div>
+              <p id="analytics-spotlight-note">Qualified leaders</p>
+            </div>
+            <div id="analytics-spotlight" class="analytics-spotlight"></div>
+          </article>
+        </section>
+
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading">
+            <div><h2>Career vs Performance</h2></div>
+            <p>Longevity and efficiency reward different kinds of greatness.</p>
+          </div>
+          <div id="analytics-comparisons" class="analytics-comparisons"></div>
+        </section>
+
+        <section class="analytics-section page-section analytics-record-room">
+          <div class="analytics-section-heading">
+            <div><h2>Record Room Highlights</h2></div>
+            <p>A quick look at the leaders behind the deeper analytics.</p>
+          </div>
+          <div id="analytics-overview-teasers" class="analytics-overview-teasers"></div>
+        </section>
+      </div>
+
+      <div id="analytics-panel-per-game" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-per-game" data-analytics-panel="per-game" hidden>
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading">
+            <div><h2>Per Game &amp; Efficiency Leaders</h2></div>
+            <p id="analytics-per-game-note">Qualified performance rankings.</p>
+          </div>
+          <div id="analytics-per-game" class="analytics-master-detail"></div>
+        </section>
+      </div>
+
+      <div id="analytics-panel-weapons" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-weapons" data-analytics-panel="weapons" hidden>
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading">
+            <div><h2>Weapon Kill Records</h2></div>
+            <p>Kill totals only; damage, accuracy, and usage time are not inferred.</p>
+          </div>
+          <div class="analytics-master-detail">
+            <div id="analytics-weapon-totals"></div>
+            <div id="analytics-weapon-leaders" class="analytics-weapon-detail"></div>
+          </div>
+        </section>
+      </div>
+
+      <div id="analytics-panel-maps" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-maps" data-analytics-panel="maps" hidden>
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading">
+            <div><h2>Map Records</h2></div>
+            <p>Completed-match volume, recorded kills, and average team scoring.</p>
+          </div>
+          <div id="analytics-maps" class="analytics-master-detail"></div>
+        </section>
+      </div>
+
+      <div id="analytics-panel-players" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-players" data-analytics-panel="players" hidden>
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading">
+            <div><h2>MVP Leaders</h2></div>
+            <p>One MVP per match, even when the same player wins both rounds.</p>
+          </div>
+          <div id="analytics-mvp-leaders" class="analytics-mvp-leaders"></div>
+        </section>
+
+        <section class="analytics-section page-section analytics-shame-section">
+          <div class="analytics-section-heading"><div><h2>Wall of Shame</h2></div><p>Legends are remembered. So are the disasters.</p></div>
+          <div id="analytics-chaos" class="analytics-grid"></div>
+        </section>
+
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading"><div><h2>Combat Leaders</h2></div><p>Career volume, efficiency, and single-round peaks.</p></div>
+          <div id="analytics-combat" class="analytics-grid"></div>
+        </section>
+
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading"><div><h2>Objective Leaders</h2></div><p>Captures, touches, possession time, and conversion.</p></div>
+          <div id="analytics-flags" class="analytics-grid"></div>
+        </section>
+
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading"><div><h2>Class / Role Leaders</h2></div><p>Main-class production plus offense and defense impact.</p></div>
+          <div id="analytics-roles" class="analytics-grid"></div>
+        </section>
+
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading"><div><h2>Single-Round Records</h2></div><p>The biggest individual performances in one round.</p></div>
+          <div id="analytics-rounds" class="analytics-grid"></div>
+        </section>
+
+        <section class="analytics-section page-section">
+          <div class="analytics-section-heading"><div><h2>Match Records</h2></div><p>Full-match monsters, disasters, and goblin behavior.</p></div>
+          <div id="analytics-matches" class="analytics-grid"></div>
+        </section>
+
+      </div>
+    </section>
+  </main>
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+</body>
+</html>

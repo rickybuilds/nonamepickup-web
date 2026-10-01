@@ -1,0 +1,1659 @@
+
+/* Replay v2 stays isolated from production pickup replay chrome. */
+.replay-v2 .pickup-event-panel {
+  display: none;
+}
+
+.replay-analysis-panel {
+  position: absolute;
+  z-index: 7;
+  top: 7rem;
+  right: 1rem;
+  bottom: 9.5rem;
+  width: min(23rem, 29vw);
+  display: grid;
+  grid-template-rows: auto auto auto minmax(7rem, 1fr) auto;
+  overflow: hidden;
+  color: #e5edf7;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 12px;
+  background:var(--surface);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .36);
+  backdrop-filter: blur(16px);
+}
+
+.analysis-panel-header,
+.analysis-toolbar,
+.analysis-detail {
+  padding: .72rem .82rem;
+}
+
+.analysis-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .14);
+}
+
+.analysis-panel-header div {
+  display: grid;
+  gap: .25rem;
+  min-width: 0;
+}
+
+.analysis-panel-header span,
+.analysis-toolbar label > span,
+.analysis-detail-meta,
+#analysis-detail-meta {
+  color: #7f8da3;
+  font: 700 .58rem/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.analysis-panel-header strong {
+  color: #f8fafc;
+  font: 800 .83rem/1.1 'Barlow Condensed', sans-serif;
+}
+
+#analysis-current-time {
+  color: #facc15;
+  font-size: .65rem;
+  white-space: nowrap;
+}
+
+.analysis-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: .5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .12);
+}
+
+.analysis-toolbar strong {
+  color: #facc15;
+  font: 800 .62rem/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .08em;
+}
+
+.analysis-toolbar span {
+  color: #7f8da3;
+  font-size: .6rem;
+  text-align: right;
+}
+
+.analysis-timeline {
+  padding: .62rem .82rem .5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .12);
+}
+
+.analysis-timeline-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: .4rem;
+  color: #64748b;
+  font: 700 .52rem/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .04em;
+}
+
+.analysis-track {
+  position: relative;
+  height: 2.15rem;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 5px;
+  background:var(--surface);
+  cursor: crosshair;
+}
+
+#analysis-markers,
+#analysis-playhead {
+  position: absolute;
+  inset: 0;
+}
+
+.analysis-event-marker {
+  position: absolute;
+  top: 50%;
+  width: .42rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--event-color) 80%, white);
+  border-radius: 99px;
+  background: var(--event-color);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--event-color) 65%, transparent);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.analysis-event-marker:hover,
+.analysis-event-marker.selected,
+.analysis-event-marker.active {
+  z-index: 2;
+  width: .64rem;
+  border-color: #fff;
+  box-shadow: 0 0 13px var(--event-color);
+}
+
+.analysis-event-marker.active {
+  height: 1.85rem;
+}
+
+#analysis-playhead {
+  z-index: 3;
+  inset: -0.18rem auto -0.18rem 0;
+  width: 1px;
+  background: #f8fafc;
+  box-shadow: 0 0 8px rgba(255, 255, 255, .9);
+  pointer-events: none;
+}
+
+.analysis-event-list-wrap {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.analysis-event-list {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.analysis-event-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, auto) minmax(0, 1fr);
+  gap: .4rem;
+  align-items: center;
+  min-width: 0;
+  padding: .45rem .82rem;
+  border: 0;
+  border-left: 2px solid var(--event-color);
+  border-bottom: 1px solid rgba(148, 163, 184, .08);
+  color: #cbd5e1;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.analysis-event-row:hover,
+.analysis-event-row.selected {
+  background: rgba(255, 255, 255, .07);
+}
+
+.analysis-event-row.active {
+  background: color-mix(in srgb, var(--event-color) 12%, transparent);
+}
+
+.analysis-event-row time {
+  color: #94a3b8;
+  font: 700 .58rem/1 'Barlow Condensed', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-event-row strong,
+.analysis-event-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-event-row strong {
+  color: #f8fafc;
+  font-size: .65rem;
+}
+
+.analysis-event-row span {
+  color: #7f8da3;
+  font-size: .6rem;
+}
+
+.analysis-detail {
+  border-top: 1px solid rgba(148, 163, 184, .14);
+  background: rgba(15, 23, 42, .42);
+}
+
+.analysis-detail > div {
+  display: grid;
+  gap: .28rem;
+}
+
+#analysis-detail-title {
+  overflow: hidden;
+  color: #f8fafc;
+  font: 800 .75rem/1.1 'Barlow Condensed', sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#analysis-detail-copy {
+  margin: .45rem 0;
+  color: #a7b5c8;
+  font-size: .65rem;
+  line-height: 1.35;
+}
+
+#analysis-detail-seek {
+  min-height: 1.85rem;
+  padding: 0 .58rem;
+  border: 1px solid rgba(250, 204, 21, .42);
+  border-radius: 6px;
+  color: #fff8df;
+  background: rgba(245, 158, 11, .14);
+  font: 800 .62rem/1 Barlow, sans-serif;
+  cursor: pointer;
+}
+
+#analysis-detail-seek:disabled {
+  cursor: default;
+  opacity: .42;
+}
+
+@media (max-width: 1250px) {
+  .replay-analysis-panel {
+    width: min(23rem, calc(100% - 2rem));
+  }
+}
+
+@media (max-width: 900px) {
+  .replay-analysis-panel {
+    top: auto;
+    right: .5rem;
+    bottom: 21rem;
+    left: .5rem;
+    width: auto;
+    height: 15rem;
+    grid-template-rows: auto auto auto minmax(4rem, 1fr) auto;
+  }
+
+  .analysis-event-row {
+    padding-top: .38rem;
+    padding-bottom: .38rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .replay-analysis-panel {
+    bottom: 21.3rem;
+    height: 14.5rem;
+  }
+
+  .analysis-panel-header,
+  .analysis-toolbar,
+  .analysis-detail,
+  .analysis-timeline {
+    padding-right: .62rem;
+    padding-left: .62rem;
+  }
+
+  .analysis-event-row {
+    grid-template-columns: 3.8rem minmax(0, auto) minmax(0, 1fr);
+    padding-right: .62rem;
+    padding-left: .62rem;
+  }
+
+  .analysis-event-row span {
+    display: none;
+  }
+}
+
+.replay-v2 .replay-clip-selection {
+  position: absolute;
+  z-index: 6;
+  top: .31rem;
+  bottom: .31rem;
+  min-width: .25rem;
+  border: 1px solid rgba(255, 191, 91, .9);
+  border-radius: .2rem;
+  background: rgba(255, 176, 64, .22);
+  box-shadow: 0 0 .45rem rgba(255, 176, 64, .22);
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.replay-v2 .replay-clip-selection:active {
+  cursor: grabbing;
+}
+
+.replay-v2 .replay-clip-handle {
+  position: absolute;
+  z-index: 7;
+  top: .08rem;
+  width: 1.05rem;
+  height: 1.18rem;
+  margin: 0;
+  padding: 0;
+  border: 2px solid #fff1cf;
+  border-radius: .18rem;
+  background: #f2b55b;
+  box-shadow: 0 0 .45rem rgba(0, 0, 0, .65);
+  cursor: ew-resize;
+  transform: translateX(-50%);
+  touch-action: none;
+  user-select: none;
+}
+
+.replay-v2 .replay-clip-handle:hover,
+.replay-v2 .replay-clip-handle:focus-visible {
+  background: #ffd48e;
+  outline: 2px solid rgba(255, 255, 255, .85);
+  outline-offset: 2px;
+}
+
+.replay-v2 .replay-clip-editor {
+  position: fixed;
+  z-index: 30;
+  bottom: clamp(8.5rem, 22vh, 13rem);
+  left: 50%;
+  width: min(42rem, calc(100vw - 2rem));
+  margin: 0;
+  transform: translate(calc(-50% + var(--clip-offset-x, 0px)), var(--clip-offset-y, 0px));
+  display: grid;
+  gap: .38rem;
+  padding: .45rem .55rem;
+  border: 1px solid rgba(242, 181, 91, .3);
+  border-radius: .4rem;
+  background: rgba(8, 12, 18, .88);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, .45);
+}
+
+.replay-v2 .replay-clip-editor[hidden] {
+  display: none;
+}
+
+.replay-v2 .replay-clip-editor-heading,
+.replay-v2 .replay-clip-editor-fields,
+.replay-v2 .replay-clip-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.replay-v2 .replay-clip-editor-heading {
+  color: #f2b55b;
+  font: 700 .53rem/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.replay-v2 .replay-clip-editor-heading:active {
+  cursor: grabbing;
+}
+
+.replay-v2 .replay-clip-editor-heading strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-clip-editor-heading small {
+  color: rgba(229, 237, 247, .5);
+  font: 500 .5rem/1 Barlow, sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.replay-v2 .replay-clip-close {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-left: auto;
+  padding: 0;
+  color: rgba(229, 237, 247, .7);
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 50%;
+  background: rgba(15, 23, 42, .8);
+  font: 700 .9rem/1 Barlow, sans-serif;
+  cursor: pointer;
+}
+
+.replay-v2 .replay-clip-close:hover,
+.replay-v2 .replay-clip-close:focus-visible {
+  color: #fff;
+  border-color: rgba(242, 181, 91, .7);
+  outline: 0;
+}
+
+.replay-v2 .replay-clip-editor-fields input {
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 1.95rem;
+  padding: 0 .55rem;
+  color: #f7fafc;
+  border: 1px solid rgba(148, 163, 184, .3);
+  border-radius: .3rem;
+  background: rgba(15, 23, 42, .85);
+  font: 600 .62rem/1 Barlow, sans-serif;
+}
+
+.replay-v2 .replay-clip-editor .replay-button {
+  min-height: 1.95rem;
+  padding: .35rem .55rem;
+  font-size: .53rem;
+  white-space: nowrap;
+}
+
+.replay-v2 .replay-clip-editor .replay-button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.replay-v2 .replay-clip-editor-actions {
+  flex-wrap: wrap;
+  color: rgba(229, 237, 247, .72);
+  font: 500 .55rem/1 Barlow, sans-serif;
+}
+
+.replay-v2 .replay-clip-editor-actions > span {
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-clip-editor-actions b {
+  color: #f2b55b;
+}
+
+@media (max-width: 620px) {
+  .replay-v2 .replay-clip-editor {
+    bottom: min(15rem, 38vh);
+    max-height: calc(100vh - 6rem);
+    overflow: auto;
+  }
+
+  .replay-v2 .replay-clip-editor-fields {
+    flex-wrap: wrap;
+  }
+
+  .replay-v2 .replay-clip-editor-fields input {
+    flex-basis: 100%;
+  }
+}
+
+/* Native-feeling spectator HUD: persistent status anchors in the two lower
+   corners, outside the replay dock. */
+.replay-v2 .replay-tfc-hud {
+  position: absolute;
+  z-index: 8;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+  color: #e5edf7;
+  font-family: 'Barlow Condensed', sans-serif;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .75);
+}
+
+.replay-v2 .replay-crosshair {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  left: 50%;
+  width: 1.35rem;
+  height: 1.35rem;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9));
+  transform: translate(-50%, -50%);
+}
+
+.replay-v2 .replay-crosshair::before,
+.replay-v2 .replay-crosshair::after,
+.replay-v2 .replay-crosshair span {
+  position: absolute;
+  display: block;
+  background: rgba(255, 255, 255, .92);
+  content: "";
+}
+
+.replay-v2 .replay-crosshair::before {
+  top: .58rem;
+  left: .05rem;
+  width: 1.25rem;
+  height: .12rem;
+}
+
+.replay-v2 .replay-crosshair::after {
+  top: .05rem;
+  left: .58rem;
+  width: .12rem;
+  height: 1.25rem;
+}
+
+.replay-v2 .replay-crosshair span {
+  top: .51rem;
+  left: .51rem;
+  width: .28rem;
+  height: .28rem;
+  border-radius: 50%;
+  background: #facc15;
+}
+
+.replay-v2 .replay-crosshair[hidden] {
+  display: none;
+}
+
+.replay-v2 .replay-hud-status,
+.replay-v2 .replay-hud-weapon {
+  display: flex;
+  align-items: flex-end;
+  gap: .72rem;
+}
+
+.replay-v2 .replay-hud-stat {
+  display: flex;
+  align-items: center;
+  gap: .28rem;
+}
+
+.replay-v2 .replay-hud-stat strong {
+  min-width: 2.5rem;
+  color: #f2b55b;
+  font: 800 1.35rem/1 'Barlow Condensed', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-hud-icon {
+  position: relative;
+  display: block;
+  width: 1.2rem;
+  height: 1.25rem;
+  color: #f2b55b;
+}
+
+.replay-v2 .replay-hud-health .replay-hud-icon::before,
+.replay-v2 .replay-hud-health .replay-hud-icon::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: currentColor;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+.replay-v2 .replay-hud-health .replay-hud-icon::before {
+  width: .95rem;
+  height: .32rem;
+}
+
+.replay-v2 .replay-hud-health .replay-hud-icon::after {
+  width: .32rem;
+  height: .95rem;
+}
+
+.replay-v2 .replay-hud-armor .replay-hud-icon {
+  width: 1.05rem;
+  height: 1.15rem;
+  border: .18rem solid currentColor;
+  border-radius: .15rem .15rem .42rem .42rem;
+  clip-path: polygon(50% 0, 100% 17%, 87% 72%, 50% 100%, 13% 72%, 0 17%);
+}
+
+.replay-v2 .replay-hud-flag {
+  display: flex;
+  align-items: center;
+  gap: .32rem;
+  margin-left: .2rem;
+  color: #facc15;
+}
+
+.replay-v2 .replay-flag-carrier-hud {
+  position: absolute;
+  z-index: 9;
+  top: 43%;
+  left: 1rem;
+  flex-direction: column;
+  gap: .35rem;
+  padding: .48rem .34rem .42rem;
+  border: 1px solid rgba(250, 204, 21, .45);
+  border-radius: 7px;
+  background: rgba(24, 20, 5, .7);
+  box-shadow: 0 0 18px rgba(250, 204, 21, .18);
+  transform: translateY(-50%);
+}
+
+.replay-v2 .replay-hud-flag[hidden] {
+  display: none;
+}
+
+.replay-v2 .replay-hud-flag strong {
+  max-width: none;
+  overflow: hidden;
+  font: 800 .45rem/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .replay-hud-flag-icon {
+  position: relative;
+  display: block;
+  width: 1.25rem;
+  height: 1.35rem;
+  border-left: .14rem solid currentColor;
+  filter: drop-shadow(0 0 5px rgba(250, 204, 21, .7));
+}
+
+.replay-v2 .replay-hud-flag-icon::before {
+  position: absolute;
+  top: .08rem;
+  left: .08rem;
+  width: .88rem;
+  height: .58rem;
+  border-radius: 0 .14rem .14rem 0;
+  background: currentColor;
+  content: "";
+}
+
+.replay-v2 .replay-hud-weapon {
+  justify-content: flex-end;
+  gap: .62rem;
+  min-width: 13rem;
+  color: #f2b55b;
+}
+
+.replay-v2 .replay-hud-ammo {
+  display: grid;
+  gap: .18rem;
+  text-align: right;
+}
+
+.replay-v2 .replay-hud-ammo.is-hidden,
+.replay-v2 .replay-hud-ammo-icon.is-hidden {
+  display: none;
+}
+
+.replay-v2 .replay-hud-ammo strong {
+  font: 800 1.4rem/1 'Barlow Condensed', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-hud-ammo small {
+  color: rgba(242, 181, 91, .72);
+  font: 700 .44rem/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .1em;
+}
+
+.replay-v2 #replay-hud-weapon-name {
+  max-width: 9rem;
+  overflow: hidden;
+  font: 800 .7rem/1 'Barlow Condensed', sans-serif;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.replay-v2 .replay-hud-ammo-icon {
+  position: relative;
+  display: block;
+  width: 1rem;
+  height: 1.45rem;
+  border: .12rem solid currentColor;
+  border-radius: .5rem .5rem .18rem .18rem;
+  transform: skewY(-8deg);
+}
+
+.replay-v2 .replay-hud-ammo-icon::after {
+  position: absolute;
+  right: .12rem;
+  bottom: .14rem;
+  left: .12rem;
+  height: .18rem;
+  background: currentColor;
+  box-shadow: 0 -.36rem 0 currentColor;
+  content: "";
+}
+
+.replay-v2 .replay-hud-grenades {
+  display: flex;
+  align-items: flex-end;
+  gap: .42rem;
+}
+
+.replay-v2 .replay-hud-grenade {
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+}
+
+.replay-v2 .replay-hud-grenade strong {
+  min-width: 1.1rem;
+  color: #f2b55b;
+  font: 800 .8rem/1 'Barlow Condensed', sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.replay-v2 .replay-hud-grenade-icon {
+  position: relative;
+  display: block;
+  width: 1.1rem;
+  height: 1.35rem;
+  border: .11rem solid currentColor;
+  border-radius: 48% 48% 38% 38%;
+  color: #f2b55b;
+  opacity: .95;
+  transform: rotate(12deg);
+}
+
+.replay-v2 .replay-hud-grenade-icon::before {
+  position: absolute;
+  top: -.28rem;
+  left: .32rem;
+  width: .3rem;
+  height: .35rem;
+  border: .1rem solid currentColor;
+  border-bottom: 0;
+  content: "";
+}
+
+.replay-v2 .replay-hud-grenade-icon[data-type="unknown"] {
+  opacity: .35;
+}
+
+@media (max-width: 900px) {
+  .replay-v2 .replay-tfc-hud {
+    bottom: 21rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .replay-v2 .replay-flag-carrier-hud {
+    left: .5rem;
+  }
+
+  .replay-v2 .replay-tfc-hud {
+    right: .65rem;
+    bottom: 21.5rem;
+    left: .65rem;
+  }
+
+  .replay-v2 .replay-hud-status,
+  .replay-v2 .replay-hud-weapon {
+    gap: .35rem;
+  }
+
+  .replay-v2 .replay-hud-stat strong,
+  .replay-v2 .replay-hud-ammo strong {
+    font-size: .95rem;
+  }
+
+  .replay-v2 .replay-hud-weapon {
+    min-width: 0;
+  }
+
+  .replay-v2 #replay-hud-weapon-name {
+    max-width: 5rem;
+  }
+}
+
+/* Calm viewer mode: keep the film visible and make the analysis chrome feel
+   like a quiet instrument panel instead of a second application window. */
+.replay-v2 .replay-main {
+  height: calc(100vh - 74px);
+}
+
+.replay-v2 .pickup-topbar {
+  top: 1rem;
+  right: auto;
+  left: 1rem;
+  width: min(43rem, calc(100% - 2rem));
+  padding: .8rem 1rem;
+  border-color: rgba(148, 163, 184, .14);
+  background: rgba(7, 10, 15, .68);
+}
+
+.replay-v2 .pickup-topbar h1 {
+  margin: .15rem 0 0;
+  font-size: clamp(1.45rem, 2.6vw, 2.5rem);
+}
+
+.replay-v2 .pickup-round-summary {
+  min-width: 0;
+}
+
+.replay-v2 .pickup-round-summary #replay-subtitle {
+  display: none;
+}
+
+.replay-v2 .pickup-selected-player {
+  display: none;
+}
+
+.replay-v2 .replay-analysis-panel {
+  top: 5.7rem;
+  right: 1rem;
+  bottom: auto;
+  width: min(21rem, 28vw);
+  height: 18rem;
+  grid-template-rows: auto auto auto minmax(4rem, 1fr) auto;
+  background: rgba(7, 11, 18, .9);
+}
+
+.replay-v2 .analysis-panel-header,
+.replay-v2 .analysis-toolbar,
+.replay-v2 .analysis-detail,
+.replay-v2 .analysis-timeline {
+  padding: .58rem .7rem;
+}
+
+.replay-v2 .analysis-event-row {
+  padding: .34rem .7rem;
+}
+
+.replay-v2 .analysis-detail {
+  padding-bottom: .6rem;
+}
+
+.replay-v2 #analysis-detail-copy {
+  display: none;
+}
+
+.replay-v2 #analysis-detail-seek {
+  display: none;
+}
+
+.replay-v2 .pickup-bottom-hud {
+  right: auto;
+  bottom: 1rem;
+  left: 1rem;
+  width: min(43rem, calc(100% - 2rem));
+  grid-template-columns: minmax(15rem, 17rem) minmax(0, 1fr);
+  padding: .45rem;
+  background: rgba(7, 11, 18, .88);
+}
+
+.replay-v2 .pickup-control-stack {
+  gap: .25rem;
+}
+
+.replay-v2 .pickup-control-stack .replay-button {
+  min-height: 1.95rem;
+  font-size: .62rem;
+}
+
+.replay-v2 .pickup-control-stack .replay-clip-toggle {
+  flex: 0 0 4.75rem ;
+  color: #f2b55b;
+  border-color: rgba(242, 181, 91, .38);
+}
+
+.replay-v2 .pickup-timeline-controls .replay-scrubber {
+  grid-template-columns: 4.1rem minmax(8rem, 1fr) 4.1rem;
+  gap: .4rem;
+  font-size: .64rem;
+}
+
+@media (max-width: 900px) {
+  .replay-v2 .replay-analysis-panel {
+    top: auto;
+    right: .5rem;
+    bottom: 10.4rem;
+    left: auto;
+    width: min(21rem, calc(100% - 1rem));
+    height: 15rem;
+  }
+
+  .replay-v2 .pickup-bottom-hud {
+    right: .5rem;
+    bottom: .5rem;
+    left: .5rem;
+    width: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .replay-v2 .pickup-topbar {
+    width: calc(100% - 1rem);
+    padding: .65rem .75rem;
+  }
+
+  .replay-v2 .pickup-topbar h1 {
+    font-size: clamp(1.25rem, 7vw, 2rem);
+  }
+
+  .replay-v2 .pickup-round-badges {
+    display: none;
+  }
+
+  .replay-v2 .replay-analysis-panel {
+    right: .5rem;
+    bottom: 10.2rem;
+    left: .5rem;
+    width: auto;
+    height: 14rem;
+  }
+
+  .replay-v2 .pickup-bottom-hud {
+    display: block;
+    height: auto;
+    max-height: none;
+  }
+
+  .replay-v2 .pickup-controls {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+  }
+}
+
+/* The timeline lives on the playback bar: one flag icon per canonical pickup. */
+.replay-v2 .replay-analysis-panel {
+  display: none;
+}
+
+.replay-v2 .pickup-bottom-hud {
+  right: auto;
+  bottom: 1rem;
+  left: 10%;
+  width: 68%;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, auto);
+}
+
+.replay-v2 .pickup-roster-panel {
+  display: block;
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.replay-v2 .pickup-controls {
+  min-width: 0;
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .35rem;
+}
+
+.replay-v2 .pickup-timeline-controls {
+  grid-row: 1;
+}
+
+.replay-v2 .pickup-control-stack {
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  width: min(34rem, 100%);
+}
+
+.replay-v2 .pickup-control-stack .replay-button {
+  flex: 1 1 7.5rem;
+}
+
+.replay-v2 .pickup-timeline-controls .replay-scrubber-track {
+  position: relative;
+  min-width: 0;
+  height: 1.35rem;
+}
+
+.replay-v2 .pickup-timeline-controls .replay-scrubber-track input {
+  position: relative;
+  z-index: 2;
+  display: block;
+  height: 1.35rem;
+}
+
+#replay-flag-markers {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+}
+
+.replay-flag-marker {
+  position: absolute;
+  top: -.42rem;
+  width: 1rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 0;
+  color: var(--event-color, #facc15);
+  background: transparent;
+  transform: translateX(-50%);
+  cursor: pointer;
+  pointer-events: auto;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--event-color, #facc15) 75%, transparent));
+}
+
+.replay-flag-marker::before {
+  position: absolute;
+  top: .08rem;
+  left: .27rem;
+  width: .62rem;
+  height: .46rem;
+  border-radius: 0 .14rem .14rem 0;
+  background: currentColor;
+  content: "";
+}
+
+.replay-flag-marker::after {
+  position: absolute;
+  top: .08rem;
+  left: .25rem;
+  width: 1px;
+  height: 1.18rem;
+  background: currentColor;
+  content: "";
+}
+
+.replay-flag-marker:hover,
+.replay-flag-marker.selected,
+.replay-flag-marker.active {
+  z-index: 5;
+  transform: translateX(-50%) scale(1.25);
+}
+
+.replay-capture-marker {
+  top: -.3rem;
+  color: #facc15;
+}
+
+.replay-capture-marker::before {
+  top: .02rem;
+  left: .02rem;
+  width: .95rem;
+  height: .95rem;
+  border: 1px solid #fff3a3;
+  border-radius: 50%;
+  color: #3b2f00;
+  background: #facc15;
+  content: "★";
+  font: 800 .62rem/.9rem Arial, sans-serif;
+  text-align: center;
+}
+
+.replay-capture-marker::after {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .replay-v2 .pickup-bottom-hud {
+    right: .5rem;
+    bottom: .5rem;
+    left: .5rem;
+    width: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .replay-v2 .pickup-bottom-hud {
+    display: flex;
+    height: min(21rem, calc(100dvh - env(safe-area-inset-top, 0px) - 1rem));
+    max-height: 21rem;
+  }
+
+  .replay-v2 .pickup-roster-panel {
+    display: flex;
+  }
+
+  .replay-v2 .pickup-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 901px) {
+  .replay-v2 .pickup-bottom-hud {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: .35rem;
+    padding: .35rem;
+  }
+
+  .replay-v2 .pickup-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: .25rem;
+  }
+
+  .replay-v2 .pickup-timeline-controls {
+    display: contents;
+  }
+
+  .replay-v2 .pickup-timeline-controls .replay-scrubber {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .replay-v2 .pickup-control-stack {
+    grid-column: 1;
+    grid-row: 2;
+    width: auto;
+    flex-wrap: nowrap;
+  }
+
+  .replay-v2 .pickup-timeline-controls .replay-speed {
+    grid-column: 2;
+    grid-row: 2;
+    width: 13rem;
+    margin: 0;
+    align-self: center;
+  }
+
+  .replay-v2 .pickup-control-stack .replay-button {
+    min-height: 1.8rem;
+    padding: 0 .55rem;
+    font-size: .6rem;
+  }
+
+  .replay-v2 .pickup-roster-panel > header {
+    padding-top: .35rem;
+    padding-bottom: .35rem;
+  }
+
+  .replay-v2 .pickup-player {
+    min-height: 1.75rem;
+    padding-top: .2rem;
+    padding-bottom: .2rem;
+  }
+
+  .replay-v2 .pickup-player-copy small {
+    margin-top: .06rem;
+  }
+}
+
+/* Final desktop dock trim: keep the playback controls readable without
+   letting the replay chrome dominate the map. */
+@media (min-width: 901px) {
+  .replay-v2 .pickup-bottom-hud {
+    width: 68%;
+    padding: .25rem;
+    gap: .2rem;
+  }
+
+  .replay-v2 .pickup-controls {
+    gap: .18rem;
+  }
+
+  .replay-v2 .pickup-timeline-controls .replay-scrubber-track,
+  .replay-v2 .pickup-timeline-controls .replay-scrubber-track input {
+    height: 1.12rem;
+  }
+
+  .replay-v2 .pickup-control-stack .replay-button {
+    min-height: 1.55rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: .56rem;
+  }
+
+  .replay-v2 .pickup-player {
+    min-height: 1.45rem;
+    padding-top: .1rem;
+    padding-bottom: .1rem;
+  }
+}
+
+/* Compact metadata and one-line roster rows keep the map as the main view. */
+.replay-v2 .pickup-topbar {
+  top: .65rem;
+  left: .75rem;
+  width: min(31rem, calc(100% - 1.5rem));
+  padding: .38rem .58rem;
+  border-radius: 7px;
+  align-items: center;
+  gap: .5rem;
+}
+
+.replay-v2 .pickup-topbar > div:first-child {
+  min-width: 0;
+}
+
+.replay-v2 .pickup-topbar .speedrun-kicker {
+  font-size: .48rem;
+  line-height: 1;
+}
+
+.replay-v2 .pickup-topbar h1 {
+  margin: .16rem 0 0;
+  overflow: hidden;
+  font-size: 1rem;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .pickup-round-summary {
+  display: block;
+  min-width: 0;
+}
+
+.replay-v2 .pickup-round-badges {
+  gap: .25rem;
+}
+
+.replay-v2 .pickup-badge {
+  padding: .26rem .4rem;
+  font-size: .48rem;
+}
+
+.replay-v2 #pickup-roster {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.replay-v2 .pickup-team-players {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.replay-v2 .pickup-player {
+  grid-template-columns: .45rem minmax(0, 1fr) auto;
+  gap: .28rem;
+  min-height: 1.6rem;
+  padding: .15rem .32rem;
+}
+
+.replay-v2 .pickup-player-copy small {
+  display: none;
+}
+
+.replay-v2 .pickup-player-copy strong,
+.replay-v2 .pickup-player-state {
+  font-size: .58rem;
+}
+
+.replay-v2 .pickup-team-heading {
+  padding: .2rem .35rem .16rem;
+  font-size: .52rem;
+}
+
+.replay-v2 .pickup-roster-panel > header {
+  display: none;
+}
+
+/* The selected POV card restores the small HUD readout from the original
+   replay while leaving the map and bottom controls unobstructed. */
+.replay-v2 .pickup-selected-player {
+  position: absolute;
+  z-index: 8;
+  top: 4.35rem;
+  right: auto;
+  bottom: auto;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  width: min(31rem, calc(100% - 2rem));
+  min-height: 3rem;
+  padding: .48rem .72rem;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 12px;
+  background:var(--surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+  transform: none;
+  backdrop-filter: blur(12px);
+}
+
+.replay-v2 .pickup-selected-player > div:first-child {
+  display: grid;
+  grid-template-columns: .55rem minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  column-gap: .52rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.replay-v2 .pickup-selected-player .pickup-team-dot {
+  grid-row: 1 / 4;
+  width: .55rem;
+  height: .55rem;
+  margin: 0;
+  background: var(--team-color, #4da3ff);
+  box-shadow: 0 0 8px var(--team-color, #4da3ff);
+}
+
+.replay-v2 .pickup-selected-player strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f8fafc;
+  font: 800 .78rem/1 'Barlow Condensed', sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .pickup-selected-player small {
+  overflow: hidden;
+  color: #8b9bb0;
+  font: 700 .55rem/1.2 'Barlow Condensed', sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .pickup-selected-objective {
+  grid-column: 2;
+  color: #facc15;
+  font: 800 .46rem/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .08em;
+  text-shadow: 0 0 8px rgba(250, 204, 21, .42);
+}
+
+.replay-v2 .pickup-selected-objective[hidden] {
+  display: none;
+}
+
+.replay-v2 .pickup-selected-player dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(3.5rem, auto));
+  gap: .85rem;
+  margin: 0;
+}
+
+.replay-v2 .pickup-selected-player dl div {
+  display: grid;
+  gap: .18rem;
+  min-width: 0;
+  text-align: right;
+}
+
+.replay-v2 .pickup-selected-player dt {
+  color: #73839a;
+  font: 700 .48rem/1 'Barlow Condensed', sans-serif;
+  text-transform: uppercase;
+}
+
+.replay-v2 .pickup-selected-player dd {
+  margin: 0;
+  color: #e5edf7;
+  font: 800 .7rem/1 'Barlow Condensed', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-kill-feed {
+  position: absolute;
+  z-index: 7;
+  top: .9rem;
+  right: 1rem;
+  width: min(24rem, calc(100% - 2rem));
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 9px;
+  background: rgba(7, 11, 18, .86);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .24);
+  backdrop-filter: blur(12px);
+}
+
+.replay-v2 .replay-kill-feed[hidden] {
+  display: none;
+}
+
+.replay-v2 .replay-kill-feed header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .42rem .62rem .34rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .12);
+  color: #94a3b8;
+  font: 800 .52rem/1 'Barlow Condensed', sans-serif;
+  letter-spacing: .08em;
+}
+
+.replay-v2 .replay-kill-event {
+  display: grid;
+  grid-template-columns: 3.8rem minmax(0, 1fr);
+  gap: .5rem;
+  align-items: center;
+  padding: .4rem .62rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .08);
+}
+
+.replay-v2 .replay-kill-event:last-child {
+  border-bottom: 0;
+}
+
+.replay-v2 .replay-kill-event time {
+  color: #718198;
+  font: 700 .52rem/1 'Barlow Condensed', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-v2 .replay-kill-event p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #e5edf7;
+  font: 700 .6rem/1.25 Barlow, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.replay-v2 .replay-kill-event:not(.suicide) p::before {
+  display: inline-block;
+  width: .38rem;
+  height: .38rem;
+  margin-right: .42rem;
+  border-radius: 50%;
+  background: #fb7185;
+  box-shadow: 0 0 7px rgba(251, 113, 133, .72);
+  content: "";
+}
+
+.replay-v2 .replay-kill-event.suicide p {
+  color: #facc15;
+}
+
+.replay-v2 .replay-kill-event.suicide p::before {
+  display: inline-block;
+  width: .38rem;
+  height: .38rem;
+  margin-right: .42rem;
+  border-radius: 50%;
+  background: #facc15;
+  box-shadow: 0 0 7px rgba(250, 204, 21, .72);
+  content: "";
+}
+
+@media (max-width: 620px) {
+  .replay-v2 .pickup-selected-player {
+    top: 3.65rem;
+    right: auto;
+    left: .5rem;
+    width: calc(100% - 1rem);
+  }
+
+  .replay-v2 .pickup-selected-player dl {
+    gap: .42rem;
+  }
+
+  .replay-v2 .replay-kill-feed {
+    top: .5rem;
+    right: .5rem;
+    width: calc(100% - 1rem);
+  }
+}
+
+/* Keep the final presentation on the game-style lower HUD. */
+.replay-v2 .pickup-selected-player {
+  display: none;
+}
+.flag-carry-summary {
+  width: min(560px, calc(100% - 2rem));
+  margin: 1rem auto 2rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 14px;
+  background:var(--surface);
+  color: #e2e8f0;
+}
+
+.flag-carry-summary > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: .8rem;
+  border-bottom: 1px solid rgba(148, 163, 184, .16);
+}
+
+.flag-carry-summary > header div,
+.flag-carry-row > div {
+  display: grid;
+  gap: .25rem;
+}
+
+.flag-carry-summary > header span {
+  color: #facc15;
+  font: 800 .7rem/1.2 'Barlow Condensed', sans-serif;
+  letter-spacing: .09em;
+}
+
+.flag-carry-summary > header small,
+.flag-carry-row small,
+.flag-carry-rows > p {
+  color: #94a3b8;
+  font-size: .78rem;
+}
+
+.flag-carry-summary > header strong {
+  color: #f8fafc;
+  font: 800 1.15rem/1.2 'Barlow Condensed', sans-serif;
+  white-space: nowrap;
+}
+
+.flag-carry-rows {
+  display: grid;
+  gap: .55rem;
+  padding-top: .75rem;
+}
+
+.flag-carry-player {
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, .06);
+}
+
+.flag-carry-player-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 1rem;
+  align-items: center;
+  gap: .75rem;
+  width: 100%;
+  padding: .7rem .75rem;
+  font: inherit;
+  color: #e2e8f0;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.flag-carry-player-toggle:hover,
+.flag-carry-player-toggle:focus-visible {
+  background: rgba(148, 163, 184, .1);
+}
+
+.flag-carry-player-toggle:focus-visible,
+.flag-carry-jump:focus-visible {
+  outline: 2px solid #facc15;
+  outline-offset: -2px;
+}
+
+.flag-carry-player-copy {
+  display: grid;
+  gap: .25rem;
+  min-width: 0;
+}
+
+.flag-carry-player-copy strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: .9rem;
+  text-overflow: ellipsis;
+}
+
+.flag-carry-player-distance,
+.flag-carry-row > strong {
+  color: #fde68a;
+  white-space: nowrap;
+}
+
+.flag-carry-player-caret {
+  color: #94a3b8;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.flag-carry-player-details {
+  display: grid;
+  gap: .4rem;
+  padding: 0 .55rem .55rem;
+}
+
+.flag-carry-player-details[hidden] {
+  display: none;
+}
+
+.flag-carry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .6rem .65rem;
+  border-top: 1px solid rgba(148, 163, 184, .12);
+}
+
+.flag-carry-detail-copy,
+.flag-carry-time-group {
+  display: grid;
+  gap: .2rem;
+}
+
+.flag-carry-detail-copy strong {
+  color: #f8fafc;
+  font-size: .8rem;
+}
+
+.flag-carry-jump {
+  justify-self: start;
+  padding: .15rem 0;
+  color: #93c5fd;
+  font: inherit;
+  font-size: .8rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .flag-carry-summary {
+    width: calc(100% - 1rem);
+    padding: .85rem;
+  }
+
+  .flag-carry-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .flag-carry-detail-copy {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Keep the viewer full-height while allowing the carry summary below it to scroll into view. */
+.replay-v2.replay-page {
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.replay-v2 .replay-main {
+  height: auto;
+  min-height: 0;
+}
+
+.replay-v2 .pickup-replay-stage {
+  height: calc(100vh - var(--site-header-height, 72px));
+  min-height: 520px;
+}
+
+@media (max-width: 760px) {
+  .replay-v2 .pickup-replay-stage {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}

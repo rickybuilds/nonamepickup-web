@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-01T19:40:40.584Z",
+  "generatedAt": "2026-10-01T20:31:43.109Z",
   "title": "Design System: NoName TFC Pickups",
   "extensions": {
     "colorMeta": {
@@ -187,6 +187,15 @@
       "queue-count": {
         "displayName": "Queue Count",
         "purpose": "Tabular dominant queue count."
+      },
+      "data-title": {
+        "purpose": "Condensed headings for match, player, map and community data pages."
+      },
+      "table": {
+        "purpose": "Readable record-table body text."
+      },
+      "metadata": {
+        "purpose": "Secondary dates, counts and descriptive record text."
       }
     },
     "shadows": [
@@ -346,11 +355,18 @@
       "description": "Decorative artwork controls with a class name, next action, and pause action; application behavior is documented in DESIGN.md.",
       "html": "<div class=\"ds-class-controls\" aria-label=\"Sample TFC class artwork\"><span>Soldier</span><button aria-label=\"Show another TFC class\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button><button aria-label=\"Pause class rotation\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 5v14M16 5v14\"/></svg></button></div>",
       "css": ".ds-class-controls{display:inline-flex;align-items:center;gap:7px;background:#101112cc;border-radius:6px;padding-left:11px;color:var(--ink,#f1eee7);font:400 12px/1.45 var(--body,Barlow,sans-serif)}.ds-class-controls button{display:grid;place-items:center;width:44px;height:44px;border:0;background:none;color:var(--ink,#f1eee7);border-radius:6px;cursor:pointer}.ds-class-controls button:hover{background:var(--raised,#222527);color:var(--accent,#ff7547)}.ds-class-controls button:focus-visible{outline:2px solid var(--accent,#ff7547);outline-offset:5px}.ds-class-controls svg{width:17px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-class-controls button:disabled{opacity:.55;cursor:wait}"
+    },
+    {
+      "name": "Record Table",
+      "kind": "card",
+      "description": "Flat records with charcoal headers and fine dividers; the specimen contains placeholder labels only.",
+      "html": "<div class=\"ds-records\"><table><thead><tr><th>Player</th><th>Games</th><th>Elo</th></tr></thead><tbody><tr><td>Player name</td><td>—</td><td>—</td></tr></tbody></table></div>",
+      "css": ".ds-records{overflow:auto;border:1px solid var(--line,#34383b);border-radius:8px;background:var(--surface,#191b1d);color:var(--ink,#f1eee7)}.ds-records table{width:100%;border-collapse:collapse;font:400 14px/1.45 var(--body,Barlow,sans-serif)}.ds-records th{background:var(--raised,#222527);color:var(--muted,#aaaeb0);font-weight:600;font-size:12px;text-align:left}.ds-records th,.ds-records td{padding:14px 12px;border-bottom:1px solid var(--line,#34383b)}.ds-records tbody tr:hover{background:var(--raised,#222527)}"
     }
   ],
   "narrative": {
     "northStar": "The Match-Night Hub",
-    "overview": "The Match-Night Hub puts the community’s games and people in the foreground. Charcoal surfaces, warm white type, compressed headlines, and an orange action color give NoName the energy of a competitive TFC gathering. Real class cutouts and map scenes carry the identity.\n\nThe interface combines expressive imagery with compact, readable records. Numeric counts and player names are visually direct; dividers and tonal steps organize dense information. Controls remain plain enough to understand during a game night, with explicit loading, empty, and unavailable states.",
+    "overview": "The Match-Night Hub puts the community’s games and people in the foreground. Charcoal surfaces, warm white type, compressed headlines, and an orange action color give NoName the energy of a competitive TFC gathering. Real class cutouts and map scenes carry the identity.\n\nThe interface combines expressive imagery with compact, readable records. Numeric counts and player names are visually direct; dividers and tonal steps organize dense information. Controls remain plain enough to understand during a game night, with explicit loading, empty, and unavailable states.\n\nThe same system now spans the complete site: pickup archives and reports, profiles and standings, map histories, speedrun catalogs and runner records, analytics and community tools, and spectator/replay chrome. Navigation stays within /refactor/ while existing APIs, game assets and runtime downloads remain shared.",
     "keyCharacteristics": [
       "Charcoal canvas and warm white reading surfaces.",
       "Orange actions with separate red and blue team semantics.",

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>NoName TFC | 4v4 Replay v2</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="../assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="./styles/speedrun-replay.css">
+  <link rel="stylesheet" href="./styles/pickup-replay.css">
+  <link rel="stylesheet" href="./styles/pickup-replay-v2.css">
+  <script src="./scripts/main.js?v=20260926effects1" defer></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="./scripts/pickup-replay-v2.js?v=20260926flagcarry3"></script>
+
+
+<link rel="stylesheet" href="./site.css">
+<link rel="stylesheet" href="./surfaces.css">
+<link rel="stylesheet" href="./spectator.css">
+<script type="module" src="./shell.js"></script>
+</head>
+<body class="refactor-page refactor-spectator bg-[#0a0c10] replay-page pickup-replay-page replay-v2 replay-playing">
+  <a class="skip-link" href="#main">Skip to content</a>
+<svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></symbol>
+    </svg>
+<header class="site-header">
+      <div class="header-inner wrap">
+        <a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a>
+        <nav class="desktop-nav" aria-label="Primary">
+          <a href="./">Home</a>
+          <a href="matches.html">Matches</a>
+          <a href="leaderboard.html">Players</a>
+          <a href="speedruns.html">Speedruns</a>
+          <details class="more-nav"><summary>More</summary><div class="more-links"><a href="analytics.html">Analytics</a><a href="compare.html">Compare players</a><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details>
+        </nav>
+        <div class="header-actions">
+          <button class="search-toggle icon-button" type="button" aria-label="Find a player" aria-expanded="false" aria-controls="search-panel"><svg class="icon"><use href="#i-search"/></svg><span>Find a player</span></button>
+          <a class="button button-small" href="live.html"><span class="status-dot"></span>Find a game<svg class="icon"><use href="#i-arrow"/></svg></a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><svg class="icon"><use href="#i-menu"/></svg></button>
+        </div>
+      </div>
+      <nav id="mobile-nav" class="mobile-nav wrap" aria-label="Mobile navigation" hidden><a href="./">Home</a><a href="matches.html">Matches</a><a href="leaderboard.html">Players</a><a href="speedruns.html">Speedruns</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare</a><a href="live.html">Live & servers</a><a href="coolest-dude.html">Community</a><details class="mobile-more"><summary>Community tools</summary><div><a href="kicked.html">Missed votes</a><a href="coolest-dude.html">Community honors</a><a href="vegasodds.html">Match predictions</a><a href="mvp-breakdown.html">MVP breakdown</a><a href="tracker.html">Identity history</a><a href="live/">Browser spectator</a></div></details></nav>
+      <div id="search-panel" class="search-panel wrap" hidden>
+        <label for="player-search">Find your people.</label>
+        <div class="search-input-row"><svg class="icon"><use href="#i-search"/></svg><input id="player-search" type="search" placeholder="Player name or ID" autocomplete="off" spellcheck="false" /><button class="search-close icon-button" type="button" aria-label="Close player search"><svg class="icon"><use href="#i-close"/></svg></button></div>
+        <div id="search-results" class="search-results" aria-live="polite"><p>Type at least two characters to search the community.</p></div>
+      </div>
+    </header>
+
+  <main id="main" class="replay-main">
+    <section class="replay-stage pickup-replay-stage" aria-label="4v4 pickup replay viewer">
+      <canvas id="replay-canvas"></canvas>
+      <div id="replay-crosshair" class="replay-crosshair" aria-hidden="true">
+        <span></span>
+      </div>
+      <div id="replay-status" class="replay-status" role="status" aria-live="polite">Loading round metadata…</div>
+
+      <section class="replay-topbar pickup-topbar" aria-label="Round details">
+        <div>
+
+          <h1 id="replay-title">Pickup Replay</h1>
+        </div>
+        <div class="pickup-round-summary">
+          <div class="pickup-round-badges">
+            <span id="replay-round-status" class="pickup-badge">—</span>
+            <span id="replay-camera-label" class="pickup-badge">POV</span>
+          </div>
+          <p id="replay-subtitle">Preparing telemetry…</p>
+        </div>
+      </section>
+
+      <aside id="replay-kill-feed" class="replay-kill-feed" aria-label="Kill feed" hidden>
+        <header><span>COMBAT FEED</span></header>
+        <div id="replay-kill-events"></div>
+      </aside>
+
+      <aside class="pickup-event-panel" aria-label="Round events">
+        <header><span>EVENT FEED</span><strong id="pickup-event-count">0</strong></header>
+        <div id="pickup-events"></div>
+      </aside>
+
+      <section class="pickup-selected-player" aria-label="Selected player">
+        <div>
+          <span id="pickup-selected-team" class="pickup-team-dot"></span>
+          <strong id="pickup-selected-name">Select a player</strong>
+          <small id="pickup-selected-class">—</small>
+          <span id="pickup-selected-objective" class="pickup-selected-objective" hidden>FLAG CARRIER</span>
+        </div>
+        <dl>
+          <div><dt>HP</dt><dd id="pickup-stat-health">—</dd></div>
+          <div><dt>Armor</dt><dd id="pickup-stat-armor">—</dd></div>
+          <div><dt>Ammo</dt><dd id="pickup-stat-ammo">—</dd></div>
+          <div><dt>Weapon</dt><dd id="pickup-stat-weapon">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="replay-tfc-hud" aria-label="In-game HUD">
+        <div class="replay-hud-status">
+          <div class="replay-hud-stat replay-hud-health">
+            <span class="replay-hud-icon" aria-hidden="true"></span>
+            <strong id="replay-hud-health">—</strong>
+          </div>
+          <div class="replay-hud-stat replay-hud-armor">
+            <span class="replay-hud-icon" aria-hidden="true"></span>
+            <strong id="replay-hud-armor">—</strong>
+          </div>
+        </div>
+        <div class="replay-hud-weapon">
+          <div class="replay-hud-ammo">
+            <strong id="replay-hud-ammo">— / —</strong>
+            <small>AMMO</small>
+          </div>
+          <strong id="replay-hud-weapon-name">—</strong>
+          <span id="replay-hud-ammo-icon" class="replay-hud-ammo-icon" aria-hidden="true"></span>
+          <div class="replay-hud-grenades" aria-label="Grenades">
+            <div class="replay-hud-grenade">
+              <span id="replay-hud-gren1-icon" class="replay-hud-grenade-icon" data-type="unknown" aria-label="Grenade 1"></span>
+              <strong id="replay-hud-gren1-count">—</strong>
+            </div>
+            <div class="replay-hud-grenade">
+              <span id="replay-hud-gren2-icon" class="replay-hud-grenade-icon" data-type="unknown" aria-label="Grenade 2"></span>
+              <strong id="replay-hud-gren2-count">—</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside id="replay-hud-flag" class="replay-hud-flag replay-flag-carrier-hud" aria-label="Flag carrier" hidden>
+        <span class="replay-hud-flag-icon" aria-hidden="true"></span>
+        <strong id="replay-hud-flag-label">FLAG</strong>
+      </aside>
+
+      <section class="pickup-bottom-hud" aria-label="Replay controls and players">
+        <section class="replay-controls pickup-controls" aria-label="Playback controls">
+          <div class="pickup-control-stack">
+            <button id="replay-play" type="button" class="replay-button">Pause</button>
+            <button id="replay-restart" type="button" class="replay-button secondary">Restart</button>
+            <button id="replay-camera" type="button" class="replay-button secondary">Camera: POV</button>
+            <button id="replay-effects" type="button" class="replay-button secondary active">Effects: On</button>
+            <button id="replay-clip-toggle" type="button" class="replay-button secondary replay-clip-toggle" aria-controls="replay-clip-editor" aria-expanded="false">CLIP</button>
+          </div>
+          <div class="pickup-timeline-controls">
+            <label class="replay-scrubber">
+              <span id="replay-clock">0:00.000</span>
+              <div id="replay-scrubber-track" class="replay-scrubber-track">
+                <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0" aria-label="Replay position">
+                <div id="replay-flag-markers" aria-label="Flag pickup markers"></div>
+                <div id="replay-clip-selection" class="replay-clip-selection" aria-hidden="true"></div>
+                <button id="replay-clip-start-handle" class="replay-clip-handle replay-clip-start-handle" type="button" aria-label="Clip start"></button>
+                <button id="replay-clip-end-handle" class="replay-clip-handle replay-clip-end-handle" type="button" aria-label="Clip end"></button>
+              </div>
+              <span id="replay-duration">0:00.000</span>
+            </label>
+            <div class="replay-speed" role="group" aria-label="Playback speed">
+              <button type="button" data-speed="0.5">0.5x</button>
+              <button type="button" data-speed="1" class="active">1x</button>
+              <button type="button" data-speed="4">4x</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="pickup-roster-panel" aria-label="Round roster">
+          <header>
+            <span>PLAYERS</span>
+            <strong id="pickup-roster-count">0 sessions</strong>
+          </header>
+          <div id="pickup-roster"></div>
+        </aside>
+      </section>
+
+      <div id="replay-clip-editor" class="replay-clip-editor" role="dialog" aria-label="Clip editor" hidden>
+        <div class="replay-clip-editor-heading">
+          <span>CLIP</span>
+          <strong id="replay-clip-duration">0:00.000</strong>
+          <small>1–60 seconds</small>
+          <button id="replay-clip-close" type="button" class="replay-clip-close" aria-label="Close clip editor">×</button>
+        </div>
+        <div class="replay-clip-editor-fields">
+          <input id="replay-clip-title" type="text" maxlength="80" placeholder="Name this clip" aria-label="Clip title">
+          <button id="replay-clip-set-start" type="button" class="replay-button secondary">Set start</button>
+          <button id="replay-clip-set-end" type="button" class="replay-button secondary">Set end</button>
+        </div>
+        <div class="replay-clip-editor-actions">
+          <span><b id="replay-clip-start-time">0:00.000</b> → <b id="replay-clip-end-time">0:00.000</b></span>
+            <button id="replay-clip-reset" type="button" class="replay-button secondary">Reset</button>
+            <button id="replay-clip-loop" type="button" class="replay-button secondary">Loop clip</button>
+            <button id="replay-clip-copy" type="button" class="replay-button">Copy clip link</button>
+            <button id="replay-clip-download" type="button" class="replay-button">Download .webm</button>
+        </div>
+      </div>
+
+      <div id="pickup-free-help" class="replay-free-roam-help" hidden>
+        <strong>FREE ROAM</strong><span>Click to capture mouse · WASD move · Q/E down/up · Esc release</span>
+      </div>
+    </section>
+    <section class="flag-carry-summary" aria-label="Flag carry distance">
+      <header>
+        <div><span>FLAG CARRY DISTANCE</span><small>Travel while carrying the flag</small></div>
+        <strong id="flag-carry-total">0 meters</strong>
+      </header>
+      <div id="flag-carry-rows" class="flag-carry-rows">
+        <p>Flag carry distance will appear when replay data is ready.</p>
+      </div>
+    </section>
+  </main>
+<footer class="site-footer"><div class="wrap footer-inner"><a class="brand" href="./" aria-label="NoName home"><span class="brand-mark">N<span>/</span>N</span><span class="brand-name">NONAME<span>TFC PICKUPS</span></span></a><p>Old game. Good company.</p><nav aria-label="Footer"><a href="live.html">Live & servers</a><a href="speedruns.html">Speedruns</a><a href="../index.html">Original site</a></nav></div></footer>
+</body>
+</html>
