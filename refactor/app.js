@@ -134,7 +134,7 @@ function renderQueue(queue) {
   const count = Math.min(max, Math.max(0, number(queue.count ?? players.length)));
   $('queue-count').textContent = String(count);
   $('queue-max').textContent = `/ ${max}`;
-  $('queue-status').innerHTML = '<span class="status-dot"></span>QUEUE SNAPSHOT';
+  $('queue-status').innerHTML = '<span class="status-dot"></span>QUEUE STATUS';
   $('queue-slots').innerHTML = Array.from({ length: max }, (_, index) => {
     const player = players[index];
     const filled = index < count;
@@ -147,7 +147,7 @@ function renderQueue(queue) {
   $('live-match').classList.toggle('active', !!live);
   $('live-match').innerHTML = live
     ? `<span class="status-dot"></span><a href="live.html">Live now: ${escape(live.map || live.map_name || 'pickup in progress')} · Watch the game</a>`
-    : '<span class="status-dot"></span><p>No match live. Next one’s yours.</p>';
+    : '<span class="status-dot"></span><p>No live match.</p>';
   $('queue-updated').textContent = `Updated ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date())}`;
 }
 
