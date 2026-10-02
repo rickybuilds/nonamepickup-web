@@ -461,7 +461,6 @@ async function loadLeaderboard() {
   const filter = document.getElementById("leaderboard-filter");
   const visibleCount = document.getElementById("leaderboard-visible-count");
   const podium = document.getElementById("leaderboard-podium");
-  const highlights = document.getElementById("leaderboard-highlights");
 	const MIN_GAMES = 10;
 
 	const j = await fetchJSON(`/api/leaderboard?limit=2000&days=0`);
@@ -479,7 +478,6 @@ async function loadLeaderboard() {
     winPct: calcWinPct(row.record)
 	  }));
 
-  const winPctNumber = row => Number(String(row.winPct || "0").replace("%", "")) || 0;
   const playerCardLink = row => `player.html?id=${encodeURIComponent(row.id)}`;
 
   function renderEloTrend(row) {
@@ -546,29 +544,6 @@ async function loadLeaderboard() {
     }).join("") || `<div class="leaderboard-empty">No ranked players found.</div>`;
   }
 
-  function renderHighlights() {
-    if (!highlights) return;
-    const bestWinRate = [...ranked].sort((a, b) => winPctNumber(b) - winPctNumber(a) || b.games - a.games)[0];
-    const mostGames = [...ranked].sort((a, b) => b.games - a.games)[0];
-    const highestElo = ranked[0];
-    const strongestRecord = [...ranked].sort((a, b) => Number(b.wins || 0) - Number(a.wins || 0))[0];
-    const rows = [
-      ["Highest Elo", highestElo, highestElo ? `${Number(highestElo.elo)} Elo` : "—"],
-      ["Best Win Rate", bestWinRate, bestWinRate?.winPct || "—"],
-      ["Most Games", mostGames, mostGames ? `${mostGames.games.toLocaleString()} games` : "—"],
-      ["Most Wins", strongestRecord, strongestRecord ? `${Number(strongestRecord.wins || 0).toLocaleString()} wins` : "—"]
-    ];
-    highlights.innerHTML = rows.map(([label, row, value]) => `
-      <div class="leaderboard-highlight-row">
-        <span>${escapeHtml(label)}</span>
-        <div>
-          ${row ? avatarHtml(row.player, row.avatarmedium || row.avatar) : ""}
-          <a href="${row ? playerCardLink(row) : "#"}">${escapeHtml(row?.player || "—")}</a>
-        </div>
-        <strong>${escapeHtml(value)}</strong>
-      </div>
-    `).join("");
-  }
 
   function render() {
     const query = filter?.value.trim().toLowerCase() || "";
@@ -614,7 +589,6 @@ async function loadLeaderboard() {
   document.getElementById("leaderboard-total-games").textContent =
     totalGames.toLocaleString();
   renderPodium();
-  renderHighlights();
   filter?.addEventListener("input", render);
   render();
 }

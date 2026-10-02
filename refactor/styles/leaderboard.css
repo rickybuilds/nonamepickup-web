@@ -42,7 +42,14 @@ body.leaderboard-page .nn-avatar-lg .nn-avatar-fallback{font-size:36px}
 body.leaderboard-page .supporter-inline{font-size:.7em;margin-left:5px;vertical-align:middle}
 body.leaderboard-page .leaderboard-standings-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
 body.leaderboard-page .leaderboard-standings-head p{display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
-body.leaderboard-page .form-key{display:inline-flex;align-items:center;gap:5px}
+body.leaderboard-page .form-key{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+body.leaderboard-page .leaderboard-standings-head p{justify-content:flex-end}
+body.leaderboard-page .form-mvp-face::before{display:none}
+body.leaderboard-page .form-mvp-face svg{width:12px;height:12px;flex:none;fill:none;outline:1px solid var(--ink);outline-offset:1px;border-radius:50%}
+body.leaderboard-page .form-mvp-loss circle{fill:var(--red)}
+body.leaderboard-page .form-mvp-tie circle{fill:#facc15}
+body.leaderboard-page .form-mvp-face path{stroke:var(--bg);stroke-width:1.8;stroke-linecap:round}
+body.leaderboard-page .form-mvp-face .face-eyes{stroke-width:2.6}
 body.leaderboard-page .form-key::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green)}
 body.leaderboard-page .form-loss::before{background:var(--red)}
 body.leaderboard-page .form-tie::before{background:#f4bd86}
@@ -79,7 +86,7 @@ body.leaderboard-page .leaderboard-last10 [class*='last10-mvp-']{outline:1px sol
 body.leaderboard-page .leaderboard-last10 .last10-mvp-face{border:0;background:none}
 body.leaderboard-page .last10-mvp-face svg{width:12px;height:12px;fill:none}
 body.leaderboard-page .last10-mvp-l circle{fill:var(--red)}
-body.leaderboard-page .last10-mvp-t circle{fill:#f4bd86}
+body.leaderboard-page .last10-mvp-t circle{fill:#facc15}
 body.leaderboard-page .last10-mvp-face path{stroke:var(--bg);stroke-width:1.8;stroke-linecap:round}
 body.leaderboard-page .last10-mvp-face .face-eyes{stroke-width:2.6}
 body.leaderboard-page .leaderboard-empty{padding:32px;color:var(--muted);text-align:center}
