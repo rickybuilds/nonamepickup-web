@@ -170,6 +170,11 @@
 .refactor-page .granular-map-thumb-wrap::after{background:linear-gradient(0deg,#101112d9,transparent)}
 .refactor-page .cap-marker{filter:none}
 .refactor-page .score-team.winner{box-shadow:none}
+/* Match details inherit legacy glow effects; keep this surface flat. */
+.refactor-page .match-main *,
+.refactor-page .match-main *::before,
+.refactor-page .match-main *::after{box-shadow:none!important;text-shadow:none!important}
+.refactor-page .match-main :is(.weapon-icon,.supporter-badge,.match-mvps-icon,.cap-marker,.winner){filter:none!important}
 .refactor-page .winner{filter:none}
 .refactor-page .player2-mini-kpis{gap:0;border-block:1px solid var(--line)}
 .refactor-page .identity-mini-kpi{background:none;border:0;border-right:1px solid var(--line);border-radius:0;padding:14px 12px;min-height:74px}
