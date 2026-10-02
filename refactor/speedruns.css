@@ -1,5 +1,8 @@
 /* Conc records use the same flat, warm-charcoal language as the match hub. */
 @media(min-width:901px){
+  html body.refactor-page .speedrun-map-result{min-height:70px;padding-block:11px}
+  html body.refactor-page .speedrun-maps-panel{display:flex;flex-direction:column}
+  html body.refactor-page .speedrun-maps-panel>.speedrun-pagination{margin-top:auto}
   html body.refactor-page .speedrun-map-columns,
   html body.refactor-page .speedrun-map-result{grid-template-columns:minmax(140px,1.35fr) minmax(100px,1fr) 72px minmax(90px,.8fr) 38px 44px 44px 12px;grid-template-rows:auto;gap:10px;align-items:center}
   html body.refactor-page .speedrun-map-columns>span:nth-child(4){display:block}

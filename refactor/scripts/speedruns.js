@@ -1223,7 +1223,7 @@
 
   async function loadHome() {
     try {
-      const pageSize = 10;
+      const pageSize = 9;
       const [summary, firstMapPage] = await Promise.all([
         api("/api/speedruns/summary"),
         api(`/api/speedruns/maps?limit=${pageSize}&sort=name&with_records=1&paginated=1`)
