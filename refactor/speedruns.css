@@ -1,4 +1,17 @@
 /* Conc records use the same flat, warm-charcoal language as the match hub. */
+/* Reset every table paint layer, including legacy row backgrounds. */
+html body.refactor-page .speedrun-table-wrap,
+html body.refactor-page .speedrun-table,
+html body.refactor-page .speedrun-table tbody,
+html body.refactor-page .speedrun-table tbody tr,
+html body.refactor-page .speedrun-table tbody tr:nth-child(even),
+html body.refactor-page .speedrun-table tbody td{background:var(--bg);box-shadow:none;border-color:var(--line)}
+html body.refactor-page .speedrun-table tbody tr:hover,
+html body.refactor-page .speedrun-table tbody tr:hover td{background:var(--surface)}
+html body.refactor-page .speedrun-table-wrap,
+html body.refactor-page .speedrun-columns .speedrun-list{scrollbar-color:var(--line) var(--bg)}
+html body.refactor-page .speedrun-columns :is(.speedrun-table-wrap,.speedrun-list)::-webkit-scrollbar-thumb{background:var(--line);border-color:var(--bg)}
+html body.refactor-page .speedrun-columns :is(.speedrun-table-wrap,.speedrun-list)::-webkit-scrollbar-track{background:var(--bg)}
 /* Detail routes share the compact hub spacing, including their six KPIs. */
 html body.refactor-page .speedrun-hero.detail~.speedrun-section{margin-top:20px}
 html body.refactor-page .speedrun-chart-wrap{min-height:260px}
