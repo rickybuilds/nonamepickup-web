@@ -945,6 +945,15 @@
   white-space: nowrap;
 }
 
+.matches2-match-card .team-list .supporter-badge,
+.m2-viewer-roster .team-list .supporter-badge {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  margin-left: 3px;
+  transform: translateY(-.08em);
+}
+
 .blue-team a { color: #38bdf8 ; }
 .red-team a { color: #fb7185 ; }
 
