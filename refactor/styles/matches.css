@@ -751,7 +751,7 @@
   grid-template-columns: auto minmax(120px, 1fr) auto;
   grid-template-areas:
     "meta map score";
-  gap: 10px 14px;
+  gap: 6px 10px;
   align-items: center;
   min-width: 0;
 }
@@ -760,21 +760,21 @@
   grid-area: meta;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .m2-card-id-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   min-width: 0;
 }
 
 .m2-card-meta time {
   display: block;
-  margin-top: 5px;
+  margin-top: 2px;
   color: var(--muted);
   font-size:12px;
   font-weight: 900;
@@ -789,7 +789,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   justify-self: start;
-  padding: 6px 9px;
+  padding: 4px 7px;
   border-radius: 10px;
   background: rgba(56,189,248,.07);
   border: 1px solid rgba(56,189,248,.16);
@@ -800,21 +800,21 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  min-width: 160px;
+  gap: 6px;
+  min-width: 150px;
   justify-self: end;
 }
 
 .m2-card-teams {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .m2-card-team {
   min-width: 0;
-  padding: 6px 8px;
+  padding: 5px 7px;
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 12px;
   background: rgba(3,8,20,.28);
@@ -827,7 +827,7 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   color: #9fb3ff;
   font-size:12px;
   font-weight: 700;
@@ -862,7 +862,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 3px 6px;
+  padding: 2px 5px;
   border-radius: 999px;
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.08);
