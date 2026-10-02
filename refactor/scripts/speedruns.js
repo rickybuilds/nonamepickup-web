@@ -613,6 +613,13 @@
   }
 
   function renderRuns(targetId, rows, emptyText) {
+    if (targetId === "sr-map-recent") {
+      setHtml(targetId, activityTable(["Runner", "Class", "Time", "Replay", "Set"], (rows || []).map(row => [
+        runnerLink(row), escapeHtml(classText(row)), escapeHtml(time(row)), replayAction(row),
+        escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))
+      ]), emptyText));
+      return;
+    }
     setHtml(targetId, (rows || []).map(row => listRow({
       title: row.map || "Unknown map",
       subtitleHtml: `${runnerLink(row)} &middot; ${escapeHtml(classText(row))} &middot; ${escapeHtml(formatDateTime(timestampValue(row, "createdAt", "created_at")))}`,
@@ -620,6 +627,11 @@
       href: mapUrl(row.map),
       actionHtml: replayAction(row)
     })).join("") || empty(emptyText));
+  }
+
+  function activityTable(headings, rows, emptyText) {
+    if (!rows.length) return empty(emptyText);
+    return `<table class="speedrun-table speedrun-activity-table"><thead><tr>${headings.map(label => `<th scope="col">${escapeHtml(label)}</th>`).join("")}</tr></thead><tbody>${rows.map(cells => `<tr>${cells.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
   }
 
   function renderRecords(targetId, rows, emptyText) {
@@ -1058,11 +1070,11 @@
 
     const flattened = classes.flatMap(classRow => classRow.points.map(point => ({ ...point, classRow })))
       .sort((a, b) => b.x - a.x);
-    setHtml("sr-map-progression", flattened.map(point => listRow({
-      title: point.player_name || "Unknown",
-      subtitle: `${point.classRow.className} · ${compact(point.attempts_to_record)} attempts to #1 · ${formatDateTime(point.created_at)} · ${formatImprovement(point.improvement_ms)}`,
-      value: progressionPointTime(point)
-    })).join("") || empty("No world record progression yet."));
+    setHtml("sr-map-progression", activityTable(["Runner", "Class", "Time", "To #1", "Improvement", "Set"], flattened.map(point => [
+      escapeHtml(point.player_name || "Unknown"), escapeHtml(point.classRow.className),
+      escapeHtml(progressionPointTime(point)), escapeHtml(compact(point.attempts_to_record)),
+      escapeHtml(formatImprovement(point.improvement_ms)), escapeHtml(formatDateTime(point.created_at))
+    ]), "No world record progression yet."));
 
     redraw();
     if (window.__speedrunProgressionResize) {
