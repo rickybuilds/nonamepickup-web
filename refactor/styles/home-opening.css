@@ -1,4 +1,114 @@
 /* A compact opening, with warm artwork matched to the site's charcoal palette. */
+@media (min-width: 1101px) {
+  .header-inner {
+    height: 80px;
+  }
+
+  .desktop-nav > a {
+    padding-block: 29px;
+  }
+
+  main .opening {
+    padding-top: 16px;
+  }
+
+  .opening .hero {
+    min-height: 320px;
+  }
+
+  .opening .hero-copy {
+    padding: 24px 32px 52px;
+  }
+
+  .opening .hero h1 {
+    font-size: 64px;
+  }
+
+  .opening .hero-copy > p {
+    margin-top: 12px;
+  }
+
+  .opening .hero-actions {
+    margin-top: 18px;
+  }
+
+  .opening .hero-soldier {
+    height: 290px;
+    width: 165px;
+    bottom: -32px;
+  }
+
+  .opening .queue {
+    padding: 16px 20px 12px;
+  }
+
+  .opening .queue-heading h2 {
+    font-size: 26px;
+  }
+
+  .opening .queue-count {
+    margin-top: 8px;
+    line-height: 1;
+  }
+
+  .opening .queue-count > span:first-child {
+    font-size: 52px;
+  }
+
+  .opening .queue-slots {
+    margin-top: 10px;
+  }
+
+  .opening .queue-slot {
+    height: 32px;
+  }
+
+  .opening .queue-placeholder {
+    min-height: 70px;
+  }
+
+  .opening .queue-message {
+    margin-block: 8px 12px;
+    min-height: 0;
+  }
+
+  .opening .live-match {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+
+  .opening .queue-updated {
+    padding-top: 8px;
+  }
+
+  main .community-pulse {
+    padding-block: 12px;
+  }
+
+  main .record-layout {
+    margin-top: 20px;
+    gap: 28px;
+  }
+
+  .record-layout .section-heading {
+    margin-bottom: 14px;
+  }
+
+  .record-layout .match-row,
+  .record-layout .ladder-row {
+    padding-block: 10px;
+  }
+
+  .record-layout .match-thumb {
+    height: 42px;
+  }
+
+  .community-section,
+  .map-section {
+    margin-top: 32px;
+  }
+}
+
 .opening {
   padding-top: 20px;
   gap: 16px;
