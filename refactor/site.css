@@ -89,6 +89,7 @@ html body>.site-footer .brand-name>span{font-size:10px;margin-top:3px}
 @media(max-width:640px){html body>.site-footer .brand,html body>.site-footer .footer-inner>p{display:none}html body>.site-footer .footer-inner nav{display:flex;width:100%;justify-content:space-between;gap:10px;font-size:12px}}
 
 /* Shared page introduction: Match History is the reference layout. */
+@media(min-width:901px){html body.refactor-page.speedruns-page main .speedrun-summary:not(.detail){grid-template-columns:repeat(5,minmax(0,1fr))!important}}
 html body.refactor-page main :is(.matches2-hero,.leaderboard-hero,.analytics-hero,.kicked-hero,.tracker-heading,.mvpb-hero,.sel-hero,.compare-header,.speedrun-hero,.server-build-hero,.live2-hero){display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)!important;align-items:start!important;gap:24px 40px!important;margin:0 0 24px!important;padding:0!important;border:0!important;min-height:0!important;background:none!important}
 html body.refactor-page main h1{font-family:var(--display)!important;font-size:64px!important;font-weight:700!important;line-height:1.02!important;letter-spacing:-.015em!important;margin:0!important}
 html body.refactor-page main :is(.matches2-subtitle,.analytics-subtitle,.kicked-subtitle,.tracker-subtitle,.compare-subtitle,.speedrun-subtitle,.server-build-subtitle,.live2-subtitle,.leaderboard-hero>div>p,.sel-hero-copy>p){font:400 16px/1.45 var(--body)!important;color:var(--muted)!important;max-width:360px!important;margin:12px 0 0!important}
