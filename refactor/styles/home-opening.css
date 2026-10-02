@@ -1,0 +1,146 @@
+/* A compact opening, with warm artwork matched to the site's charcoal palette. */
+.opening {
+  padding-top: 20px;
+  gap: 16px;
+}
+
+.hero {
+  min-height: 370px;
+  background: #171310;
+}
+
+.hero::after {
+  background: linear-gradient(90deg, #101112e6, #10111255 55%, #10111211),
+    linear-gradient(0deg, #101112aa, transparent 45%);
+}
+
+.hero-copy {
+  padding: 32px 32px 64px;
+}
+
+.hero h1 {
+  font-size: clamp(56px, 5.4vw, 78px);
+}
+
+.hero-copy > p {
+  margin-top: 16px;
+  font-size: 17px;
+}
+
+.hero-actions {
+  margin-top: 24px;
+  gap: 18px;
+}
+
+.hero-soldier {
+  height: 330px;
+  width: 185px;
+  right: 32px;
+  bottom: -38px;
+}
+
+.queue {
+  padding: 20px 22px 14px;
+}
+
+.queue-count {
+  margin-top: 12px;
+}
+
+.queue-count > span:first-child {
+  font-size: 64px;
+}
+
+.queue-slots {
+  margin-top: 12px;
+  gap: 6px;
+}
+
+.queue-slot {
+  height: 36px;
+}
+
+.queue-placeholder {
+  min-height: 78px;
+}
+
+.queue-message {
+  margin-block: 10px 14px;
+  min-height: 32px;
+}
+
+.queue .live-match {
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.community-pulse {
+  padding-block: 16px;
+}
+
+.record-layout {
+  margin-top: 28px;
+}
+
+@media (max-width: 900px) {
+  .hero-copy {
+    padding: 28px 24px 64px;
+  }
+
+  .hero-actions {
+    gap: 14px;
+  }
+
+  .hero-soldier {
+    height: 270px;
+    width: 150px;
+    right: 8px;
+    bottom: -28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .opening {
+    padding-top: 16px;
+  }
+
+  .hero {
+    min-height: 350px;
+  }
+
+  .hero h1 {
+    font-size: clamp(56px, 16vw, 68px);
+  }
+
+  .hero-copy {
+    padding: 24px 24px 60px;
+  }
+
+  .hero-copy > p {
+    font-size: 16px;
+  }
+
+  .hero-actions {
+    margin-top: 20px;
+  }
+
+  .hero-soldier {
+    height: 240px;
+  }
+
+  .queue-slot {
+    height: 37px;
+  }
+
+  .queue-placeholder {
+    min-height: 37px;
+  }
+
+  .community-pulse {
+    padding-block: 14px;
+  }
+
+  .record-layout {
+    margin-top: 24px;
+  }
+}
