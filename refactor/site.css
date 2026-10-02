@@ -89,6 +89,11 @@ html body>.site-footer .brand-name>span{font-size:10px;margin-top:3px}
 @media(max-width:640px){html body>.site-footer .brand,html body>.site-footer .footer-inner>p{display:none}html body>.site-footer .footer-inner nav{display:flex;width:100%;justify-content:space-between;gap:10px;font-size:12px}}
 
 /* Shared page introduction: Match History is the reference layout. */
+html body.refactor-page main .leaderboard-summary{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;width:100%;gap:0;margin:0;padding:0;border-block:1px solid var(--line)}
+html body.refactor-page main :is(.matches2-kpi-grid,.analytics-summary,.kicked-summary,.tracker-summary,.speedrun-summary,.leaderboard-summary)>article{display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:12px!important;min-height:122px!important;padding:18px 16px!important}
+html body.refactor-page main :is(.matches2-kpi-grid,.analytics-summary,.kicked-summary,.tracker-summary,.speedrun-summary,.leaderboard-summary)>article>span{order:0!important;margin:0!important;font:500 12px/1.4 var(--body)!important;color:var(--muted)}
+html body.refactor-page main :is(.matches2-kpi-grid,.analytics-summary,.kicked-summary,.tracker-summary,.speedrun-summary,.leaderboard-summary)>article>strong{order:1!important;display:block!important;margin:0!important}
+html body.refactor-page main .matches2-kpi>small{display:none}
 html{--summary-value-size:36px}
 html body.refactor-page main :is(.matches2-kpi,.analytics-summary,.kicked-summary,.tracker-summary,.speedrun-summary,.leaderboard-summary,.compare-kpi,.map-v2-kpi,.hero-intel-card) strong,
 html body.refactor-page main #m2-top-map{font-family:var(--display)!important;font-size:var(--summary-value-size)!important;font-weight:700!important;line-height:1.1!important;font-variant-numeric:tabular-nums}
