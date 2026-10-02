@@ -11,7 +11,7 @@
 .refactor-page .matches2-kpi span{color:var(--muted);font-size:12px;letter-spacing:0;font-weight:500}
 .refactor-page .matches2-kpi strong{font:700 36px/1.05 var(--display);color:var(--ink);margin:12px 0 6px;-webkit-text-fill-color:currentColor;background:none}
 .refactor-page .matches2-kpi small{color:var(--muted);font-size:12px;letter-spacing:0}
-.refactor-page #m2-top-map{font-size:26px;overflow-wrap:anywhere}
+.refactor-page #m2-top-map{font-size:36px;overflow-wrap:anywhere}
 .refactor-page .matches2-filter-bar{grid-template-columns:minmax(240px,1.5fr) repeat(4,minmax(130px,1fr)) auto;gap:10px;padding:14px;border:1px solid var(--line)}
 .refactor-page .matches2-searchbox{background:var(--bg);border-color:var(--line);border-radius:6px}
 .refactor-page .matches2-searchbox span{display:none}
