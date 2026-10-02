@@ -1,4 +1,13 @@
 /* Conc records use the same flat, warm-charcoal language as the match hub. */
+@media(min-width:901px){
+  html body.refactor-page .speedrun-map-columns,
+  html body.refactor-page .speedrun-map-result{grid-template-columns:minmax(140px,1.35fr) minmax(100px,1fr) 72px minmax(90px,.8fr) 38px 44px 44px 12px;grid-template-rows:auto;gap:10px;align-items:center}
+  html body.refactor-page .speedrun-map-columns>span:nth-child(4){display:block}
+  html body.refactor-page .speedrun-map-result .speedrun-ammo{grid-column:4;grid-row:1;padding:0;min-width:0;flex-wrap:wrap}
+  html body.refactor-page .speedrun-map-result .speedrun-ammo.is-empty{display:flex;visibility:hidden}
+  html body.refactor-page .speedrun-map-result .speedrun-map-metric,
+  html body.refactor-page .speedrun-map-result>.speedrun-row-arrow{grid-row:1}
+}
 body.refactor-page.speedruns-page {
   --speedrun-player-card-radius: 12px;
   --speedrun-player-inner-radius: 6px;
