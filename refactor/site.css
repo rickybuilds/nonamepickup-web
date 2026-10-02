@@ -78,8 +78,10 @@ html:has(body>.site-header):has(body>.site-footer){height:100%;overflow:hidden}
 html body:has(>.site-header):has(>.site-footer){height:100dvh;min-height:0!important;display:grid;grid-template-rows:75px minmax(0,1fr) 75px;overflow:hidden!important}
 html body>.site-header{grid-row:1;height:75px;min-height:0;position:relative!important;z-index:40}
 html body>main{grid-row:2;height:100%;min-height:0!important;overflow-y:auto!important;overflow-x:hidden;overscroll-behavior-y:contain;scroll-padding-top:12px}
-html body>.site-footer{grid-row:3;height:75px;margin:0;padding:0;border-top:1px solid var(--line);background:var(--bg);position:relative;z-index:30}
-html body>.site-footer .footer-inner{height:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;padding-block:0}
+html body>.site-footer{grid-row:3;height:75px;margin:0;padding:0;border-top:1px solid var(--line);background:var(--bg);position:relative;z-index:30;display:flex;align-items:center}
+html body>.site-footer .footer-inner{height:auto;min-height:0;display:flex;align-items:center;justify-content:space-between;gap:20px;padding-block:0!important}
+html body>.site-footer .footer-inner> :is(p,nav,.brand){margin-block:0;align-self:center}
+html body>.site-footer .footer-inner nav{display:flex;align-items:center}
 html body>.site-header :is(.mobile-nav,.search-panel){position:absolute;top:75px;left:0;right:0;max-height:calc(100dvh - 150px);overflow-y:auto;background:var(--bg);border-bottom:1px solid var(--line)}
 html body>.site-footer .brand-mark{font-size:32px}
 html body>.site-footer .brand-name{font-size:12px}
