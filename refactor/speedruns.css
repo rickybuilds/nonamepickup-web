@@ -1,8 +1,9 @@
 /* Conc records use the same flat, warm-charcoal language as the match hub. */
 html body.refactor-page .speedrun-map-detail-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
 html body.refactor-page .speedrun-map-detail-cards>div:first-child{grid-column:1/-1;grid-row:auto}
-html body.refactor-page .speedrun-activity-wrap{max-height:340px;border:1px solid var(--line);border-radius:6px}
-html body.refactor-page .speedrun-activity-table :is(th,td){width:auto!important;text-align:left!important;white-space:nowrap}
+html body.refactor-page .speedrun-activity-wrap{max-height:none;overflow:visible;border:1px solid var(--line);border-radius:6px;padding-right:0}
+html body.refactor-page .speedrun-activity-table{min-width:0;table-layout:fixed}
+html body.refactor-page .speedrun-activity-table :is(th,td){width:auto!important;text-align:left!important;white-space:normal;overflow-wrap:anywhere}
 html body.refactor-page .speedrun-activity-table thead th{position:sticky;top:0;z-index:1}
 @media(max-width:900px){html body.refactor-page .speedrun-map-detail-cards{grid-template-columns:minmax(0,1fr)}}
 /* Reset every table paint layer, including legacy row backgrounds. */
