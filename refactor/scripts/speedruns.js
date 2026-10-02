@@ -1025,7 +1025,12 @@
     const tooltip = $("sr-progression-tooltip");
     if (!status || !content || !toggles || !canvas) return;
 
-    const classes = normalizeProgressionClasses(data);
+    const accent = getComputedStyle(document.body).getPropertyValue("--accent").trim() || "#ff6b3d";
+    const chartColors = [accent, "#ffb36b", "#d98258", "#f2cf98", "#e9977c", "#b56b45", "#ffd5ba", "#c5a17c", "#f08a24"];
+    const classes = normalizeProgressionClasses(data).map((classRow, index) => ({
+      ...classRow,
+      color: chartColors[index % chartColors.length]
+    }));
     if (!classes.length) {
       status.hidden = false;
       status.textContent = "No world record progression data yet.";
