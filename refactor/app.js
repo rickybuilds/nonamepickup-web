@@ -15,6 +15,28 @@ function mapImage(map) {
   return `../assets/images/maps/${encodeURIComponent(filename)}.webp`;
 }
 
+function remoteMapImage(map) {
+  return `https://tfcmaps.net/images/maps/source/${encodeURIComponent(String(map || '').trim())}.jpg`;
+}
+
+function hydrateMatchImages() {
+  $('matches')?.querySelectorAll('img[data-map-name]').forEach((img) => {
+    const map = img.dataset.mapName || '';
+    img.onerror = () => {
+      if (img.dataset.remoteTried !== '1') {
+        img.dataset.remoteTried = '1';
+        img.src = remoteMapImage(map);
+        return;
+      }
+      const fallback = document.createElement('span');
+      fallback.className = 'match-thumb match-thumb-fallback';
+      fallback.setAttribute('aria-hidden', 'true');
+      fallback.innerHTML = '<svg class="icon"><use href="#i-map"/></svg>';
+      img.replaceWith(fallback);
+    };
+  });
+}
+
 function safeImage(url) {
   try {
     const parsed = new URL(url);
@@ -72,11 +94,12 @@ function renderMatches() {
     const blue = match.score_blue == null ? '—' : format(match.score_blue);
     const red = match.score_red == null ? '—' : format(match.score_red);
     return `<a class="match-row" href="match.html?id=${encodeURIComponent(match.id)}" aria-label="${escape(`${match.map_name || 'Unknown map'}, ${result.toLowerCase()}, blue ${blue} to red ${red}`)}">
-      ${availableMaps.has(match.map_name) ? `<img class="match-thumb" src="${mapImage(match.map_name)}" alt="" loading="lazy" />` : '<span class="match-thumb match-thumb-fallback" aria-hidden="true"><svg class="icon"><use href="#i-map"/></svg></span>'}
+      <img class="match-thumb" src="${availableMaps.has(match.map_name) ? mapImage(match.map_name) : remoteMapImage(match.map_name)}" data-map-name="${escape(match.map_name || '')}" alt="" loading="lazy" />
       <div class="match-info"><div class="match-map">${escape(match.map_name || 'Unknown map')}</div><div class="match-meta">${escape(relativeDate(match.created_at))} · 4v4</div></div>
       <div class="match-score" aria-hidden="true"><span class="team-blue"><small>BLUE</small>${blue}</span><span class="score-divider">:</span><span class="team-red"><small>RED</small>${red}</span></div>
       <span class="match-result ${color}">${result}</span>${arrow}</a>`;
   }).join('') : `<p class="empty-state">${state.matches.length ? 'No matching results in the latest 12 games. Try another filter.' : 'No completed pickups yet. The next game starts a new rivalry.'}</p>`;
+  hydrateMatchImages();
 }
 
 function renderHome(data) {
