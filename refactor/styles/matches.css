@@ -692,10 +692,10 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: 4px;
   overflow: hidden;
   min-height: 104px;
-  padding: 10px 12px 10px 16px;
+  padding: 7px 10px 7px 14px;
   border: 1px solid rgba(77,166,255,.18);
   border-radius: 16px;
   background:var(--surface);
@@ -751,7 +751,7 @@
   grid-template-columns: auto minmax(120px, 1fr) auto;
   grid-template-areas:
     "meta map score";
-  gap: 6px 10px;
+  gap: 4px 8px;
   align-items: center;
   min-width: 0;
 }
@@ -760,14 +760,14 @@
   grid-area: meta;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .m2-card-id-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
   min-width: 0;
 }
@@ -789,7 +789,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   justify-self: start;
-  padding: 4px 7px;
+  padding: 2px 5px;
   border-radius: 10px;
   background: rgba(56,189,248,.07);
   border: 1px solid rgba(56,189,248,.16);
@@ -800,21 +800,21 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
-  min-width: 150px;
+  gap: 4px;
+  min-width: 142px;
   justify-self: end;
 }
 
 .m2-card-teams {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .m2-card-team {
   min-width: 0;
-  padding: 5px 7px;
+  padding: 3px 6px;
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 12px;
   background: rgba(3,8,20,.28);
@@ -826,8 +826,8 @@
 .m2-card-team-title {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 2px;
+  gap: 6px;
+  margin-bottom: 1px;
   color: #9fb3ff;
   font-size:12px;
   font-weight: 700;
@@ -847,7 +847,7 @@
   max-width: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 3px 5px;
+  gap: 2px 4px;
   line-height: 1.15;
 }
 
@@ -862,7 +862,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 2px 5px;
+  padding: 1px 4px;
   border-radius: 999px;
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.08);
