@@ -1,4 +1,22 @@
 /* Conc records use the same flat, warm-charcoal language as the match hub. */
+/* Detail routes share the compact hub spacing, including their six KPIs. */
+html body.refactor-page .speedrun-hero.detail~.speedrun-section{margin-top:20px}
+html body.refactor-page .speedrun-chart-wrap{min-height:260px}
+html body.refactor-page .speedrun-chart-wrap canvas{height:260px}
+html body.refactor-page .speedrun-section-heading{margin-bottom:10px}
+html body.refactor-page .speedrun-section-subtitle{margin-top:0;margin-bottom:12px}
+html body.refactor-page .speedrun-player-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-block:1px solid var(--line)}
+html body.refactor-page .speedrun-player-stat-grid article{min-height:100px;padding:14px 16px;border:0;border-right:1px solid var(--line);border-radius:0;background:none;box-shadow:none;display:flex;flex-direction:column;gap:12px}
+html body.refactor-page .speedrun-player-stat-grid article small{display:none}
+html body.refactor-page .speedrun-player-stat-grid article strong{font:700 var(--summary-value-size,36px)/1.1 var(--display);margin:0;color:var(--ink)}
+@media(min-width:1400px){
+  html body.refactor-page main .speedrun-hero.detail:has(.speedrun-summary>article:nth-child(6)){grid-template-columns:minmax(0,.7fr) minmax(0,1.7fr)!important;gap:24px}
+  html body.refactor-page main .speedrun-summary.detail:has(>article:nth-child(6)){grid-template-columns:repeat(6,minmax(0,1fr))!important}
+  html body.refactor-page main .speedrun-summary.detail:has(>article:nth-child(6)) article{padding-inline:12px}
+}
+@media(min-width:641px) and (max-width:1399px){
+  html body.refactor-page main .speedrun-summary.detail:has(>article:nth-child(6)){grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
 @media(min-width:901px){
   html body.refactor-page .speedrun-map-result{min-height:70px;padding-block:11px}
   html body.refactor-page .speedrun-maps-panel{display:flex;flex-direction:column}
