@@ -59,11 +59,16 @@ button:disabled{opacity:.55;cursor:wait}
 .brand .brand-mark,.brand .brand-mark span{font-family:var(--display);font-weight:800}
 
 /* Keep the navigation border and active underline aligned on every page. */
-html{--site-header-height:81px}
-body .site-header .header-inner{height:80px!important;padding-block:0}
+html{--site-header-height:76px;--page-top-gap:24px}
+body .site-header .header-inner{height:75px!important;padding-block:0}
 body .site-header .desktop-nav{height:100%;align-items:stretch}
 body .site-header .desktop-nav>a{display:flex;align-items:center;padding-block:0}
 body .site-header .desktop-nav>a[aria-current]::after{bottom:0}
 body .site-header .more-nav{display:flex;align-items:center}
 body .site-header .more-nav summary{padding-block:0}
 @media(max-width:640px){html{--site-header-height:76px}body .site-header .header-inner{height:75px!important}}
+
+/* One top inset for the page heading area, including legacy page layouts. */
+html body.refactor-page main#main{padding-top:24px!important;margin-top:0!important}
+html body.refactor-page main#main> :first-child{margin-top:0!important}
+html body.refactor-page main#main :is(.matches2-hero,.leaderboard-hero,.speedrun-hero,.analytics-hero,.kicked-hero,.tracker-heading,.mvpb-hero,.sel-hero){margin-top:0!important;padding-top:0!important}
