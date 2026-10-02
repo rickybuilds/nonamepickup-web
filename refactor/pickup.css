@@ -22,7 +22,7 @@
 .refactor-page .matches2-panel-topline{margin-bottom:16px}
 .refactor-page .matches2-panel-topline span,.refactor-page .matches2-page-size span{font-size:12px;color:var(--muted);letter-spacing:0;font-weight:400}
 .refactor-page .matches2-card-scroll{max-height:780px;padding:0 8px 0 0;scrollbar-color:var(--line) var(--bg)}
-.refactor-page .matches2-card-list{gap:16px}
+.refactor-page .matches2-card-list{gap:8px}
 .refactor-page .m2-card{border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;padding:16px 12px}
 .refactor-page .m2-card:hover,.refactor-page .m2-card.active{background:var(--raised);transform:none}
 .refactor-page .m2-card-map{font:600 18px var(--body);color:var(--ink)}
@@ -35,15 +35,15 @@
 .refactor-page :is(.m2-viewer-panel,.m2-viewer-map,.m2-viewer-roster,.m2-viewer-stat){background:var(--bg);border-color:var(--line);border-radius:6px}
 .refactor-page .m2-report-btn{background:var(--raised);border-color:var(--line);color:var(--ink)}
 .refactor-page .m2-report-full{background:var(--accent);color:var(--bg);border-color:var(--accent)}
-.refactor-page .matches2-match-card{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:18px;gap:14px;transition:background .15s ease,border-color .15s ease}
+.refactor-page .matches2-match-card{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 16px;gap:6px;min-height:0;transition:background .15s ease,border-color .15s ease}
 .refactor-page .matches2-match-card:hover{background:var(--raised);transform:none;border-color:var(--muted)}
 .refactor-page .matches2-match-card.m2-card-selected{background:var(--raised);border-color:var(--accent)}
-.refactor-page .m2-card-main{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"map score" "meta meta";gap:8px 16px}
+.refactor-page .m2-card-main{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"map score" "meta meta";gap:2px 16px}
 .refactor-page .m2-card-meta{gap:8px}
 .refactor-page .m2-card-meta>div{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
 .refactor-page .m2-expand-caret{color:var(--muted)}
 .refactor-page .m2-card-selected .m2-expand-caret{color:var(--accent)}
-.refactor-page .m2-card-teams{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding-top:12px;border-top:1px solid var(--line)}
+.refactor-page .m2-card-teams{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding-top:5px;border-top:1px solid var(--line)}
 .refactor-page .matches2-match-card :is(.m2-card-main,.m2-card-meta,.m2-card-teams){background:none;border-radius:0}
 .refactor-page .matches2-match-card .m2-mini-report{margin:0;padding:2px 6px;background:var(--surface);border:1px solid var(--line);border-radius:4px;color:var(--muted);font-size:12px;font-weight:400;letter-spacing:0;text-transform:none}
 .refactor-page .m2-card-accent{display:none}
@@ -54,7 +54,7 @@
 .refactor-page .m2-card-team-title{font-size:12px;font-weight:600;letter-spacing:0}
 .refactor-page .matches2-match-card .team-list a,.refactor-page .m2-viewer-roster .team-list a{font:500 13px var(--body);background:none;border:0;padding:3px 0;border-radius:0;max-width:100%}
 .refactor-page .matches2-match-card .team-list{gap:3px 12px}
-.refactor-page .matches2-match-card .team-list a{color:var(--ink);font-size:14px;line-height:1.3}
+.refactor-page .matches2-match-card .team-list a{color:var(--ink);font-size:14px;line-height:1.3;padding-block:1px;align-items:center}
 .refactor-page .matches2-match-card .team-list a:hover{color:var(--accent);text-decoration:underline}
 .refactor-page .m2-card-score .score-blue,.refactor-page .m2-card-score .score-red{font:700 30px var(--display);padding:0;border:0;background:none;color:var(--blue);min-width:0}
 .refactor-page .m2-card-score .score-red{color:var(--red)}
