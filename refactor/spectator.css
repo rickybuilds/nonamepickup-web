@@ -85,7 +85,7 @@
 .refactor-browser .live-client,.refactor-browser .live-stage{position:relative;width:100%;min-height:calc(100dvh - 94px);overflow:hidden}
 .refactor-browser main.live-client{max-width:none;margin:0;padding:0}
 .refactor-browser .site-header{z-index:5}
-.refactor-browser .live-stage{isolation:isolate;display:grid;align-items:center;padding:58px 0 64px;background:linear-gradient(90deg,#101112ee 0%,#101112bb 47%,#10111255),url('/assets/images/headers/header-live-orange.webp') center/cover no-repeat}
+.refactor-browser .live-stage{isolation:isolate;display:grid;align-items:center;padding:58px 0 64px;background:linear-gradient(90deg,#101112ee 0%,#101112bb 47%,#10111255),url('./images/home-hero-ember.webp') center/cover no-repeat}
 .refactor-browser .live-stage-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#101112,transparent 48%);pointer-events:none}
 .refactor-browser .live-launcher{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:clamp(40px,7vw,110px);align-items:center;position:relative;z-index:2}
 .refactor-browser .spectator-introduction{max-width:680px;align-self:start;padding-top:38px}
@@ -123,7 +123,7 @@
 .refactor-browser .live-client.booting #canvas,.refactor-browser .live-client.running #canvas{display:block!important}
 .refactor-browser .live-client.running .live-stage{background:#000}
 .refactor-browser .hidden{display:none!important}
-.refactor-browser .live-loading{position:fixed;inset:0;z-index:15;display:grid;place-items:center;padding:24px;background:linear-gradient(90deg,#101112f2,#101112bc),url('/assets/images/headers/header-live-orange.webp') center/cover no-repeat}
+.refactor-browser .live-loading{position:fixed;inset:0;z-index:15;display:grid;place-items:center;padding:24px;background:linear-gradient(90deg,#101112f2,#101112bc),url('./images/home-hero-ember.webp') center/cover no-repeat}
 .refactor-browser .live-loading-card{width:min(100%,570px);padding:38px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
 .refactor-browser .live-loading-brand{display:flex;gap:5px;font:700 22px/1 var(--display);margin-bottom:35px}
 .refactor-browser .live-brand-mark{color:var(--accent)}
