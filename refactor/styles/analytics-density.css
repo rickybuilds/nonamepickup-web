@@ -1,0 +1,21 @@
+/* Compact analytics spacing while retaining readable labels and controls. */
+html body.analytics-page .analytics-hero{gap:12px;margin-bottom:12px;padding-bottom:12px!important}
+html body.analytics-page .analytics-subtitle{margin-top:6px;font-size:16px}
+html body.analytics-page .analytics-updated{margin-top:6px!important}
+html body.analytics-page .analytics-summary article{min-height:70px;padding-top:10px;padding-bottom:8px;gap:3px}
+html body.analytics-page .analytics-tabs{margin-bottom:14px;padding-bottom:8px}
+html body.analytics-page .analytics-tab{padding:8px 14px}
+html body.analytics-page .analytics-overview-grid{gap:16px}
+html body.analytics-page :is(.analytics-module-head,.analytics-card-head,.analytics-detail-head){padding:12px 16px}
+html body.analytics-page .analytics-section{margin-top:22px}
+html body.analytics-page .analytics-section-heading{margin-bottom:10px}
+html body.analytics-page .analytics-activity{padding:10px 16px;min-height:180px}
+html body.analytics-page .analytics-activity svg{min-height:160px}
+html body.analytics-page .analytics-spotlight{padding:0 16px 6px}
+html body.analytics-page .analytics-spotlight-row{min-height:42px}
+html body.analytics-page .analytics-comparison-side{padding:8px 0 12px}
+html body.analytics-page .analytics-comparison-player{margin-top:4px}
+html body.analytics-page :is(.analytics-overview-teasers,.analytics-grid){gap:14px}
+html body.analytics-page .analytics-teaser-list{padding:0 16px 6px}
+html body.analytics-page .analytics-teaser-row{min-height:42px}
+html body.analytics-page .analytics-card li{min-height:50px;padding:8px 16px}
