@@ -1,0 +1,112 @@
+/* The private ledger uses the same charcoal/orange surfaces as the refactor. */
+body.refactor-page.shadow-elo-page :is(.sel-team-pool.blue, .sel-team-pool.red) {
+  color: var(--ink) !important;
+}
+body.shadow-elo-page :is(.sel-match-table, .sel-filter input) {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body.shadow-elo-page :is(.sel-match, .sel-card-head, .sel-pagination,
+  .sel-match-team h3, .sel-match-table th, .sel-match-table td,
+  .sel-table th, .sel-table td, .sel-pool-head, .sel-pool-demo p) {
+  border-color: var(--line);
+}
+
+body.shadow-elo-page :is(.sel-expand-hint, .sel-match-number,
+  .sel-match-title span, .sel-match-title span::before, .sel-match-date,
+  .sel-chevron, .sel-fallback.none, .sel-pagination, .sel-player-games,
+  .sel-diff-zero, .sel-pool-head span, .sel-pool-demo p,
+  .sel-chart-note, .sel-kpi span, .sel-kpi small) {
+  color: var(--muted);
+}
+
+body.shadow-elo-page :is(.sel-match-title strong, .sel-player-name,
+  .sel-elo, .sel-pool-row, .sel-pool-row b, .sel-match-team h3,
+  .sel-team-pool.blue, .sel-team-pool.red) {
+  color: var(--ink);
+}
+
+body.shadow-elo-page :is(.sel-match-table th, .sel-table th) {
+  background: var(--raised);
+  color: var(--muted);
+}
+
+body.shadow-elo-page .sel-fallback.none {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+body.shadow-elo-page :is(.sel-match summary:hover,
+  .sel-table tbody tr:hover td, .sel-table tbody tr.selected td) {
+  background: var(--raised);
+}
+
+body.shadow-elo-page :is(.sel-pagination button, .sel-chart-player,
+  .sel-segments button, .sel-scenario-tabs button) {
+  border-color: var(--line);
+  background: var(--raised);
+  color: var(--ink);
+}
+
+body.shadow-elo-page :is(.sel-pagination button:hover:not(:disabled),
+  .sel-segments button.active, .sel-scenario-tabs button.active) {
+  border-color: var(--accent);
+  background: var(--bg);
+  color: var(--accent);
+}
+
+body.shadow-elo-page .sel-dot.actual {
+  background: var(--accent);
+}
+
+body.shadow-elo-page .sel-filter input:focus {
+  border-color: var(--accent);
+}
+
+body.refactor-page.shadow-elo-page :is(.sel-player-name, .sel-elo) {
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body.refactor-page.shadow-elo-page :is(.sel-pool-row b, .sel-fallback,
+  .sel-match-number, .sel-expand-hint, .sel-match-team h3) {
+  font-size: 12px;
+}
+
+body.refactor-page.shadow-elo-page .sel-card .sel-match-table td {
+  padding: 10px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+body.refactor-page.shadow-elo-page .sel-match-title strong {
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body.refactor-page.shadow-elo-page .sel-card .sel-match summary {
+  grid-template-columns: 48px minmax(0, 1fr) 90px 90px 94px 18px;
+}
+
+@media (max-width: 700px) {
+  body.refactor-page.shadow-elo-page .sel-card .sel-match summary {
+    grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr) 18px;
+    gap: 8px;
+    padding: 14px 12px;
+    white-space: normal;
+  }
+
+  body.refactor-page.shadow-elo-page .sel-match-number { grid-column: 1; grid-row: 1; }
+  body.refactor-page.shadow-elo-page .sel-match-title { grid-column: 2 / 4; grid-row: 1; overflow: visible; }
+  body.refactor-page.shadow-elo-page .sel-match-title strong { overflow-wrap: anywhere; }
+  body.refactor-page.shadow-elo-page .sel-match-title span { display: block; margin-left: 0; }
+  body.refactor-page.shadow-elo-page .sel-team-pool.blue { grid-column: 2; grid-row: 2; }
+  body.refactor-page.shadow-elo-page .sel-team-pool.red { grid-column: 3; grid-row: 2; display: block; }
+  body.refactor-page.shadow-elo-page .sel-fallback { grid-column: 2 / 4; grid-row: 3; }
+  body.refactor-page.shadow-elo-page .sel-chevron { grid-column: 4; grid-row: 1; }
+  body.refactor-page.shadow-elo-page .sel-match-team { overflow-x: auto; }
+  body.refactor-page.shadow-elo-page .sel-card .sel-match-table { min-width: 420px; }
+}

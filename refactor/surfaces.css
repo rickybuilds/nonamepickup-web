@@ -1,3 +1,5 @@
+@import url("./styles/ui-consistency.css?v=20261001review1");
+
 /* Shared chrome and readable data surfaces for the complete /refactor/ site.
    Original layout styles keep mature controls working; these rules own the design. */
 html:has(.refactor-page){font-size:16px;zoom:1;--text:var(--ink);--tfc-blue:var(--ink);--border:var(--line);--card:var(--surface);--panel:var(--surface);--site-header-height:94px;--timeline-flag-size:32px;--surface-radius-medium:8px;--surface-radius-large:10px;--surface-bg:var(--surface);--p2-blue:var(--accent);--p2-border:var(--line);--p2-border-soft:var(--line);--page-main-width:1440px;--page-gutter-desktop:40px;--page-gutter-mobile:16px;--mobile-page-gutter:16px;--page-top-gap:38px;--page-bottom-gap:56px}

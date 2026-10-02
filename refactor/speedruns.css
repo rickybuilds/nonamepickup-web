@@ -95,7 +95,7 @@ body.refactor-page.speedruns-page {
 .refactor-page .speedrun-replay-action { width: 72px; min-width: 72px; }
 .refactor-page .speedrun-map-columns,
 .refactor-page .speedrun-map-result { grid-template-columns: minmax(165px, 1.35fr) minmax(116px, 1fr) 72px 38px 44px 44px 12px; gap: 10px; }
-.refactor-page .speedrun-map-columns { min-height: 40px; padding: 0 10px; background: none; color: var(--muted); border-color: var(--line); font: 600 11px var(--body); letter-spacing: .03em; }
+.refactor-page .speedrun-map-columns { min-height: 40px; padding: 0 10px; background: none; color: var(--muted); border-color: var(--line); font: 600 12px var(--body); letter-spacing: .03em; }
 .refactor-page .speedrun-map-columns > span:nth-child(4) { display: none; }
 .refactor-page .speedrun-map-result { padding: 15px 10px; min-height: 78px; border-bottom: 1px solid var(--line); background: none; }
 .refactor-page .speedrun-map-result .speedrun-ammo { grid-column: 1 / -1; grid-row: 2; min-height: 0; padding: 0 0 0 78px; border: 0; }
@@ -169,7 +169,7 @@ body.refactor-page.speedruns-page {
 .refactor-page .speedrun-table th,
 .refactor-page .speedrun-map-detail-cards .speedrun-table th,
 .refactor-page .speedrun-catalog-table thead th,
-.refactor-page .speedrun-player-pb-table thead th { color: var(--muted); background: var(--surface); border-color: var(--line); font: 600 11px var(--body); padding: 12px 10px; letter-spacing: .025em; box-shadow: none; }
+.refactor-page .speedrun-player-pb-table thead th { color: var(--muted); background: var(--surface); border-color: var(--line); font: 600 12px var(--body); padding: 12px 10px; letter-spacing: .025em; box-shadow: none; }
 .refactor-page .speedrun-table td,
 .refactor-page .speedrun-map-detail-cards .speedrun-table td,
 .refactor-page .speedrun-map-detail-cards .speedrun-table tbody tr:nth-child(even) td { color: var(--ink); background: none; border-color: var(--line); font: 400 14px/1.4 var(--body); padding: 14px 10px; }
@@ -374,7 +374,7 @@ body.refactor-page.replay-page { overflow: auto; }
   .refactor-page .speedrun-map-identity { gap: 8px; }
   .refactor-page .speedrun-map-thumb { width: 48px; height: 38px; }
   .refactor-page .speedrun-map-identity a { font-size: 13px; }
-  .refactor-page .speedrun-class-mark { font-size: 11px; }
+  .refactor-page .speedrun-class-mark { font-size:12px; }
   .refactor-page .speedrun-world-record-row { grid-template-columns: 48px minmax(0, 1fr) auto; }
   .refactor-page .speedrun-world-record-row .speedrun-replay-action { grid-column: 2; justify-content: start; }
   .refactor-page .speedrun-world-record-row .speedrun-row-arrow { display: none; }

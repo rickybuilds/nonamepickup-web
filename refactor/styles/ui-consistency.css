@@ -1,0 +1,150 @@
+/* Finish legacy metadata and detail surfaces without changing team/result colors. */
+body.refactor-page.matches-page :is(.cap-event-header span,
+  .match-mvp-reasons span, .match-mvp-legend, .match-mvp-legend span,
+  .match-mvp-legend dd, .round-score i, .round-leaders span, .match-mini-title) {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+body.refactor-page.matches-page :is(.round-leaders strong,
+  .round-leaders strong a, .round-player-name a, .match-mini-row span,
+  .match-mvp-legend strong, .match-mvp-legend dt, .cap-event b) {
+  color: var(--ink);
+}
+
+body.refactor-page.matches-page :is(.match-mini-box, .match-mini-title) {
+  background: var(--surface);
+  border-color: var(--line);
+}
+body.refactor-page.matches-page :is(.score-vs, .cap-timeline-head span,
+  .cap-timeline-axis, .cap-event-header, .cap-event-capper,
+  .match-mvp-box-head, .match-mvp-box-head span, .match-mvp-desc,
+  .match-mvp-score, .match-mvp-chip, .match-mvp-reasons,
+  .round-overview-head span, .round-mvp-label, .round-meta,
+  .round-tab, .round-team-title) {
+  color: var(--muted);
+}
+
+body.refactor-page.matches-page :is(.match-mvp-box, .round-overview-item,
+  .cap-timeline-head span, .round-tab, .cap-event, .round-team) {
+  background: var(--bg);
+  border-color: var(--line);
+}
+
+body.refactor-page.matches-page :is(.round-overview-head, .round-tab:hover) {
+  background: var(--raised);
+  border-color: var(--line);
+}
+
+body.refactor-page.matches-page .round-tab.active {
+  background: var(--raised);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+body.refactor-page.matches-page :is(.cap-event-header, .match-mvp-desc,
+  .match-mvp-score, .round-overview-head span, .round-mvp-label,
+  .round-meta, .round-meta b, .round-tab, .round-team-title) {
+  font-size: 12px;
+}
+
+body.refactor-page.map-v2-page :is(.hero-intel-card span, .hero-intel-card small,
+  .map-v2-panel-header span, .donut-center, .donut-center span, .map-v2-tabs button,
+  .map-v2-kpi small, .outcome-legend span, .team-vs) {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+body.refactor-page.map-v2-page .map-v2-tabs button.active {
+  color: var(--ink);
+  background: var(--raised);
+  border-color: var(--accent);
+}
+
+body.refactor-page.map-v2-page .map-v2-kpi .kpi-icon {
+  color: var(--muted) !important;
+}
+
+body.refactor-page.speedruns-page main table th {
+  font-size: 12px;
+}
+
+body.refactor-page.live2-page :is(.live2-vs span, .live2-idle-state) {
+  color: var(--muted);
+}
+
+body.refactor-page.live2-page .live2-idle-state {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+body.refactor-page.live2-page :is(.live2-live-label, .live2-panel p) {
+  font-size: 12px;
+}
+
+body.refactor-page :is(.matches2-pagination, .kicked-summary-worst,
+  .kicked-summary-worst small, .speedrun-replay-heading,
+  .replay-grenade-hud, .replay-keyboard, .replay-input-actions,
+  .pickup-live-signal, .pickup-badge, .pickup-live-prototype-note,
+  .pickup-live-prototype-note small) {
+  font-size: 12px;
+}
+
+body.refactor-page :is(.speedrun-player-stat-grid, .speedrun-mini-stat-grid,
+  .speedrun-profile-table, .speedrun-map-table) :is(span, th) {
+  font-size: 12px;
+}
+
+body.refactor-page .replay-input-hud :is(span, small) {
+  font-size: 12px;
+}
+
+body.refactor-page.player2-page .player-granular-header > div > span,
+body.refactor-page.kicked-page .kicked-summary :is(small, span),
+body.refactor-page.speedruns-page .replay-grenade-hud span,
+body.refactor-page.speedruns-page .replay-keyboard span,
+body.refactor-page.speedruns-page .replay-input-actions span,
+body.refactor-page.refactor-spectator .pickup-live-prototype-note strong {
+  font-size: 12px;
+}
+
+body.refactor-page.server-build-page :is(.server-build-button, .copy-btn,
+  .step-number, .progress-track, .code-wrap, .code-top, .step-body) {
+  border-color: var(--line);
+  background: var(--bg);
+}
+
+body.refactor-page.server-build-page :is(.server-build-button, .copy-btn,
+  .progress-top strong, pre, pre code) {
+  color: var(--ink);
+}
+
+body.refactor-page.server-build-page :is(.section-heading p, .var-grid label,
+  .code-top, .step-state, .admin-context) {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+body.refactor-page.server-build-page :is(.step-number, .step-card.active .step-state) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+body.refactor-page.server-build-page :is(.server-build-button:hover, .copy-btn:hover) {
+  background: var(--raised);
+  border-color: var(--accent);
+}
+
+body.refactor-page.server-build-page :is(.server-build-button, .copy-btn) {
+  min-height: 44px;
+  font-size: 13px;
+}
+
+body.refactor-page.server-build-page #progressBar {
+  background: var(--accent);
+}
+
+body.refactor-page.server-build-page :is(pre, pre code) {
+  font-family: ui-monospace, Consolas, monospace;
+}
+
