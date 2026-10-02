@@ -5,8 +5,15 @@
   html body.refactor-page .speedrun-map-columns>span:nth-child(4){display:block}
   html body.refactor-page .speedrun-map-result .speedrun-ammo{grid-column:4;grid-row:1;padding:0;min-width:0;flex-wrap:wrap}
   html body.refactor-page .speedrun-map-result .speedrun-ammo.is-empty{display:flex;visibility:hidden}
-  html body.refactor-page .speedrun-map-result .speedrun-map-metric,
-  html body.refactor-page .speedrun-map-result>.speedrun-row-arrow{grid-row:1}
+  /* Place every cell explicitly: row-only placement reserves early columns
+     before the map and record cells participate in auto placement. */
+  html body.refactor-page .speedrun-map-result>.speedrun-map-identity{grid-column:1;grid-row:1;min-width:0}
+  html body.refactor-page .speedrun-map-result>.speedrun-map-record{grid-column:2;grid-row:1;min-width:0}
+  html body.refactor-page .speedrun-map-result>.speedrun-replay-action{grid-column:3;grid-row:1}
+  html body.refactor-page .speedrun-map-result>.speedrun-map-metric:nth-last-child(4){grid-column:5;grid-row:1}
+  html body.refactor-page .speedrun-map-result>.speedrun-map-metric:nth-last-child(3){grid-column:6;grid-row:1}
+  html body.refactor-page .speedrun-map-result>.speedrun-map-metric:nth-last-child(2){grid-column:7;grid-row:1}
+  html body.refactor-page .speedrun-map-result>.speedrun-row-arrow{grid-column:8;grid-row:1}
 }
 body.refactor-page.speedruns-page {
   --speedrun-player-card-radius: 12px;
