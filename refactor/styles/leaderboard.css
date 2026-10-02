@@ -1,14 +1,15 @@
 /* This page owns its layout and data styling; it does not import the original theme. */
-body.leaderboard-page .leaderboard-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:32px;align-items:center;margin-bottom:32px}
-body.leaderboard-page .leaderboard-hero p{color:var(--muted);font-weight:400;margin-top:12px}
-body.leaderboard-page .leaderboard-rules{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:18px}
+body.leaderboard-page main{padding-top:20px}
+body.leaderboard-page .leaderboard-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:24px;align-items:center;margin-bottom:16px}
+body.leaderboard-page .leaderboard-hero p{color:var(--muted);font-weight:400;margin-top:8px}
+body.leaderboard-page .leaderboard-rules{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px}
 body.leaderboard-page .leaderboard-rules span{padding:0;border:0;font-size:13px;color:var(--muted)}
 body.leaderboard-page .leaderboard-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-block:1px solid var(--line)}
-body.leaderboard-page .leaderboard-summary article{padding:18px 20px;border:0;border-right:1px solid var(--line);background:none;border-radius:0;min-width:0}
+body.leaderboard-page .leaderboard-summary article{padding:14px 20px;border:0;border-right:1px solid var(--line);background:none;border-radius:0;min-width:0}
 body.leaderboard-page .leaderboard-summary article:last-child{border-right:0}
 body.leaderboard-page .leaderboard-summary span{font-size:13px;color:var(--muted)}
 body.leaderboard-page .leaderboard-summary strong{display:block;font:700 36px/1.1 var(--display);color:var(--ink);margin-top:8px;font-variant-numeric:tabular-nums}
-body.leaderboard-page .leaderboard-stage{display:grid;grid-template-columns:1fr;gap:24px;align-items:start;margin-bottom:36px}
+body.leaderboard-page .leaderboard-stage{display:grid;grid-template-columns:1fr;gap:16px;align-items:start;margin-bottom:20px}
 body.leaderboard-page .leaderboard-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;min-height:0;padding:0;background:none;border:0;overflow:visible}
 body.leaderboard-page .leaderboard-podium-card{display:grid;grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;gap:8px 18px;align-items:center;justify-items:start;align-content:center;position:relative;padding:24px;min-height:176px;border:1px solid var(--line);border-radius:10px;background:var(--surface);order:initial}
 body.leaderboard-page .leaderboard-podium-card.first{border-color:var(--accent);transform:none}
@@ -23,11 +24,11 @@ body.leaderboard-page .podium-stats span{display:flex;align-items:baseline;gap:6
 body.leaderboard-page .podium-stats b{font:600 15px var(--body);color:var(--ink)}
 body.leaderboard-page .podium-stats small{font-size:13px;color:var(--muted);text-transform:none}
 body.leaderboard-page .leaderboard-side-card{padding:0;background:none;border:0;border-radius:0}
-body.leaderboard-page .leaderboard-side-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+body.leaderboard-page .leaderboard-side-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}
 body.leaderboard-page .leaderboard-side-head h2{font-size:22px;text-transform:none}
 body.leaderboard-page .leaderboard-side-head>span{font-size:13px;color:var(--muted)}
 body.leaderboard-page .leaderboard-highlights{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-block:1px solid var(--line)}
-body.leaderboard-page .leaderboard-highlight-row{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:18px 20px;border:0;border-right:1px solid var(--line);min-width:0}
+body.leaderboard-page .leaderboard-highlight-row{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:12px 20px;border:0;border-right:1px solid var(--line);min-width:0}
 body.leaderboard-page .leaderboard-highlight-row:first-child{padding-left:0}
 body.leaderboard-page .leaderboard-highlight-row:last-child{border-right:0}
 body.leaderboard-page .leaderboard-highlight-row>span{font-size:13px;color:var(--muted);text-transform:none;letter-spacing:0}
@@ -46,7 +47,7 @@ body.leaderboard-page .form-key::before{content:'';width:8px;height:8px;border-r
 body.leaderboard-page .form-loss::before{background:var(--red)}
 body.leaderboard-page .form-tie::before{background:#f4bd86}
 body.leaderboard-page .form-mvp::before{background:#c084fc;border:1px solid #c084fc;outline:1px solid var(--ink);outline-offset:1px}
-body.leaderboard-page .leaderboard-toolbar{display:grid;grid-template-columns:auto minmax(160px,360px) 1fr;gap:14px;align-items:center;margin:0;padding:18px 0;background:none;border:0}
+body.leaderboard-page .leaderboard-toolbar{display:grid;grid-template-columns:auto minmax(160px,360px) 1fr;gap:14px;align-items:center;margin:0;padding:12px 0;background:none;border:0}
 body.leaderboard-page .leaderboard-toolbar label,body.leaderboard-page .leaderboard-toolbar>span{font-size:13px;color:var(--muted);text-transform:none;letter-spacing:0}
 body.leaderboard-page .leaderboard-toolbar>span{justify-self:end}
 body.leaderboard-page .leaderboard-toolbar input{width:100%;background:var(--bg);caret-color:var(--accent)}
@@ -125,8 +126,8 @@ body.leaderboard-page .leaderboard-empty{padding:32px;color:var(--muted);text-al
  body.leaderboard-page .leaderboard-summary strong{font-size:32px}
 }
 /* Give the original rank artwork a full, readable column at every breakpoint. */
-body.leaderboard-page .leaderboard-podium-card{grid-template-columns:96px minmax(0,1fr);padding:20px 16px;gap:10px 14px}
-body.leaderboard-page .leaderboard-podium-card .podium-rank{position:static;grid-column:1;grid-row:1/4;width:96px;height:144px;object-fit:contain;align-self:center;margin:0}
+body.leaderboard-page .leaderboard-podium-card{grid-template-columns:80px minmax(0,1fr);padding:16px;gap:8px 14px;min-height:144px}
+body.leaderboard-page .leaderboard-podium-card .podium-rank{position:static;grid-column:1;grid-row:1/4;width:80px;height:112px;object-fit:contain;align-self:center;margin:0}
 body.leaderboard-page .podium-player{grid-column:2;grid-row:1;display:flex;align-items:center;gap:10px;min-width:0;width:100%}
 body.leaderboard-page .podium-avatar-link{grid-column:auto;grid-row:auto;flex-shrink:0}
 body.leaderboard-page .podium-avatar-link .nn-avatar{width:32px;height:32px;min-width:32px}

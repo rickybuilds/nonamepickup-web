@@ -1,0 +1,85 @@
+/* Page-local overrides follow the shared refactor theme. */
+body.refactor-page.player2-page main {
+  padding-top: 20px;
+}
+
+body.refactor-page.player2-page .player2-hero {
+  margin-bottom: 0;
+}
+
+body.refactor-page.player2-page .player2-overview-card {
+  padding: 20px;
+}
+
+body.refactor-page.player2-page .player2-overview-card .identity-copy {
+  gap: 12px 24px;
+}
+
+body.refactor-page.player2-page .player2-scoreboard,
+body.refactor-page.player2-page .player2-mini-kpis {
+  gap: 8px;
+  margin: 0;
+  border: 0;
+}
+
+body.refactor-page.player2-page .player2-scoreboard > div,
+body.refactor-page.player2-page .player2-scoreboard > div:last-child,
+body.refactor-page.player2-page .player2-scoreboard > div:nth-child(2n),
+body.refactor-page.player2-page .player2-mini-kpis .identity-mini-kpi {
+  min-width: 0;
+  min-height: 76px;
+  height: auto;
+  padding: 12px;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+body.refactor-page.player2-page .player2-scoreboard span,
+body.refactor-page.player2-page .player2-mini-kpis .identity-mini-kpi span {
+  line-height: 1.25;
+  white-space: normal;
+}
+
+body.refactor-page.player2-page .player2-scoreboard strong {
+  overflow-wrap: anywhere;
+}
+
+body.refactor-page.player2-page .player2-last10-wrap {
+  margin-top: 12px;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 12px;
+}
+
+body.refactor-page.player2-page .v3-card {
+  margin-top: 16px;
+  padding: 20px;
+}
+
+@media (max-width: 1200px) {
+  body.refactor-page.player2-page .player2-overview-card .identity-copy {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.refactor-page.player2-page .player2-name-row,
+  body.refactor-page.player2-page .player2-scoreboard,
+  body.refactor-page.player2-page .player2-mini-kpis {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  body.refactor-page.player2-page .player2-overview-card,
+  body.refactor-page.player2-page .v3-card {
+    padding: 16px;
+  }
+
+  body.refactor-page.player2-page .player2-scoreboard,
+  body.refactor-page.player2-page .player2-mini-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
