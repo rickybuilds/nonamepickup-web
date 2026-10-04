@@ -161,13 +161,13 @@ function mvpbSummary(players, match) {
     return `
     <tr class="${Number(player.rank) === 1 ? "mvp-winner" : ""}">
       <td><span class="mvpb-rank">${mvpbEscape(player.rank)}</span><span class="mvpb-player">${mvpbEscape(player.display_name || player.player_key || "Unknown")}</span></td>
+      <td class="mvpb-elo-change ${elo.tone}">${mvpbEscape(elo.text)}</td>
       <td class="${mvpbTone(player.components?.combat)}">${mvpbSigned(player.components?.combat)}</td>
       <td class="${mvpbTone(player.components?.objective)}">${mvpbSigned(player.components?.objective)}</td>
       <td class="${mvpbTone(player.components?.impact)}">${mvpbSigned(player.components?.impact)}</td>
       <td class="${mvpbTone(player.components?.penalty)}">${mvpbSigned(player.components?.penalty)}</td>
       <td class="mvpb-expression">${mvpbEscape(mvpbExpression(player))}</td>
       <td class="mvpb-final">${mvpbNumber(player.final_score, 2)}</td>
-      <td class="mvpb-elo-change ${elo.tone}">${mvpbEscape(elo.text)}</td>
     </tr>
   `;
   }).join("");
@@ -177,7 +177,7 @@ function mvpbSummary(players, match) {
       <div class="mvpb-card-head"><h2>Overall Breakdown</h2><span>Base + four weighted components</span></div>
       <div class="mvpb-table-scroll">
         <table class="mvpb-table">
-          <thead><tr><th>Rank / Player</th><th>Combat</th><th>Objective</th><th>Impact</th><th>Penalty</th><th>Calculation</th><th>Final</th><th scope="col" title="Recorded Elo gain or loss for this match">Elo change</th></tr></thead>
+          <thead><tr><th>Rank / Player</th><th scope="col" title="Recorded Elo gain or loss for this match">Elo change</th><th>Combat</th><th>Objective</th><th>Impact</th><th>Penalty</th><th>Calculation</th><th>Final</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
