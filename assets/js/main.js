@@ -50,6 +50,25 @@
   });
 })();
 
+document.querySelectorAll(".site-nav .nav-more").forEach(menu => {
+  document.addEventListener("pointerdown", event => {
+    if (!menu.contains(event.target)) menu.open = false;
+  });
+  menu.addEventListener("keydown", event => {
+    if (event.key === "Escape" && menu.open) {
+      event.preventDefault();
+      menu.open = false;
+      menu.querySelector("summary").focus();
+    }
+  });
+  menu.addEventListener("focusout", event => {
+    if (!menu.contains(event.relatedTarget)) menu.open = false;
+  });
+  menu.addEventListener("click", event => {
+    if (event.target.closest("a")) menu.open = false;
+  });
+});
+
 async function fetchJSON(url) {
   try {
     const res = await fetch(url, { cache: "no-store" });
