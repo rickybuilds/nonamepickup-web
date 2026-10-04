@@ -4,6 +4,11 @@ const mvpbForm = document.getElementById("mvpb-form");
 const mvpbInput = document.getElementById("mvpb-match-id");
 const mvpbResults = document.getElementById("mvpb-results");
 const mvpbSubmit = mvpbForm?.querySelector("button[type='submit']");
+const mvpbRecent = document.getElementById("mvpb-recent-matches");
+const mvpbEmptyResults = mvpbResults?.innerHTML || "";
+const mvpbDefaultTitle = document.title;
+let mvpbController;
+let mvpbSelectedId = "";
 
 const MVPB_COMPONENTS = {
   combat: {
@@ -220,6 +225,48 @@ function mvpbRender(match, requestedId) {
   `;
 }
 
+function mvpbUpdateRecentSelection() {
+  mvpbRecent?.querySelectorAll("[data-match-id]").forEach(link => {
+    if (link.dataset.matchId === mvpbSelectedId) link.setAttribute("aria-current", "true");
+    else link.removeAttribute("aria-current");
+  });
+}
+
+async function mvpbLoadRecent() {
+  if (!mvpbRecent) return;
+  mvpbRecent.setAttribute("aria-busy", "true");
+  mvpbRecent.innerHTML = '<p class="mvpb-recent-status">Loading recent matches…</p>';
+  try {
+    const response = await fetch("api/matches?limit=5", { cache: "no-store", signal: AbortSignal.timeout(15000) });
+    const data = await response.json();
+    if (!response.ok || !data.ok || !Array.isArray(data.data)) throw new Error("Recent matches unavailable.");
+    const matches = data.data.filter(match => String(match.id || match.match_id || "").trim()).slice(0, 5);
+    mvpbRecent.innerHTML = matches.length ? `<ul class="mvpb-recent-list">${matches.map(match => {
+      const id = String(match.id || match.match_id).trim();
+      const map = String(match.map_name || match.map || "Unknown map");
+      const url = new URL(location.href);
+      url.searchParams.set("id", id);
+      return `<li><a href="${mvpbEscape(url.pathname + url.search)}" data-match-id="${mvpbEscape(id)}" aria-label="${mvpbEscape(`Load MVP breakdown for match ${id} on ${map}`)}"><strong>${mvpbEscape(map)}</strong><span>Match ${mvpbEscape(id)}</span></a></li>`;
+    }).join("")}</ul>` : '<p class="mvpb-recent-status">No completed matches yet. You can still enter a match ID above.</p>';
+    mvpbUpdateRecentSelection();
+  } catch {
+    mvpbRecent.innerHTML = '<p class="mvpb-recent-status">Could not load recent matches. Enter a match ID above or <button class="mvpb-recent-retry" type="button" data-recent-retry>Retry</button></p>';
+  } finally {
+    mvpbRecent.setAttribute("aria-busy", "false");
+  }
+}
+
+function mvpbNavigate(matchId) {
+  const id = String(matchId || "").trim();
+  if (!id) return mvpbInput?.focus();
+  const url = new URL(location.href);
+  if (url.searchParams.get("id") !== id) {
+    url.searchParams.set("id", id);
+    history.pushState({}, "", url);
+  }
+  mvpbLoad(id);
+}
+
 async function mvpbLoad(matchId) {
   const id = String(matchId || "").trim();
   if (!id) {
@@ -227,36 +274,56 @@ async function mvpbLoad(matchId) {
     return;
   }
 
+  mvpbController?.abort();
+  const controller = new AbortController();
+  mvpbController = controller;
+  mvpbSelectedId = id;
+  mvpbUpdateRecentSelection();
   mvpbInput.value = id;
   if (mvpbSubmit) mvpbSubmit.disabled = true;
   mvpbResults.innerHTML = `<div class="mvpb-loading"><div class="mvpb-spinner" aria-hidden="true"></div><strong>Calculating ${mvpbEscape(id)}…</strong></div>`;
 
   try {
-    const response = await fetch(`api/match/${encodeURIComponent(id)}`, { cache: "no-store" });
+    const response = await fetch(`api/match/${encodeURIComponent(id)}`, { cache: "no-store", signal: controller.signal });
     const data = await response.json();
+    if (controller.signal.aborted) return;
     if (!response.ok || !data.ok) throw new Error(data.error === "match_not_found" ? "Match not found." : (data.error || "Could not load match."));
     mvpbRender(data.match || data, id);
   } catch (error) {
+    if (controller.signal.aborted) return;
     mvpbResults.innerHTML = `<div class="mvpb-error"><strong>Could not build this breakdown.</strong><span>${mvpbEscape(error?.message || "Please check the match ID and try again.")}</span></div>`;
   } finally {
-    if (mvpbSubmit) mvpbSubmit.disabled = false;
+    if (mvpbSubmit && mvpbController === controller) mvpbSubmit.disabled = false;
   }
 }
 
 mvpbForm?.addEventListener("submit", event => {
   event.preventDefault();
-  const id = String(mvpbInput?.value || "").trim();
-  if (!id) return mvpbInput?.focus();
-  const url = new URL(location.href);
-  url.searchParams.set("id", id);
-  history.pushState({}, "", url);
-  mvpbLoad(id);
+  mvpbNavigate(mvpbInput?.value);
+});
+
+mvpbRecent?.addEventListener("click", event => {
+  if (event.target.closest("[data-recent-retry]")) return mvpbLoadRecent();
+  const link = event.target.closest("a[data-match-id]");
+  if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  mvpbNavigate(link.dataset.matchId);
 });
 
 window.addEventListener("popstate", () => {
   const id = new URLSearchParams(location.search).get("id") || "";
   if (id) mvpbLoad(id);
+  else {
+    mvpbController?.abort();
+    mvpbSelectedId = "";
+    mvpbUpdateRecentSelection();
+    mvpbInput.value = "";
+    if (mvpbSubmit) mvpbSubmit.disabled = false;
+    mvpbResults.innerHTML = mvpbEmptyResults;
+    document.title = mvpbDefaultTitle;
+  }
 });
 
+mvpbLoadRecent();
 const mvpbInitialId = new URLSearchParams(location.search).get("id");
 if (mvpbInitialId) mvpbLoad(mvpbInitialId);
