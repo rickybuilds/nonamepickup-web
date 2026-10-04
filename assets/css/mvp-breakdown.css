@@ -37,7 +37,7 @@
 .mvpb-card-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(96,165,250,.055)}
 .mvpb-card-head h2{margin:0;color:#fff;font-family:Orbitron,system-ui,sans-serif;font-size:17px}.mvpb-card-head span{color:#8ea0c7;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
 .mvpb-table-scroll{width:100%;overflow-x:auto}
-.mvpb-table{width:100%;min-width:980px;border-collapse:collapse;font-size:12px}
+.mvpb-table{width:100%;min-width:1080px;border-collapse:collapse;font-size:12px}
 .mvpb-table th,.mvpb-table td{padding:12px 13px;border-bottom:1px solid rgba(255,255,255,.065);text-align:right;white-space:nowrap}
 .mvpb-table th{background:rgba(255,255,255,.018);color:#8495bb;font-size:9px;font-weight:950;letter-spacing:.075em;text-transform:uppercase}
 .mvpb-table th:first-child,.mvpb-table td:first-child{text-align:left}.mvpb-table tbody tr:last-child td{border-bottom:0}.mvpb-table tbody tr:hover td{background:rgba(96,165,250,.035)}
@@ -45,6 +45,7 @@
 .mvpb-rank{display:inline-grid;place-items:center;width:26px;height:26px;margin-right:9px;border-radius:8px;background:rgba(255,255,255,.06);color:#9fb3ff;font-weight:950}.mvp-winner .mvpb-rank{background:rgba(250,204,21,.14);color:#fde047}
 .mvpb-player{color:#fff;font-family:Orbitron,system-ui,sans-serif;font-weight:900}.mvpb-final{color:#fff;font-family:Orbitron,system-ui,sans-serif;font-size:15px;font-weight:950}.mvp-winner .mvpb-final{color:#fde047}
 .mvpb-pos{color:#4ade80}.mvpb-neg{color:#fb7185}.mvpb-zero{color:#94a3b8}
+.mvpb-elo-change{font-weight:900;font-variant-numeric:tabular-nums}
 .mvpb-expression{color:#a7b5d4;font-variant-numeric:tabular-nums}
 .mvpb-stat strong{display:block;color:#e8edff;font-size:12px}.mvpb-stat span{display:block;margin-top:3px;font-size:10px;font-weight:900}
 .mvpb-component-total{font-family:Orbitron,system-ui,sans-serif;font-size:14px;font-weight:950}

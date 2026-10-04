@@ -134,8 +134,31 @@ function mvpbExpression(player) {
   );
 }
 
-function mvpbSummary(players) {
-  const rows = players.map(player => `
+function mvpbEloChange(player, roster) {
+  const identityKeys = entry => [entry.id, entry.player_id, entry.discord_id, entry.player_key, entry.steam_id]
+    .filter(value => value != null && String(value).trim())
+    .map(value => String(value).trim());
+  const keys = new Set(identityKeys(player));
+  let matches = roster.filter(entry => identityKeys(entry).some(key => keys.has(key)));
+  if (!matches.length) {
+    const name = String(player.display_name || "").trim().toLowerCase();
+    if (name) matches = roster.filter(entry => String(entry.name || entry.display_name || "").trim().toLowerCase() === name);
+  }
+  if (matches.length !== 1) return { text: "—", tone: "mvpb-zero" };
+  const rating = matches[0];
+  if (rating.hidden) return { text: "Hidden", tone: "mvpb-zero" };
+  if (rating.delta == null || String(rating.delta).trim() === "") return { text: "—", tone: "mvpb-zero" };
+  const delta = Number(rating.delta);
+  if (!Number.isFinite(delta)) return { text: "—", tone: "mvpb-zero" };
+  const sign = delta > 0 ? "+" : delta < 0 ? "−" : "";
+  return { text: `${sign}${mvpbNumber(Math.abs(delta), Number.isInteger(delta) ? 0 : 2)}`, tone: mvpbTone(delta) };
+}
+
+function mvpbSummary(players, match) {
+  const roster = [...(match.blueTeam || []), ...(match.redTeam || [])];
+  const rows = players.map(player => {
+    const elo = mvpbEloChange(player, roster);
+    return `
     <tr class="${Number(player.rank) === 1 ? "mvp-winner" : ""}">
       <td><span class="mvpb-rank">${mvpbEscape(player.rank)}</span><span class="mvpb-player">${mvpbEscape(player.display_name || player.player_key || "Unknown")}</span></td>
       <td class="${mvpbTone(player.components?.combat)}">${mvpbSigned(player.components?.combat)}</td>
@@ -144,15 +167,17 @@ function mvpbSummary(players) {
       <td class="${mvpbTone(player.components?.penalty)}">${mvpbSigned(player.components?.penalty)}</td>
       <td class="mvpb-expression">${mvpbEscape(mvpbExpression(player))}</td>
       <td class="mvpb-final">${mvpbNumber(player.final_score, 2)}</td>
+      <td class="mvpb-elo-change ${elo.tone}">${mvpbEscape(elo.text)}</td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
 
   return `
     <section class="mvpb-card">
       <div class="mvpb-card-head"><h2>Overall Breakdown</h2><span>Base + four weighted components</span></div>
       <div class="mvpb-table-scroll">
         <table class="mvpb-table">
-          <thead><tr><th>Rank / Player</th><th>Combat</th><th>Objective</th><th>Impact</th><th>Penalty</th><th>Calculation</th><th>Final</th></tr></thead>
+          <thead><tr><th>Rank / Player</th><th>Combat</th><th>Objective</th><th>Impact</th><th>Penalty</th><th>Calculation</th><th>Final</th><th scope="col" title="Recorded Elo gain or loss for this match">Elo change</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -217,7 +242,7 @@ function mvpbRender(match, requestedId) {
       <div class="mvpb-formula-badge">+${mvpbNumber(baseScore, 0)}</div>
       <div><strong>Score = ${mvpbNumber(baseScore, 0)} + Combat + Objective + Impact + Penalty</strong><p>Every raw statistic is converted to a z-score against all ${players.length} players using population standard deviation, clamped to ±${mvpbNumber(zClamp, 0)}, and multiplied by its field weight. Hover any contribution to see its match mean, standard deviation, z-score, and weight.</p></div>
     </section>
-    ${mvpbSummary(players)}
+    ${mvpbSummary(players, match)}
     <div class="mvpb-component-grid">
       ${Object.entries(MVPB_COMPONENTS).map(([key, config]) => mvpbComponentTable(players, key, config)).join("")}
     </div>
