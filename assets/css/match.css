@@ -252,3 +252,11 @@
   .matches-page .match-top-grid{grid-template-columns:1fr;gap:20px}
   .cap-timeline-card{padding:14px!important}
 }
+
+button.cap-marker{padding:0;border:0;background:transparent;cursor:pointer;font:inherit;color:inherit}
+.cap-detail{position:fixed;inset:auto;margin:0;width:240px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:12px 14px;border:1px solid #475569;border-radius:12px;background:#0b1220;color:#dbeafe;box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:12px}
+.cap-detail.blue{border-color:#60a5fa}
+.cap-detail.red{border-color:#f87171}
+.cap-detail strong{color:#fff}
+.cap-detail>span{float:right;color:#9fb3ff}
+.cap-detail p{margin:6px 0 0;overflow-wrap:anywhere}

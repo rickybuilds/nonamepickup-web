@@ -373,7 +373,7 @@ function renderCapTimelineCard(capTimeline){
       </div>
       <div class="cap-timeline-bar" aria-label="Capture timeline from 0 to 15 minutes">
         <div class="cap-timeline-track">
-          ${events.map(event=>{
+          ${events.map((event,index)=>{
 			  const seconds=Number(event.time_seconds||0);
 			  const left=Math.max(0,Math.min(100,(seconds/maxSeconds)*100));
 			  const teamClass=capTeamClass(event.team);
@@ -395,16 +395,22 @@ function renderCapTimelineCard(capTimeline){
 				?"assets/images/icons/webp/red-flag.webp"
 				:"assets/images/icons/webp/blue-flag.webp";
             return `
-              <span
+              <button
+                type="button"
+                popovertarget="cap-detail-${index}"
                 class="cap-marker ${teamClass}"
                 style="left:${left}%"
-                tabindex="0"
                 title="${escapeAttr(ariaLabel)}"
                 aria-label="${escapeAttr(ariaLabel)}"
               >
                 <img src="${escapeAttr(icon)}" alt="" loading="lazy" aria-hidden="true">
                 <span class="cap-marker-badge">${escapeHtml(capNum)}</span>
-              </span>
+              </button>
+              <div id="cap-detail-${index}" class="cap-detail ${teamClass}" popover>
+                <strong>${escapeHtml(capTeamLabel(event.team))} Cap ${escapeHtml(capNum)}</strong>
+                <span>${escapeHtml(event.time_text||matchFormatSeconds(event.time_seconds))}</span>
+                <p>${escapeHtml(capper||"Unknown player")}</p>
+              </div>
             `;
           }).join("")}
         </div>
@@ -591,3 +597,14 @@ function renderMatchPlayer(teamPlayer,statsRows,classRows,weaponRows){
 }
 
 document.addEventListener("DOMContentLoaded",loadMatch);
+
+// Position native popovers near their flags; outside clicks and Escape dismiss them.
+document.addEventListener("click",event=>{
+  const marker=event.target.closest(".cap-marker[popovertarget]");
+  if(!marker)return;
+  const detail=document.getElementById(marker.getAttribute("popovertarget"));
+  if(!detail)return;
+  const rect=marker.getBoundingClientRect();
+  detail.style.left=Math.max(8,Math.min(rect.left+rect.width/2-120,window.innerWidth-248))+"px";
+  detail.style.top=Math.max(8,Math.min(rect.bottom+10,window.innerHeight-120))+"px";
+});
