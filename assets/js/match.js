@@ -617,7 +617,7 @@ document.addEventListener("click",event=>{
     const trackRect=track.getBoundingClientRect();
     const center=((rect.left+rect.width/2-trackRect.left)/trackRect.width)*100;
     detail.style.left=`${Math.max(8,Math.min(92,center))}%`;
-    detail.style.top=`${track.offsetHeight+8}px`;
+    detail.style.top=`-${detail.offsetHeight+8}px`;
   });
 });
 
