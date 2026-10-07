@@ -406,7 +406,7 @@ function renderCapTimelineCard(capTimeline){
                 <img src="${escapeAttr(icon)}" alt="" loading="lazy" aria-hidden="true">
                 <span class="cap-marker-badge">${escapeHtml(capNum)}</span>
               </button>
-              <div id="cap-detail-${index}" class="cap-detail ${teamClass}" popover="manual">
+              <div id="cap-detail-${index}" class="cap-detail ${teamClass}" hidden>
                 <strong>${escapeHtml(capTeamLabel(event.team))} Cap ${escapeHtml(capNum)}</strong>
                 <span>${escapeHtml(event.time_text||matchFormatSeconds(event.time_seconds))}</span>
                 <p>${escapeHtml(capper||"Unknown player")}</p>
@@ -606,11 +606,12 @@ document.addEventListener("click",event=>{
   const detail=document.getElementById(marker.dataset.capDetail);
   if(!detail)return;
   const rect=marker.getBoundingClientRect();
-  if(detail.matches(":popover-open")){
-    detail.hidePopover();
+  if(!detail.hidden){
+    detail.hidden=true;
     return;
   }
-  detail.showPopover();
+  document.querySelectorAll(".cap-detail:not([hidden])").forEach(open=>{open.hidden=true;});
+  detail.hidden=false;
   requestAnimationFrame(()=>{
     const width=detail.offsetWidth||240;
     const height=detail.offsetHeight||80;
@@ -619,4 +620,14 @@ document.addEventListener("click",event=>{
     detail.style.left=`${left}px`;
     detail.style.top=`${top}px`;
   });
+});
+
+document.addEventListener("click",event=>{
+  if(event.target.closest(".cap-marker[data-cap-detail]"))return;
+  document.querySelectorAll(".cap-detail:not([hidden])").forEach(detail=>{detail.hidden=true;});
+});
+
+document.addEventListener("keydown",event=>{
+  if(event.key!=="Escape")return;
+  document.querySelectorAll(".cap-detail:not([hidden])").forEach(detail=>{detail.hidden=true;});
 });
