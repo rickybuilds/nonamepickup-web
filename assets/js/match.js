@@ -450,6 +450,7 @@ function renderRoundSections(rounds,roundPlayerStats,roundMvps,blue,red,statsRow
   return numbers.map(number=>`
     <section class="match-card round-details-card round-section round-${number}" aria-labelledby="round-heading-${number}">
       <h2 id="round-heading-${number}">Round ${number}</h2>
+      <p class="round-scroll-hint">Swipe the table for more stats.</p>
       ${renderRoundDetail(
         number,
         roundPlayerStats.filter(row=>Number(row.round_num||0)===number),
@@ -491,7 +492,7 @@ function renderRoundCombinedTable(grouped,roundNum,roundMvps,blue,red,statsRows)
     touches:rows.some(row=>Number(row.flag_touches||0)!==0),
     flagTime:rows.some(row=>Number(row.flag_time_seconds||0)!==0)
   };
-  return `<section class="round-team-table combined-round-table"><div class="round-table-scroll"><table class="round-stats-table"><thead><tr>
+  return `<section class="round-team-table combined-round-table"><div class="round-table-scroll" tabindex="0" role="region" aria-label="Round ${roundNum} player statistics"><table class="round-stats-table"><thead><tr>
     <th>Player</th><th>Role</th><th>K</th><th>Deaths E/T/S</th><th>Dmg</th><th>Team Dmg</th><th>CK</th>
     ${show.sg?"<th>SG</th>":""}${show.cj?"<th>CJ</th>":""}${show.caps?"<th>Caps</th>":""}${show.touches?"<th>Touches</th>":""}${show.flagTime?"<th>Flag Time</th>":""}
   </tr></thead><tbody>${rows.map((row,index)=>{

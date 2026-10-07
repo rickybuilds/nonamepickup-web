@@ -78,20 +78,16 @@
 .match-links{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
 .match-links a{padding:9px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:#fff;text-decoration:none;background:rgba(255,255,255,.055);font-weight:900}
 .match-links a:hover{border-color:rgba(34,197,94,.45);color:#34d399;box-shadow:0 0 12px rgba(34,197,94,.18)}
-.round-layout-toggle{padding:9px 14px;border:1px solid rgba(96,165,250,.32);border-radius:999px;background:rgba(96,165,250,.1);color:#dbeafe;font:inherit;font-weight:900;cursor:pointer}
-.round-layout-toggle:hover{border-color:rgba(96,165,250,.7);background:rgba(96,165,250,.18)}
-.rounds-side-by-side .rounds-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
 .rounds-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
-.rounds-side-by-side .rounds-layout .match-card{min-width:0}
-.rounds-side-by-side .rounds-layout .round-team-tables{grid-template-columns:1fr}
-#match-root.rounds-side-by-side .round-section.round-2 .round-team-table.red{order:-1}
+.rounds-layout .match-card{min-width:0;margin-bottom:0}
+.rounds-layout{margin-bottom:16px}
 .combined-round-table{border:0!important;background:transparent!important}
 .rounds-layout .round-team-tables{grid-template-columns:1fr}
 .combined-round-table{width:100%}
 .combined-round-table .round-stats-table tbody tr.blue td{background:rgba(37,99,235,.07)}
 .combined-round-table .round-stats-table tbody tr.red td{background:rgba(220,38,38,.07)}
 .combined-round-table .round-stats-table tbody tr.team-break td{border-top:2px solid rgba(255,255,255,.16)}
-@media(max-width:1100px){.rounds-side-by-side .rounds-layout{grid-template-columns:1fr}}
+@media(max-width:1100px){.rounds-layout{grid-template-columns:minmax(0,1fr)}}
 
 .match-card{margin-bottom:16px}
 .match-card h2{margin:0 0 14px;color:#dbeafe;font-family:Orbitron,system-ui,sans-serif;font-size:18px;font-weight:950}
@@ -299,3 +295,30 @@ button.cap-marker{padding:0;border:0;background:transparent;cursor:pointer;font:
 .match-mini-title{font-size:12px}
 .match-mini-row{font-size:14px;padding:9px 10px}
 .cap-timeline-axis{font-size:13px}
+
+/* Phone layout: a full-width round at a time, with local table scrolling. */
+.round-scroll-hint{display:none}
+@media(max-width:800px){
+  .matches-page .match-main .match-shell{padding:0!important}
+  .rounds-layout{gap:12px}
+  .round-detail-panel,.round-team-tables,.round-table-scroll,.player-team-card{min-width:0;max-width:100%}
+  .round-table-scroll{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  .round-scroll-hint{display:block;margin:-4px 0 12px;color:#b8c7e0;font-size:12px;line-height:1.5}
+  .round-stats-table{min-width:760px;font-size:14px;line-height:1.5}
+  .round-stats-table th{font-size:11px;letter-spacing:.02em}
+  .round-stats-table th,.round-stats-table td{padding:10px 8px}
+  .round-stats-table th:first-child,.round-stats-table td:first-child{position:sticky;left:0;z-index:1;background:#0b1220}
+  .combined-round-table .round-stats-table tr.blue td:first-child{background:#0c1930}
+  .combined-round-table .round-stats-table tr.red td:first-child{background:#21121d}
+  .round-player-name{max-width:140px}
+  .match-card h2{font-size:20px}
+  .match-player-top a{font-size:18px}
+  .match-player-kpis span{font-size:11px}
+  .match-player-kpis strong{font-size:18px}
+  .match-links{gap:8px}
+  .match-links a{display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;font-size:12px;padding:8px 10px}
+  .cap-timeline-head{flex-wrap:wrap;gap:4px 12px}
+  .cap-timeline-head span{white-space:normal;font-size:10px}
+  .cap-timeline-axis{font-size:11px;letter-spacing:0}
+  .matches-page .match-top-grid .match-mvp-pill{box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.5;padding:8px 12px}
+}
