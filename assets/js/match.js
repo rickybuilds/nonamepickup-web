@@ -89,9 +89,10 @@ function renderMatch(m){
       ${m.hampalyzer_url?`<a href="${escapeAttr(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">Hampalyzer</a>`:""}
       ${m.tfcstats_url?`<a href="${escapeAttr(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`:""}
       <a href="matches.html">Back to Matches</a>
+      <button type="button" class="round-layout-toggle" aria-pressed="false">Compare rounds</button>
     </div>
 
-    ${roundSections}
+    <div class="rounds-layout">${roundSections}</div>
 
     ${renderCapTimelineCard(capTimeline)}
 
@@ -110,6 +111,12 @@ function renderMatch(m){
 		fallbackSrc: "assets/images/maps/NoMap.webp"
 	  });
 	}
+	  const layoutToggle=root.querySelector(".round-layout-toggle");
+	  layoutToggle?.addEventListener("click",()=>{
+	    const sideBySide=root.classList.toggle("rounds-side-by-side");
+	    layoutToggle.setAttribute("aria-pressed",sideBySide?"true":"false");
+	    layoutToggle.textContent=sideBySide?"Stack rounds":"Compare rounds";
+	  });
 	}
 
 function playerKeys(teamPlayer,stats){
