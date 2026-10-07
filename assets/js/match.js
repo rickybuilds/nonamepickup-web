@@ -397,7 +397,7 @@ function renderCapTimelineCard(capTimeline){
             return `
               <button
                 type="button"
-                popovertarget="cap-detail-${index}"
+                data-cap-detail="cap-detail-${index}"
                 class="cap-marker ${teamClass}"
                 style="left:${left}%"
                 title="${escapeAttr(ariaLabel)}"
@@ -406,7 +406,7 @@ function renderCapTimelineCard(capTimeline){
                 <img src="${escapeAttr(icon)}" alt="" loading="lazy" aria-hidden="true">
                 <span class="cap-marker-badge">${escapeHtml(capNum)}</span>
               </button>
-              <div id="cap-detail-${index}" class="cap-detail ${teamClass}" popover>
+              <div id="cap-detail-${index}" class="cap-detail ${teamClass}" popover="manual">
                 <strong>${escapeHtml(capTeamLabel(event.team))} Cap ${escapeHtml(capNum)}</strong>
                 <span>${escapeHtml(event.time_text||matchFormatSeconds(event.time_seconds))}</span>
                 <p>${escapeHtml(capper||"Unknown player")}</p>
@@ -600,11 +600,23 @@ document.addEventListener("DOMContentLoaded",loadMatch);
 
 // Position native popovers near their flags; outside clicks and Escape dismiss them.
 document.addEventListener("click",event=>{
-  const marker=event.target.closest(".cap-marker[popovertarget]");
+  const marker=event.target.closest(".cap-marker[data-cap-detail]");
   if(!marker)return;
-  const detail=document.getElementById(marker.getAttribute("popovertarget"));
+  event.preventDefault();
+  const detail=document.getElementById(marker.dataset.capDetail);
   if(!detail)return;
   const rect=marker.getBoundingClientRect();
-  detail.style.left=Math.max(8,Math.min(rect.left+rect.width/2-120,window.innerWidth-248))+"px";
-  detail.style.top=Math.max(8,Math.min(rect.bottom+10,window.innerHeight-120))+"px";
+  if(detail.matches(":popover-open")){
+    detail.hidePopover();
+    return;
+  }
+  detail.showPopover();
+  requestAnimationFrame(()=>{
+    const width=detail.offsetWidth||240;
+    const height=detail.offsetHeight||80;
+    const left=Math.max(8,Math.min(rect.left+rect.width/2-width/2,window.innerWidth-width-8));
+    const top=rect.bottom+10+height<=window.innerHeight?rect.bottom+10:Math.max(8,rect.top-height-10);
+    detail.style.left=`${left}px`;
+    detail.style.top=`${top}px`;
+  });
 });
