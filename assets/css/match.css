@@ -260,7 +260,7 @@
 .matches-page .match-top-grid .score-map{font-size:22px;margin-bottom:10px}
 .matches-page .match-top-grid .score-team{min-height:76px;padding:12px 16px;border-radius:16px}
 .matches-page .match-top-grid .score-team strong{font-size:44px}
-.matches-page .match-top-grid .match-mvp-pill{margin-top:10px;padding:5px 10px;font-size:11px}
+.matches-page .match-top-grid .match-mvp-pill{margin-top:14px;padding:9px 16px;font-size:14px;letter-spacing:.02em;box-shadow:0 0 16px rgba(250,204,21,.16)}
 .cap-timeline-card{padding:14px 20px!important}
 .cap-timeline-head{margin-bottom:8px}
 .cap-timeline-head span{padding:0;border:0;border-radius:0;background:none}
