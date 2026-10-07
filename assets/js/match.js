@@ -89,7 +89,6 @@ function renderMatch(m){
       ${m.hampalyzer_url?`<a href="${escapeAttr(m.hampalyzer_url)}" target="_blank" rel="noopener noreferrer">Hampalyzer</a>`:""}
       ${m.tfcstats_url?`<a href="${escapeAttr(m.tfcstats_url)}" target="_blank" rel="noopener noreferrer">TFCStats</a>`:""}
       <a href="matches.html">Back to Matches</a>
-      <button type="button" class="round-layout-toggle" aria-pressed="false">Compare rounds</button>
     </div>
 
     <div class="rounds-layout">${roundSections}</div>
@@ -111,12 +110,6 @@ function renderMatch(m){
 		fallbackSrc: "assets/images/maps/NoMap.webp"
 	  });
 	}
-	  const layoutToggle=root.querySelector(".round-layout-toggle");
-	  layoutToggle?.addEventListener("click",()=>{
-	    const sideBySide=root.classList.toggle("rounds-side-by-side");
-	    layoutToggle.setAttribute("aria-pressed",sideBySide?"true":"false");
-	    layoutToggle.textContent=sideBySide?"Stack rounds":"Compare rounds";
-	  });
 	}
 
 function playerKeys(teamPlayer,stats){
@@ -489,7 +482,8 @@ function renderRoundDetail(number,rows,roundMvps,blue,red,statsRows){
 }
 
 function renderRoundCombinedTable(grouped,roundNum,roundMvps,blue,red,statsRows){
-  const rows=[...grouped.team1.map(row=>({...row,__team:"blue"})),...grouped.team2.map(row=>({...row,__team:"red"}))];
+  const invertTeams=Number(roundNum)===2;
+  const rows=[...grouped.team1.map(row=>({...row,__team:invertTeams?"red":"blue"})),...grouped.team2.map(row=>({...row,__team:invertTeams?"blue":"red"}))];
   const show={
     sg:rows.some(row=>Number(row.sentry_kills||0)!==0),
     cj:rows.some(row=>Number(row.conc_jumps||0)!==0),
