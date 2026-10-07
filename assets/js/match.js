@@ -490,6 +490,14 @@ function renderRoundDetail(number,rows,roundMvps,blue,red,statsRows){
 }
 
 function renderRoundTeamTable(title,rows,color,roundNum,roundMvps,blue,red,statsRows){
+  const show={
+    sg:rows.some(row=>Number(row.sentry_kills||0)!==0),
+    cj:rows.some(row=>Number(row.conc_jumps||0)!==0),
+    caps:rows.some(row=>Number(row.flag_captures||0)!==0),
+    touches:rows.some(row=>Number(row.flag_touches||0)!==0),
+    flagTime:rows.some(row=>Number(row.flag_time_seconds||0)!==0)
+  };
+  const visibleCount=7+Object.values(show).filter(Boolean).length;
   return `
     <section class="round-team-table ${color}">
       <div class="round-team-title">
@@ -507,20 +515,20 @@ function renderRoundTeamTable(title,rows,color,roundNum,roundMvps,blue,red,stats
               <th>Dmg</th>
               <th>Team Dmg</th>
               <th title="Conced kills">CK</th>
-              <th title="Sentry kills">SG</th>
-              <th title="Concussion jumps">CJ</th>
-              <th>Caps</th>
-              <th>Touches</th>
-              <th>Flag Time</th>
+              ${show.sg?'<th title="Sentry kills">SG</th>':""}
+              ${show.cj?'<th title="Concussion jumps">CJ</th>':""}
+              ${show.caps?"<th>Caps</th>":""}
+              ${show.touches?"<th>Touches</th>":""}
+              ${show.flagTime?"<th>Flag Time</th>":""}
             </tr>
           </thead>
           <tbody>
             ${rows.length
               ?[...rows]
                 .sort((a,b)=>Number(b.kills||0)-Number(a.kills||0))
-                .map(row=>renderRoundPlayerRow(row,roundNum,roundMvps,blue,red,statsRows))
+                .map(row=>renderRoundPlayerRow(row,roundNum,roundMvps,blue,red,statsRows,show))
                 .join("")
-              :'<tr><td colspan="12" class="round-table-empty">No round stats</td></tr>'}
+              :`<tr><td colspan="${visibleCount}" class="round-table-empty">No round stats</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -528,7 +536,7 @@ function renderRoundTeamTable(title,rows,color,roundNum,roundMvps,blue,red,stats
   `;
 }
 
-function renderRoundPlayerRow(row,roundNum,roundMvps,blue,red,statsRows){
+function renderRoundPlayerRow(row,roundNum,roundMvps,blue,red,statsRows,show){
   const isMvp=roundMvpForPlayer(row,roundNum,roundMvps);
   return `
     <tr class="${isMvp?"round-mvp-row":""}">
@@ -539,11 +547,11 @@ function renderRoundPlayerRow(row,roundNum,roundMvps,blue,red,statsRows){
       <td>${fmt(row.enemy_damage)}</td>
       <td>${fmt(row.team_damage)}</td>
       <td>${fmt(row.conced_kills)}</td>
-      <td>${fmt(row.sentry_kills)}</td>
-      <td>${fmt(row.conc_jumps)}</td>
-      <td>${fmt(row.flag_captures)}</td>
-      <td>${fmt(row.flag_touches)}</td>
-      <td>${matchFormatSeconds(row.flag_time_seconds)}</td>
+      ${show.sg?`<td>${fmt(row.sentry_kills)}</td>`:""}
+      ${show.cj?`<td>${fmt(row.conc_jumps)}</td>`:""}
+      ${show.caps?`<td>${fmt(row.flag_captures)}</td>`:""}
+      ${show.touches?`<td>${fmt(row.flag_touches)}</td>`:""}
+      ${show.flagTime?`<td>${matchFormatSeconds(row.flag_time_seconds)}</td>`:""}
     </tr>
   `;
 }
