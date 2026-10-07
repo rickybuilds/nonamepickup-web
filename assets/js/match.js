@@ -93,8 +93,6 @@ function renderMatch(m){
 
     ${renderCapTimelineCard(capTimeline)}
 
-    ${renderMatchMvpsCard(matchMvps,m.nn_mvp)}
-
     ${roundSections}
 
     <div class="match-card">
@@ -112,7 +110,6 @@ function renderMatch(m){
 		fallbackSrc: "assets/images/maps/NoMap.webp"
 	  });
 	}
-	  bindRoundTabs(root);
 	}
 
 function playerKeys(teamPlayer,stats){
@@ -460,92 +457,22 @@ function renderRoundMvpLabel(roundNum,roundMvps){
 
 function renderRoundSections(rounds,roundPlayerStats,roundMvps,blue,red,statsRows){
   const numbers=roundNumbers(rounds,roundPlayerStats);
-  if(!numbers.length)return"";
-
-  const roundsByNumber=new Map(rounds.map(r=>[Number(r.round_num||0),r]));
-  const statsByRound=new Map(numbers.map(n=>[
-    n,
-    roundPlayerStats.filter(r=>Number(r.round_num||0)===n)
-  ]));
-  const firstRound=numbers[0];
-
-  return `
-    <section class="match-card round-overview-card">
-      <h2>Round Overview</h2>
-      <div class="round-overview-grid">
-        ${numbers.map(number=>renderRoundOverviewCard(
-          number,
-          roundsByNumber.get(number)||{},
-          statsByRound.get(number)||[],
-          roundMvps,
-          blue,
-          red,
-          statsRows
-        )).join("")}
-      </div>
+  return numbers.map(number=>`
+    <section class="match-card round-details-card" aria-labelledby="round-heading-${number}">
+      <h2 id="round-heading-${number}">Round ${number}</h2>
+      ${renderRoundDetail(
+        number,
+        roundPlayerStats.filter(row=>Number(row.round_num||0)===number),
+        roundMvps,
+        blue,
+        red,
+        statsRows
+      )}
     </section>
-
-    <section class="match-card round-details-card">
-      <div class="round-details-head">
-        <h2>Round Details</h2>
-        <div class="round-tabs" role="tablist" aria-label="Match rounds">
-          ${numbers.map(number=>`
-            <button
-              type="button"
-              class="round-tab ${number===firstRound?"active":""}"
-              data-round-tab="${escapeAttr(number)}"
-              role="tab"
-              aria-selected="${number===firstRound?"true":"false"}"
-            >Round ${number}</button>
-          `).join("")}
-        </div>
-      </div>
-      <div class="round-detail-panels">
-        ${numbers.map(number=>renderRoundDetail(
-          number,
-          statsByRound.get(number)||[],
-          roundMvps,
-          blue,
-          red,
-          statsRows,
-          number===firstRound
-        )).join("")}
-      </div>
-    </section>
-  `;
+  `).join("");
 }
 
-function renderRoundOverviewCard(number,round,rows,roundMvps,blue,red,statsRows){
-  const duration=Number(round.duration_seconds||0);
-  const sideParts=[];
-  if(round.offense_team)sideParts.push(`Offense: ${round.offense_team}`);
-  if(round.defense_team)sideParts.push(`Defense: ${round.defense_team}`);
-
-  return `
-    <article class="round-overview-item">
-      <div class="round-overview-head">
-        <strong>Round ${number}</strong>
-        <span>${escapeHtml(round.map_name||"")}</span>
-      </div>
-      ${renderRoundMvpLabel(number,roundMvps)}
-      <div class="round-score">
-        <div class="team1"><span>Team 1</span><b>${fmt(round.team1_score)}</b></div>
-        <i>-</i>
-        <div class="team2"><span>Team 2</span><b>${fmt(round.team2_score)}</b></div>
-      </div>
-      <div class="round-meta">
-        <span>Duration: <b>${duration?matchFormatSeconds(duration):"-"}</b></span>
-        ${sideParts.length?`<span>${escapeHtml(sideParts.join(" / "))}</span>`:""}
-      </div>
-      <div class="round-leaders">
-        <div><span>Top Kills</span><strong>${topRoundPlayer(rows,"kills",blue,red,statsRows)}</strong></div>
-        <div><span>Top Damage</span><strong>${topRoundPlayer(rows,"enemy_damage",blue,red,statsRows)}</strong></div>
-      </div>
-    </article>
-  `;
-}
-
-function renderRoundDetail(number,rows,roundMvps,blue,red,statsRows,isActive){
+function renderRoundDetail(number,rows,roundMvps,blue,red,statsRows){
   const grouped={team1:[],team2:[],unknown:[]};
   for(const row of rows){
     const team=resolveRoundTeam(row,blue,red,statsRows);
@@ -553,12 +480,7 @@ function renderRoundDetail(number,rows,roundMvps,blue,red,statsRows,isActive){
   }
 
   return `
-    <div
-      class="round-detail-panel ${isActive?"active":""}"
-      data-round-panel="${escapeAttr(number)}"
-      role="tabpanel"
-      ${isActive?"":"hidden"}
-    >
+    <div class="round-detail-panel">
       <div class="round-team-tables">
         ${renderRoundTeamTable("Team 1",grouped.team1,"blue",number,roundMvps,blue,red,statsRows)}
         ${renderRoundTeamTable("Team 2",grouped.team2,"red",number,roundMvps,blue,red,statsRows)}
@@ -627,28 +549,6 @@ function renderRoundPlayerRow(row,roundNum,roundMvps,blue,red,statsRows){
       <td>${matchFormatSeconds(row.flag_time_seconds)}</td>
     </tr>
   `;
-}
-
-function bindRoundTabs(root){
-  if(root.dataset.roundTabsBound==="1")return;
-  root.dataset.roundTabsBound="1";
-
-  root.addEventListener("click",event=>{
-    const tab=event.target.closest("[data-round-tab]");
-    if(!tab||!root.contains(tab))return;
-
-    const round=String(tab.dataset.roundTab||"");
-    root.querySelectorAll("[data-round-tab]").forEach(button=>{
-      const active=String(button.dataset.roundTab||"")===round;
-      button.classList.toggle("active",active);
-      button.setAttribute("aria-selected",active?"true":"false");
-    });
-    root.querySelectorAll("[data-round-panel]").forEach(panel=>{
-      const active=String(panel.dataset.roundPanel||"")===round;
-      panel.classList.toggle("active",active);
-      panel.hidden=!active;
-    });
-  });
 }
 
 function renderPlayerTeam(title,teamRows,statsRows,classRows,weaponRows,color){
