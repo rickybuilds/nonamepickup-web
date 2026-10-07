@@ -247,9 +247,9 @@
 
 /* Keep the match summary within the shared page hero footprint. */
 .matches-page .match-top-grid{align-items:center;gap:24px}
-.matches-page .match-top-grid .match-hero{min-width:0;min-height:0;padding:0!important;border:0;background:none;box-shadow:none;border-radius:0!important}
+.matches-page .match-top-grid .match-hero{min-width:0;min-height:0;padding:0!important;border:0;background:transparent!important;box-shadow:none;border-radius:0!important}
 .matches-page .match-top-grid{background:
-  linear-gradient(90deg,rgba(3,7,17,.78) 0%,rgba(3,7,17,.58) 24%,rgba(3,7,17,.08) 43%,rgba(3,7,17,.08) 68%,rgba(3,7,17,.38) 100%),
+  linear-gradient(90deg,rgba(3,7,17,.22),rgba(3,7,17,.12) 48%,rgba(3,7,17,.28)),
   radial-gradient(circle at 18% 25%,var(--page-hero-accent),transparent 42%),
   radial-gradient(circle at 86% 18%,var(--page-hero-accent-2),transparent 36%),
   var(--page-hero-image) center / cover no-repeat,
