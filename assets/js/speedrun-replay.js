@@ -588,7 +588,21 @@ function runTime(ms) {
   return Number.isFinite(value) ? formatTime(value / 1000) : "-";
 }
 
+function isBootcampReplay(replay = state.replay) {
+  return replay?.source === "bootcamp";
+}
+
 function apiReplayPath(query) {
+  const bootcampRunId = firstParam(query, ["bootcampRunId", "bootcamp_run_id"]);
+  if (bootcampRunId) {
+    if (!/^\d+$/.test(bootcampRunId) || Number(bootcampRunId) <= 0) throw new Error("Invalid Bootcamp run ID.");
+    return `/api/bootcamp/replay/run/${encodeURIComponent(bootcampRunId)}`;
+  }
+  const bootcampGhostId = firstParam(query, ["bootcampGhostId", "bootcamp_ghost_id"]);
+  if (bootcampGhostId) {
+    if (!/^\d+$/.test(bootcampGhostId) || Number(bootcampGhostId) <= 0) throw new Error("Invalid Bootcamp replay ID.");
+    return `/api/bootcamp/replay/ghost/${encodeURIComponent(bootcampGhostId)}`;
+  }
   const runId = firstParam(query, ["runId", "run_id", "run"]);
   if (runId) {
     if (!/^\d+$/.test(runId) || Number(runId) <= 0) throw new Error("Invalid replay run ID.");
@@ -616,6 +630,7 @@ async function fetchReplay() {
 }
 
 function canonicalizeReplayUrl(replay) {
+  if (isBootcampReplay(replay)) return;
   const runId = Number(replay?.runId);
   if (!Number.isSafeInteger(runId) || runId <= 0) return;
 
@@ -1201,8 +1216,10 @@ function clearComparison({ updateUrl = true } = {}) {
   if (updateUrl) {
     const url = new URL(window.location.href);
     url.searchParams.delete("compareRunId");
+    url.searchParams.delete("compareBootcampRunId");
     window.history.replaceState(null, "", url);
   }
+  invalidateSpeedGraph();
   updateComparisonLegend();
 }
 
@@ -1236,8 +1253,13 @@ async function loadComparison(path, { closePanel = true } = {}) {
     $("replay-slider").max = String(Math.max(1, Math.round(state.duration * 1000)));
     $("replay-duration").textContent = formatTime(state.duration);
     const url = new URL(window.location.href);
-    url.searchParams.set("compareRunId", String(replay.runId));
+    if (isBootcampReplay(replay)) {
+      if (replay.runId) url.searchParams.set("compareBootcampRunId", String(replay.runId));
+    } else {
+      url.searchParams.set("compareRunId", String(replay.runId));
+    }
     window.history.replaceState(null, "", url);
+    invalidateSpeedGraph();
     updateComparisonLegend();
     updatePlayer();
     renderReplayScene();
@@ -1257,6 +1279,32 @@ function addComparisonOption(select, value, label) {
   select.appendChild(option);
 }
 
+// Bootcamp: other runs on the same training route (leaderboard first, then recent).
+async function bootcampComparisonCandidates() {
+  const routeId = Number(state.replay?.routeId);
+  if (!Number.isSafeInteger(routeId) || routeId <= 0) return [];
+  const data = await fetchJson(`/api/bootcamp/routes/${encodeURIComponent(routeId)}`);
+  const candidates = [];
+  const seen = new Set([Number(state.replay.runId)]);
+  for (const row of data.leaderboard || []) {
+    if (!row.hasReplay || seen.has(Number(row.runId))) continue;
+    seen.add(Number(row.runId));
+    candidates.push({
+      path: `/api/bootcamp/replay/run/${encodeURIComponent(row.runId)}`,
+      label: `#${row.rank} ${row.playerName} — ${row.timeDisplay} (${row.className}${row.tier ? `, ${BOOTCAMP_TIER_NAMES[Number(row.tier)] || ""}` : ""})`
+    });
+  }
+  for (const row of data.recentRuns || []) {
+    if (!row.hasReplay || seen.has(Number(row.runId))) continue;
+    seen.add(Number(row.runId));
+    candidates.push({
+      path: `/api/bootcamp/replay/run/${encodeURIComponent(row.runId)}`,
+      label: `Recent: ${row.playerName} — ${row.timeDisplay} (${row.className})`
+    });
+  }
+  return candidates;
+}
+
 async function loadComparisonCandidates() {
   if (state.comparisonCandidatesLoaded || !state.replay?.map) return;
   const select = $("replay-compare-select");
@@ -1267,6 +1315,16 @@ async function loadComparisonCandidates() {
   select.replaceChildren(new Option("Loading runs...", ""));
 
   try {
+    if (isBootcampReplay()) {
+      const candidates = await bootcampComparisonCandidates();
+      select.replaceChildren(new Option(candidates.length ? "Choose a run..." : "No other replay-enabled runs", ""));
+      for (const candidate of candidates) addComparisonOption(select, candidate.path, candidate.label);
+      select.disabled = !candidates.length;
+      addButton.disabled = true;
+      state.comparisonCandidatesLoaded = true;
+      if (status) status.textContent = candidates.length ? "" : "No other replay-enabled runs were found for this route.";
+      return;
+    }
     const data = await fetchJson(`/api/speedruns/maps/${encodeURIComponent(state.replay.map)}`);
     const candidates = [];
     const seen = new Set();
@@ -2432,6 +2490,7 @@ function updatePlayer() {
   if (slider && document.activeElement !== slider) slider.value = String(Math.round(state.playbackTime * 1000));
   const clock = $("replay-clock");
   if (clock) clock.textContent = formatTime(state.playbackTime);
+  drawSpeedGraph();
 }
 
 function resize() {
@@ -2853,7 +2912,11 @@ function wireControls() {
 
   window.addEventListener("blur", () => freeRoamKeys.clear());
 
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", () => {
+    resize();
+    invalidateSpeedGraph();
+  });
+  wireSpeedGraph();
 }
 
 async function setupProjectileVisuals() {
@@ -2874,6 +2937,189 @@ async function setupProjectileVisuals() {
   for (const smoke of state.projectileSmokeEffects) {
     smokeRoot.add(smoke.sprite);
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Bootcamp labels
+   --------------------------------------------------------------------------- */
+const BOOTCAMP_TIER_NAMES = ["", "Bronze", "Silver", "Gold", "Platinum"];
+
+function applyBootcampReplayLabels(replay) {
+  const kicker = document.querySelector(".replay-topbar .speedrun-kicker");
+  if (kicker) kicker.textContent = "BOOTCAMP REPLAY";
+  const what = replay.routeName || (replay.kind === "drill" ? "Drill recording" : "Training recording");
+  $("replay-title").textContent = `${replay.map || "Map"} / ${what}`;
+  const tier = BOOTCAMP_TIER_NAMES[Number(replay.tier)] || "";
+  const subtitle = $("replay-subtitle");
+  if (subtitle) subtitle.textContent = `${subtitle.textContent} · ${replay.className || "Any class"}${tier ? ` · ${tier}` : ""}`;
+  const link = $("replay-map-link");
+  if (link) {
+    link.textContent = replay.routeId ? "Route" : "Bootcamp";
+    link.href = replay.routeId
+      ? `bootcamp-route.html?id=${encodeURIComponent(replay.routeId)}`
+      : `bootcamp-map.html?map=${encodeURIComponent(replay.map || "")}`;
+  }
+  document.title = `NoName TFC | ${replay.map || "Bootcamp"} Bootcamp Replay`;
+}
+
+/* ---------------------------------------------------------------------------
+   Speed-over-time graph under the scrubber (click or drag to seek). Bootcamp
+   replays also mark their recorded events: jumps, conc throws and blasts,
+   checkpoints and the finish.
+   --------------------------------------------------------------------------- */
+const SPEED_GRAPH_EVENTS = {
+  jump: { color: "rgba(148, 163, 184, .55)", height: 0.18 },
+  conc_throw: { color: "#38bdf8", height: 1 },
+  conc_explode: { color: "#a78bfa", height: 1 },
+  detpipe: { color: "#f97316", height: 1 },
+  checkpoint: { color: "#facc15", height: 1 },
+  flag: { color: "#34d399", height: 1 },
+  finish: { color: "#fb7185", height: 1 }
+};
+let speedGraphBase = null;
+
+function horizontalSpeedSeries(frames) {
+  const series = [];
+  for (let index = 1; index < (frames || []).length; index += 1) {
+    const a = frames[index - 1];
+    const b = frames[index];
+    const dt = b.rt - a.rt;
+    if (!Number.isFinite(dt) || dt <= 0) continue;
+    const dx = b.p.x - a.p.x;
+    const dz = b.p.z - a.p.z;
+    series.push({ t: b.rt, v: Math.sqrt(dx * dx + dz * dz) / dt });
+  }
+  // Light smoothing so 50 Hz jitter doesn't hide the shape.
+  return series.map((point, index) => {
+    let sum = 0;
+    let n = 0;
+    for (let k = Math.max(0, index - 2); k <= Math.min(series.length - 1, index + 2); k += 1) {
+      sum += series[k].v;
+      n += 1;
+    }
+    return { t: point.t, v: sum / n };
+  });
+}
+
+function invalidateSpeedGraph() {
+  speedGraphBase = null;
+  drawSpeedGraph();
+}
+
+function speedGraphEvents() {
+  if (!isBootcampReplay() || !Array.isArray(state.replay?.events) || !state.origin) return [];
+  return state.replay.events
+    .filter(event => SPEED_GRAPH_EVENTS[event.name])
+    .map(event => ({ ...event, rt: Number(event.t) - state.origin.t }));
+}
+
+function buildSpeedGraphBase(width, height) {
+  const off = document.createElement("canvas");
+  off.width = width;
+  off.height = height;
+  const ctx = off.getContext("2d");
+  const primary = horizontalSpeedSeries(state.normalized);
+  const comparison = state.comparison ? horizontalSpeedSeries(state.comparison.normalized) : [];
+  const duration = Math.max(0.001, state.duration);
+  const maxSpeed = Math.max(400, ...primary.map(point => point.v), ...comparison.map(point => point.v));
+  const x = t => (t / duration) * width;
+  const y = v => height - 2 - (v / maxSpeed) * (height - 6);
+
+  ctx.fillStyle = "rgba(15, 23, 42, .55)";
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "rgba(148, 163, 184, .14)";
+  ctx.lineWidth = 1;
+  for (let v = 500; v < maxSpeed; v += 500) {
+    ctx.beginPath();
+    ctx.moveTo(0, Math.round(y(v)) + 0.5);
+    ctx.lineTo(width, Math.round(y(v)) + 0.5);
+    ctx.stroke();
+  }
+
+  for (const event of speedGraphEvents()) {
+    const style = SPEED_GRAPH_EVENTS[event.name];
+    const ex = Math.round(x(event.rt)) + 0.5;
+    ctx.strokeStyle = style.color;
+    ctx.beginPath();
+    ctx.moveTo(ex, height);
+    ctx.lineTo(ex, height - height * style.height);
+    ctx.stroke();
+  }
+
+  const plot = (series, color) => {
+    if (series.length < 2) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    series.forEach((point, index) => {
+      if (index === 0) ctx.moveTo(x(point.t), y(point.v));
+      else ctx.lineTo(x(point.t), y(point.v));
+    });
+    ctx.stroke();
+  };
+  plot(comparison, "#f472b6");
+  plot(primary, "#38bdf8");
+
+  ctx.fillStyle = "rgba(203, 213, 225, .75)";
+  ctx.font = "10px Inter, system-ui, sans-serif";
+  ctx.fillText(`${Math.round(maxSpeed)} u/s`, 4, 11);
+  return off;
+}
+
+function drawSpeedGraph() {
+  const canvasEl = $("replay-speed-graph");
+  if (!canvasEl || !state.normalized?.length) return;
+  if (canvasEl.hidden) {
+    canvasEl.hidden = false;
+    canvasEl.closest(".replay-stage")?.classList.add("has-speed-graph");
+  }
+  const rect = canvasEl.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.floor(rect.width * ratio));
+  const height = Math.max(1, Math.floor(rect.height * ratio));
+  if (canvasEl.width !== width || canvasEl.height !== height) {
+    canvasEl.width = width;
+    canvasEl.height = height;
+    speedGraphBase = null;
+  }
+  if (!speedGraphBase) speedGraphBase = buildSpeedGraphBase(width, height);
+  const ctx = canvasEl.getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(speedGraphBase, 0, 0);
+  const px = Math.round((state.playbackTime / Math.max(0.001, state.duration)) * width) + 0.5;
+  ctx.strokeStyle = "#f8fafc";
+  ctx.lineWidth = Math.max(1, ratio);
+  ctx.beginPath();
+  ctx.moveTo(px, 0);
+  ctx.lineTo(px, height);
+  ctx.stroke();
+}
+
+function wireSpeedGraph() {
+  const canvasEl = $("replay-speed-graph");
+  if (!canvasEl) return;
+  let dragging = false;
+  const seek = event => {
+    const rect = canvasEl.getBoundingClientRect();
+    const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left) / Math.max(1, rect.width)));
+    state.playbackTime = fraction * state.duration;
+    state.frameIndex = 0;
+    if (state.comparison) state.comparison.frameIndex = 0;
+    setOverlaysVisible(true);
+    updatePlayer();
+    renderReplayScene();
+  };
+  canvasEl.addEventListener("pointerdown", event => {
+    dragging = true;
+    canvasEl.setPointerCapture?.(event.pointerId);
+    seek(event);
+  });
+  canvasEl.addEventListener("pointermove", event => {
+    if (dragging) seek(event);
+  });
+  const stop = () => { dragging = false; };
+  canvasEl.addEventListener("pointerup", stop);
+  canvasEl.addEventListener("pointercancel", stop);
 }
 
 async function init() {
@@ -2965,6 +3211,7 @@ async function init() {
     $("replay-slider").max = String(Math.max(1, Math.round(state.duration * 1000)));
     $("replay-map-link").href = `speedrun-map.html?map=${encodeURIComponent(replay.map || "")}`;
     document.title = `NoName TFC | ${replay.map || "Speedrun"} Replay`;
+    if (isBootcampReplay(replay)) applyBootcampReplayLabels(replay);
 
     buildSceneForReplay();
     const cameraButton = $("replay-camera-mode");
@@ -2975,9 +3222,15 @@ async function init() {
     updateComparisonLegend();
 
     const compareRunId = firstParam(params(), ["compareRunId", "compare_run_id"]);
-    if (compareRunId && /^\d+$/.test(compareRunId) && Number(compareRunId) !== Number(replay.runId)) {
+    const compareBootcampRunId = firstParam(params(), ["compareBootcampRunId", "compare_bootcamp_run_id"]);
+    if (isBootcampReplay(replay)) {
+      if (compareBootcampRunId && /^\d+$/.test(compareBootcampRunId) && Number(compareBootcampRunId) !== Number(replay.runId)) {
+        await loadComparison(`/api/bootcamp/replay/run/${encodeURIComponent(compareBootcampRunId)}`, { closePanel: true });
+      }
+    } else if (compareRunId && /^\d+$/.test(compareRunId) && Number(compareRunId) !== Number(replay.runId)) {
       await loadComparison(`/api/speedruns/replay/run/${encodeURIComponent(compareRunId)}`, { closePanel: true });
     }
+    invalidateSpeedGraph();
     updatePlayer();
     setStatus("");
   } catch (error) {

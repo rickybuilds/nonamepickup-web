@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A player's TFC license, tiers and personal bests.">
+  <title>NoName TFC | Bootcamp License</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20261004nav1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260910leaderboardfit2">
+  <link rel="stylesheet" href="assets/css/bootcamp.css?v=20261007bootcamp1">
+  <script src="assets/js/main.js?v=20261004nav1" defer></script>
+  <script src="assets/js/bootcamp.js?v=20261007bootcamp1" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] speedruns-page bootcamp-page" data-bootcamp-view="player">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Players</a>
+        <a href="speedruns.html">Speedruns</a>
+        <a href="live.html" class="nav-live">Live</a>
+        <details class="nav-more">
+          <summary>More<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m4 6 4 4 4-4"/></svg></summary>
+          <div class="nav-more-links">
+            <a href="bootcamp.html" aria-current="page">Bootcamp</a>
+            <a href="analytics.html">Analytics</a>
+            <a href="compare.html">Compare players</a>
+            <a href="kicked.html">Missed votes</a>
+            <a href="coolest-dude.html">Community honors</a>
+            <a href="mvp-breakdown.html">MVP breakdown</a>
+            <a href="tracker.html">Identity history</a>
+            <a href="live/">Browser spectator</a>
+          </div>
+        </details>
+      </nav>
+
+      <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+    </div>
+  </header>
+
+  <main class="speedrun-main">
+    <section class="speedrun-shell">
+      <div class="speedrun-hero detail">
+        <div class="speedrun-hero-copy">
+          <p class="speedrun-kicker" id="bc-kicker">TFC LICENSE</p>
+          <h1 id="bc-title">License</h1>
+          <p id="bc-subtitle" class="speedrun-subtitle">Bootcamp progress.</p>
+          <p id="bc-status" class="speedrun-updated">Loading...</p>
+        </div>
+
+        <section class="speedrun-summary bootcamp-summary" aria-label="Summary">
+          <article class="matches2-kpi"><span>License</span><strong id="bc-k-license">-</strong></article>
+          <article class="matches2-kpi"><span>Platinum</span><strong id="bc-k-platinum">-</strong></article>
+          <article class="matches2-kpi"><span>Gold</span><strong id="bc-k-gold">-</strong></article>
+          <article class="matches2-kpi"><span>Silver</span><strong id="bc-k-silver">-</strong></article>
+          <article class="matches2-kpi"><span>Bronze</span><strong id="bc-k-bronze">-</strong></article>
+        </section>
+      </div>
+
+      <div id="bc-error" class="speedrun-error" hidden></div>
+
+      <div id="bc-card" class="bootcamp-license-card" hidden></div>
+      <section class="speedrun-section bootcamp-section" aria-labelledby="bc-grid-heading">
+        <div class="speedrun-section-heading compact">
+          <div><h2 id="bc-grid-heading">Tiers by map</h2></div>
+        </div>
+        <div id="bc-grid" class="bootcamp-block"><div class="speedrun-empty">Loading...</div></div>
+      </section>
+      <div class="bootcamp-columns two">
+      <section class="speedrun-section bootcamp-section" aria-labelledby="bc-pbs-heading">
+        <div class="speedrun-section-heading compact">
+          <div><h2 id="bc-pbs-heading">Personal bests</h2></div>
+        </div>
+        <div id="bc-pbs" class="bootcamp-block"><div class="speedrun-empty">Loading...</div></div>
+      </section>
+      <section class="speedrun-section bootcamp-section" aria-labelledby="bc-lessons-heading">
+        <div class="speedrun-section-heading compact">
+          <div><h2 id="bc-lessons-heading">Lessons</h2></div>
+        </div>
+        <div id="bc-lessons" class="bootcamp-block"><div class="speedrun-empty">Loading...</div></div>
+      </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

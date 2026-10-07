@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Leaderboard and replays for a Bootcamp training route.">
+  <title>NoName TFC | Bootcamp Route</title>
+
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20261004nav1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260910leaderboardfit2">
+  <link rel="stylesheet" href="assets/css/bootcamp.css?v=20261007bootcamp1">
+  <script src="assets/js/main.js?v=20261004nav1" defer></script>
+  <script src="assets/js/bootcamp.js?v=20261007bootcamp1" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0a0c10] speedruns-page bootcamp-page" data-bootcamp-view="route">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div class="nn-logo" aria-label="NoName TFC">
+        <span class="logo-nn">NN</span>
+        <span class="logo-slash">//</span>
+        <span class="logo-tfc">TFC</span>
+      </div>
+
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a>
+        <a href="matches.html">Matches</a>
+        <a href="leaderboard.html">Players</a>
+        <a href="speedruns.html">Speedruns</a>
+        <a href="live.html" class="nav-live">Live</a>
+        <details class="nav-more">
+          <summary>More<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m4 6 4 4 4-4"/></svg></summary>
+          <div class="nav-more-links">
+            <a href="bootcamp.html" aria-current="page">Bootcamp</a>
+            <a href="analytics.html">Analytics</a>
+            <a href="compare.html">Compare players</a>
+            <a href="kicked.html">Missed votes</a>
+            <a href="coolest-dude.html">Community honors</a>
+            <a href="mvp-breakdown.html">MVP breakdown</a>
+            <a href="tracker.html">Identity history</a>
+            <a href="live/">Browser spectator</a>
+          </div>
+        </details>
+      </nav>
+
+      <input id="global-search" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search players..." aria-label="Search players" class="site-search">
+    </div>
+  </header>
+
+  <main class="speedrun-main">
+    <section class="speedrun-shell">
+      <div class="speedrun-hero detail">
+        <div class="speedrun-hero-copy">
+          <p class="speedrun-kicker" id="bc-kicker">TRAINING ROUTE</p>
+          <h1 id="bc-title">Bootcamp route</h1>
+          <p id="bc-subtitle" class="speedrun-subtitle">Leaderboard and replays.</p>
+          <p id="bc-status" class="speedrun-updated">Loading...</p>
+        </div>
+
+        <section class="speedrun-summary bootcamp-summary" aria-label="Summary">
+          <article class="matches2-kpi"><span>Record</span><strong id="bc-k-record">-</strong></article>
+          <article class="matches2-kpi"><span>Reference</span><strong id="bc-k-reference">-</strong></article>
+          <article class="matches2-kpi"><span>Runs</span><strong id="bc-k-runs">-</strong></article>
+          <article class="matches2-kpi"><span>Checkpoints</span><strong id="bc-k-checkpoints">-</strong></article>
+          <article class="matches2-kpi"><span>Class</span><strong id="bc-k-class">-</strong></article>
+        </section>
+      </div>
+
+      <div id="bc-error" class="speedrun-error" hidden></div>
+
+      <section class="speedrun-section bootcamp-section" aria-labelledby="bc-tiers-heading">
+        <div class="speedrun-section-heading compact">
+          <div><h2 id="bc-tiers-heading">Tier times</h2></div>
+        </div>
+        <div id="bc-tiers" class="bootcamp-block"><div class="speedrun-empty">Loading...</div></div>
+      </section>
+      <section class="speedrun-section bootcamp-section" aria-labelledby="bc-leaderboard-heading">
+        <div class="speedrun-section-heading compact">
+          <div><h2 id="bc-leaderboard-heading">Leaderboard</h2><p class="speedrun-section-subtitle">One row per player and class. Replays open in the 3D viewer; compare against the record from any row.</p></div>
+        </div>
+        <div id="bc-leaderboard" class="bootcamp-block"><div class="speedrun-empty">Loading...</div></div>
+      </section>
+      <section class="speedrun-section bootcamp-section" aria-labelledby="bc-recent-heading">
+        <div class="speedrun-section-heading compact">
+          <div><h2 id="bc-recent-heading">Recent runs</h2></div>
+        </div>
+        <div id="bc-recent" class="bootcamp-block"><div class="speedrun-empty">Loading...</div></div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

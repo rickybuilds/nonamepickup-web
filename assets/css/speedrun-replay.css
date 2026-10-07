@@ -696,6 +696,43 @@
   accent-color: #38bdf8;
 }
 
+.replay-speed-graph {
+  grid-column: 1 / -1;
+  display: block;
+  width: 100%;
+  height: 56px;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.replay-speed-graph[hidden] {
+  display: none;
+}
+
+/* The speed graph adds a row to the controls; lift what sits above them. */
+.replay-stage.has-speed-graph .replay-input-hud {
+  bottom: 166px;
+}
+
+.replay-stage.has-speed-graph .replay-compare-legend {
+  bottom: 158px;
+}
+
+@media (max-width: 760px) {
+  .replay-speed-graph {
+    height: 40px;
+  }
+
+  .replay-stage.has-speed-graph .replay-input-hud {
+    bottom: auto;
+  }
+
+  .replay-stage.has-speed-graph .replay-compare-legend {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 260px);
+  }
+}
+
 .replay-status {
   top: 50%;
   left: 50%;

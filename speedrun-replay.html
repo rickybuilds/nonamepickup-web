@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="assets/css/app.css?v=20261004nav1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedruns.css?v=20260910leaderboardfit2">
-  <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20260906avgspeed2">
+  <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20261007bootcamp1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script type="importmap">
     {
@@ -20,7 +20,7 @@
       }
     }
   </script>
-  <script type="module" src="assets/js/speedrun-replay.js?v=20260906avgspeed2"></script>
+  <script type="module" src="assets/js/speedrun-replay.js?v=20261007bootcamp1"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -42,6 +42,7 @@
         <details class="nav-more">
           <summary>More<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m4 6 4 4 4-4"/></svg></summary>
           <div class="nav-more-links">
+            <a href="bootcamp.html">Bootcamp</a>
             <a href="analytics.html">Analytics</a>
             <a href="compare.html">Compare players</a>
             <a href="kicked.html">Missed votes</a>
@@ -179,6 +180,7 @@
           <input id="replay-slider" type="range" min="0" max="1000" step="1" value="0">
           <span id="replay-duration">0:00.000</span>
         </label>
+        <canvas id="replay-speed-graph" class="replay-speed-graph" hidden role="img" aria-label="Horizontal speed over time. Click or drag to seek."></canvas>
       </section>
     </section>
   </main>
