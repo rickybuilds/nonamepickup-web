@@ -263,3 +263,18 @@ button.cap-marker{padding:0;border:0;background:transparent;cursor:pointer;font:
 .cap-detail strong{color:#fff}
 .cap-detail>span{float:right;color:#9fb3ff}
 .cap-detail p{margin:6px 0 0;overflow-wrap:anywhere}
+
+/* Match data is the primary content: keep it readable at desktop scale. */
+.match-main{font-size:16px}
+.match-card h2{font-size:22px}
+.round-team-title{font-size:13px}
+.round-stats-table{font-size:15px}
+.round-stats-table th{font-size:12px}
+.round-stats-table th,.round-stats-table td{padding:10px 8px}
+.round-player-name{max-width:220px}
+.match-player-top a{font-size:20px}
+.match-player-kpis span{font-size:12px}
+.match-player-kpis strong{font-size:20px}
+.match-mini-title{font-size:12px}
+.match-mini-row{font-size:14px;padding:9px 10px}
+.cap-timeline-axis{font-size:13px}
