@@ -86,6 +86,8 @@
 .rounds-side-by-side .rounds-layout .round-team-tables{grid-template-columns:1fr}
 #match-root.rounds-side-by-side .round-section.round-2 .round-team-table.red{order:-1}
 .combined-round-table{border:0!important;background:transparent!important}
+.rounds-layout .round-team-tables{grid-template-columns:1fr}
+.combined-round-table{width:100%}
 .combined-round-table .round-stats-table tbody tr.blue td{background:rgba(37,99,235,.07)}
 .combined-round-table .round-stats-table tbody tr.red td{background:rgba(220,38,38,.07)}
 .combined-round-table .round-stats-table tbody tr.team-break td{border-top:2px solid rgba(255,255,255,.16)}
