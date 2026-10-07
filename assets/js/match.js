@@ -455,7 +455,7 @@ function renderRoundMvpLabel(roundNum,roundMvps){
 function renderRoundSections(rounds,roundPlayerStats,roundMvps,blue,red,statsRows){
   const numbers=roundNumbers(rounds,roundPlayerStats);
   return numbers.map(number=>`
-    <section class="match-card round-details-card" aria-labelledby="round-heading-${number}">
+    <section class="match-card round-details-card round-section round-${number}" aria-labelledby="round-heading-${number}">
       <h2 id="round-heading-${number}">Round ${number}</h2>
       ${renderRoundDetail(
         number,
