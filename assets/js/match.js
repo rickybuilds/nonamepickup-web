@@ -479,14 +479,34 @@ function renderRoundDetail(number,rows,roundMvps,blue,red,statsRows){
   return `
     <div class="round-detail-panel">
       <div class="round-team-tables">
-        ${renderRoundTeamTable("Team 1",grouped.team1,"blue",number,roundMvps,blue,red,statsRows)}
-        ${renderRoundTeamTable("Team 2",grouped.team2,"red",number,roundMvps,blue,red,statsRows)}
+        ${renderRoundCombinedTable(grouped,number,roundMvps,blue,red,statsRows)}
       </div>
       ${grouped.unknown.length
         ?`<div class="round-unassigned">${renderRoundTeamTable("Unassigned",grouped.unknown,"neutral",number,roundMvps,blue,red,statsRows)}</div>`
         :""}
     </div>
   `;
+}
+
+function renderRoundCombinedTable(grouped,roundNum,roundMvps,blue,red,statsRows){
+  const rows=[...grouped.team1.map(row=>({...row,__team:"blue"})),...grouped.team2.map(row=>({...row,__team:"red"}))];
+  const show={
+    sg:rows.some(row=>Number(row.sentry_kills||0)!==0),
+    cj:rows.some(row=>Number(row.conc_jumps||0)!==0),
+    caps:rows.some(row=>Number(row.flag_captures||0)!==0),
+    touches:rows.some(row=>Number(row.flag_touches||0)!==0),
+    flagTime:rows.some(row=>Number(row.flag_time_seconds||0)!==0)
+  };
+  return `<section class="round-team-table combined-round-table"><div class="round-table-scroll"><table class="round-stats-table"><thead><tr>
+    <th>Player</th><th>Role</th><th>K</th><th>Deaths E/T/S</th><th>Dmg</th><th>Team Dmg</th><th>CK</th>
+    ${show.sg?"<th>SG</th>":""}${show.cj?"<th>CJ</th>":""}${show.caps?"<th>Caps</th>":""}${show.touches?"<th>Touches</th>":""}${show.flagTime?"<th>Flag Time</th>":""}
+  </tr></thead><tbody>${rows.map((row,index)=>{
+    const isMvp=roundMvpForPlayer(row,roundNum,roundMvps);
+    return `<tr class="${row.__team} ${isMvp?"round-mvp-row":""} ${index===grouped.team1.length?"team-break":""}">
+      <td class="round-player-name">${isMvp?'<span class="round-mvp-star">⭐</span>':""}${roundPlayerLabel(row,blue,red,statsRows)}</td><td>${escapeHtml(row.role||"-")}</td><td>${fmt(row.kills)}</td><td>${fmt(row.deaths_by_enemy)}/${fmt(row.deaths_by_team)}/${fmt(row.suicides)}</td><td>${fmt(row.enemy_damage)}</td><td>${fmt(row.team_damage)}</td><td>${fmt(row.conced_kills)}</td>
+      ${show.sg?`<td>${fmt(row.sentry_kills)}</td>`:""}${show.cj?`<td>${fmt(row.conc_jumps)}</td>`:""}${show.caps?`<td>${fmt(row.flag_captures)}</td>`:""}${show.touches?`<td>${fmt(row.flag_touches)}</td>`:""}${show.flagTime?`<td>${matchFormatSeconds(row.flag_time_seconds)}</td>`:""}
+    </tr>`;
+  }).join("")}</tbody></table></div></section>`;
 }
 
 function renderRoundTeamTable(title,rows,color,roundNum,roundMvps,blue,red,statsRows){
