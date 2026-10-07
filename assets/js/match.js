@@ -91,9 +91,9 @@ function renderMatch(m){
       <a href="matches.html">Back to Matches</a>
     </div>
 
-    ${renderCapTimelineCard(capTimeline)}
-
     ${roundSections}
+
+    ${renderCapTimelineCard(capTimeline)}
 
     <div class="match-card">
       <h2>Player Stats</h2>
