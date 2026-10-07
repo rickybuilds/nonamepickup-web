@@ -398,7 +398,8 @@ function renderCapTimelineCard(capTimeline){
               <span
                 class="cap-marker ${teamClass}"
                 style="left:${left}%"
-                title="${escapeAttr(title)}"
+                tabindex="0"
+                title="${escapeAttr(ariaLabel)}"
                 aria-label="${escapeAttr(ariaLabel)}"
               >
                 <img src="${escapeAttr(icon)}" alt="" loading="lazy" aria-hidden="true">
@@ -414,23 +415,6 @@ function renderCapTimelineCard(capTimeline){
           <span>15:00</span>
         </div>
       </div>
-      <div class="cap-event-list">
-		  ${events.map(event=>{
-			const capper = event.capper_name || event.capperName || "";
-			return `
-			  <div class="cap-event ${capTeamClass(event.team)}">
-				<span class="cap-event-dot"></span>
-				<div class="cap-event-main">
-				  <div class="cap-event-header">
-					<strong>${escapeHtml(capTeamLabel(event.team))} Cap ${fmt(event.cap_num)}</strong>
-					<span>${escapeHtml(event.time_text||matchFormatSeconds(event.time_seconds))}</span>
-				  </div>
-				  ${capper ? `<div class="cap-event-capper">${escapeHtml(capper)}</div>` : ""}
-				</div>
-			  </div>
-			`;
-		  }).join("")}
-		</div>
     </section>
   `;
 }

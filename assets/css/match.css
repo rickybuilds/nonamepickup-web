@@ -229,3 +229,26 @@
   .round-leaders>div+div{border-left:0;border-top:1px solid rgba(255,255,255,.07)}
   .match-player-kpis{grid-template-columns:repeat(2,1fr)}
 }
+
+/* Keep the match summary within the shared page hero footprint. */
+.matches-page .match-top-grid{align-items:center;gap:24px}
+.matches-page .match-top-grid .match-hero{min-width:0;min-height:0;padding:0!important;border:0;background:none;box-shadow:none;border-radius:0!important}
+.matches-page .match-top-grid .score-card{min-width:0;min-height:0;padding:0!important;border:0;background:transparent;box-shadow:none;border-radius:0!important}
+.matches-page .match-top-grid .match-map-wrap{display:none}
+.matches-page .match-top-grid .score-map{font-size:22px;margin-bottom:10px}
+.matches-page .match-top-grid .score-team{min-height:76px;padding:12px 16px;border-radius:16px}
+.matches-page .match-top-grid .score-team strong{font-size:44px}
+.matches-page .match-top-grid .match-mvp-pill{margin-top:10px;padding:5px 10px;font-size:11px}
+.cap-timeline-card{padding:14px 20px!important}
+.cap-timeline-head{margin-bottom:8px}
+.cap-timeline-head span{padding:0;border:0;border-radius:0;background:none}
+.cap-timeline-bar{padding-top:4px}
+.cap-timeline-track{height:30px}
+.cap-marker:focus-visible{outline:2px solid #dbeafe;outline-offset:3px;border-radius:4px}
+@media(max-width:1250px){
+  .matches-page .match-top-grid{grid-template-columns:minmax(0,1fr) minmax(360px,1fr)}
+}
+@media(max-width:800px){
+  .matches-page .match-top-grid{grid-template-columns:1fr;gap:20px}
+  .cap-timeline-card{padding:14px!important}
+}
