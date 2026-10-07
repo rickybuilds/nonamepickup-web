@@ -613,12 +613,11 @@ document.addEventListener("click",event=>{
   document.querySelectorAll(".cap-detail:not([hidden])").forEach(open=>{open.hidden=true;});
   detail.hidden=false;
   requestAnimationFrame(()=>{
-    const width=detail.offsetWidth||240;
-    const height=detail.offsetHeight||80;
-    const left=Math.max(8,Math.min(rect.left+rect.width/2-width/2,window.innerWidth-width-8));
-    const top=rect.bottom+10+height<=window.innerHeight?rect.bottom+10:Math.max(8,rect.top-height-10);
-    detail.style.left=`${left}px`;
-    detail.style.top=`${top}px`;
+    const track=marker.parentElement;
+    const trackRect=track.getBoundingClientRect();
+    const center=((rect.left+rect.width/2-trackRect.left)/trackRect.width)*100;
+    detail.style.left=`${Math.max(8,Math.min(92,center))}%`;
+    detail.style.top=`${track.offsetHeight+8}px`;
   });
 });
 
