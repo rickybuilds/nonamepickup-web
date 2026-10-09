@@ -1255,12 +1255,13 @@ router.get("/player/:discordId/v3",(req,res)=>{
         currentStreak++;
         bestStreak=Math.max(bestStreak,currentStreak);
         currentLossStreak=0;
-      }else if(row.winner&&row.winner!=="TIE"){
+      }else if(team&&(row.winner==="BLUE"||row.winner==="RED")){
         currentStreak=0;
-        if(team&&(row.winner==="BLUE"||row.winner==="RED")){
-          currentLossStreak++;
-          worstStreak=Math.max(worstStreak,currentLossStreak);
-        }
+        currentLossStreak++;
+        worstStreak=Math.max(worstStreak,currentLossStreak);
+      }else{
+        currentStreak=0;
+        currentLossStreak=0;
       }
     }
 

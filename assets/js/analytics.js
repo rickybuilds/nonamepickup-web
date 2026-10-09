@@ -678,7 +678,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderWeapons(data);
       renderMaps(data, minimumMapGames, Number(data.qualification?.minimum_map_archive_games || 25));
       renderMvpLeaders(data);
-      const streakNote = "All-time completed matches · Ties ignored";
+      const streakNote = "All-time completed matches · Ties break streaks";
       document.getElementById("analytics-win-streaks").innerHTML = renderCard(
         "Highest Win Streak", data.streaks?.wins, "wins", streakNote
       );

@@ -427,28 +427,32 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           return top.map(serializeLeader);
         };
         const streaks = timedAnalytics("analytics:streaks", () => {
-          // Ignore ties, as the player profile does, and count each match once.
+          // Keep ties in the sequence to break both streaks; count each match once.
           const rows = db.prepare(`
             WITH player_games AS (
               SELECT rc.player_id, rc.match_id, MIN(rc.ts) AS ts,
                 m.winner
               FROM rating_changes rc
               JOIN matches m ON m.match_id = rc.match_id
-              WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED')
+              WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED', 'TIE')
               GROUP BY rc.player_id, rc.match_id
             ),
             outcomes AS (
               SELECT pg.player_id, pg.match_id, pg.ts,
-                CASE WHEN pg.winner = teams.team THEN 'win' ELSE 'loss' END AS outcome
+                CASE
+                  WHEN pg.winner = 'TIE' THEN 'tie'
+                  WHEN pg.winner = teams.team THEN 'win'
+                  ELSE 'loss'
+                END AS outcome
               FROM player_games pg
               JOIN (
                 SELECT m.match_id, 'BLUE' AS team, CAST(ids.value AS TEXT) AS player_id
                 FROM matches m, json_each(m.blue_ids) ids
-                WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED')
+                WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED', 'TIE')
                 UNION
                 SELECT m.match_id, 'RED' AS team, CAST(ids.value AS TEXT) AS player_id
                 FROM matches m, json_each(m.red_ids) ids
-                WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED')
+                WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED', 'TIE')
               ) teams ON teams.match_id = pg.match_id
                 AND teams.player_id = CAST(pg.player_id AS TEXT)
             ),
