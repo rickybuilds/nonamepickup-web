@@ -5,6 +5,7 @@ const compression = require("compression");
 const { buildNnMvp } = require("../lib/nnMvp");
 const { replayFixedPool } = require("../lib/eloReplay");
 const { parseIdList } = require("../helpers/values");
+const { buildEloPool } = require("../lib/eloPool");
 
 const replayCache = new Map();
 const CACHE_MS = 60_000;
@@ -158,6 +159,20 @@ function buildReplay(db, limit, logRouteError) {
 
 function createShadowEloRouter({ db, sendError, logRouteError }) {
   const router = express.Router();
+  let poolCache = null;
+
+  router.get("/elo-pool", (req, res) => {
+    try {
+      if (!poolCache || Date.now() - poolCache.createdAt >= CACHE_MS || req.query.refresh === "1") {
+        poolCache = { data: buildEloPool(db), createdAt: Date.now() };
+      }
+      res.setHeader("Cache-Control", "private, max-age=30");
+      res.json({ ok: true, data: poolCache.data });
+    } catch (error) {
+      logRouteError("[/api/elo-pool]", error);
+      sendError(res, 500, "elo_pool_failed");
+    }
+  });
 
   router.get("/shadow-elo", compression({ threshold: 1024 }), (req, res) => {
     try {

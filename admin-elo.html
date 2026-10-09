@@ -11,8 +11,10 @@
   <link rel="stylesheet" href="assets/css/app.css?v=20260926scale75">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/shadow-elo.css?v=20260825j">
+  <link rel="stylesheet" href="assets/css/elo-pool.css?v=20261009a">
   <script src="assets/js/main.js?v=20260926effects1" defer></script>
   <script src="assets/js/shadow-elo.js?v=20260825k" defer></script>
+  <script src="assets/js/elo-pool.js?v=20261009a" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body class="bg-[#0a0c10] shadow-elo-page">
@@ -44,6 +46,8 @@
     </div>
   </section>
 
+  <div class="elo-admin-layout">
+  <div class="elo-replay-column">
   <div id="sel-status" class="sel-status" aria-live="polite" hidden></div>
 
   <div id="sel-content" hidden>
@@ -57,6 +61,14 @@
 
     <section id="sel-validation" class="sel-card sel-validation" hidden></section>
 
+  </div>
+  </div>
+  <aside class="elo-pool-panel" aria-labelledby="elo-pool-heading">
+    <div class="elo-pool-heading"><div><h2 id="elo-pool-heading">Elo pool flow</h2><p>Last 14 days · Eastern time</p></div><button id="elo-pool-refresh" type="button">Refresh</button></div>
+    <p id="elo-pool-status" class="elo-pool-status" role="status">Loading daily Elo changes…</p>
+    <div id="elo-pool-content" hidden></div>
+    <p class="elo-pool-method">Recorded changes from completed matches across all players. Net = awarded − deducted. Ties are included. New-player starting Elo and adjustments outside match records are excluded.</p>
+  </aside>
   </div>
 </main>
 </body>
