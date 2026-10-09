@@ -13,6 +13,22 @@
   const timestamp = value => new Date(value * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" });
   let loading = false;
 
+  function renderRecords(records) {
+    if (!records) return "";
+    const labels = [["net_gain", "Biggest net gain"], ["net_loss", "Biggest net loss"],
+      ["awarded", "Most awarded"], ["deducted", "Most deducted"]];
+    return `<section class="elo-pool-records" aria-labelledby="elo-pool-records-heading">
+      <h3 id="elo-pool-records-heading">All-time daily records</h3>
+      <p>Recorded match history · Eastern time</p>
+      <dl>${labels.map(([key, label]) => {
+        const record = records[key];
+        const value = record ? (key === "deducted" ? -record.value : record.value) : 0;
+        const fullDate = record ? new Date(`${record.date}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "";
+        return `<div><dt>${label}</dt><dd>${record ? `<strong class="${tone(value)}">${signed(value)} Elo</strong><small><time datetime="${escape(record.date)}">${escape(fullDate)}</time> · ${number(record.matches)} matches${record.partial ? " · in progress" : ""}${record.tied_days > 1 ? ` · ${number(record.tied_days)} days tied (earliest shown)` : ""}</small>` : "<small>No qualifying day recorded.</small>"}</dd></div>`;
+      }).join("")}</dl>
+    </section>`;
+  }
+
   function render(data) {
     const { days, totals, quality } = data;
     const openDays = new Set([...content.querySelectorAll("details[open]")].map(element => element.dataset.date));
@@ -31,7 +47,8 @@
     ${quality.inconsistent_rows ? `<p class="elo-pool-warning">${number(quality.inconsistent_rows)} records have differing delta metadata. Totals use ending minus starting Elo.</p>` : ""}
     ${quality.fallback_rows ? `<p class="elo-pool-warning">${number(quality.fallback_rows)} records lack starting or ending Elo; their recorded delta is used.</p>` : ""}
     ${quality.unmeasured_rows ? `<p class="elo-pool-warning">${number(quality.unmeasured_rows)} records cannot be measured and are excluded from Elo totals.</p>` : ""}
-    <p class="elo-pool-updated">Updated ${escape(timestamp(data.generated_at))}${data.latest_change_at ? `<br>Latest recorded change: ${escape(timestamp(data.latest_change_at))}` : "<br>No recorded match history available."}</p>`;
+    <p class="elo-pool-updated">Updated ${escape(timestamp(data.generated_at))}${data.latest_change_at ? `<br>Latest recorded change: ${escape(timestamp(data.latest_change_at))}` : "<br>No recorded match history available."}</p>
+    ${renderRecords(data.records)}`;
     content.hidden = false;
     status.hidden = true;
   }
