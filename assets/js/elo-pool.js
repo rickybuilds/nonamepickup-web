@@ -12,6 +12,8 @@
   const date = value => new Date(`${value}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
   const timestamp = value => new Date(value * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York", timeZoneName: "short" });
   let loading = false;
+  let currentPage = 0;
+  let pagination = null;
 
   function renderRecords(records) {
     if (!records) return "";
@@ -33,6 +35,10 @@
     const { days, totals, quality } = data;
     const openDays = new Set([...content.querySelectorAll("details[open]")].map(element => element.dataset.date));
     const movement = totals.net > 0 ? "added to" : totals.net < 0 ? "removed from" : "net change in";
+    pagination = data.pagination;
+    currentPage = pagination.page;
+    const rangeDate = value => new Date(`${value}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+    document.getElementById("elo-pool-range").textContent = `${rangeDate(pagination.start_date)} – ${rangeDate(pagination.end_date)} · Eastern time`;
     content.innerHTML = `<div class="elo-pool-summary">
       <div><span>14-day net change</span><strong class="${tone(totals.net)}">${signed(totals.net)} Elo</strong></div>
       <p>${number(Math.abs(totals.net))} Elo ${movement} the pool · ${number(totals.matches)} matches</p>
@@ -43,7 +49,12 @@
       <summary><div><time datetime="${escape(day.date)}">${date(day.date)}</time>${day.partial ? "<small>Today · in progress</small>" : ""}</div><span>${number(day.matches)} games</span><strong class="${tone(day.net)}">${signed(day.net)}</strong></summary>
       <div class="elo-pool-day-body"><p><span>Awarded</span><b class="elo-pool-positive">+${number(day.gained)} Elo</b></p><p><span>Deducted</span><b class="elo-pool-negative">${day.lost ? "−" : ""}${number(day.lost)} Elo</b></p><p>${day.matches ? `${number(day.players_up)} players up · ${number(day.players_down)} down · ${number(day.players_even)} even` : "No recorded match changes on this day."}</p></div>
     </details>`).join("")}</div>
-    ${!totals.matches ? '<p class="elo-pool-warning">No recorded match changes in the last 14 days.</p>' : ""}
+    <nav class="elo-pool-pagination" aria-label="Elo pool date windows">
+      <button type="button" data-pool-page="older" ${pagination.has_older ? "" : "disabled"}>Older 14 days</button>
+      <button type="button" data-pool-page="newer" ${pagination.has_newer ? "" : "disabled"}>Newer 14 days</button>
+    </nav>
+    ${currentPage ? '<p class="elo-pool-updated">Historical window · automatic refresh paused</p>' : ""}
+    ${!totals.matches ? '<p class="elo-pool-warning">No recorded match changes in this 14-day window.</p>' : ""}
     ${quality.inconsistent_rows ? `<p class="elo-pool-warning">${number(quality.inconsistent_rows)} records have differing delta metadata. Totals use ending minus starting Elo.</p>` : ""}
     ${quality.fallback_rows ? `<p class="elo-pool-warning">${number(quality.fallback_rows)} records lack starting or ending Elo; their recorded delta is used.</p>` : ""}
     ${quality.unmeasured_rows ? `<p class="elo-pool-warning">${number(quality.unmeasured_rows)} records cannot be measured and are excluded from Elo totals.</p>` : ""}
@@ -53,15 +64,16 @@
     status.hidden = true;
   }
 
-  async function load(manual = false) {
+  async function load(manual = false, requestedPage = currentPage) {
     if (loading) return;
     loading = true;
     refresh.disabled = true;
     refresh.textContent = "Updating…";
+    content.querySelectorAll("[data-pool-page]").forEach(button => { button.disabled = true; });
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch(`api/elo-pool${manual ? "?refresh=1" : ""}`, { cache: "no-store", signal: controller.signal });
+      const response = await fetch(`api/elo-pool?page=${requestedPage}${manual ? "&refresh=1" : ""}`, { cache: "no-store", signal: controller.signal });
       const payload = await response.json();
       if (!response.ok || !payload.ok || !Array.isArray(payload.data?.days)) throw new Error("unavailable");
       render(payload.data);
@@ -74,10 +86,18 @@
       loading = false;
       refresh.disabled = false;
       refresh.textContent = "Refresh";
+      content.querySelectorAll("[data-pool-page]").forEach(button => {
+        button.disabled = !pagination?.[button.dataset.poolPage === "older" ? "has_older" : "has_newer"];
+      });
     }
   }
   refresh.addEventListener("click", () => load(true));
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
-  setInterval(() => { if (!document.hidden) load(); }, 60000);
+  content.addEventListener("click", event => {
+    const button = event.target.closest("button[data-pool-page]");
+    if (!button || button.disabled) return;
+    load(false, currentPage + (button.dataset.poolPage === "older" ? 1 : -1));
+  });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && currentPage === 0) load(); });
+  setInterval(() => { if (!document.hidden && currentPage === 0) load(); }, 60000);
   load();
 })();

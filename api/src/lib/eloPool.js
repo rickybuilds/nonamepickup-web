@@ -38,18 +38,28 @@ function buildEloPool(db, now = Date.now()) {
     const date = dayKey(Number(row.timestamp) * 1000);
     const bucket = buckets.get(date);
     if (bucket) bucket.matches.add(String(row.match_id));
-    const hasBalances = row.before != null && row.after != null;
-    if (!hasBalances && row.delta == null) { if (bucket) unmeasuredRows++; continue; }
-    // Balance movement is authoritative when historical delta metadata disagrees.
-    const delta = hasBalances ? Number(row.after) - Number(row.before) : Number(row.delta);
     if (!historicalDays.has(date)) historicalDays.set(date, {
-      date, gained: 0, lost: 0, net: 0, matches: new Set(), partial: date === today
+      date, gained: 0, lost: 0, net: 0, matches: new Set(), partial: date === today,
+      players: new Map(), quality: { fallback_rows: 0, inconsistent_rows: 0, unmeasured_rows: 0 }
     });
     const historicalDay = historicalDays.get(date);
+    historicalDay.matches.add(String(row.match_id));
+    const hasBalances = row.before != null && row.after != null;
+    if (!hasBalances && row.delta == null) {
+      historicalDay.quality.unmeasured_rows++;
+      if (bucket) unmeasuredRows++;
+      continue;
+    }
+    // Balance movement is authoritative when historical delta metadata disagrees.
+    const delta = hasBalances ? Number(row.after) - Number(row.before) : Number(row.delta);
     historicalDay.gained += Math.max(0, delta);
     historicalDay.lost += Math.max(0, -delta);
     historicalDay.net += delta;
     historicalDay.matches.add(String(row.match_id));
+    const playerId = String(row.player_id);
+    historicalDay.players.set(playerId, (historicalDay.players.get(playerId) || 0) + delta);
+    if (!hasBalances) historicalDay.quality.fallback_rows++;
+    if (hasBalances && row.delta != null && delta !== Number(row.delta)) historicalDay.quality.inconsistent_rows++;
     if (!bucket) continue;
     if (!hasBalances) fallbackRows++;
     if (hasBalances && row.delta != null && delta !== Number(row.delta)) inconsistentRows++;
@@ -77,6 +87,14 @@ function buildEloPool(db, now = Date.now()) {
     net: sum.net + day.net, matches: sum.matches + day.matches
   }), { gained: 0, lost: 0, net: 0, matches: 0 });
   const history = [...historicalDays.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const dailyHistory = history.map(day => {
+    const playerNets = [...day.players.values()];
+    return { date: day.date, gained: day.gained, lost: day.lost, net: day.net,
+      matches: day.matches.size, partial: day.partial, quality: day.quality,
+      players_up: playerNets.filter(net => net > 0).length,
+      players_down: playerNets.filter(net => net < 0).length,
+      players_even: playerNets.filter(net => net === 0).length };
+  });
   function recordFor(metric, direction) {
     let record = null;
     for (const day of history) {
@@ -90,9 +108,40 @@ function buildEloPool(db, now = Date.now()) {
   }
   return { time_zone: TIME_ZONE, generated_at: Math.floor(now / 1000),
     latest_change_at: latest?.timestamp || null, days, totals,
+    history: dailyHistory,
     records: { net_gain: recordFor("net", 1), net_loss: recordFor("net", -1),
       awarded: recordFor("gained", 1), deducted: recordFor("lost", 1) },
     quality: { fallback_rows: fallbackRows, inconsistent_rows: inconsistentRows, unmeasured_rows: unmeasuredRows } };
 }
 
-module.exports = { buildEloPool };
+function selectEloPoolWindow(snapshot, requestedPage = 0) {
+  const { history, ...data } = snapshot;
+  const today = snapshot.days[snapshot.days.length - 1].date;
+  const earliest = history[0]?.date || today;
+  const maxPage = Math.max(0, Math.floor((Date.parse(today) - Date.parse(earliest)) / 86400000 / 14));
+  const page = Math.min(requestedPage, maxPage);
+  const byDate = new Map(history.map(day => [day.date, day]));
+  const days = [];
+  const end = new Date(`${today}T12:00:00Z`);
+  end.setUTCDate(end.getUTCDate() - page * 14);
+  const quality = { fallback_rows: 0, inconsistent_rows: 0, unmeasured_rows: 0 };
+  for (let offset = 13; offset >= 0; offset--) {
+    const calendar = new Date(end);
+    calendar.setUTCDate(calendar.getUTCDate() - offset);
+    const date = calendar.toISOString().slice(0, 10);
+    const source = byDate.get(date);
+    const day = source ? { ...source } : { date, gained: 0, lost: 0, net: 0,
+      matches: 0, players_up: 0, players_down: 0, players_even: 0, partial: date === today };
+    if (source) for (const key of Object.keys(quality)) quality[key] += source.quality[key];
+    delete day.quality;
+    days.push(day);
+  }
+  const totals = days.reduce((sum, day) => ({ gained: sum.gained + day.gained,
+    lost: sum.lost + day.lost, net: sum.net + day.net, matches: sum.matches + day.matches
+  }), { gained: 0, lost: 0, net: 0, matches: 0 });
+  return { ...data, days, totals, quality,
+    pagination: { page, has_older: page < maxPage, has_newer: page > 0,
+      start_date: days[0].date, end_date: days[days.length - 1].date } };
+}
+
+module.exports = { buildEloPool, selectEloPoolWindow };
