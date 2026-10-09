@@ -1226,12 +1226,14 @@ router.get("/player/:discordId/v3",(req,res)=>{
       LEFT JOIN matches m ON m.match_id=rc.match_id
       WHERE rc.player_id=?
         AND m.status='completed'
-      ORDER BY rc.ts ASC
+      ORDER BY rc.ts ASC, rc.match_id ASC
     `).all(discordId);
 
     let peakElo=Number(player.rating||0);
     let bestStreak=0;
     let currentStreak=0;
+    let worstStreak=0;
+    let currentLossStreak=0;
     let firstMatchTs=null;
     let lastMatchTs=null;
 
@@ -1252,8 +1254,13 @@ router.get("/player/:discordId/v3",(req,res)=>{
       if(team&&row.winner===team){
         currentStreak++;
         bestStreak=Math.max(bestStreak,currentStreak);
+        currentLossStreak=0;
       }else if(row.winner&&row.winner!=="TIE"){
         currentStreak=0;
+        if(team&&(row.winner==="BLUE"||row.winner==="RED")){
+          currentLossStreak++;
+          worstStreak=Math.max(worstStreak,currentLossStreak);
+        }
       }
     }
 
@@ -1396,6 +1403,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
           },
           peak_elo:peakElo,
           best_streak:bestStreak,
+          worst_streak:worstStreak,
           pugs_per_week:pugsPerWeek,
           wins,
           losses,

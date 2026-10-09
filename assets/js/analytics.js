@@ -678,6 +678,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderWeapons(data);
       renderMaps(data, minimumMapGames, Number(data.qualification?.minimum_map_archive_games || 25));
       renderMvpLeaders(data);
+      const streakNote = "All-time completed matches · Ties ignored";
+      document.getElementById("analytics-win-streaks").innerHTML = renderCard(
+        "Highest Win Streak", data.streaks?.wins, "wins", streakNote
+      );
+      document.getElementById("analytics-loss-streaks").innerHTML = renderCard(
+        "Highest Loss Streak", data.streaks?.losses, "losses", streakNote
+      );
       renderSection("analytics-combat", data.combat, sections.combat, qualificationNote);
       renderSection("analytics-flags", data.flags, sections.flags, qualificationNote);
       renderSection("analytics-roles", data.roles, sections.roles, qualificationNote);

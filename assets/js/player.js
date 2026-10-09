@@ -360,6 +360,7 @@ async function loadPlayerV3(){
   setText("kpi-elo-window-label","Last "+fmt(ratings.elo_window?.games||0)+" Games");
   setText("kpi-peak-elo",ratings.hidden?"Hidden":ratings.peak_elo);
   setText("kpi-best-streak",fmt(ratings.best_streak));
+  setText("kpi-worst-streak",ratings.worst_streak==null?"—":fmt(ratings.worst_streak));
   setText("kpi-pugs-week",ratings.pugs_per_week ?? "0.0");
   renderPlayerLastTen(recentRows,playerId);
   const mvpGames=Number(h.mvp_games||0);

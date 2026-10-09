@@ -754,11 +754,13 @@
   grid-row:2;
   grid-auto-flow:row!important;
   grid-auto-columns:auto!important;
-  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
   gap:12px;
   width:auto!important;
   margin-top:12px;
 }
+.player2-mini-kpis>.identity-mini-kpi{grid-column:span 3}
+.player2-mini-kpis>.identity-mini-kpi:nth-child(-n+3){grid-column:span 4}
 .player2-card-header h2{
   display:flex;
   align-items:center;
@@ -1118,7 +1120,7 @@
     font-weight:700;
 }
 
-/* Tighten bottom 6 Player2 hero KPIs */
+/* Tighten Player2 hero KPIs */
 .player2-page .player2-mini-kpis .identity-mini-kpi {
   min-height: 56px !important;
   height: 56px !important;
@@ -1306,6 +1308,8 @@
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:9px!important;
   }
+  .player2-mini-kpis>.identity-mini-kpi,
+  .player2-mini-kpis>.identity-mini-kpi:nth-child(-n+3){grid-column:auto}
   .player2-page .player2-scoreboard>div,
   .player2-page .player2-mini-kpis .identity-mini-kpi{
     min-height:74px!important;

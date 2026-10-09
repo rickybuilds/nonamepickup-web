@@ -426,6 +426,56 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
 
           return top.map(serializeLeader);
         };
+        const streaks = timedAnalytics("analytics:streaks", () => {
+          // Ignore ties, as the player profile does, and count each match once.
+          const rows = db.prepare(`
+            WITH player_games AS (
+              SELECT rc.player_id, rc.match_id, MIN(rc.ts) AS ts,
+                m.winner
+              FROM rating_changes rc
+              JOIN matches m ON m.match_id = rc.match_id
+              WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED')
+              GROUP BY rc.player_id, rc.match_id
+            ),
+            outcomes AS (
+              SELECT pg.player_id, pg.match_id, pg.ts,
+                CASE WHEN pg.winner = teams.team THEN 'win' ELSE 'loss' END AS outcome
+              FROM player_games pg
+              JOIN (
+                SELECT m.match_id, 'BLUE' AS team, CAST(ids.value AS TEXT) AS player_id
+                FROM matches m, json_each(m.blue_ids) ids
+                WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED')
+                UNION
+                SELECT m.match_id, 'RED' AS team, CAST(ids.value AS TEXT) AS player_id
+                FROM matches m, json_each(m.red_ids) ids
+                WHERE m.status = 'completed' AND m.winner IN ('BLUE', 'RED')
+              ) teams ON teams.match_id = pg.match_id
+                AND teams.player_id = CAST(pg.player_id AS TEXT)
+            ),
+            runs AS (
+              SELECT player_id, outcome,
+                ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY ts, match_id)
+                - ROW_NUMBER() OVER (PARTITION BY player_id, outcome ORDER BY ts, match_id) AS run
+              FROM outcomes
+            ),
+            lengths AS (
+              SELECT player_id, outcome, COUNT(*) AS length
+              FROM runs
+              GROUP BY player_id, outcome, run
+            )
+            SELECT l.player_id, COALESCE(r.display_name, CAST(l.player_id AS TEXT)) AS player,
+              MAX(CASE WHEN l.outcome = 'win' THEN l.length ELSE 0 END) AS win_streak,
+              MAX(CASE WHEN l.outcome = 'loss' THEN l.length ELSE 0 END) AS loss_streak
+            FROM lengths l
+            LEFT JOIN ratings r ON r.player_id = l.player_id
+            GROUP BY l.player_id
+          `).all();
+          return {
+            wins: topRows(rows, row => row.win_streak, { filter: row => row.win_streak > 0 }),
+            losses: topRows(rows, row => row.loss_streak, { filter: row => row.loss_streak > 0 })
+          };
+        });
+
         const getRoundRows = () => {
           if (roundRowsCache) return roundRowsCache;
           const roundRowsSql = `${IDENTITY_CTES}
@@ -1150,6 +1200,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
             mvps,
             mvp_rate: mvpRate,
             mvp_results: mvpResults,
+            streaks,
             per_game: perGame,
             combat,
             flags,

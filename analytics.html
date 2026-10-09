@@ -16,9 +16,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261004nav1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20260929mvprates2">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261009streak1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
-  <script src="assets/js/analytics.js?v=20260929mvprates2" defer></script>
+  <script src="assets/js/analytics.js?v=20261009streak1" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -180,10 +180,14 @@
       <div id="analytics-panel-players" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-players" data-analytics-panel="players" hidden>
         <section class="analytics-section page-section">
           <div class="analytics-section-heading">
-            <div><h2>MVP Leaders</h2></div>
+            <div><h2>MVP &amp; Streak Leaders</h2></div>
             <p>One MVP per match, even when the same player wins both rounds.</p>
           </div>
-          <div id="analytics-mvp-leaders" class="analytics-mvp-leaders"></div>
+          <div class="analytics-player-records">
+            <div id="analytics-mvp-leaders" class="analytics-mvp-leaders"></div>
+            <div id="analytics-win-streaks" class="analytics-streak-leaders analytics-win-streaks"></div>
+            <div id="analytics-loss-streaks" class="analytics-streak-leaders analytics-loss-streaks"></div>
+          </div>
         </section>
 
         <section class="analytics-section page-section analytics-shame-section">
