@@ -1259,7 +1259,7 @@ router.get("/player/:discordId/v3",(req,res)=>{
         currentStreak=0;
         currentLossStreak++;
         worstStreak=Math.max(worstStreak,currentLossStreak);
-      }else{
+      }else if(row.winner!=="TIE"){
         currentStreak=0;
         currentLossStreak=0;
       }

@@ -427,7 +427,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
           return top.map(serializeLeader);
         };
         const streaks = timedAnalytics("analytics:streaks", () => {
-          // Keep ties in the sequence to break both streaks; count each match once.
+          // Ignore ties so they preserve both streaks; count each decided match once.
           const rows = db.prepare(`
             WITH player_games AS (
               SELECT rc.player_id, rc.match_id, MIN(rc.ts) AS ts,
@@ -461,6 +461,7 @@ function createAnalyticsRouter({ db, cachedFor, positiveInt, sendError, logRoute
                 ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY ts, match_id)
                 - ROW_NUMBER() OVER (PARTITION BY player_id, outcome ORDER BY ts, match_id) AS run
               FROM outcomes
+              WHERE outcome <> 'tie'
             ),
             lengths AS (
               SELECT player_id, outcome, COUNT(*) AS length
