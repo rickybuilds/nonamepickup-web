@@ -389,6 +389,36 @@ function emptyGranularPayload(identity,granularAvailable=false){
   };
 }
 
+// Each summary is synchronous on this connection. Select its event rows once
+// so every breakdown can reuse the same request-local snapshot.
+let granularSnapshotSequence=0;
+function withGranularEventSnapshot(identityWhere,victimWhere,matchFilter,matchParams,includeVictims,timingPrefix,build){
+  const prefix="granular_events_"+(++granularSnapshotSequence);
+  const attackerTable="temp."+prefix+"_attacker";
+  const victimTable="temp."+prefix+"_victim";
+  try{
+    timedGranularQuery(timingPrefix+":selectEvents",()=>db.prepare(`
+      CREATE TEMP TABLE ${attackerTable} AS
+      SELECT e.* FROM main.match_kill_events e
+      WHERE ${identityWhere.sql} ${matchFilter}
+    `).run(...identityWhere.params,...matchParams));
+    if(includeVictims){
+      timedGranularQuery(timingPrefix+":selectVictimEvents",()=>db.prepare(`
+        CREATE TEMP TABLE ${victimTable} AS
+        SELECT e.* FROM main.match_kill_events e
+        WHERE ${victimWhere.sql} ${matchFilter}
+      `).run(...victimWhere.params,...matchParams));
+    }
+    return build(attackerTable,victimTable);
+  }finally{
+    try{
+      db.exec("DROP TABLE IF EXISTS "+attackerTable);
+    }finally{
+      db.exec("DROP TABLE IF EXISTS "+victimTable);
+    }
+  }
+}
+
 function buildGranularPlayerPayload(identity,options={}){
   const limit=positiveInt(options.limit,50,1,250);
   const matchId=options.matchId?cleanString(options.matchId,100):"";
@@ -453,7 +483,9 @@ function buildGranularPlayerPayload(identity,options={}){
   const matchFilter=matchFilters.join("\n        ");
   const timingPrefix=`granular:${identity.id}${serverName?":server:"+serverName:""}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}${rivalFilter?":rival:"+rivalFilter:""}`;
 
-  return safeTableRead(()=>{
+  return safeTableRead(()=>withGranularEventSnapshot(
+    identityWhere,profileVictimWhere,matchFilter,matchParams,!sampleOnly&&!rivalFilter,timingPrefix,
+    (attackerTable,victimTable)=>{
     ensureGranularIndexes();
     const sample=includeSample?timedGranularQuery(`${timingPrefix}:sample`,()=>db.prepare(`
       SELECT
@@ -466,7 +498,7 @@ function buildGranularPlayerPayload(identity,options={}){
         SUM(CASE WHEN COALESCE(e.is_flag_carrier_kill,0)=1 THEN 1 ELSE 0 END) AS flagCarrierKills,
         SUM(CASE WHEN ${officialWhere} THEN 1 ELSE 0 END) AS officialClassKills,
         SUM(CASE WHEN NOT (${officialWhere}) THEN 1 ELSE 0 END) AS uncertainClassKills
-      FROM match_kill_events e
+      FROM ${attackerTable} e
       WHERE ${identityWhere.sql}
         ${matchFilter}
     `).get(
@@ -491,7 +523,7 @@ function buildGranularPlayerPayload(identity,options={}){
       WHERE m.status='completed'
         AND m.match_id IN (
           SELECT DISTINCT e.match_id
-          FROM match_kill_events e
+          FROM ${attackerTable} e
           WHERE ${identityWhere.sql}
             ${matchFilter}
         )
@@ -526,7 +558,7 @@ function buildGranularPlayerPayload(identity,options={}){
         e.weapon,
         COUNT(*) AS kills,
         COUNT(DISTINCT e.match_id) AS matchesWithKill
-      FROM match_kill_events e
+      FROM ${attackerTable} e
       WHERE ${identityWhere.sql}
         AND ${officialWhere}
         AND COALESCE(e.is_enemy_kill,1)=1
@@ -553,7 +585,7 @@ function buildGranularPlayerPayload(identity,options={}){
         SELECT DISTINCT
           COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
           e.match_id
-        FROM match_kill_events e
+        FROM ${attackerTable} e
         WHERE ${identityWhere.sql}
           AND ${officialWhere}
           AND COALESCE(e.is_enemy_kill,1)=1
@@ -596,7 +628,7 @@ function buildGranularPlayerPayload(identity,options={}){
     if(classFilter||weaponFilter||objectiveFilter||victimFilter||rivalFilter||officialOnly){
       classTimeMatchFilters.push(`AND c.match_id IN (
           SELECT DISTINCT e.match_id
-          FROM match_kill_events e
+          FROM ${attackerTable} e
           WHERE ${identityWhere.sql}
             ${matchFilter}
         )`);
@@ -645,7 +677,7 @@ function buildGranularPlayerPayload(identity,options={}){
     if(classFilter||weaponFilter||objectiveFilter||victimFilter||rivalFilter||officialOnly){
       statsMatchFilters.push(`AND s.match_id IN (
           SELECT DISTINCT e.match_id
-          FROM match_kill_events e
+          FROM ${attackerTable} e
           WHERE ${identityWhere.sql}
             ${matchFilter}
         )`);
@@ -692,7 +724,7 @@ function buildGranularPlayerPayload(identity,options={}){
         COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
         e.weapon,
         COUNT(*) AS kills
-      FROM match_kill_events e
+      FROM ${attackerTable} e
       WHERE ${identityWhere.sql}
         AND ${officialWhere}
         AND COALESCE(e.is_enemy_kill,1)=1
@@ -708,7 +740,7 @@ function buildGranularPlayerPayload(identity,options={}){
         e.weapon,
         COUNT(*) AS kills,
         COUNT(DISTINCT e.match_id) AS matchesWithKill
-      FROM match_kill_events e
+      FROM ${attackerTable} e
       WHERE ${identityWhere.sql}
         AND ${officialWhere}
         AND COALESCE(e.is_flag_carrier_kill,0)=1
@@ -724,7 +756,7 @@ function buildGranularPlayerPayload(identity,options={}){
         e.weapon,
         COUNT(*) AS kills,
         COUNT(DISTINCT e.match_id) AS matchesWithKill
-      FROM match_kill_events e
+      FROM ${attackerTable} e
       WHERE ${identityWhere.sql}
         AND ${officialWhere}
         AND COALESCE(e.is_conced,0)=1
@@ -740,14 +772,14 @@ function buildGranularPlayerPayload(identity,options={}){
         COUNT(DISTINCT match_id) AS matches
       FROM (
         SELECT 'flag' AS objective,e.match_id
-        FROM match_kill_events e
+        FROM ${attackerTable} e
         WHERE ${identityWhere.sql}
           AND ${officialWhere}
           AND COALESCE(e.is_flag_carrier_kill,0)=1
           ${matchFilter}
         UNION ALL
         SELECT 'conced' AS objective,e.match_id
-        FROM match_kill_events e
+        FROM ${attackerTable} e
         WHERE ${identityWhere.sql}
           AND ${officialWhere}
           AND COALESCE(e.is_conced,0)=1
@@ -773,7 +805,7 @@ function buildGranularPlayerPayload(identity,options={}){
           'flag' AS objective,
           COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
           e.match_id
-        FROM match_kill_events e
+        FROM ${attackerTable} e
         WHERE ${identityWhere.sql}
           AND ${officialWhere}
           AND COALESCE(e.is_flag_carrier_kill,0)=1
@@ -783,7 +815,7 @@ function buildGranularPlayerPayload(identity,options={}){
           'conced' AS objective,
           COALESCE(NULLIF(e.attacker_class,''),'Unknown') AS class,
           e.match_id
-        FROM match_kill_events e
+        FROM ${attackerTable} e
         WHERE ${identityWhere.sql}
           AND ${officialWhere}
           AND COALESCE(e.is_conced,0)=1
@@ -808,7 +840,7 @@ function buildGranularPlayerPayload(identity,options={}){
 		  e.victim_key,
 		  MAX(e.victim_name) AS victim_name,
 		  COUNT(*) AS kills
-		FROM match_kill_events e
+		FROM ${attackerTable} e
 		WHERE ${identityWhere.sql}
 		  AND COALESCE(e.is_enemy_kill,1)=1
 		  ${matchFilter}
@@ -841,7 +873,7 @@ function buildGranularPlayerPayload(identity,options={}){
           e.attacker_key,
           MAX(e.attacker_name) AS attacker_name,
           COUNT(*) AS kills
-        FROM match_kill_events e
+        FROM ${victimTable} e
         WHERE ${profileVictimWhere.sql}
           AND COALESCE(e.is_enemy_kill,1)=1
           ${matchFilter}
@@ -870,7 +902,7 @@ function buildGranularPlayerPayload(identity,options={}){
       SELECT
         COALESCE(NULLIF(e.attacker_name,''),'Unknown') AS name,
         COUNT(*) AS kills
-      FROM match_kill_events e
+      FROM ${attackerTable} e
       WHERE ${identityWhere.sql}
         ${matchFilter}
       GROUP BY name
@@ -904,7 +936,7 @@ function buildGranularPlayerPayload(identity,options={}){
         e.source_confidence,
         m.map_name,
         m.created_at
-      FROM match_kill_events e
+      FROM ${attackerTable} e
       LEFT JOIN matches m ON m.match_id=e.match_id
       WHERE ${identityWhere.sql}
         ${matchFilter}
@@ -1001,7 +1033,7 @@ function buildGranularPlayerPayload(identity,options={}){
       })),
       matchDrilldown:drilldown.map(mapKillDrilldownRow)
     };
-  },emptyGranularPayload(identity,false));
+  }),emptyGranularPayload(identity,false));
 }
 
 router.get("/player/:id/granular",(req,res)=>{
