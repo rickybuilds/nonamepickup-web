@@ -1,8 +1,8 @@
 # Live Prediction Standings Implementation Record
 
-Owner approved live feeds, inclusion of everyone and zero minimum games on October 21. Continue on main per user request.
+Owner approved live feeds and clarified that eligibility requires at least one finalized settled prediction on October 21. Continue on main per user request.
 
-- [x] Remove demo data/server, preview script/labels and opt-in/minimum gates.
+- [x] Remove demo data/server, preview script/labels and opt-in gates. Require one finalized settled prediction for leaderboard eligibility.
 - [x] Query all existing prediction accounts and saved player names read-only; keep private fields out of responses.
 - [x] Add 15-second visible-page refresh, request timeout and honest stale/unavailable states.
 - [x] Use PM2 tfcapi existing ELO_DB; isolate schema/database failures from the main API and retry setup.

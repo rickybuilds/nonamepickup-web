@@ -4,7 +4,7 @@ The website has public standings and rules only. No Discord login, OAuth credent
 
 ## Approved publication policy
 
-On October 21 the owner explicitly approved including everyone with no minimum games. Include every existing prediction account, including zero-settlement and inactive accounts. Do not initialize accounts for people who have never used predictions. Public fields are exactly rank, displayName, netProfit, settledGames and winRate. Picks, stakes, balances, individual payouts and history stay private. No consent file or per-player opt-in setup is required.
+On October 21 the owner clarified that only players with at least one finalized settled prediction belong in the standings. Exclude zero-settlement accounts before ranking, filtering and pagination; inactive players with settled history remain included. Do not initialize accounts for people who have never used predictions. Public fields are exactly rank, displayName, netProfit, settledGames and winRate. Picks, stakes, balances, individual payouts and history stay private. No consent file or per-player opt-in setup is required.
 
 ## Server update
 
@@ -25,13 +25,13 @@ The fictional dataset, preview command/server, query-driven demo states and prev
 
 Live reads use a separate better-sqlite3 connection to the existing configured ELO_DB, with readonly:true and fileMustExist:true. Never instantiate the bot PredictionStore (its constructor migrates schema), change WAL pragmas, grant points or copy a live SQLite/WAL file into the website. Database reads use a consistent transaction. The required prediction tables/schema version 2 must already exist from the deployed approved bot.
 
-Names use ratings.display_name, then available discord_names display/global/username fields. Missing names show Unknown player; the public API never falls back to a raw Discord ID. Names are rendered with textContent. Zero finalized games means zero profit and unknown correct-pick rate (an em dash), not an invented result.
+Names use ratings.display_name, then available discord_names display/global/username fields. Missing names show Unknown player; the public API never falls back to a raw Discord ID. Names are rendered with textContent. Accounts with zero finalized settled predictions are excluded, even if they have points from grants or player rewards.
 
 The connection/schema is loaded lazily. Missing files, permissions, native bindings or unavailable schema yield fixed 503 error codes on standings and retry connection setup after 30 seconds, without crashing the main website API. Logs contain only fixed failure categories, not paths, queries or user data. Successful initialization reuses the read-only connection; database file replacement requires an API restart.
 
 ## API contract (version 1)
 
-GET /api/predictions/config returns columns, ranking (metric=netProfit, ties=competition, minimumGames=0, participation=all_accounts, inactive=included) and wagering=discord. GET /api/predictions/standings returns columns, rows, page, pageSize, pages and total. Other prediction paths return 404. No writes, authentication or account endpoints exist.
+GET /api/predictions/config returns columns, ranking (metric=netProfit, ties=competition, minimumGames=1, participation=settled_bettors, inactive=included) and wagering=discord. GET /api/predictions/standings returns columns, rows, page, pageSize, pages and total. Other prediction paths return 404. No writes, authentication or account endpoints exist.
 
 Success: { ok:true, data, meta:{ contractVersion:1, mode:live, updatedAt, refreshIntervalMs:15000 } }. updatedAt is Unix milliseconds. Ratios are 0–1 or null; points are safe whole integers. Responses use Cache-Control:no-store. Errors contain only { ok:false, error:<fixed code> }. Errors distinguish invalid_query (400), predictions_database_unavailable (503), predictions_schema_unavailable (503), predictions_configuration_unavailable (503), and generic predictions_unavailable (503).
 

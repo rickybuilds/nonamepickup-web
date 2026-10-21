@@ -2,7 +2,7 @@
 
 ## Approved scope
 
-Owner approved live standings for everyone with no minimum games on October 21. Include every existing prediction account, including zero-settlement accounts. No signup, opt-in file, OAuth, per-player page or private endpoints. Published fields remain name, rank, net prediction profit, finalized settled games and correct-pick rate. Private financial details stay in Discord.
+Owner clarified on October 21 that the standings require at least one finalized settled prediction. Exclude zero-settlement accounts before ranking and pagination. No signup, opt-in file, OAuth, per-player page or private endpoints. Published fields remain name, rank, net prediction profit, finalized settled games and correct-pick rate. Private financial details stay in Discord.
 
 ## Implementation
 

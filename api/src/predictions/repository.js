@@ -33,7 +33,7 @@ function createPredictionRepository(db) {
         const metrics = summarize(bets.all(id), markets.all(id), credits.all(id));
         return { displayName: account.display_name, netProfit: metrics.netProfit,
           settledGames: metrics.settledGames, winRate: metrics.winRate };
-      }))();
+      }).filter(row => row.settledGames > 0))();
     }
   };
 }

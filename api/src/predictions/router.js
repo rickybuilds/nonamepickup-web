@@ -35,7 +35,7 @@ function createPredictionsRouter({ mode = "live", getRepository } = {}) {
   const envelope = data => ({ ok: true, data, meta: { contractVersion: 1,
     mode: "live", updatedAt: Date.now(), refreshIntervalMs: 15000 } });
   router.get("/config", (req, res) => res.json(envelope({ columns: COLUMNS,
-    ranking: { metric: "netProfit", ties: "competition", minimumGames: 0, participation: "all_accounts", inactive: "included" },
+    ranking: { metric: "netProfit", ties: "competition", minimumGames: 1, participation: "settled_bettors", inactive: "included" },
     wagering: "discord" })));
   router.get("/standings", (req, res) => {
     try {
