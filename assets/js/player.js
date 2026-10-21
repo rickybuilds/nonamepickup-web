@@ -1773,9 +1773,10 @@ function isCurrentGranularVictimFilter(filter){
   return !!granularVictimFilter && granularVictimFilterSignature(filter)===granularVictimFilterSignature();
 }
 
-function granularSummaryUrl(playerId,includeSample=false,extraFilters={}){
+function granularSummaryUrl(playerId,includeSample=false,extraFilters={},sampleOnly=false){
   const params=new URLSearchParams({limit:"50"});
   if(includeSample)params.set("includeSample","1");
+  if(sampleOnly)params.set("sampleOnly","1");
   if(granularMapFilter)params.set("map",granularMapFilter);
   if(granularServerFilter)params.set("server",granularServerFilter);
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
@@ -2059,11 +2060,11 @@ async function scheduleGranularSampleLoad(playerId){
   if(!requestedPlayerId||granularSampleLoading||granularSampleLoaded||!currentGranular)return;
   const requestSeq=granularRequestSeq;
   granularSampleLoading=true;
-  const url=granularSummaryUrl(requestedPlayerId,true);
+  const url=granularSummaryUrl(requestedPlayerId,true,{},true);
   const result=await fetchJSON(url);
+  if(String(currentPlayerId)!==requestedPlayerId||requestSeq!==granularRequestSeq)return;
   granularSampleLoading=false;
   granularSampleLoaded=true;
-  if(String(currentPlayerId)!==requestedPlayerId||requestSeq!==granularRequestSeq)return;
   const sampled=result?.ok?result.data:null;
   granularSampleFailed=!sampled?.sample;
   if(sampled?.sample&&currentGranular){

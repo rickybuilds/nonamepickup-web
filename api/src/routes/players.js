@@ -394,7 +394,8 @@ function buildGranularPlayerPayload(identity,options={}){
   const matchId=options.matchId?cleanString(options.matchId,100):"";
   const mapName=options.map?cleanString(options.map,200):"";
   const serverName=options.server?cleanString(options.server,200):"";
-  const includeSample=String(options.includeSample||"")==="1";
+  const sampleOnly=String(options.sampleOnly||"")==="1";
+  const includeSample=sampleOnly||String(options.includeSample||"")==="1";
   const classFilter=options.class?cleanString(options.class,50).toLowerCase():"";
   const weaponFilter=options.weapon?cleanString(options.weapon,100):"";
   const objectiveFilter=options.objective?cleanString(options.objective,40).toLowerCase():"";
@@ -450,13 +451,15 @@ function buildGranularPlayerPayload(identity,options={}){
     matchParams.push(...OFFICIAL_KILL_CLASS_CONFIDENCES);
   }
   const matchFilter=matchFilters.join("\n        ");
-  const timingPrefix=`granular:${identity.id}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}${rivalFilter?":rival:"+rivalFilter:""}`;
+  const timingPrefix=`granular:${identity.id}${serverName?":server:"+serverName:""}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}${rivalFilter?":rival:"+rivalFilter:""}`;
 
   return safeTableRead(()=>{
     ensureGranularIndexes();
     const sample=includeSample?timedGranularQuery(`${timingPrefix}:sample`,()=>db.prepare(`
       SELECT
         COUNT(*) AS kills,
+        COUNT(DISTINCT e.match_id) AS matches,
+        COUNT(DISTINCT e.match_id || ':' || e.round_num) AS rounds,
         SUM(CASE WHEN COALESCE(e.is_enemy_kill,0)=1 THEN 1 ELSE 0 END) AS enemyKills,
         SUM(CASE WHEN COALESCE(e.is_team_kill,0)=1 THEN 1 ELSE 0 END) AS teamKills,
         SUM(CASE WHEN COALESCE(e.is_conced,0)=1 THEN 1 ELSE 0 END) AS concededKills,
@@ -472,15 +475,6 @@ function buildGranularPlayerPayload(identity,options={}){
       ...identityWhere.params,
       ...matchParams
     )):null;
-
-    const sampleDistinct=includeSample?timedGranularQuery(`${timingPrefix}:sampleDistinct`,()=>db.prepare(`
-      SELECT
-        COUNT(DISTINCT e.match_id) AS matches,
-        COUNT(DISTINCT e.match_id || ':' || e.round_num) AS rounds
-      FROM match_kill_events e
-      WHERE ${identityWhere.sql}
-        ${matchFilter}
-    `).get(...identityWhere.params,...matchParams)):null;
 
     const sampleRecord=includeSample?timedGranularQuery(`${timingPrefix}:sampleRecord`,()=>db.prepare(`
       SELECT
@@ -509,6 +503,22 @@ function buildGranularPlayerPayload(identity,options={}){
       ...identityWhere.params,
       ...matchParams
     )):null;
+
+    const samplePayload={
+      kills:includeSample?Number(sample?.kills||0):null,
+      enemyKills:includeSample?Number(sample?.enemyKills||0):null,
+      teamKills:includeSample?Number(sample?.teamKills||0):null,
+      concededKills:includeSample?Number(sample?.concededKills||0):null,
+      flagCarrierKills:includeSample?Number(sample?.flagCarrierKills||0):null,
+      matches:includeSample?Number(sample?.matches||0):null,
+      rounds:includeSample?Number(sample?.rounds||0):null,
+      wins:includeSample?Number(sampleRecord?.wins||0):null,
+      losses:includeSample?Number(sampleRecord?.losses||0):null,
+      ties:includeSample?Number(sampleRecord?.ties||0):null,
+      officialClassKills:includeSample?Number(sample?.officialClassKills||0):null,
+      uncertainClassKills:includeSample?Number(sample?.uncertainClassKills||0):null
+    };
+    if(sampleOnly)return {sample:samplePayload};
 
     const classWeapons=timedGranularQuery(`${timingPrefix}:classWeapons`,()=>db.prepare(`
       SELECT
@@ -904,20 +914,7 @@ function buildGranularPlayerPayload(identity,options={}){
 
     return{
       ...emptyGranularPayload(identity,true),
-      sample:{
-        kills:includeSample?Number(sample?.kills||0):null,
-        enemyKills:includeSample?Number(sample?.enemyKills||0):null,
-        teamKills:includeSample?Number(sample?.teamKills||0):null,
-        concededKills:includeSample?Number(sample?.concededKills||0):null,
-        flagCarrierKills:includeSample?Number(sample?.flagCarrierKills||0):null,
-        matches:includeSample?Number(sampleDistinct?.matches||0):null,
-        rounds:includeSample?Number(sampleDistinct?.rounds||0):null,
-        wins:includeSample?Number(sampleRecord?.wins||0):null,
-        losses:includeSample?Number(sampleRecord?.losses||0):null,
-        ties:includeSample?Number(sampleRecord?.ties||0):null,
-        officialClassKills:includeSample?Number(sample?.officialClassKills||0):null,
-        uncertainClassKills:includeSample?Number(sample?.uncertainClassKills||0):null
-      },
+      sample:samplePayload,
       classWeapons:classWeapons.map(row=>({
         class:row.class,
         weapon:row.weapon,
@@ -1020,6 +1017,7 @@ router.get("/player/:id/granular",(req,res)=>{
       server:req.query.server,
       matchId:req.query.matchId,
       includeSample:req.query.includeSample,
+      sampleOnly:req.query.sampleOnly,
       class:req.query.class,
       weapon:req.query.weapon,
       objective:req.query.objective,
@@ -1103,7 +1101,7 @@ router.get("/player/:id/granular/events",(req,res)=>{
       matchParams.push(...OFFICIAL_KILL_CLASS_CONFIDENCES);
     }
     const matchFilter=matchFilters.join("\n          ");
-    const timingPrefix=`granular:${identity.id}:events${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}${rivalFilter?":rival:"+rivalFilter:""}`;
+    const timingPrefix=`granular:${identity.id}:events${serverName?":server:"+serverName:""}${mapName?":map:"+mapName:""}${matchId?":"+matchId:""}${classFilter?":class:"+classFilter:""}${weaponFilter?":weapon:"+weaponFilter:""}${objectiveFilter?":objective:"+objectiveFilter:""}${victimFilter?":victim":""}${rivalFilter?":rival:"+rivalFilter:""}`;
 
     const data=safeTableRead(()=>{
       ensureGranularIndexes();
