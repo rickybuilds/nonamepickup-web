@@ -393,6 +393,7 @@ function buildGranularPlayerPayload(identity,options={}){
   const limit=positiveInt(options.limit,50,1,250);
   const matchId=options.matchId?cleanString(options.matchId,100):"";
   const mapName=options.map?cleanString(options.map,200):"";
+  const serverName=options.server?cleanString(options.server,200):"";
   const includeSample=String(options.includeSample||"")==="1";
   const classFilter=options.class?cleanString(options.class,50).toLowerCase():"";
   const weaponFilter=options.weapon?cleanString(options.weapon,100):"";
@@ -406,6 +407,10 @@ function buildGranularPlayerPayload(identity,options={}){
   const officialWhere=officialKillConfidenceWhere("e");
   const matchFilters=[];
   const matchParams=[];
+  if(serverName){
+    matchFilters.push("AND e.match_id IN (SELECT match_id FROM matches WHERE server_name=?)");
+    matchParams.push(serverName);
+  }
   if(matchId){
     matchFilters.push("AND e.match_id=?");
     matchParams.push(matchId);
@@ -562,6 +567,10 @@ function buildGranularPlayerPayload(identity,options={}){
       : (eventIdentity.steam_id?[eventIdentity.steam_id]:[]);
     const classTimeMatchFilters=[];
     const classTimeMatchParams=[];
+    if(serverName){
+      classTimeMatchFilters.push("AND c.match_id IN (SELECT match_id FROM matches WHERE server_name=?)");
+      classTimeMatchParams.push(serverName);
+    }
     if(matchId){
       classTimeMatchFilters.push("AND c.match_id=?");
       classTimeMatchParams.push(matchId);
@@ -611,6 +620,10 @@ function buildGranularPlayerPayload(identity,options={}){
 
     const statsMatchFilters=[];
     const statsMatchParams=[];
+    if(serverName){
+      statsMatchFilters.push("AND s.match_id IN (SELECT match_id FROM matches WHERE server_name=?)");
+      statsMatchParams.push(serverName);
+    }
     if(matchId){
       statsMatchFilters.push("AND s.match_id=?");
       statsMatchParams.push(matchId);
@@ -1004,6 +1017,7 @@ router.get("/player/:id/granular",(req,res)=>{
     const data=buildGranularPlayerPayload(identity,{
       limit:positiveInt(req.query.limit,50,1,250),
       map:req.query.map,
+      server:req.query.server,
       matchId:req.query.matchId,
       includeSample:req.query.includeSample,
       class:req.query.class,
@@ -1033,6 +1047,7 @@ router.get("/player/:id/granular/events",(req,res)=>{
     const limit=positiveInt(req.query.limit,100,1,500);
     const offset=positiveInt(req.query.offset,0,0,100000);
     const mapName=req.query.map?cleanString(req.query.map,200):"";
+    const serverName=req.query.server?cleanString(req.query.server,200):"";
     const matchId=req.query.matchId?cleanString(req.query.matchId,100):"";
     const classFilter=req.query.class?cleanString(req.query.class,50).toLowerCase():"";
     const weaponFilter=req.query.weapon?cleanString(req.query.weapon,100):"";
@@ -1045,6 +1060,10 @@ router.get("/player/:id/granular/events",(req,res)=>{
     const profileVictimWhere=fastKillEventVictimIdentityWhere(identity,"e");
     const matchFilters=[];
     const matchParams=[];
+    if(serverName){
+      matchFilters.push("AND e.match_id IN (SELECT match_id FROM matches WHERE server_name=?)");
+      matchParams.push(serverName);
+    }
     if(matchId){
       matchFilters.push("AND e.match_id=?");
       matchParams.push(matchId);
@@ -1462,7 +1481,7 @@ router.get("/player/:id/recent", (req, res) => {
 
   try {
     const matches = db.prepare(`
-      SELECT DISTINCT ${matchColumns("m")}
+      SELECT DISTINCT ${matchColumns("m")}, m.server_name
       FROM rating_changes rc
       JOIN matches m ON m.match_id = rc.match_id
       WHERE rc.player_id = ?
@@ -1508,6 +1527,7 @@ router.get("/player/:id/recent", (req, res) => {
         serialized.redTeam.find(entry => String(entry.id) === pid);
       return {
         ...serialized,
+        server_name: row.server_name || null,
         is_mvp: mvpMatchIds.has(String(row.match_id)),
         before: player?.before ?? null,
         after: player?.after ?? null,
@@ -1534,7 +1554,15 @@ router.get("/player/:id/recent", (req, res) => {
     }
 
     out.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-    res.json({ ok: true, data: out.slice(0, limit) });
+    const servers = db.prepare(`
+      SELECT DISTINCT m.server_name
+      FROM rating_changes rc
+      JOIN matches m ON m.match_id = rc.match_id
+      WHERE rc.player_id = ? AND m.status = 'completed'
+        AND m.server_name IS NOT NULL AND TRIM(m.server_name) != ''
+      ORDER BY m.server_name COLLATE NOCASE
+    `).all(pid).map(row => row.server_name);
+    res.json({ ok: true, data: out.slice(0, limit), servers });
   } catch (err) {
     logRouteError("[recent]", err);
     sendError(res, 500, "player_recent_failed");

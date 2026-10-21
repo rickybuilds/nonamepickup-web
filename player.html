@@ -12,9 +12,9 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/player.css?v=20261012boomer7">
+  <link rel="stylesheet" href="assets/css/player.css?v=20261021serverfilter">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
-  <script src="assets/js/player.js?v=20261019elohistory" defer></script>
+  <script src="assets/js/player.js?v=20261021serverfilter" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -119,6 +119,10 @@
           <span>Built from individual Hampalyzer kill events with class attribution.</span>
         </div>
         <div class="granular-controls" aria-label="Granular event controls">
+          <label for="granular-server-select">Server</label>
+          <select id="granular-server-select" aria-label="Server filter" disabled>
+            <option value="">Servers unavailable</option>
+          </select>
           <label for="granular-map-select">Map</label>
           <select id="granular-map-select" aria-label="Map filter" disabled>
             <option value="">Maps unavailable</option>

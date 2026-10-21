@@ -30,6 +30,7 @@ let currentGranularBase=null;
 let currentGranularEvents=null;
 let currentObjectiveGranularEvents=null;
 let granularMapFilter="";
+let granularServerFilter="";
 let granularMatchFilter="";
 let granularClassFilter="";
 let granularClassOptions=[];
@@ -499,6 +500,7 @@ async function loadPlayerV3(){
 
   setText("elo-chart-label",ratings.hidden?"Hidden":"All Matches · "+fmt(eloValues.length));
   renderEloChartV3(eloValues,!!ratings.hidden);
+  populateGranularServerSelect(recent.servers);
   populateGranularMapSelect(recentRows);
   populateGranularMatchSelect(recentRows);
   renderRecentMatches(recentRows,playerId,!!ratings.hidden);
@@ -641,7 +643,7 @@ function roleKpiData(role){
   const filteredClassTime=Array.isArray(currentGranular?.roleClassTime)?currentGranular.roleClassTime:[];
   const classTimeRows=filteredClassTime.length
     ? filteredClassTime.filter(row=>String(row.role||"").toLowerCase()===role)
-    : currentClasses;
+    : (granularServerFilter?[]:currentClasses);
   const rows=roleClassRows(normalizeClassRows(classTimeRows),role);
   const seconds=rows.reduce((sum,row)=>sum+Number(row.seconds||0),0);
   const topClass=rows
@@ -679,8 +681,8 @@ function roleKpiData(role){
     flagCarrierKills:objectiveKills.flagCarrierKills,
     concededKills:objectiveKills.concededKills,
     topWeapon:weapon,
-    flagCaps:useFilteredFlags?Number(filteredFlags.captures||0):(filteredClassTime.length?flagCaps:Number(currentHampa?.caps||0)),
-    flagTouches:useFilteredFlags?Number(filteredFlags.touches||0):(filteredClassTime.length?flagTouches:Number(currentHampa?.touches||0)),
+    flagCaps:useFilteredFlags?Number(filteredFlags.captures||0):((filteredClassTime.length||granularServerFilter)?flagCaps:Number(currentHampa?.caps||0)),
+    flagTouches:useFilteredFlags?Number(filteredFlags.touches||0):((filteredClassTime.length||granularServerFilter)?flagTouches:Number(currentHampa?.touches||0)),
     initialTouches:useFilteredFlags?Number(filteredFlags.initialTouches||0):0,
     sentryKills:useFilteredFlags?Number(filteredFlags.sentryKills||0):0,
     offenseAverages:role==="offense"?offenseAveragesForGranular(currentGranular):null
@@ -925,6 +927,7 @@ function granularOverviewHtml(sample,loading=false){
 function granularRecordSample(sample){
   const isUnfilteredAllMaps=
     !granularMapFilter &&
+    !granularServerFilter &&
     !granularMatchFilter &&
     !granularClassFilter &&
     !granularVictimFilter &&
@@ -946,6 +949,7 @@ function granularMatchCount(flags,sample){
   if(explicit>0)return explicit;
   const sampleGames=Number(sample?.wins||0)+Number(sample?.losses||0)+Number(sample?.ties||0);
   if(sampleGames>0)return sampleGames;
+  if(granularServerFilter)return Number(sample?.matches||0);
   return Number(currentHampa?.matches||currentRatings?.games||0);
 }
 
@@ -1738,6 +1742,7 @@ function granularEventsUrl(offset=0,scope="class"){
   const filter=activeGranularDrillFilter(scope);
   const params=new URLSearchParams({limit:"100",offset:String(offset)});
   if(granularMapFilter)params.set("map",granularMapFilter);
+  if(granularServerFilter)params.set("server",granularServerFilter);
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
   if(granularClassFilter&&!filter?.class)params.set("class",granularClassFilter);
   if(scope==="class"&&granularVictimFilter?.victim)params.set("victim",granularVictimFilter.victim);
@@ -1772,6 +1777,7 @@ function granularSummaryUrl(playerId,includeSample=false,extraFilters={}){
   const params=new URLSearchParams({limit:"50"});
   if(includeSample)params.set("includeSample","1");
   if(granularMapFilter)params.set("map",granularMapFilter);
+  if(granularServerFilter)params.set("server",granularServerFilter);
   if(granularMatchFilter)params.set("matchId",granularMatchFilter);
   if(granularClassFilter)params.set("class",granularClassFilter);
   if(extraFilters.victim)params.set("victim",extraFilters.victim);
@@ -1787,12 +1793,24 @@ function cleanGranularMatchFilter(value){
   return String(value||"").trim().slice(0,100);
 }
 
+function populateGranularServerSelect(servers){
+  const select=qs("granular-server-select");
+  if(!select)return;
+  const names=Array.isArray(servers)?servers:[];
+  select.disabled=!names.length;
+  select.innerHTML='<option value="">'+(names.length?'All servers':'No servers recorded')+'</option>'+names.map(name=>
+    '<option value="'+escapeAttr(name)+'">'+escapeHtml(name)+'</option>'
+  ).join("");
+  select.value=granularServerFilter;
+}
+
 function populateGranularMatchSelect(rows){
   const select=qs("granular-match-select");
   if(!select)return;
   const matches=(Array.isArray(rows)?rows:[])
     .filter(row=>getRecentMatchId(row))
     .filter(row=>!granularMapFilter||getRecentMatchMap(row)===granularMapFilter)
+    .filter(row=>!granularServerFilter||row.server_name===granularServerFilter)
     .slice(0,10);
   if(!matches.length){
     select.innerHTML='<option value="">No recent matches</option>';
@@ -1830,6 +1848,7 @@ function resetGranularState(){
   currentGranularEvents=null;
   currentObjectiveGranularEvents=null;
   granularMapFilter="";
+  granularServerFilter="";
   granularMatchFilter="";
   granularClassFilter="";
   granularClassOptions=[];
@@ -1855,6 +1874,8 @@ function resetGranularState(){
   if(input)input.value="";
   const mapSelect=qs("granular-map-select");
   if(mapSelect)mapSelect.value="";
+  const serverSelect=qs("granular-server-select");
+  if(serverSelect)serverSelect.value="";
   const select=qs("granular-match-select");
   if(select)select.value="";
 }
@@ -1926,6 +1947,7 @@ function scheduleGranularSummaryLoad(playerId,options={}){
 function flagCarryUrl(playerId,mode="summary",offset=0,selectedMatchId=""){
   const params=new URLSearchParams();
   if(granularMapFilter)params.set("map",granularMapFilter);
+  if(granularServerFilter)params.set("server",granularServerFilter);
   if(selectedMatchId||granularMatchFilter)params.set("matchId",selectedMatchId||granularMatchFilter);
   if(mode!=="summary")params.set("offset",String(offset));
   const route=mode==="matches"?"flag-carry-matches":mode==="carries"?"flag-carries":"flag-carry";
@@ -1935,6 +1957,7 @@ function flagCarryUrl(playerId,mode="summary",offset=0,selectedMatchId=""){
 async function loadFlagCarrySummary(playerId){
   const sequence=++flagCarryRequestSeq;
   const map=granularMapFilter;
+  const server=granularServerFilter;
   const match=granularMatchFilter;
   currentFlagCarry=null;
   flagCarryLoading=true;
@@ -1954,7 +1977,7 @@ async function loadFlagCarrySummary(playerId){
   renderPlayerGranular(currentGranular);
   const result=await fetchJSON(flagCarryUrl(playerId));
   if(sequence!==flagCarryRequestSeq||String(currentPlayerId)!==String(playerId)||
-      map!==granularMapFilter||match!==granularMatchFilter)return;
+      map!==granularMapFilter||server!==granularServerFilter||match!==granularMatchFilter)return;
   flagCarryLoading=false;
   currentFlagCarry=result?.ok?result.data:null;
   renderPlayerGranular(currentGranular);
@@ -1965,6 +1988,7 @@ async function loadFlagCarryMatches(offset=0){
   const sequence=flagCarryRequestSeq;
   const playerId=String(currentPlayerId);
   const map=granularMapFilter;
+  const server=granularServerFilter;
   const match=granularMatchFilter;
   offset=Math.max(0,offset);
   flagCarryMatchesRetryOffset=offset;
@@ -1979,7 +2003,7 @@ async function loadFlagCarryMatches(offset=0){
   renderPlayerGranular(currentGranular);
   const result=await fetchJSON(flagCarryUrl(playerId,"matches",offset));
   if(sequence!==flagCarryRequestSeq||String(currentPlayerId)!==playerId||
-      map!==granularMapFilter||match!==granularMatchFilter)return;
+      map!==granularMapFilter||server!==granularServerFilter||match!==granularMatchFilter)return;
   flagCarryMatchesLoading=false;
   if(result?.ok){
     const fetchedMatches=result.data?.matches||[];
@@ -1999,6 +2023,7 @@ async function loadFlagCarryDetails(){
   const matchSequence=flagCarryMatchRequestSeq;
   const playerId=String(currentPlayerId);
   const map=granularMapFilter;
+  const server=granularServerFilter;
   const match=granularMatchFilter;
   const offset=flagCarryDetails.length;
   flagCarryDetailsLoading=true;
@@ -2006,7 +2031,7 @@ async function loadFlagCarryDetails(){
   const result=await fetchJSON(flagCarryUrl(playerId,"carries",offset,selectedMatchId));
   if(sequence!==flagCarryRequestSeq||matchSequence!==flagCarryMatchRequestSeq||
       String(currentPlayerId)!==playerId||
-      selectedMatchId!==flagCarryOpenMatchId||map!==granularMapFilter||match!==granularMatchFilter)return;
+      selectedMatchId!==flagCarryOpenMatchId||map!==granularMapFilter||server!==granularServerFilter||match!==granularMatchFilter)return;
   flagCarryDetailsLoading=false;
   if(result?.ok){
     flagCarryDetails.push(...(result.data?.carries||[]));
@@ -2054,12 +2079,13 @@ async function loadGranularVictimBreakdown(){
   const requestSeq=++granularVictimRequestSeq;
   const requestedPlayerId=String(currentPlayerId||"");
   const requestedMapFilter=granularMapFilter;
+  const requestedServerFilter=granularServerFilter;
   const requestedMatchFilter=granularMatchFilter;
   const requestedVictim=granularVictimFilterSignature();
   granularVictimLoading=true;
   const result=await fetchJSON(granularSummaryUrl(requestedPlayerId,true,granularVictimFilter));
   granularVictimLoading=false;
-  if(String(currentPlayerId)!==requestedPlayerId||requestedMapFilter!==granularMapFilter||requestedMatchFilter!==granularMatchFilter||requestedVictim!==granularVictimFilterSignature()||requestSeq!==granularVictimRequestSeq)return;
+  if(String(currentPlayerId)!==requestedPlayerId||requestedMapFilter!==granularMapFilter||requestedServerFilter!==granularServerFilter||requestedMatchFilter!==granularMatchFilter||requestedVictim!==granularVictimFilterSignature()||requestSeq!==granularVictimRequestSeq)return;
   const filtered=result?.ok?result.data:null;
   if(!filtered||!currentGranular)return;
   updateGranularClassOptions(filtered);
@@ -2088,6 +2114,7 @@ async function loadGranularEvents(offset=0,append=false,scope="class"){
   if(scope==="objective"?granularObjectiveEventsLoading:granularEventsLoading)return;
   const requestedPlayerId=String(currentPlayerId||"");
   const requestedMapFilter=granularMapFilter;
+  const requestedServerFilter=granularServerFilter;
   const requestedFilter=granularMatchFilter;
   const requestedDrillFilter=granularDrillFilterSignature(scope);
   const requestSeq=granularRequestSeq;
@@ -2100,7 +2127,7 @@ async function loadGranularEvents(offset=0,append=false,scope="class"){
   const result=await fetchJSON(url);
   if(scope==="objective")granularObjectiveEventsLoading=false;
   else granularEventsLoading=false;
-  if(String(currentPlayerId)!==requestedPlayerId||requestedMapFilter!==granularMapFilter||requestedFilter!==granularMatchFilter||requestedDrillFilter!==granularDrillFilterSignature(scope)||requestSeq!==granularRequestSeq)return;
+  if(String(currentPlayerId)!==requestedPlayerId||requestedMapFilter!==granularMapFilter||requestedServerFilter!==granularServerFilter||requestedFilter!==granularMatchFilter||requestedDrillFilter!==granularDrillFilterSignature(scope)||requestSeq!==granularRequestSeq)return;
   const next=result?.ok?result.data:null;
   const currentEvents=scope==="objective"?currentObjectiveGranularEvents:currentGranularEvents;
   if(append&&currentEvents&&next){
@@ -2128,6 +2155,7 @@ function bindGranularControls(){
   });
   qs("granular-match-clear")?.addEventListener("click",()=>{
     granularMapFilter="";
+    granularServerFilter="";
     granularMatchFilter="";
     granularClassFilter="";
     granularClassOptions=[];
@@ -2137,6 +2165,8 @@ function bindGranularControls(){
     if(input)input.value="";
     const mapSelect=qs("granular-map-select");
     if(mapSelect)mapSelect.value="";
+    const serverSelect=qs("granular-server-select");
+    if(serverSelect)serverSelect.value="";
     const select=qs("granular-match-select");
     if(select)select.value="";
     populateGranularMatchSelect(granularRecentMatches);
@@ -2149,6 +2179,17 @@ function bindGranularControls(){
       populateGranularMatchSelect(granularRecentMatches);
       reloadGranularForActiveFilter();
     }
+  });
+  qs("granular-server-select")?.addEventListener("change",event=>{
+    granularServerFilter=String(event.currentTarget.value||"");
+    granularMatchFilter="";
+    granularClassOptions=[];
+    clearGranularDrillFilter();
+    clearGranularVictimFilter();
+    const input=qs("granular-match-filter");
+    if(input)input.value="";
+    populateGranularMatchSelect(granularRecentMatches);
+    reloadGranularForActiveFilter();
   });
   qs("granular-map-select")?.addEventListener("change",event=>{
     granularMapFilter=cleanGranularMapFilter(event.currentTarget.value);

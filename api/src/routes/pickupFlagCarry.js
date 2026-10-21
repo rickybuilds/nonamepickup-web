@@ -10,10 +10,11 @@ function createPickupFlagCarryRouter({ db, logger = console }) {
     const playerId = String(req.params.playerId || "");
     const map = String(req.query.map || "");
     const matchId = String(req.query.matchId || "");
-    if (!playerId || playerId.length > 64 ||
+    const server = String(req.query.server || "");
+    if (!playerId || playerId.length > 64 || server.length > 200 ||
         (map && !/^[A-Za-z0-9_.-]{1,64}$/.test(map)) ||
         (matchId && !/^[A-Za-z0-9_-]{1,64}$/.test(matchId))) return null;
-    return { playerId, map, matchId };
+    return { playerId, map, matchId, server };
   }
 
   function sqlFilters(filters) {
@@ -24,6 +25,10 @@ function createPickupFlagCarryRouter({ db, logger = console }) {
     const params = [filters.playerId];
     if (filters.map) { clauses.push("r.map = ?"); params.push(filters.map); }
     if (filters.matchId) { clauses.push("r.match_id = ?"); params.push(filters.matchId); }
+    if (filters.server) {
+      clauses.push("r.match_id IN (SELECT match_id FROM matches WHERE server_name = ?)");
+      params.push(filters.server);
+    }
     return { where: clauses.join(" AND "), params };
   }
 
