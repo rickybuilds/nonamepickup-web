@@ -19,7 +19,7 @@
     $("activity-signal").innerHTML = activity.map(row => { const matches = row.matches == null || row.matches === "" ? null : Number(row.matches); const height = matches == null ? 8 : Math.max(8, matches / max * 100); return `<div class="activity-bar${matches == null ? " is-unavailable" : ""}" style="height:${height}%" title="${matches == null ? "Activity unavailable" : `${api.format.count(matches)} matches`}"><span>${api.escapeHtml(String(row.month).slice(5))}</span></div>`; }).join("") || `<span class="nn-note">No activity data.</span>`;
   }
   function renderContext(metric) {
-    const topMap = data.maps?.[0];
+    const topMap = data.maps?.details?.[0] || data.maps?.most_played?.[0];
     const leader = metric.rows?.[0];
     const summary = data.summary || {};
     $("archive-context").innerHTML = [["Archive", `${api.format.count(summary.matches)} matches`],["Top map", topMap?.map || "Unavailable"],["Metric rows", `${metric.rows.length} returned`]].map(([label, value]) => `<div class="context-row"><span>${label}</span><strong>${api.escapeHtml(value)}</strong></div>`).join("");

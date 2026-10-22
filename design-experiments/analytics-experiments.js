@@ -70,7 +70,11 @@
       entries.push({ id: `performance:${key}`, group: "performance", key, label, type, note: "Qualified performance ranking", rows: data.per_game?.[key] || [] });
     }
     if (data.weapons) for (const key of Object.keys(data.weapons)) entries.push({ id: `weapons:${key}`, group: "weapons", key, label: key, type: "kills", note: "Weapon kill totals", rows: data.weapons[key] || [] });
-    if (data.maps) for (const row of data.maps) entries.push({ id: `maps:${row.map}`, group: "maps", key: row.map, label: row.map, type: "games", note: "Map archive", rows: [row] });
+    const mapData = data.maps || {};
+    for (const [key, label, type, note] of [["most_played", "Most Played Maps", "games", "Completed-match map archive"], ["total_kills", "Map Total Kills", "kills", "Recorded kills by map"], ["average_team_score", "Average Team Score", "decimal", "Qualified map score sample"], ["leaders", "Map Player Leaders", "kills", "Player kills by map"], ["details", "Map Archive", "games", "Completed-match map archive"]]) {
+      const rows = key === "details" ? (mapData.details || []).map(row => ({ ...row, value: row.matches, secondary: row.total_kills })) : mapData[key] || [];
+      entries.push({ id: `maps:${key}`, group: "maps", key, label, type, note, rows });
+    }
     return entries;
   }
 
