@@ -1,0 +1,79 @@
+/* All overrides stay within the existing Career vs Performance section. */
+.career-preview .analytics-section-heading { align-items:center; }
+.career-preview .analytics-section-heading p { max-width:68ch; text-wrap:pretty; }
+.career-preview .analytics-comparison-side {
+  display:grid;
+  grid-template-rows:auto auto auto auto;
+  align-content:start;
+  gap:3px;
+  min-width:0;
+  padding:10px 12px;
+  background:none;
+  text-align:left;
+}
+.career-preview .analytics-comparison-side > span {
+  color:#b5c4da;
+  font:750 11px/1.3 "Inter",sans-serif;
+  letter-spacing:.02em;
+  text-transform:none;
+}
+.career-preview .analytics-comparison-player {
+  overflow:visible;
+  margin:0;
+  font:800 12px/1.35 "Inter",sans-serif;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.career-preview .analytics-comparison-side strong {
+  min-width:0;
+  margin:0;
+  color:#eaf3ff;
+  font:800 18px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;
+}
+.career-preview .analytics-comparison-side.performance strong { color:#86efac; }
+.career-preview .career-sample { color:#a2b2c8; font:600 10px/1.3 "Inter",sans-serif; }
+.career-preview .analytics-comparison-player a { text-underline-offset:3px; }
+.career-preview .analytics-comparison-player a:focus-visible { outline:2px solid #7dd3fc; outline-offset:3px; }
+
+/* A: retain four independent pairs, aligned on a shared typographic grid. */
+.career-preview-a .analytics-comparison-card { grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(4,auto); }
+.career-preview-a .analytics-comparison-side { grid-row:1 / span 4; grid-template-rows:subgrid; }
+.career-preview-a .analytics-comparison-side.career { grid-column:1; }
+.career-preview-a .analytics-comparison-side.performance { grid-column:2; }
+.career-preview-a .analytics-comparison-side.performance { border-left:1px solid rgba(148,163,184,.16); }
+
+/* B: one semantic matrix; shared category columns cross two leader bands. */
+.career-preview-b .analytics-comparisons { display:block; }
+.career-preview-b .career-matrix-scroll { min-width:0; }
+.career-preview-b .career-matrix { width:100%; table-layout:fixed; border-collapse:collapse; border:1px solid rgba(77,166,255,.26); background:var(--surface-bg); }
+.career-preview-b caption { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.career-preview-b .career-matrix th { color:#b5c4da; font:800 11px/1.35 "Inter",sans-serif; text-align:left; }
+.career-preview-b .career-matrix thead th { padding:8px 12px; border-bottom:1px solid rgba(148,163,184,.18); }
+.career-preview-b .career-matrix thead th:first-child { width:116px; }
+.career-preview-b .career-matrix tbody th { padding:12px; color:#93c5fd; }
+.career-preview-b .career-matrix tbody tr.performance > th { color:#86efac; }
+.career-preview-b .career-matrix td { vertical-align:top; padding:0; border-left:1px solid rgba(148,163,184,.12); }
+.career-preview-b .career-matrix tbody tr + tr > * { border-top:1px solid rgba(148,163,184,.18); }
+.career-preview-b .analytics-comparison-side { grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto auto; column-gap:8px; padding:8px 12px; }
+.career-preview-b .analytics-comparison-side > span { grid-column:1; grid-row:1; }
+.career-preview-b .analytics-comparison-player { grid-row:2; grid-column:1; }
+.career-preview-b .analytics-comparison-player { align-self:center; }
+.career-preview-b .analytics-comparison-side strong { grid-row:2; grid-column:2; align-self:center; text-align:right; font-size:16px; }
+.career-preview-b .career-sample { grid-row:1; grid-column:2; align-self:center; text-align:right; }
+@media(max-width:1200px) {
+  .career-preview-b .analytics-comparison-side { display:flex; flex-direction:column; align-items:flex-start; }
+  .career-preview-b .analytics-comparison-player { align-self:stretch; }
+  .career-preview-b .career-sample { align-self:stretch; text-align:left; }
+  .career-preview-b .analytics-comparison-side strong { text-align:left; align-self:flex-start; }
+}
+@media(max-width:700px) {
+  .career-preview .analytics-section-heading { align-items:flex-start; }
+  .career-preview .analytics-comparison-side { grid-template-rows:auto auto auto auto; }
+  .career-preview-b .career-matrix thead th:first-child { width:50%; }
+  .career-preview-b .career-matrix td { text-align:left; }
+  .career-preview-b .career-matrix .analytics-comparison-side { align-items:stretch; text-align:left; padding:10px 12px; }
+  .career-preview-b .career-sample { text-align:left; }
+  .career-preview-b .career-matrix tbody tr + tr td { border-top:1px solid rgba(148,163,184,.18); }
+}
