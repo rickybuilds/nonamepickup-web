@@ -1,0 +1,44 @@
+.focus-page { max-width:1240px; }
+.focus-intro { max-width:780px; margin-bottom:42px; }
+.title-context { display:block; margin-bottom:10px; color:var(--nn-blue); font:700 12px/1 Orbitron,sans-serif; letter-spacing:.1em; }
+.focus-intro h1 { font-size:clamp(2.6rem,7vw,6.8rem); letter-spacing:-.035em; }
+.focus-intro h1 em { color:var(--nn-blue); font-style:normal; }
+.question-layout { display:grid; grid-template-columns:minmax(260px,360px) minmax(0,1fr); gap:28px; align-items:start; }
+.question-panel { padding:20px 22px; }
+.question-step { padding:0 0 30px; margin-bottom:22px; border-bottom:1px solid var(--nn-line); }
+.question-step:last-child { padding-bottom:0; margin-bottom:0; border-bottom:0; }
+.step-label { color:var(--nn-blue); font:700 .75rem/1 Orbitron,sans-serif; letter-spacing:.1em; text-transform:uppercase; }
+.question-step h2 { margin:8px 0 14px; font-size:1.1rem; }
+.question-grid { display:grid; gap:7px; }
+.question-grid button { padding:11px 12px; border:1px solid var(--nn-line); border-radius:var(--nn-radius-small); color:var(--nn-muted); background:transparent; text-align:left; cursor:pointer; }
+.question-grid button:hover, .question-grid button[aria-pressed="true"] { border-color:var(--nn-blue); color:var(--nn-text); background:rgba(114,216,255,.08); }
+.question-panel .nn-select { width:100%; }
+.scope-buttons { display:flex; flex-wrap:wrap; gap:7px; }
+.scope-buttons .nn-button { min-height:36px; padding:7px 9px; font-size:.8rem; }
+.answer-panel { min-width:0; padding:26px clamp(18px,4vw,42px); border-top:2px solid var(--nn-blue); background:linear-gradient(135deg,rgba(11,25,42,.96),rgba(7,14,24,.9)); box-shadow:var(--nn-shadow); }
+.answer-head { display:flex; justify-content:space-between; align-items:start; gap:20px; padding-bottom:22px; border-bottom:1px solid var(--nn-line); }
+.answer-head .nn-kicker { margin-bottom:7px; }
+.answer-head h2 { font-size:clamp(1.35rem,3vw,2.4rem); }
+.answer-head .nn-tag { flex-shrink:0; }
+.answer-panel > .nn-state { margin-top:22px; }
+.answer-list { display:grid; gap:0; margin-top:20px; }
+.answer-row { display:grid; grid-template-columns:45px minmax(0,1fr) 100px; gap:12px; align-items:center; padding:16px 0; border-bottom:1px solid rgba(139,180,220,.14); }
+.answer-row:hover { padding-left:10px; margin-left:-10px; padding-right:10px; margin-right:-10px; background:rgba(114,216,255,.05); }
+.answer-rank { color:var(--nn-dim); font:700 .85rem Orbitron,sans-serif; }
+.answer-player a { color:var(--nn-text); font-weight:800; text-decoration:none; }
+.answer-player small { display:block; margin-top:4px; color:var(--nn-dim); font-size:.76rem; }
+.answer-row-links { color:var(--nn-muted) !important; }
+.answer-value { color:var(--nn-text); font:800 1.25rem/1 Orbitron,sans-serif; text-align:right; }
+.answer-links { margin-top:16px; color:var(--nn-muted); font-size:.8rem; }
+.answer-links a { color:var(--nn-muted); }
+.explore-drawer { margin-top:30px; padding-top:18px; border-top:1px solid var(--nn-line); }
+.explore-drawer summary { color:var(--nn-blue); cursor:pointer; font-weight:800; }
+.all-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding-top:14px; }
+.all-metrics button { min-height:40px; padding:9px; border:1px solid var(--nn-line); color:var(--nn-muted); background:var(--nn-surface-2); text-align:left; cursor:pointer; }
+.all-metrics button:hover { border-color:var(--nn-blue); color:var(--nn-text); }
+.focus-lower { display:flex; align-items:start; justify-content:space-between; gap:18px; margin-top:22px; }
+.methodology-drawer { flex:1; color:var(--nn-muted); }
+.methodology-drawer summary { color:var(--nn-text); cursor:pointer; font-weight:800; }
+.methodology-drawer p { max-width:70ch; font-size:.85rem; }
+@media (max-width:800px) { .question-layout { grid-template-columns:1fr; } .answer-panel { order:-1; } .focus-lower { display:block; } .focus-lower > .nn-button { display:inline-flex; margin-top:16px; } }
+@media (max-width:520px) { .answer-head { display:block; } .answer-head .nn-tag { display:inline-flex; margin-top:12px; } .answer-row { grid-template-columns:30px minmax(0,1fr) 84px; } .all-metrics { grid-template-columns:1fr; } }

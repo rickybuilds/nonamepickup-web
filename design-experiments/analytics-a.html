@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analytics A · Competitive Intelligence</title>
+  <link rel="stylesheet" href="../assets/css/shared/base.css">
+  <link rel="stylesheet" href="analytics-experiments.css">
+  <link rel="stylesheet" href="analytics-a.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="nn-header">
+    <a class="nn-logo" href="../index.html" aria-label="NoName TFC home"><span>NN</span><span>//</span><b>TFC</b></a>
+    <nav aria-label="Prototype navigation"><a href="analytics-a.html" aria-current="page">A / Intelligence</a><a href="analytics-b.html">B / Command</a><a href="analytics-c.html">C / Focus</a></nav>
+    <input class="nn-search" id="global-search" type="search" placeholder="Find a player" aria-label="Find a player">
+  </header>
+  <main class="nn-page intelligence-page">
+    <section class="intel-intro">
+      <div><h1><span class="title-context">ANALYTICS /</span> Read the archive at speed.</h1><p class="nn-lede">A research workspace for comparing leaders, sample sizes, maps, and competitive records without losing the context behind the number.</p></div>
+      <div class="intel-coverage" id="coverage" aria-live="polite"></div>
+    </section>
+    <section class="intel-workspace" aria-label="Analytics workspace">
+      <aside class="intel-rail nn-panel">
+        <div class="rail-head"><span class="nn-kicker">Explore</span><h2>Metrics</h2></div>
+        <label class="nn-note" for="metric-filter">Filter metrics</label>
+        <input class="nn-input" id="metric-filter" type="search" placeholder="Search metrics">
+        <div id="metric-nav" class="metric-nav" aria-label="Metric families"></div>
+        <details class="methodology"><summary>How qualification works</summary><p class="nn-note" id="qualification-note">Minimum sample rules are supplied by the live analytics response.</p></details>
+      </aside>
+      <section class="intel-results">
+        <div class="results-head">
+          <div><p class="nn-kicker" id="result-group">Overview</p><h2 id="result-title">Start with a metric</h2><p class="nn-note" id="result-note">Select a category to load a ranking.</p></div>
+          <div class="result-actions"><input class="nn-input" id="row-filter" type="search" placeholder="Filter players or maps" aria-label="Filter ranking rows"><button class="nn-button" id="reset-selection" type="button">Clear selection</button></div>
+        </div>
+        <div id="result-state" class="nn-state">Loading analytics data…</div>
+        <div class="nn-table-wrap" id="ranking-wrap" hidden><table class="nn-table ranking-table"><thead><tr><th>Rank</th><th>Player / context</th><th>Value</th><th>Sample / evidence</th></tr></thead><tbody id="ranking-body"></tbody></table></div>
+        <div class="intel-overview" id="overview-panel" hidden></div>
+      </section>
+      <aside class="intel-tray nn-panel" aria-live="polite"><div class="tray-head"><div><span class="nn-kicker">Comparison</span><h2>Selected evidence</h2></div><span class="nn-tag" id="selection-count">0 selected</span></div><div id="comparison-body" class="comparison-body"><p class="nn-note">Select a row to pin a player or record here while you continue exploring.</p></div></aside>
+    </section>
+  </main>
+  <script src="analytics-experiments.js"></script><script src="analytics-a.js"></script>
+</body>
+</html>
