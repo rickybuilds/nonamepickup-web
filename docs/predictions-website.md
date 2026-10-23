@@ -32,7 +32,7 @@ The checked-in api/ecosystem.config.js names the PM2 app tfcapi, uses /var/www/t
 
 PREDICTIONS_WEB_MODE defaults off; preview mounts synthetic routes; live opens a separate read-only connection to the existing configured ELO_DB. The adapter requires prediction schema version 2, never instantiates the bot store/migrations, never grants points, and never changes the database or its WAL mode. No browser can initialize an account. Schema source inspected was the working codex/match-predictions bot checkout; confirm the deployed approved bot version before activation.
 
-Real public standings remain disabled unless PREDICTIONS_PUBLIC_POLICY=net-profit-v1-approved. PREDICTIONS_CONSENT_FILE must point to an operator-managed JSON array outside the website repository and configured PUBLIC_DIR. Entries: { "discordId":"123456789012345678", "displayName":"Approved display name", "optedIn":true }. These IDs associate existing records; no Discord connection or login is needed. Add entries only after approved consent/field policy; missing list yields empty standings. Duplicate/invalid entries or files inside served directories reject startup. Remove an entry and restart to withdraw it. No self-service account/consent flow exists.
+Live standings publish aggregate rows for all prediction accounts directly from the configured database. Player names come from the existing ratings/Discord-name tables, with an `Unknown player` fallback; no browser login, consent file, or prediction mutation endpoint is involved.
 
 No PREDICTIONS_DISCORD_* credentials are required or read. Remove previously configured prediction OAuth secrets/callback registrations if they were created solely for this website feature.
 

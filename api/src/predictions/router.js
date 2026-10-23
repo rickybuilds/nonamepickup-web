@@ -25,8 +25,7 @@ function pageQuery(query) {
       (query.search !== undefined && (typeof query.search !== "string" || query.search.length > 100))) throw new Error("invalid_query");
   return { page, pageSize, sort, direction, search: query.search || "" };
 }
-function createPredictionsRouter({ mode = "off", repository = null, approvedPolicy = false,
-  consents = [], minimumGames = 10 } = {}) {
+function createPredictionsRouter({ mode = "live", repository = null, getRepository = null } = {}) {
   if (!["off", "preview", "live"].includes(mode)) throw new Error("Unknown prediction mode");
   const router = express.Router();
   router.use((req, res, next) => {
@@ -49,14 +48,15 @@ function createPredictionsRouter({ mode = "off", repository = null, approvedPoli
     next();
   });
   router.get("/config", (req, res) => res.json(envelope({ columns: COLUMNS,
-    ranking: { metric: "netProfit", ties: "competition", minimumGames, inactive: "included" },
-    publicPolicy: approvedPolicy ? "approved" : "pending",
-    publicAvailable: mode === "preview" || approvedPolicy, wagering: "discord" })));
+    ranking: { metric: "netProfit", ties: "competition", minimumGames: 0,
+      participation: "all_accounts", inactive: "included" },
+    publicPolicy: "approved", publicAvailable: mode === "preview" || mode === "live",
+    wagering: "discord" })));
   router.get("/standings", (req, res) => {
-    if (mode === "live" && !approvedPolicy) return res.status(403).json({ ok: false, error: "public_policy_not_approved" });
     try {
       const query = pageQuery(req.query);
-      const rows = mode === "preview" ? (req.query.state === "empty" ? [] : publicRows) : repository.publicRows(consents, minimumGames);
+      const rows = mode === "preview" ? (req.query.state === "empty" ? [] : publicRows) :
+        (getRepository ? getRepository() : repository).publicRows();
       const response = envelope({ columns: COLUMNS, ...standings(rows, query) }, req.query.state);
       res.json(response);
     } catch (error) { fail(res, error); }
