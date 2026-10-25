@@ -4,6 +4,7 @@ const express = require("express");
 const {
   loadNnMvpInputs,
   calculateMatchNnMvp,
+  calculateMatchEloPerformance,
   persistMatchNnMvp
 } = require("../lib/nnMvpStore");
 const { canonicalMvpSource } = require("../lib/canonicalMvp");
@@ -241,6 +242,7 @@ function createMatchesRouter({
       }
 
       const nnMvp=calculateMatchNnMvp(db,matchId,{playerStats,roundPlayerStats,flagCarrierKills});
+      const eloPerformance=calculateMatchEloPerformance(db,matchId,{playerStats,roundPlayerStats,flagCarrierKills});
       const mvpSource=canonicalMvpSource(match.created_at);
       if(mvpSource==="nn"&&String(match.status||"")==="completed"){
         persistMatchNnMvp(db,matchId,nnMvp);
@@ -375,7 +377,8 @@ function createMatchesRouter({
         })),
         match_mvps:matchMvps.map(({identity,...mvp})=>mvp),
         mvp_source:mvpSource,
-        nn_mvp:nnMvp
+        nn_mvp:nnMvp,
+        elo_performance:eloPerformance
         }
       });
     }catch(e){

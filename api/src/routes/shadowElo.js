@@ -2,7 +2,7 @@
 
 const express = require("express");
 const compression = require("compression");
-const { buildNnMvp } = require("../lib/nnMvp");
+const { buildEloPerformance } = require("../lib/eloPerformance");
 const { replayFixedPool } = require("../lib/eloReplay");
 const { parseIdList } = require("../helpers/values");
 const { buildEloPool, selectEloPoolWindow } = require("../lib/eloPool");
@@ -132,7 +132,8 @@ function buildReplay(db, limit, logRouteError) {
     const roster = [...blueIds, ...redIds];
     const playerStats = statsByMatch.get(matchId) || [];
     const roundPlayerStats = roundsByMatch.get(matchId) || [];
-    const mvp = buildNnMvp({
+    const mvp = buildEloPerformance({
+      blueIds, redIds, links,
       playerStats,
       roundPlayerStats,
       flagCarrierKills: carriersByMatch.get(matchId) || []

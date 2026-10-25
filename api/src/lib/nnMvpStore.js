@@ -1,6 +1,7 @@
 "use strict";
 
 const { buildNnMvp, FORMULA_VERSION } = require("./nnMvp");
+const { buildEloPerformance } = require("./eloPerformance");
 const { NN_MVP_CUTOFF_EPOCH } = require("./canonicalMvp");
 
 const UNAVAILABLE_RETRY_SECONDS = 5 * 60;
@@ -91,6 +92,24 @@ function loadNnMvpInputs(db, matchId) {
 
 function calculateMatchNnMvp(db, matchId, suppliedInputs) {
   return buildNnMvp(suppliedInputs || loadNnMvpInputs(db, matchId));
+}
+
+function calculateMatchEloPerformance(db, matchId, suppliedInputs) {
+  const match = db.prepare("SELECT blue_ids, red_ids FROM matches WHERE match_id=?").get(matchId);
+  const parseIds = value => {
+    try { const ids = JSON.parse(value || "[]"); return Array.isArray(ids) ? ids.map(String) : []; }
+    catch { return []; }
+  };
+  const links = new Map();
+  for (const row of db.prepare("SELECT steam_id, discord_id FROM player_steam_ids").all()) {
+    const ids = links.get(row.steam_id) || new Set();
+    ids.add(String(row.discord_id));
+    links.set(row.steam_id, ids);
+  }
+  return buildEloPerformance({
+    ...(suppliedInputs || loadNnMvpInputs(db, matchId)),
+    blueIds: parseIds(match?.blue_ids), redIds: parseIds(match?.red_ids), links,
+  });
 }
 
 function sleepSync(milliseconds) {
@@ -285,6 +304,7 @@ module.exports = {
   UNAVAILABLE_RETRY_SECONDS,
   loadNnMvpInputs,
   calculateMatchNnMvp,
+  calculateMatchEloPerformance,
   persistMatchNnMvp,
   syncPendingNnMvps
 };
