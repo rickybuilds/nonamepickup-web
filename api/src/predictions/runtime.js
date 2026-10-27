@@ -3,7 +3,9 @@
 const { createPredictionsRouter } = require("./router");
 
 function predictionRuntime(env = process.env) {
-  const mode = env.PREDICTIONS_WEB_MODE || "live";
+  // Live is the only supported production mode. Keep the API resilient to a
+  // stale PM2/.env preview value; only an explicit off disables predictions.
+  const mode = env.PREDICTIONS_WEB_MODE === "off" ? "off" : "live";
   let db, repository, retryAt = 0, failureCode = "predictions_database_unavailable";
   const unavailable = () => { const error = new Error(failureCode); error.code = failureCode; throw error; };
   function getRepository() {
