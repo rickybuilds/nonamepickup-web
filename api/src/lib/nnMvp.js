@@ -1,6 +1,9 @@
 "use strict";
 
 const FORMULA_VERSION = "nn-mvp-v1";
+const NEW_FORMULA_VERSION = "nn-mvp-v2";
+// Matches created from October 28, 2026, 3:00:37 PM Eastern use v2.
+const NEW_FORMULA_CUTOFF = 1793214037;
 const MIN_PLAYERS = 4;
 const Z_CLAMP = 3;
 const BASE_SCORE = 50;
@@ -29,6 +32,15 @@ const COMPONENTS = {
     team_damage: -3
   }
 };
+const NEW_COMPONENTS = {
+  ...COMPONENTS,
+  impact: { ...COMPONENTS.impact, conced_kills: 1 },
+  penalty: { ...COMPONENTS.penalty, team_kills: -3, team_damage: -10 }
+};
+
+function formulaVersionForMatch(createdAt) {
+  return Number(createdAt) >= NEW_FORMULA_CUTOFF ? NEW_FORMULA_VERSION : FORMULA_VERSION;
+}
 
 const RANK_DESC_FIELDS = [
   "kills",
@@ -76,10 +88,10 @@ function playerIdentity(row) {
   return String(row?.player_key || row?.steam_id || row?.display_name || "");
 }
 
-function emptyPayload(reason) {
+function emptyPayload(reason, version, components) {
   return {
-    formula_version: FORMULA_VERSION,
-    formula: publicFormula(),
+    formula_version: version,
+    formula: publicFormula(components),
     available: false,
     reason,
     winner: null,
@@ -87,13 +99,13 @@ function emptyPayload(reason) {
   };
 }
 
-function publicFormula() {
+function publicFormula(components = COMPONENTS) {
   return {
     base_score: BASE_SCORE,
     z_clamp: Z_CLAMP,
     standard_deviation: "population",
     components: Object.fromEntries(
-      Object.entries(COMPONENTS).map(([component, fields]) => [component, { ...fields }])
+      Object.entries(components).map(([component, fields]) => [component, { ...fields }])
     )
   };
 }
@@ -183,18 +195,18 @@ function rankPlayers(players, field, ascending = false) {
   return ranks;
 }
 
-function calculateComponent(players, player, component, zByField) {
+function calculateComponent(players, player, component, zByField, components) {
   let score = 0;
-  for (const [field, weight] of Object.entries(COMPONENTS[component])) {
+  for (const [field, weight] of Object.entries(components[component])) {
     score += weight * num(zByField[field]?.get(player.player_key));
   }
   return score;
 }
 
-function buildScoreBreakdown(player, zByField, distributions) {
+function buildScoreBreakdown(player, zByField, distributions, weightsByComponent) {
   const components = {};
 
-  for (const [component, weights] of Object.entries(COMPONENTS)) {
+  for (const [component, weights] of Object.entries(weightsByComponent)) {
     const fields = {};
     for (const [field, weight] of Object.entries(weights)) {
       const zScore = num(zByField[field]?.get(player.player_key));
@@ -305,10 +317,12 @@ function publicPlayer(player, includeReasons = false) {
   return out;
 }
 
-function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
+function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills, formulaVersion = FORMULA_VERSION }) {
+  const components = formulaVersion === NEW_FORMULA_VERSION ? NEW_COMPONENTS : COMPONENTS;
+  const version = formulaVersion === NEW_FORMULA_VERSION ? NEW_FORMULA_VERSION : FORMULA_VERSION;
   const statRows = Array.isArray(playerStats) ? playerStats : [];
   if (statRows.length < MIN_PLAYERS) {
-    return emptyPayload("Not enough player stat rows");
+    return emptyPayload("Not enough player stat rows", version, components);
   }
 
   const roundByPlayer = aggregateRoundStats(roundPlayerStats);
@@ -354,7 +368,7 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
   ));
 
   if (players.length < MIN_PLAYERS) {
-    return emptyPayload("Not enough player stat rows");
+    return emptyPayload("Not enough player stat rows", version, components);
   }
 
   const zByField = {};
@@ -380,16 +394,16 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
   }
 
   for (const player of players) {
-    player.components.combat = calculateComponent(players, player, "combat", zByField);
-    player.components.objective = calculateComponent(players, player, "objective", zByField);
-    player.components.impact = calculateComponent(players, player, "impact", zByField);
-    player.components.penalty = calculateComponent(players, player, "penalty", zByField);
+    player.components.combat = calculateComponent(players, player, "combat", zByField, components);
+    player.components.objective = calculateComponent(players, player, "objective", zByField, components);
+    player.components.impact = calculateComponent(players, player, "impact", zByField, components);
+    player.components.penalty = calculateComponent(players, player, "penalty", zByField, components);
     player.final_score = BASE_SCORE
       + player.components.combat
       + player.components.objective
       + player.components.impact
       + player.components.penalty;
-    player.score_breakdown = buildScoreBreakdown(player, zByField, distributions);
+    player.score_breakdown = buildScoreBreakdown(player, zByField, distributions, components);
   }
 
   addDisplayScores(players);
@@ -411,8 +425,8 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
   winner.reasons = buildReasons(winner);
 
   return {
-    formula_version: FORMULA_VERSION,
-    formula: publicFormula(),
+    formula_version: version,
+    formula: publicFormula(components),
     available: true,
     winner: publicPlayer(winner, true),
     players: players.map(player => publicPlayer(player))
@@ -421,5 +435,8 @@ function buildNnMvp({ playerStats, roundPlayerStats, flagCarrierKills }) {
 
 module.exports = {
   FORMULA_VERSION,
+  NEW_FORMULA_VERSION,
+  NEW_FORMULA_CUTOFF,
+  formulaVersionForMatch,
   buildNnMvp
 };

@@ -1,6 +1,6 @@
 "use strict";
 
-const { buildNnMvp, FORMULA_VERSION } = require("./nnMvp");
+const { buildNnMvp, FORMULA_VERSION, NEW_FORMULA_VERSION, NEW_FORMULA_CUTOFF, formulaVersionForMatch } = require("./nnMvp");
 const { buildEloPerformance } = require("./eloPerformance");
 const { NN_MVP_CUTOFF_EPOCH } = require("./canonicalMvp");
 
@@ -91,7 +91,8 @@ function loadNnMvpInputs(db, matchId) {
 }
 
 function calculateMatchNnMvp(db, matchId, suppliedInputs) {
-  return buildNnMvp(suppliedInputs || loadNnMvpInputs(db, matchId));
+  const match = db.prepare("SELECT created_at FROM matches WHERE match_id = ?").get(matchId);
+  return buildNnMvp({ ...(suppliedInputs || loadNnMvpInputs(db, matchId)), formulaVersion: formulaVersionForMatch(match?.created_at) });
 }
 
 function calculateMatchEloPerformance(db, matchId, suppliedInputs) {
@@ -235,7 +236,7 @@ function syncPendingNnMvps(db, options = {}) {
       AND (
         ? = 1
         OR nn_mvp_formula_version IS NULL
-        OR nn_mvp_formula_version != ?
+        OR nn_mvp_formula_version != CASE WHEN created_at >= ? THEN ? ELSE ? END
         OR nn_mvp_status IS NULL
         OR (nn_mvp_status = 'unavailable' AND COALESCE(nn_mvp_computed_at, 0) <= ?)
       )
@@ -245,7 +246,7 @@ function syncPendingNnMvps(db, options = {}) {
       created_at,
       match_id
     LIMIT ?
-  `).all(NN_MVP_CUTOFF_EPOCH, force ? 1 : 0, FORMULA_VERSION, retryBefore, limit);
+  `).all(NN_MVP_CUTOFF_EPOCH, force ? 1 : 0, NEW_FORMULA_CUTOFF, NEW_FORMULA_VERSION, FORMULA_VERSION, retryBefore, limit);
 
   const summary = {
     processed: 0,
