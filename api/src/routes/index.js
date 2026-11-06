@@ -12,6 +12,7 @@ const { createKickedRouter } = require("./kicked");
 const { createAnalyticsRouter } = require("./analytics");
 const { createHomeRouter } = require("./home");
 const { createSpeedrunsRouter } = require("./speedruns");
+const { bootcampEnabled, createBootcampRouter } = require("./bootcamp");
 const { createStatusRouter } = require("./status");
 const { createPlayerIdentitiesRouter } = require("./playerIdentities");
 const { createSpeedrunComparisonsRouter } = require("./speedrunComparisons");
@@ -142,6 +143,9 @@ app.use("/api", createHomeRouter({
 app.use("/api/speedruns", createSpeedrunsRouter({
   logRouteError
 }));
+if (bootcampEnabled(process.env.BOOTCAMP_API_ENABLED)) {
+  app.use("/api/bootcamp", createBootcampRouter({ logRouteError }));
+}
 app.use("/api/speedruns/comparisons", createSpeedrunComparisonsRouter({
   logRouteError
 }));
