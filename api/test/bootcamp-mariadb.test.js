@@ -8,11 +8,15 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
   const mysql = require("mysql2/promise");
   const db = await mysql.createConnection({ host: "127.0.0.1", port: 34079, user: "root", database: "bootcamp_local_test" });
   const map = `web_${Date.now()}`, steam = `STEAM_0:1:${Date.now()}`;
-  let routeId, server;
+  let routeId, drillId, server;
   try {
     await db.execute("INSERT INTO bootcamp_maps (map) VALUES (?)", [map]);
     const [route] = await db.execute("INSERT INTO bootcamp_routes (map, slug, name, type, config_version) VALUES (?, 'route', 'Route', 'conc', 2)", [map]);
     routeId = route.insertId;
+    const [drill] = await db.execute("INSERT INTO bootcamp_drills (map, slug, kind, name, class_id) VALUES (?, 'hold', 'position', 'Hold', 3)", [map]);
+    drillId = drill.insertId;
+    for (const [classId, score] of [[3, 60], [3, 80], [3, 75], [6, 77]])
+      await db.execute("INSERT INTO bootcamp_drill_sets (steamid, player_name, map, drill_id, class_id, score, tier) VALUES (?, 'Tester', ?, ?, ?, ?, 2)", [steam, map, drillId, classId, score]);
     await db.execute("INSERT INTO bootcamp_route_classes (route_id, class_id) VALUES (?, 1), (?, 5)", [routeId, routeId]);
     await db.execute("INSERT INTO bootcamp_licenses (steamid, level, endorsements) VALUES (?, 'permit', 'offense')", [steam]);
     for (const [time, version, valid, flagged, reviewed, finalization] of [
@@ -32,12 +36,20 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
     assert.deepEqual(profile.personalBests.map(run => run.timeMs), [12000]);
     const leaderboard = await (await fetch(`${base}/routes/${routeId}/leaderboard`)).json();
     assert.deepEqual(leaderboard.runs.map(run => run.timeMs), [12000]);
+    const drills = await (await fetch(`${base}/maps/${map}/drills`)).json();
+    assert.equal(drills.drills[0].id, drillId);
+    const drillBoard = await (await fetch(`${base}/drills/${drillId}/leaderboard`)).json();
+    assert.deepEqual(drillBoard.scores.map(row => [row.classId, row.score]), [[3, 80], [6, 77]]);
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));
     if (routeId) {
       await db.execute("DELETE FROM bootcamp_runs WHERE route_id = ?", [routeId]);
       await db.execute("DELETE FROM bootcamp_route_classes WHERE route_id = ?", [routeId]);
       await db.execute("DELETE FROM bootcamp_routes WHERE id = ?", [routeId]);
+    }
+    if (drillId) {
+      await db.execute("DELETE FROM bootcamp_drill_sets WHERE drill_id = ?", [drillId]);
+      await db.execute("DELETE FROM bootcamp_drills WHERE id = ?", [drillId]);
     }
     await db.execute("DELETE FROM bootcamp_licenses WHERE steamid = ?", [steam]);
     await db.execute("DELETE FROM bootcamp_maps WHERE map = ?", [map]);

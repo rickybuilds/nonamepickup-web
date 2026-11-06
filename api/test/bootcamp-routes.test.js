@@ -79,3 +79,25 @@ test("Bootcamp catalog and profile report database failures without leaking deta
     }
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
+
+test("drill catalog and leaderboard validate inputs and return class-specific scores", async () => {
+  const seen = [];
+  const app = express();
+  app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => {
+    seen.push({ sql, args });
+    return /ROW_NUMBER/i.test(sql)
+      ? [{ set_id: 5, steamid: "STEAM_0:1:4", player_name: "Player", class_id: 3, score: 85, tier: 3 }]
+      : [{ id: 7, slug: "position", name: "Position", kind: "position", class_id: 3 }];
+  } }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise(resolve => server.once("listening", resolve));
+    const base = `http://127.0.0.1:${server.address().port}/api/bootcamp`;
+    assert.equal((await (await fetch(`${base}/maps/openfire/drills`)).json()).drills[0].id, 7);
+    assert.equal((await (await fetch(`${base}/drills/7/leaderboard`)).json()).scores[0].score, 85);
+    assert.deepEqual(seen[1].args, [7]);
+    assert.match(seen[1].sql, /PARTITION BY s\.steamid, s\.class_id/i);
+    assert.equal((await fetch(`${base}/drills/0/leaderboard`)).status, 400);
+    assert.equal((await fetch(`${base}/maps/bad%20map/drills`)).status, 400);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});

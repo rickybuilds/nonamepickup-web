@@ -45,6 +45,40 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
     }
   });
+  router.get("/maps/:map/drills", async (req, res) => {
+    if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(req.params.map))
+      return res.status(400).json({ error: "invalid_map" });
+    try {
+      const rows = await query("SELECT id, slug, name, kind, class_id FROM bootcamp_drills WHERE map = ? AND enabled = 1 ORDER BY name, id LIMIT 100", [req.params.map]);
+      return res.json({ map: req.params.map, drills: rows.map(row => ({
+        id: Number(row.id), slug: row.slug, name: row.name, kind: row.kind, classId: Number(row.class_id)
+      })) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/maps/:map/drills]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
+  router.get("/drills/:id/leaderboard", async (req, res) => {
+    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
+      return res.status(400).json({ error: "invalid_drill_id" });
+    try {
+      const rows = await query(`
+        SELECT set_id, steamid, player_name, class_id, score, tier FROM (
+          SELECT s.id AS set_id, s.steamid, s.player_name, s.class_id, s.score, s.tier,
+                 ROW_NUMBER() OVER (PARTITION BY s.steamid, s.class_id ORDER BY s.score DESC, s.id) AS player_rank
+            FROM bootcamp_drill_sets s JOIN bootcamp_drills d ON d.id = s.drill_id AND d.enabled = 1
+           WHERE s.drill_id = ?
+        ) ranked WHERE player_rank = 1 ORDER BY score DESC, set_id LIMIT 100
+      `, [Number(req.params.id)]);
+      return res.json({ scores: rows.map(row => ({
+        setId: Number(row.set_id), steamId: row.steamid, playerName: row.player_name,
+        classId: Number(row.class_id), score: Number(row.score), tier: Number(row.tier)
+      })) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/drills/:id/leaderboard]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
   router.get("/players/:steamId", async (req, res) => {
     const steamId = req.params.steamId;
     if (!/^STEAM_[0-5]:[01]:\d{1,20}$/.test(steamId))
