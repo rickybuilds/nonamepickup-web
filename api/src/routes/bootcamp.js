@@ -2,6 +2,17 @@
 
 const express = require("express");
 const { speedrunQuery } = require("../db/mariadb");
+const { joinReplayChunks, parseReplayFrames } = require("../helpers/replay");
+
+function parseBootcampEvents(serialized) {
+  return String(serialized || "").split(";").map(line => line.trim()).filter(Boolean).map(line => {
+    const values = line.split(",");
+    if (values.length !== 4 || values.some(value => !value.trim())) return null;
+    const [t, code, a, b] = values.map(Number);
+    if (![t, code, a, b].every(Number.isFinite) || t < 0 || !Number.isInteger(code)) return null;
+    return { t, code, a, b };
+  }).filter(Boolean).sort((a, b) => a.t - b.t);
+}
 
 function bootcampEnabled(value) {
   return typeof value === "string" && value.trim().toLowerCase() === "true";
@@ -9,6 +20,49 @@ function bootcampEnabled(value) {
 
 function createBootcampRouter({ query = speedrunQuery, logRouteError = console.error } = {}) {
   const router = express.Router();
+  router.get("/replay/run/:id", async (req, res) => {
+    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
+      return res.status(400).json({ error: "invalid_run_id" });
+    try {
+      // One statement binds chunks to an eligible run and avoids a review or
+      // route-version change between separate authorization and data queries.
+      const rows = await query(`
+        SELECT g.id AS ghost_id, g.run_id, g.map, g.route_id, r.name AS route_name,
+               g.class_id, g.player_name, g.steamid, b.time_ms, g.frame_interval, g.pos_frames,
+               c.track, c.chunk_id, c.data
+          FROM bootcamp_public_route_ghosts g
+          JOIN bootcamp_runs b ON b.id = g.run_id AND b.finalization_required = 0
+          JOIN bootcamp_routes r ON r.id = g.route_id
+          LEFT JOIN bootcamp_ghost_chunks c ON c.ghost_id = g.id AND c.track IN ('pos', 'event')
+         WHERE g.run_id = ? ORDER BY c.track, c.chunk_id LIMIT 513
+      `, [Number(req.params.id)]);
+      if (!rows.length) return res.status(404).json({ error: "replay_not_found" });
+      if (rows.length > 512) return res.status(422).json({ error: "replay_invalid" });
+      const chunks = { pos: [], event: [] };
+      let bytes = 0;
+      for (const row of rows) {
+        if (!Object.hasOwn(chunks, row.track) || Number(row.chunk_id) !== chunks[row.track].length)
+          return res.status(422).json({ error: "replay_invalid" });
+        const value = Buffer.isBuffer(row.data) ? row.data.toString("utf8") : String(row.data ?? "");
+        bytes += Buffer.byteLength(value);
+        if (bytes > 8 * 1024 * 1024) return res.status(422).json({ error: "replay_invalid" });
+        chunks[row.track].push(value);
+      }
+      const frames = parseReplayFrames(joinReplayChunks(chunks.pos));
+      const events = parseBootcampEvents(joinReplayChunks(chunks.event));
+      const first = rows[0];
+      if (frames.length < 2 || frames.length > 3600 || events.length > 512 ||
+          (Number(first.pos_frames) > 0 && frames.length !== Number(first.pos_frames)))
+        return res.status(422).json({ error: "replay_invalid" });
+      return res.json({ source: "bootcamp", runId: Number(first.run_id), ghostId: Number(first.ghost_id),
+        map: first.map, routeId: Number(first.route_id), routeName: first.route_name,
+        classId: Number(first.class_id), playerName: first.player_name, steamId: first.steamid,
+        timeMs: Number(first.time_ms), frameInterval: Number(first.frame_interval), frames, events });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/replay/run/:id]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
   router.get("/maps", async (_req, res) => {
     try {
       const rows = await query(`
