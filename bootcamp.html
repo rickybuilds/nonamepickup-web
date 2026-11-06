@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Bootcamp | NoName TFC</title>
+  <link rel="icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/speedruns.css?v=20260910leaderboardfit2">
+  <link rel="stylesheet" href="assets/css/bootcamp-hub.css?v=1">
+  <script src="assets/js/main.js?v=20261004nav1" defer></script>
+  <script src="assets/js/bootcamp-hub.js?v=1" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#0a0c10] speedruns-page bootcamp-hub">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="nn-logo" href="index.html" aria-label="NoName TFC home"><span class="logo-nn">NN</span><span class="logo-slash">//</span><span class="logo-tfc">TFC</span></a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Home</a><a href="matches.html">Matches</a><a href="leaderboard.html">Players</a><a href="speedruns.html">Speedruns</a><a href="live.html" class="nav-live">Live</a>
+        <details class="nav-more"><summary>More<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></summary><div class="nav-more-links">
+          <a href="bootcamp.html" aria-current="page">Bootcamp</a><a href="analytics.html">Analytics</a><a href="compare.html">Compare players</a><a href="defense-iq.html">Defense IQ</a><a href="tracker.html">Identity history</a>
+        </div></details>
+      </nav>
+      <input id="global-search" type="search" placeholder="Search players..." autocomplete="off" aria-label="Search players" class="site-search">
+    </div>
+  </header>
+  <main class="speedrun-main">
+    <div class="speedrun-shell">
+      <header class="bc-heading">
+        <h1>Bootcamp</h1>
+        <p>Find a training map, compare route times and drill scores, or check your progress.</p>
+      </header>
+      <div class="bc-layout">
+        <section class="bc-panel" aria-labelledby="maps-heading">
+          <h2 id="maps-heading">Training maps</h2>
+          <p>Choose a map to see its routes and drills.</p>
+          <div id="bc-maps" aria-live="polite"><p>Loading maps…</p></div>
+        </section>
+        <section class="bc-panel" aria-labelledby="profile-heading">
+          <h2 id="profile-heading">Player progress</h2>
+          <form id="bc-profile-form">
+            <label for="bc-steam">Steam ID</label>
+            <div class="bc-form-row"><input id="bc-steam" name="steam" placeholder="STEAM_0:1:12345" autocomplete="off" required><button type="submit">Find player</button></div>
+          </form>
+          <div id="bc-profile" aria-live="polite"><p>Enter a Steam ID to view a license and personal bests.</p></div>
+        </section>
+      </div>
+      <section id="bc-map-detail" class="bc-section" aria-live="polite" hidden>
+        <h2 id="bc-map-title"></h2><div id="bc-map-content"></div>
+      </section>
+      <section id="bc-ranking" class="bc-section" aria-live="polite" hidden>
+        <h2 id="bc-ranking-title"></h2><div id="bc-ranking-content"></div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -2,9 +2,19 @@
 
 const express = require("express");
 const fs = require("fs");
+const path = require("path");
+const { bootcampEnabled } = require("../routes/bootcamp");
 
 function registerStaticFiles(app, publicDir) {
   if (fs.existsSync(publicDir)) {
+    app.use((req, res, next) => {
+      let requestPath;
+      try { requestPath = path.posix.normalize(decodeURIComponent(req.path).replace(/\\/g, "/")).toLowerCase(); }
+      catch { return res.status(400).end(); }
+      if (["/bootcamp.html", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css"].includes(requestPath) &&
+          !bootcampEnabled(process.env.BOOTCAMP_API_ENABLED)) return res.status(404).end();
+      return next();
+    });
     app.use(express.static(publicDir, {
       etag: true,
       maxAge: process.env.NODE_ENV === "production" ? "1h" : 0,

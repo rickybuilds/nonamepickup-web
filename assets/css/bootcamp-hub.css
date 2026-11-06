@@ -1,0 +1,28 @@
+.bc-heading { margin: 2rem 0; max-width: 65ch; }
+.bc-heading h1 { margin: 0; color: #f8fafc; font: 700 clamp(2rem, 5vw, 3.5rem)/1.1 Orbitron, sans-serif; }
+.bc-heading p, .bc-panel > p, .bc-empty { color: #b6c4d7; line-height: 1.6; }
+.bc-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+.bc-panel, .bc-section { color: #e6edf7; background: #111824; border: 1px solid #344154; border-radius: 12px; padding: 24px; padding: clamp(1rem, 3vw, 1.5rem); }
+.bc-panel, .bc-section, #bc-profile { min-width: 0; }
+.bc-section { margin-top: 1.25rem; }
+.bc-panel h2, .bc-section h2 { margin: 0 0 .75rem; color: #f8fafc; font-size: 1.25rem; }
+.bc-panel h3, .bc-section h3 { color: #e6edf7; font-size: 1rem; margin: 1.5rem 0 .5rem; }
+.bc-panel label { display: block; color: #e6edf7; font-weight: 600; margin: 1rem 0 .4rem; }
+.bc-form-row { display: flex; gap: .5rem; }
+.bc-form-row input { min-width: 0; flex: 1; padding: .7rem; color: #f8fafc; background: #090f19; border: 1px solid #65758d; border-radius: 6px; }
+.bc-form-row input::placeholder { color: #a3b0c1; }
+.bc-panel button, .bc-section button { color: #e9f5ff; background: #17496a; border: 1px solid #5485a6; border-radius: 6px; padding: .65rem .85rem; cursor: pointer; font-weight: 700; }
+.bc-panel button:hover, .bc-section button:hover { background: #256184; }
+.bc-panel button:focus-visible, .bc-section button:focus-visible, .bc-form-row input:focus-visible { outline: 3px solid #91d5ff; outline-offset: 2px; }
+.bc-list { list-style: none; margin: .75rem 0 0; padding: 0; }
+.bc-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid #344154; color: #e6edf7; }
+.bc-list li:last-child { border-bottom: 0; }
+.bc-detail { display: block; color: #b6c4d7; font-size: .875rem; margin-top: .2rem; }
+.bc-table-wrap { overflow-x: auto; }
+.bc-table { width: 100%; border-collapse: collapse; color: #e6edf7; font-variant-numeric: tabular-nums; text-align: left; }
+.bc-table th, .bc-table td { padding: .7rem .5rem; border-bottom: 1px solid #344154; }
+.bc-table th { color: #b6c4d7; font-size: .8rem; }
+.bc-error { color: #ffb4ae; }
+.bc-panel ::selection, .bc-section ::selection { background: #337aa2; color: #fff; }
+@media (max-width: 720px) { .bc-layout { grid-template-columns: minmax(0, 1fr); } .bc-form-row { flex-wrap: wrap; } .bc-form-row input { box-sizing: border-box; flex-basis: 100%; } }
+.bootcamp-hub { color: #e6edf7; background-color: #0a0c10; }

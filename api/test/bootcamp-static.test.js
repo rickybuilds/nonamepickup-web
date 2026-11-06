@@ -1,0 +1,30 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const express = require("express");
+const path = require("node:path");
+const { registerStaticFiles } = require("../src/middleware/staticFiles");
+
+test("Bootcamp page and assets are disabled by default", async () => {
+  const old = process.env.BOOTCAMP_API_ENABLED;
+  delete process.env.BOOTCAMP_API_ENABLED;
+  const app = express();
+  registerStaticFiles(app, path.resolve(__dirname, "../.."));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise(resolve => server.once("listening", resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    assert.equal((await fetch(base + "/index.html")).status, 200);
+    for (const file of ["/bootcamp.html", "/BOOTCAMP.HTML", "/bootcamp%2ehtml", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css"]) {
+      assert.equal((await fetch(base + file)).status, 404);
+    }
+    process.env.BOOTCAMP_API_ENABLED = "true";
+    for (const file of ["/bootcamp.html", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css"]) {
+      assert.equal((await fetch(base + file)).status, 200);
+    }
+  } finally {
+    if (old === undefined) delete process.env.BOOTCAMP_API_ENABLED;
+    else process.env.BOOTCAMP_API_ENABLED = old;
+    await new Promise(resolve => server.close(resolve));
+  }
+});
