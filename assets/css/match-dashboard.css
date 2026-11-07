@@ -132,6 +132,7 @@
 .analytics-panel .analytics-bar-track{height:9px}
 .analytics-capture-chart{width:100%;height:auto;min-height:100px;display:block;overflow:visible}
 .analytics-capture-chart .chart-grid{stroke:#173044;stroke-width:.6}
+.analytics-capture-chart .chart-grid-time{stroke:#173044;stroke-opacity:.55;stroke-dasharray:2 4}
 .analytics-capture-chart text{fill:#a6bed5;font:9px Inter,sans-serif}
 .analytics-capture-chart path{fill:none;stroke-width:2;stroke-linejoin:round}
 .analytics-capture-chart path.blue{stroke:#249fff}.analytics-capture-chart path.red{stroke:#ff4061}
