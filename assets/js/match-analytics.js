@@ -169,29 +169,45 @@ window.matchDashboard = (() => {
   }
   const roundPanel=(data,filter)=>panel("Round Performance",data.events.length?captures(data,filter):data.rounds.map(r=>pair(`Round ${r.round_num}`,[num(r.team1_score),num(r.team2_score)],format,"",filter)).join("")||empty("No round results"),data.events.length?"Cumulative captures · round-relative timestamps":"Recorded round scores");
   const comparison=(data,filter)=>panel("Team Comparison",fields.map(([key,,description])=>pair(description,data.teams.map(t=>t.totals[key]),v=>key==="flag_time_seconds"?clock(v):format(v,key==="kd"?2:0),"",filter)).join(""),`${data.selectedRound?`Round ${data.selectedRound}`:"Full match"} totals · CJ = concussion jumps`,true);
-  function playerTimelineChart(data,row,round,color,kind) {
+  function playerTimelineChart(data,team,selected,kind) {
     const isDamage=kind==="damage",field=isDamage?"damage":"kills",label=isDamage?"Enemy damage":"Enemy kills";
-    const duration=num(round.duration_seconds),total=num(row[isDamage?"enemy_damage":"kills"]);
+    const players=selected===null?team.players:team.players.filter((_,i)=>i===selected);
     const all=Array.isArray(data.match[isDamage?"round_damage_buckets":"round_kill_buckets"])?data.match[isDamage?"round_damage_buckets":"round_kill_buckets"]:[];
-    const buckets=all.filter(b=>Number(b.round_num)===Number(row.round_num)&&roundRowMatchesPlayer(b,row,row));
-    const roundAvailable=all.some(b=>Number(b.round_num)===Number(row.round_num));
-    if(duration===null||duration<=0||total===null||!roundAvailable||(buckets.length?sum(buckets,field)!==total:total!==0))return empty(`Complete ${label.toLowerCase()} events are unavailable for this player and round.`);
-    const values=Array.from({length:Math.ceil(duration/60)},()=>0);
-    for(const b of buckets){const minute=num(b.minute),value=num(b[field]);if(minute===null||minute<0||minute>values.length||value===null||value<0)return empty(`${label} timeline unavailable.`);values[Math.min(minute,values.length-1)]+=value;}
+    const segments=[];let total=0,duration=0;
+    for(const id of data.roundIds){
+      const round=data.rounds.find(r=>Number(r.round_num)===id),length=num(round?.duration_seconds);
+      if(!players.length||length===null||length<=0||!all.some(b=>Number(b.round_num)===id))return empty(`Complete ${label.toLowerCase()} events are unavailable for this selection.`);
+      const values=Array.from({length:Math.ceil(length/60)},()=>0);
+      for(const player of players){
+        const rows=player.rounds.filter(r=>Number(r.round_num)===id);
+        if(rows.length!==1)return empty(`Complete ${label.toLowerCase()} events are unavailable for this selection.`);
+        const row=rows[0],expected=num(row[isDamage?"enemy_damage":"kills"]),buckets=all.filter(b=>Number(b.round_num)===id&&roundRowMatchesPlayer(b,row,row));
+        if(expected===null||(buckets.length?sum(buckets,field)!==expected:expected!==0))return empty(`Complete ${label.toLowerCase()} events are unavailable for this selection.`);
+        total+=expected;
+        for(const b of buckets){const minute=num(b.minute),value=num(b[field]);if(minute===null||minute<0||minute>values.length||value===null||value<0)return empty(`${label} timeline unavailable.`);values[Math.min(minute,values.length-1)]+=value;}
+      }
+      segments.push({id,length,values,start:duration});duration+=length;
+    }
+    if(!segments.length)return empty("No round records available.");
     let cumulative=0;
     const x=s=>48+s/duration*444,y=value=>130-value/Math.max(1,total)*108;
-    const points=[`${x(0)},${y(0)}`,...values.map((value,i)=>{cumulative+=value;return `${x(Math.min((i+1)*60,duration))},${y(cumulative)}`;})].join(" ");
-    const ticks=[0,...[180,300,600,900,1800,3600].filter(t=>t>=duration/5).slice(0,1)];
-    const step=ticks[1]||Math.max(60,Math.ceil(duration/300)*60);
+    const points=[`${x(0)},${y(0)}`,...segments.flatMap(segment=>segment.values.map((value,i)=>{cumulative+=value;return `${x(segment.start+Math.min((i+1)*60,segment.length))},${y(cumulative)}`;}))].join(" ");
+    const step=[180,300,600,900,1800,3600].find(t=>t>=duration/5)||Math.max(60,Math.ceil(duration/300)*60);
     const times=Array.from({length:Math.floor(duration/step)+1},(_,i)=>i*step);
-    const description=`${row.display_name||"Player"}: ${format(total)} cumulative ${label.toLowerCase()} in round ${row.round_num}, grouped by minute`;
-    return `<div class="analytics-player-chart"><div class="analytics-player-chart-heading"><span>${esc(label)} over time</span><strong>${format(total)}</strong></div><svg viewBox="0 0 520 158" role="img" aria-label="${attr(description)}"><line x1="48" x2="492" y1="130" y2="130"/><line x1="48" x2="492" y1="22" y2="22"/><text x="42" y="134" text-anchor="end">0</text><text x="42" y="26" text-anchor="end">${format(total)}</text>${times.map(t=>`<text x="${x(t)}" y="150" text-anchor="${t===0?"start":duration-t<step*.1?"end":"middle"}">${paceClock(t)}</text>`).join("")}<polyline class="${color}" points="${points}"/></svg><p class="analytics-note">Cumulative ${esc(label.toLowerCase())} · grouped by minute</p></div>`;
+    const name=selected===null?team.label:(players[0].stats.display_name||players[0].player.name||players[0].player.display_name||"Player");
+    const description=`${name}: ${format(total)} cumulative ${label.toLowerCase()}, grouped by minute`;
+    return `<div class="analytics-player-chart"><div class="analytics-player-chart-heading"><span>${esc(name)} · ${esc(label)} over time</span><strong>${format(total)}</strong></div><svg viewBox="0 0 520 158" role="img" aria-label="${attr(description)}"><line x1="48" x2="492" y1="130" y2="130"/><line x1="48" x2="492" y1="22" y2="22"/><text x="42" y="134" text-anchor="end">0</text><text x="42" y="26" text-anchor="end">${format(total)}</text>${times.map(t=>`<text x="${x(t)}" y="150" text-anchor="${t===0?"start":duration-t<step*.1?"end":"middle"}">${paceClock(t)}</text>`).join("")}${segments.slice(1).map(segment=>`<line class="analytics-round-marker" x1="${x(segment.start)}" x2="${x(segment.start)}" y1="22" y2="130"/>`).join("")}<polyline class="${team.color}" points="${points}"/></svg><p class="analytics-note">Cumulative ${esc(label.toLowerCase())} · grouped by minute${segments.length>1?" · dashed line marks the next round":""}</p></div>`;
   }
-  function timeline(data,filter) {
-    return `<div class="analytics-two-col">${data.teams.filter(t=>filter==="both"||filter===t.color).map(team=>panel(`${team.label} Round Timeline`,data.roundIds.map(id=>{
-      const rows=team.players.flatMap(p=>p.rounds.filter(r=>Number(r.round_num)===id)),r=data.rounds.find(r=>Number(r.round_num)===id)||{};
-      return `<div class="analytics-round-block"><h3>Round ${id}<span>${clock(num(r.duration_seconds))}</span></h3><p class="analytics-note">${esc([r.offense_team?`Offense: ${r.offense_team}`:"",r.defense_team?`Defense: ${r.defense_team}`:""].filter(Boolean).join(" · "))}</p><dl class="analytics-round-totals">${[["Kills","kills"],["Enemy DMG","enemy_damage"],["Team DMG","team_damage"],["Caps","flag_captures"],["Touches","flag_touches"]].map(([label,key])=>`<div><dt>${label}</dt><dd>${format(sum(rows,key))}</dd></div>`).join("")}</dl><p class="analytics-note">Expand a player to see their round over time</p>${rows.map(row=>`<details class="analytics-timeline-player" name="round-player-timeline"><summary class="analytics-detail-line"><span>${esc(row.display_name)} <small>${esc(row.role||"")}</small></span><b>${format(num(row.enemy_damage))} DMG · ${format(num(row.kills))} K · ${format(roundKd(row),2)} K/D</b></summary><div class="analytics-player-timeline"><div class="analytics-player-chart-controls" role="group" aria-label="Chart metric"><button type="button" data-timeline-metric="damage" aria-pressed="true">Enemy damage</button><button type="button" data-timeline-metric="kills" aria-pressed="false">Kills</button></div><div data-timeline-chart="damage">${playerTimelineChart(data,row,r,team.color,"damage")}</div><div data-timeline-chart="kills" hidden>${playerTimelineChart(data,row,r,team.color,"kills")}</div></div></details>`).join("")}</div>`;
-    }).join("")||empty("No round records"))).join("")}</div>`;
+  function timeline(data,filter,state) {
+    return `<div class="analytics-two-col">${data.teams.filter(t=>filter==="both"||filter===t.color).map(team=>{
+      const selection=state[team.color],selected=selection.player,metric=selection.metric;
+      const chart=`<div class="analytics-player-timeline"><div class="analytics-player-chart-controls" role="group" aria-label="Chart metric"><button type="button" data-timeline-metric="damage" data-timeline-team="${team.color}" aria-pressed="${metric==="damage"}">Enemy damage</button><button type="button" data-timeline-metric="kills" data-timeline-team="${team.color}" aria-pressed="${metric==="kills"}">Kills</button><button type="button" data-timeline-player="all" data-timeline-team="${team.color}" aria-pressed="${selected===null}">Whole team</button></div>${playerTimelineChart(data,team,selected,metric)}</div>`;
+      const rounds=data.roundIds.map(id=>{
+        const r=data.rounds.find(r=>Number(r.round_num)===id)||{},rows=team.players.flatMap((p,index)=>p.rounds.filter(row=>Number(row.round_num)===id).map(row=>({row,index})));
+        return `<div class="analytics-round-block"><h3>Round ${id}<span>${clock(num(r.duration_seconds))}</span></h3><p class="analytics-note">${esc([r.offense_team?`Offense: ${r.offense_team}`:"",r.defense_team?`Defense: ${r.defense_team}`:""].filter(Boolean).join(" · "))}</p><dl class="analytics-round-totals">${[["Kills","kills"],["Enemy DMG","enemy_damage"],["Team DMG","team_damage"],["Caps","flag_captures"],["Touches","flag_touches"]].map(([label,key])=>`<div><dt>${label}</dt><dd>${format(sum(rows.map(item=>item.row),key))}</dd></div>`).join("")}</dl>${rows.map(({row,index})=>`<button type="button" class="analytics-detail-line analytics-timeline-player ${team.color}" data-timeline-team="${team.color}" data-timeline-player="${index}" aria-pressed="${selected===index}"><span>${esc(row.display_name)} <small>${esc(row.role||"")}</small></span><b>${format(num(row.enemy_damage))} DMG · ${format(num(row.kills))} K · ${format(roundKd(row),2)} K/D</b></button>`).join("")}</div>`;
+      }).join("")||empty("No round records");
+      return panel(`${team.label} Round Timeline`,chart+rounds,"Select a player to update the chart");
+    }).join("")}</div>`;
   }
   function pace(data,filter) {
     const {rounds,events}=flagPaceRounds(data),unassigned=events.filter(e=>e.round===null).length;
@@ -220,6 +236,7 @@ window.matchDashboard = (() => {
 
   function mount(root,match) {
     const data=model(match);let active="overview",filter="both",roundFilter="all",replays=[],replaysLoaded=false;
+    const timelineState={blue:{player:null,metric:"damage"},red:{player:null,metric:"damage"}};
     const tabs=[["overview","Player Overview"],["comparison","Team Comparison"],["timeline","Round Timeline"],["pace","Flag Pace"],["weapons","Weapon Usage"],["damage","Damage"],["vision","Map Vision"],["downloads","Downloads"]];
     const enabled=id=>(id!=="vision"||replays.length>0)&&(id!=="timeline"||data.roundIds.length>0)&&(id!=="weapons"||data.teams.some(t=>t.players.some(p=>p.weapons.length||p.roundWeapons.length)));
     root.innerHTML=`<div class="analytics-nav"><div class="analytics-navigation-links"><div class="analytics-tabs" role="tablist" aria-label="Match analytics">${tabs.map(([id,label])=>`<button type="button" id="analytics-tab-${id}" data-analytics-tab="${id}" role="tab" aria-controls="analytics-content" aria-selected="${id===active}" tabindex="${id===active?0:-1}" ${enabled(id)?"":`disabled title="${id==="vision"?"Match statistics contain no positions. Checking recorded replays.":"No recorded data for this view."}"`}>${label}</button>`).join("")}</div><a class="analytics-back-link" href="matches.html">Back to Matches</a></div><div class="analytics-filter" role="group" aria-label="Team view"><span>View:</span>${[["both","Both"],["blue","Team 1"],["red","Team 2"]].map(([id,label])=>`<button type="button" data-team-filter="${id}" aria-pressed="${id===filter}">${label}</button>`).join("")}</div><div class="analytics-filter" role="group" aria-label="Round view"><span>Round:</span>${[["all","All rounds"],...data.roundIds.map(id=>[String(id),`Round ${id}`])].map(([id,label])=>`<button type="button" data-round-filter="${id}" aria-pressed="${id===roundFilter}">${label}</button>`).join("")}</div></div><div class="analytics-summaries">${data.teams.map(summary).join("")}</div><div id="analytics-content" role="tabpanel" aria-labelledby="analytics-tab-overview" tabindex="0"></div>`;
@@ -240,7 +257,7 @@ window.matchDashboard = (() => {
       content.setAttribute("aria-labelledby",`analytics-tab-${active}`);
       if(active==="overview")content.innerHTML=`<div class="analytics-players ${filter!=="both"?"single-team":""}">${viewData.teams.filter(t=>filter==="both"||filter===t.color).map(playerTeam).join("")}</div><div class="analytics-support">${breakdown(viewData,"class",filter)}${breakdown(viewData,"weapon",filter)}${damage(viewData,filter)}${roundPanel(viewData,filter)}</div>`;
       if(active==="comparison")content.innerHTML=comparison(viewData,filter);
-      if(active==="timeline")content.innerHTML=timeline(viewData,filter);
+      if(active==="timeline")content.innerHTML=timeline(viewData,filter,timelineState);
       if(active==="pace")content.innerHTML=pace(viewData,filter);
       if(active==="weapons")content.innerHTML=breakdown(viewData,"weapon",filter,true);
       if(active==="damage")content.innerHTML=damage(viewData,filter);
@@ -248,11 +265,15 @@ window.matchDashboard = (() => {
       if(active==="vision"){content.innerHTML=panel("Map Vision",'<div data-replay-links></div>',"Explore recorded positions, objectives and player perspectives in the existing 3D replay viewer.",true);renderReplays();}
     }
     root.addEventListener("click",event=>{
-      const metricButton=event.target.closest("[data-timeline-metric]");
-      if(metricButton){
-        const holder=metricButton.closest(".analytics-player-timeline"),metric=metricButton.dataset.timelineMetric;
-        holder.querySelectorAll("[data-timeline-metric]").forEach(button=>button.setAttribute("aria-pressed",String(button===metricButton)));
-        holder.querySelectorAll("[data-timeline-chart]").forEach(chart=>chart.hidden=chart.dataset.timelineChart!==metric);
+      const timelineButton=event.target.closest("[data-timeline-team]");
+      if(timelineButton){
+        const team=timelineButton.dataset.timelineTeam,state=timelineState[team];
+        if(state){
+          if(timelineButton.dataset.timelineMetric)state.metric=timelineButton.dataset.timelineMetric;
+          if(timelineButton.dataset.timelinePlayer!==undefined)state.player=timelineButton.dataset.timelinePlayer==="all"?null:Number(timelineButton.dataset.timelinePlayer);
+          const selector=timelineButton.dataset.timelineMetric?`[data-timeline-team="${team}"][data-timeline-metric="${timelineButton.dataset.timelineMetric}"]`:`[data-timeline-team="${team}"][data-timeline-player="${timelineButton.dataset.timelinePlayer}"]`;
+          render();content.querySelector(selector)?.focus();
+        }
       }
       const captureRow=event.target.closest(".analytics-capture-row");
       if(captureRow&&!event.target.closest(".analytics-capture-details")){
