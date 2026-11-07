@@ -129,6 +129,7 @@ function createMatchesRouter({
       let roundMvps=[];
       const flagCarrierKills=nnInputs.flagCarrierKills;
       let capTimeline=[];
+      let flagPickups=[];
       let roundWeaponStats=[];
 
       // Event rows retain round information that match_player_weapons totals lack.
@@ -238,6 +239,29 @@ function createMatchesRouter({
         const message=String(capEventError?.message||"");
         if(!message.includes("no such table")){
           logRouteError("[/api/match/:matchId cap timeline]",capEventError);
+        }
+      }
+
+      // Pick one source per round to avoid counting the same pickup from multiple imports.
+      try{
+        flagPickups=db.prepare(`
+          WITH pickups AS (
+            SELECT round_num, game_time_seconds, event_time_text, display_name,
+                   player_key, steam_id, team, source, id,
+                   MIN(CASE source WHEN 'noname' THEN 0 WHEN 'hampalyzer' THEN 1 WHEN 'tfcstats' THEN 2 ELSE 3 END)
+                     OVER (PARTITION BY round_num) AS preferred_source_rank
+            FROM match_flag_events
+            WHERE match_id=? AND source IN ('noname','hampalyzer','tfcstats')
+              AND flag_event_type IN ('pickup','player_picked_up_flag')
+          )
+          SELECT round_num, game_time_seconds, event_time_text, display_name, player_key, steam_id, team, source
+          FROM pickups
+          WHERE CASE source WHEN 'noname' THEN 0 WHEN 'hampalyzer' THEN 1 WHEN 'tfcstats' THEN 2 ELSE 3 END = preferred_source_rank
+          ORDER BY round_num, game_time_seconds, id
+        `).all(matchId);
+      }catch(flagEventError){
+        if(!String(flagEventError?.message||"").includes("no such table")){
+          logRouteError("[/api/match/:matchId flag pickups]",flagEventError);
         }
       }
 
@@ -375,6 +399,7 @@ function createMatchesRouter({
       capper_steam_id:event.capper_steam_id || null,
       touches:event.touches == null ? null : Number(event.touches)
         })),
+        flag_pickups:flagPickups,
         match_mvps:matchMvps.map(({identity,...mvp})=>mvp),
         mvp_source:mvpSource,
         nn_mvp:nnMvp,

@@ -144,6 +144,9 @@
 .analytics-pace-touches{margin-top:20px;border-top:1px solid #193047;padding-top:12px}
 .analytics-pace-touches h3{font-size:14px;margin:0 0 4px}
 .analytics-pace-touches .analytics-note{margin:0 0 6px}
+.analytics-touch-events{max-height:320px;overflow:auto;margin-bottom:18px}
+.analytics-touch-events th{position:sticky;top:0;z-index:1}
+.analytics-touch-events .analytics-detail-table td:last-child,.analytics-touch-events .analytics-detail-table th:last-child{text-align:left}
 .analytics-pace-events .analytics-detail-table td:last-child,.analytics-pace-events .analytics-detail-table th:last-child{text-align:left}
 @media(max-width:1000px){.analytics-pace-layout{grid-template-columns:1fr;gap:10px}}
 .analytics-wide .analytics-pair{min-height:34px;font-size:11px;grid-template-columns:minmax(170px,1fr) 2fr 2fr}
