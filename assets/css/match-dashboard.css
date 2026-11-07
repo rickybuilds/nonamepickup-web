@@ -190,9 +190,12 @@
 .analytics-round-comparison td span{color:var(--analytics-muted)}
 .analytics-round-comparison td strong{color:#dce9fa;font-weight:600;margin-top:3px}
 .analytics-round-comparison .analytics-timeline-player{font-size:13px;border:0;border-radius:3px}
+.analytics-timeline-row{cursor:pointer}
+.analytics-round-comparison .analytics-timeline-row:hover td,.analytics-round-comparison .analytics-timeline-row[data-selected=true] td{background:#0c2135}
 .analytics-round-comparison.red tbody th{background:#1c101b;color:#ffb4c0}
 .analytics-round-comparison.red .analytics-timeline-player{color:#ffd5dd}
 .analytics-round-comparison.red .analytics-timeline-player:hover{background:#351522}
+.analytics-round-comparison.red .analytics-timeline-row:hover td,.analytics-round-comparison.red .analytics-timeline-row[data-selected=true] td{background:#351522}
 .analytics-round-block h3{display:flex;justify-content:space-between}
 .analytics-round-totals{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}
 .analytics-round-totals dt{font-size:9px;color:var(--analytics-muted)}.analytics-round-totals dd{margin:4px 0;font-weight:700}
