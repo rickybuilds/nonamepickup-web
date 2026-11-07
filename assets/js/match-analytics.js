@@ -169,21 +169,28 @@ window.matchDashboard = (() => {
   }
   const roundPanel=(data,filter)=>panel("Round Performance",data.events.length?captures(data,filter):data.rounds.map(r=>pair(`Round ${r.round_num}`,[num(r.team1_score),num(r.team2_score)],format,"",filter)).join("")||empty("No round results"),data.events.length?"Cumulative captures · round-relative timestamps":"Recorded round scores");
   const comparison=(data,filter)=>panel("Team Comparison",fields.map(([key,,description])=>pair(description,data.teams.map(t=>t.totals[key]),v=>key==="flag_time_seconds"?clock(v):format(v,key==="kd"?2:0),"",filter)).join(""),`${data.selectedRound?`Round ${data.selectedRound}`:"Full match"} totals · CJ = concussion jumps`,true);
-  function damageSparkline(data,row,round,color) {
-    const duration=num(round.duration_seconds),total=num(row.enemy_damage);
-    const buckets=(Array.isArray(data.match.round_damage_buckets)?data.match.round_damage_buckets:[]).filter(b=>Number(b.round_num)===Number(row.round_num)&&roundRowMatchesPlayer(b,row,row));
-    if(duration===null||duration<=0||total===null||!buckets.length||sum(buckets,"damage")!==total)return '<span class="analytics-damage-unavailable" title="Complete timestamped damage events are unavailable">Damage timeline unavailable</span>';
+  function playerTimelineChart(data,row,round,color,kind) {
+    const isDamage=kind==="damage",field=isDamage?"damage":"kills",label=isDamage?"Enemy damage":"Enemy kills";
+    const duration=num(round.duration_seconds),total=num(row[isDamage?"enemy_damage":"kills"]);
+    const all=Array.isArray(data.match[isDamage?"round_damage_buckets":"round_kill_buckets"])?data.match[isDamage?"round_damage_buckets":"round_kill_buckets"]:[];
+    const buckets=all.filter(b=>Number(b.round_num)===Number(row.round_num)&&roundRowMatchesPlayer(b,row,row));
+    const roundAvailable=all.some(b=>Number(b.round_num)===Number(row.round_num));
+    if(duration===null||duration<=0||total===null||!roundAvailable||(buckets.length?sum(buckets,field)!==total:total!==0))return empty(`Complete ${label.toLowerCase()} events are unavailable for this player and round.`);
     const values=Array.from({length:Math.ceil(duration/60)},()=>0);
-    for(const b of buckets){const minute=num(b.minute),damage=num(b.damage);if(minute===null||minute<0||minute>values.length||damage===null||damage<0)return '<span class="analytics-damage-unavailable">Damage timeline unavailable</span>';values[Math.min(minute,values.length-1)]+=damage;}
+    for(const b of buckets){const minute=num(b.minute),value=num(b[field]);if(minute===null||minute<0||minute>values.length||value===null||value<0)return empty(`${label} timeline unavailable.`);values[Math.min(minute,values.length-1)]+=value;}
     let cumulative=0;
-    const points=["0,24",...values.map((value,i)=>{cumulative+=value;return `${Math.min((i+1)*60,duration)/duration*100},${24-cumulative/Math.max(1,total)*22}`;})].join(" ");
-    const label=`${row.display_name||"Player"}: ${format(total)} cumulative enemy damage in round ${row.round_num}; minute intervals`;
-    return `<span class="analytics-damage-trend" title="${attr(label)}"><svg viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="${attr(label)}"><polyline class="${color}" points="${points}"/></svg><span>${format(total)} DMG</span></span>`;
+    const x=s=>48+s/duration*444,y=value=>130-value/Math.max(1,total)*108;
+    const points=[`${x(0)},${y(0)}`,...values.map((value,i)=>{cumulative+=value;return `${x(Math.min((i+1)*60,duration))},${y(cumulative)}`;})].join(" ");
+    const ticks=[0,...[180,300,600,900,1800,3600].filter(t=>t>=duration/5).slice(0,1)];
+    const step=ticks[1]||Math.max(60,Math.ceil(duration/300)*60);
+    const times=Array.from({length:Math.floor(duration/step)+1},(_,i)=>i*step);
+    const description=`${row.display_name||"Player"}: ${format(total)} cumulative ${label.toLowerCase()} in round ${row.round_num}, grouped by minute`;
+    return `<div class="analytics-player-chart"><div class="analytics-player-chart-heading"><span>${esc(label)} over time</span><strong>${format(total)}</strong></div><svg viewBox="0 0 520 158" role="img" aria-label="${attr(description)}"><line x1="48" x2="492" y1="130" y2="130"/><line x1="48" x2="492" y1="22" y2="22"/><text x="42" y="134" text-anchor="end">0</text><text x="42" y="26" text-anchor="end">${format(total)}</text>${times.map(t=>`<text x="${x(t)}" y="150" text-anchor="${t===0?"start":duration-t<step*.1?"end":"middle"}">${paceClock(t)}</text>`).join("")}<polyline class="${color}" points="${points}"/></svg><p class="analytics-note">Cumulative ${esc(label.toLowerCase())} · grouped by minute</p></div>`;
   }
   function timeline(data,filter) {
     return `<div class="analytics-two-col">${data.teams.filter(t=>filter==="both"||filter===t.color).map(team=>panel(`${team.label} Round Timeline`,data.roundIds.map(id=>{
       const rows=team.players.flatMap(p=>p.rounds.filter(r=>Number(r.round_num)===id)),r=data.rounds.find(r=>Number(r.round_num)===id)||{};
-      return `<div class="analytics-round-block"><h3>Round ${id}<span>${clock(num(r.duration_seconds))}</span></h3><p class="analytics-note">${esc([r.offense_team?`Offense: ${r.offense_team}`:"",r.defense_team?`Defense: ${r.defense_team}`:""].filter(Boolean).join(" · "))}</p><dl class="analytics-round-totals">${[["Kills","kills"],["Enemy DMG","enemy_damage"],["Team DMG","team_damage"],["Caps","flag_captures"],["Touches","flag_touches"]].map(([label,key])=>`<div><dt>${label}</dt><dd>${format(sum(rows,key))}</dd></div>`).join("")}</dl><p class="analytics-note">Cumulative enemy damage · each line scaled to that player’s total</p>${rows.map(row=>`<div class="analytics-detail-line analytics-timeline-player"><span>${esc(row.display_name)} <small>${esc(row.role||"")}</small></span>${damageSparkline(data,row,r,team.color)}<b>${format(num(row.kills))} K · ${format(roundKd(row),2)} K/D</b></div>`).join("")}</div>`;
+      return `<div class="analytics-round-block"><h3>Round ${id}<span>${clock(num(r.duration_seconds))}</span></h3><p class="analytics-note">${esc([r.offense_team?`Offense: ${r.offense_team}`:"",r.defense_team?`Defense: ${r.defense_team}`:""].filter(Boolean).join(" · "))}</p><dl class="analytics-round-totals">${[["Kills","kills"],["Enemy DMG","enemy_damage"],["Team DMG","team_damage"],["Caps","flag_captures"],["Touches","flag_touches"]].map(([label,key])=>`<div><dt>${label}</dt><dd>${format(sum(rows,key))}</dd></div>`).join("")}</dl><p class="analytics-note">Expand a player to see their round over time</p>${rows.map(row=>`<details class="analytics-timeline-player" name="round-player-timeline"><summary class="analytics-detail-line"><span>${esc(row.display_name)} <small>${esc(row.role||"")}</small></span><b>${format(num(row.enemy_damage))} DMG · ${format(num(row.kills))} K · ${format(roundKd(row),2)} K/D</b></summary><div class="analytics-player-timeline"><div class="analytics-player-chart-controls" role="group" aria-label="Chart metric"><button type="button" data-timeline-metric="damage" aria-pressed="true">Enemy damage</button><button type="button" data-timeline-metric="kills" aria-pressed="false">Kills</button></div><div data-timeline-chart="damage">${playerTimelineChart(data,row,r,team.color,"damage")}</div><div data-timeline-chart="kills" hidden>${playerTimelineChart(data,row,r,team.color,"kills")}</div></div></details>`).join("")}</div>`;
     }).join("")||empty("No round records"))).join("")}</div>`;
   }
   function pace(data,filter) {
@@ -241,6 +248,12 @@ window.matchDashboard = (() => {
       if(active==="vision"){content.innerHTML=panel("Map Vision",'<div data-replay-links></div>',"Explore recorded positions, objectives and player perspectives in the existing 3D replay viewer.",true);renderReplays();}
     }
     root.addEventListener("click",event=>{
+      const metricButton=event.target.closest("[data-timeline-metric]");
+      if(metricButton){
+        const holder=metricButton.closest(".analytics-player-timeline"),metric=metricButton.dataset.timelineMetric;
+        holder.querySelectorAll("[data-timeline-metric]").forEach(button=>button.setAttribute("aria-pressed",String(button===metricButton)));
+        holder.querySelectorAll("[data-timeline-chart]").forEach(chart=>chart.hidden=chart.dataset.timelineChart!==metric);
+      }
       const captureRow=event.target.closest(".analytics-capture-row");
       if(captureRow&&!event.target.closest(".analytics-capture-details")){
         const details=captureRow.querySelector(".analytics-capture-details");

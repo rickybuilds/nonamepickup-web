@@ -132,6 +132,7 @@ function createMatchesRouter({
       let flagPickups=[];
       let roundWeaponStats=[];
       let roundDamageBuckets=[];
+      let roundKillBuckets=[];
 
       // Aggregate the parser's timestamped enemy damage before returning it to the browser.
       try{
@@ -159,6 +160,23 @@ function createMatchesRouter({
       }catch(damageEventError){
         if(!String(damageEventError?.message||"").includes("no such table")){
           logRouteError("[/api/match/:matchId damage timeline]",damageEventError);
+        }
+      }
+
+      try{
+        roundKillBuckets=db.prepare(`
+          SELECT round_num, attacker_key AS player_key, attacker_steam_id AS steam_id,
+                 attacker_name AS display_name, CAST(event_time_seconds / 60 AS INTEGER) AS minute,
+                 COUNT(*) AS kills
+          FROM match_kill_events
+          WHERE match_id=? AND round_num>0 AND event_time_seconds>=0
+            AND is_enemy_kill=1 AND COALESCE(is_team_kill,0)=0
+          GROUP BY round_num, attacker_key, attacker_steam_id, attacker_name, CAST(event_time_seconds / 60 AS INTEGER)
+          ORDER BY round_num, minute
+        `).all(matchId);
+      }catch(killEventError){
+        if(!String(killEventError?.message||"").includes("no such table")){
+          logRouteError("[/api/match/:matchId kill timeline]",killEventError);
         }
       }
 
@@ -431,6 +449,7 @@ function createMatchesRouter({
         })),
         flag_pickups:flagPickups,
         round_damage_buckets:roundDamageBuckets,
+        round_kill_buckets:roundKillBuckets,
         match_mvps:matchMvps.map(({identity,...mvp})=>mvp),
         mvp_source:mvpSource,
         nn_mvp:nnMvp,
