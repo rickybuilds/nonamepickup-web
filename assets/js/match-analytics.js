@@ -154,8 +154,12 @@ window.matchDashboard = (() => {
     const extent=Math.max(1,...groups.map(g=>g.duration)),visibleTeams=data.teams.filter(t=>filter==="both"||filter===t.color);
     const max=Math.max(1,...groups.flatMap(g=>(rounds?visibleTeams:data.teams).map(t=>g.events.filter(e=>capTeamClass(e.team)===t.color).length)));
     const time=e=>rounds?e.round_time_seconds:Number(e.time_seconds),displayTime=rounds?paceClock:clock;
-    const x=s=>32+s/extent*476,y=n=>154-n/max*140;
-    return `<svg class="analytics-capture-chart" viewBox="0 0 520 180" role="img" aria-label="Cumulative captures on the ${rounds?"round-relative":"full match"} clock; hover or focus capture points for details">${[0,1,2,3,4].map(i=>`<line class="chart-grid" x1="32" x2="508" y1="${y(max*i/4)}" y2="${y(max*i/4)}"/><text x="25" y="${y(max*i/4)+4}" text-anchor="end">${format(max*i/4,Number.isInteger(max*i/4)?0:1)}</text><text x="${x(extent*i/4)}" y="174" text-anchor="${i===0?"start":i===4?"end":"middle"}">${displayTime(extent*i/4)}</text>`).join("")}${groups.map(g=>visibleTeams.map(t=>{
+    const countStep=Math.max(1,Math.ceil(max/6)),countMax=Math.ceil(max/countStep)*countStep;
+    const timeStep=[1,5,10,15,30,60,120,180,300,600,900,1800,3600].find(step=>step>=extent/6)||Math.ceil(extent/3600/6)*3600;
+    const x=s=>32+s/extent*476,y=n=>154-n/countMax*140;
+    const countTicks=Array.from({length:countMax/countStep+1},(_,i)=>i*countStep);
+    const timeTicks=Array.from({length:Math.floor(extent/timeStep)+1},(_,i)=>i*timeStep);
+    return `<svg class="analytics-capture-chart" viewBox="0 0 520 180" role="img" aria-label="Cumulative captures on the ${rounds?"round-relative":"full match"} clock; hover or focus capture and touch markers for details">${countTicks.map(value=>`<line class="chart-grid" x1="32" x2="508" y1="${y(value)}" y2="${y(value)}"/><text x="25" y="${y(value)+4}" text-anchor="end">${format(value)}</text>`).join("")}${timeTicks.map(value=>`<line class="chart-grid" x1="${x(value)}" x2="${x(value)}" y1="14" y2="154"/><text x="${x(value)}" y="174" text-anchor="${value===0?"start":value===extent?"end":"middle"}">${displayTime(value)}</text>`).join("")}${groups.map(g=>visibleTeams.map(t=>{
       const teamEvents=g.events.filter(e=>capTeamClass(e.team)===t.color);
       if(!teamEvents.length&&!pickups.some(e=>e.color===t.color&&Number(e.round_num)===g.id))return "";
       let count=0,path=`M${x(0)},${y(0)}`;
