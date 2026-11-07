@@ -169,10 +169,20 @@ window.matchDashboard = (() => {
   }
   const roundPanel=(data,filter)=>panel("Round Performance",data.events.length?captures(data,filter):data.rounds.map(r=>pair(`Round ${r.round_num}`,[num(r.team1_score),num(r.team2_score)],format,"",filter)).join("")||empty("No round results"),data.events.length?"Cumulative captures · round-relative timestamps":"Recorded round scores");
   const comparison=(data,filter)=>panel("Team Comparison",fields.map(([key,,description])=>pair(description,data.teams.map(t=>t.totals[key]),v=>key==="flag_time_seconds"?clock(v):format(v,key==="kd"?2:0),"",filter)).join(""),`${data.selectedRound?`Round ${data.selectedRound}`:"Full match"} totals · CJ = concussion jumps`,true);
+  function damageSparkline(data,row,round,color) {
+    const duration=num(round.duration_seconds),total=num(row.enemy_damage);
+    const buckets=(Array.isArray(data.match.round_damage_buckets)?data.match.round_damage_buckets:[]).filter(b=>Number(b.round_num)===Number(row.round_num)&&roundRowMatchesPlayer(b,row,row));
+    if(duration===null||duration<=0||total===null||!buckets.length||sum(buckets,"damage")!==total)return '<span class="analytics-damage-unavailable" title="Complete timestamped damage events are unavailable">Damage timeline unavailable</span>';
+    const values=Array.from({length:Math.ceil(duration/60)},()=>0);
+    for(const b of buckets){const minute=num(b.minute),damage=num(b.damage);if(minute===null||minute<0||minute>values.length||damage===null||damage<0)return '<span class="analytics-damage-unavailable">Damage timeline unavailable</span>';values[Math.min(minute,values.length-1)]+=damage;}
+    const peak=Math.max(1,...values),points=values.map((value,i)=>`${values.length===1?50:i/(values.length-1)*100},${24-value/peak*22}`).join(" ");
+    const label=`${row.display_name||"Player"}: ${format(total)} enemy damage in round ${row.round_num}; damage per minute`;
+    return `<span class="analytics-damage-trend" title="${attr(label)}"><svg viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label="${attr(label)}"><polyline class="${color}" points="${points}"/></svg><span>${format(total)} DMG</span></span>`;
+  }
   function timeline(data,filter) {
     return `<div class="analytics-two-col">${data.teams.filter(t=>filter==="both"||filter===t.color).map(team=>panel(`${team.label} Round Timeline`,data.roundIds.map(id=>{
       const rows=team.players.flatMap(p=>p.rounds.filter(r=>Number(r.round_num)===id)),r=data.rounds.find(r=>Number(r.round_num)===id)||{};
-      return `<div class="analytics-round-block"><h3>Round ${id}<span>${clock(num(r.duration_seconds))}</span></h3><p class="analytics-note">${esc([r.offense_team?`Offense: ${r.offense_team}`:"",r.defense_team?`Defense: ${r.defense_team}`:""].filter(Boolean).join(" · "))}</p><dl class="analytics-round-totals">${[["Kills","kills"],["Enemy DMG","enemy_damage"],["Team DMG","team_damage"],["Caps","flag_captures"],["Touches","flag_touches"]].map(([label,key])=>`<div><dt>${label}</dt><dd>${format(sum(rows,key))}</dd></div>`).join("")}</dl>${rows.map(row=>`<div class="analytics-detail-line"><span>${esc(row.display_name)} <small>${esc(row.role||"")}</small></span><b>${format(num(row.kills))} K · ${format(roundKd(row),2)} K/D</b></div>`).join("")}</div>`;
+      return `<div class="analytics-round-block"><h3>Round ${id}<span>${clock(num(r.duration_seconds))}</span></h3><p class="analytics-note">${esc([r.offense_team?`Offense: ${r.offense_team}`:"",r.defense_team?`Defense: ${r.defense_team}`:""].filter(Boolean).join(" · "))}</p><dl class="analytics-round-totals">${[["Kills","kills"],["Enemy DMG","enemy_damage"],["Team DMG","team_damage"],["Caps","flag_captures"],["Touches","flag_touches"]].map(([label,key])=>`<div><dt>${label}</dt><dd>${format(sum(rows,key))}</dd></div>`).join("")}</dl><p class="analytics-note">Enemy damage per minute · each line scaled to that player’s peak</p>${rows.map(row=>`<div class="analytics-detail-line analytics-timeline-player"><span>${esc(row.display_name)} <small>${esc(row.role||"")}</small></span>${damageSparkline(data,row,r,team.color)}<b>${format(num(row.kills))} K · ${format(roundKd(row),2)} K/D</b></div>`).join("")}</div>`;
     }).join("")||empty("No round records"))).join("")}</div>`;
   }
   function pace(data,filter) {

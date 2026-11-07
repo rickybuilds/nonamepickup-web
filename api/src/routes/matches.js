@@ -131,6 +131,36 @@ function createMatchesRouter({
       let capTimeline=[];
       let flagPickups=[];
       let roundWeaponStats=[];
+      let roundDamageBuckets=[];
+
+      // Aggregate the parser's timestamped enemy damage before returning it to the browser.
+      try{
+        roundDamageBuckets=db.prepare(`
+          WITH damage AS (
+            SELECT json_extract(e.value,'$.round') AS round_num,
+                   json_extract(e.value,'$.timeSeconds') AS seconds,
+                   json_extract(e.value,'$.playerFrom.steamId') AS steam_id,
+                   json_extract(e.value,'$.playerFrom.name') AS display_name,
+                   json_extract(e.value,'$.playerFrom.team') AS attacker_team,
+                   json_extract(e.value,'$.playerTo.team') AS victim_team,
+                   json_extract(e.value,'$.data.value') AS amount
+            FROM match_parser_results p, json_each(p.result_json,'$.events') e
+            WHERE p.match_id=? AND json_extract(e.value,'$.type')='PlayerDamage'
+          )
+          SELECT round_num, steam_id, display_name, CAST(seconds / 60 AS INTEGER) AS minute,
+                 SUM(CAST(amount AS INTEGER)) AS damage
+          FROM damage
+          WHERE round_num > 0 AND seconds >= 0 AND attacker_team IN (1,2) AND victim_team IN (1,2)
+            AND attacker_team != victim_team AND amount IS NOT NULL
+            AND CAST(amount AS TEXT) != '' AND CAST(amount AS TEXT) NOT GLOB '*[^0-9]*'
+          GROUP BY round_num, steam_id, display_name, CAST(seconds / 60 AS INTEGER)
+          ORDER BY round_num, minute
+        `).all(matchId);
+      }catch(damageEventError){
+        if(!String(damageEventError?.message||"").includes("no such table")){
+          logRouteError("[/api/match/:matchId damage timeline]",damageEventError);
+        }
+      }
 
       // Event rows retain round information that match_player_weapons totals lack.
       // Keep the existing full-match weapon response unchanged for other pages.
@@ -400,6 +430,7 @@ function createMatchesRouter({
       touches:event.touches == null ? null : Number(event.touches)
         })),
         flag_pickups:flagPickups,
+        round_damage_buckets:roundDamageBuckets,
         match_mvps:matchMvps.map(({identity,...mvp})=>mvp),
         mvp_source:mvpSource,
         nn_mvp:nnMvp,
