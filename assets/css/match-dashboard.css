@@ -148,8 +148,8 @@
 .analytics-pace-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
 .analytics-pace-chart,.analytics-pace-events{min-width:0}
 .analytics-pace-events .analytics-detail-table td:last-child,.analytics-pace-events .analytics-detail-table th:last-child{text-align:left}
+.analytics-pace-events .analytics-detail-table td:nth-child(5),.analytics-pace-events .analytics-detail-table th:nth-child(5){text-align:left}
 .analytics-capture-details summary{cursor:pointer;white-space:nowrap}
-.analytics-capture-details summary span{color:var(--analytics-muted);font-size:12px;margin-left:5px}
 .analytics-capture-details .analytics-note{white-space:normal;max-width:260px;margin:6px 0}
 .analytics-capture-details ul{list-style:none;margin:6px 0;padding:0;max-height:180px;overflow:auto}
 .analytics-capture-details li{padding:2px 0}.analytics-capture-details time{color:var(--analytics-muted);margin-right:6px}
