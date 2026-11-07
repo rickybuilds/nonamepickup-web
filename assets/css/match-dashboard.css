@@ -166,11 +166,12 @@
 .analytics-timeline-player>span:first-child{flex:1;min-width:0}
 .analytics-timeline-player:hover,.analytics-timeline-player[aria-pressed=true]{background:#0c2135}
 .analytics-timeline-player[aria-pressed=true]{box-shadow:inset 0 -1px #42b3ff}
-.analytics-timeline-player.red[aria-pressed=true]{box-shadow:inset 0 -1px #ff4766}
+.analytics-timeline-player.red[aria-pressed=true]{background:#351522;box-shadow:inset 0 -1px #ff4766}
 .analytics-player-timeline{padding:12px 10px 14px;background:#061426}
 .analytics-player-chart-controls{display:flex;gap:6px;margin-bottom:10px}
 .analytics-player-chart-controls button{color:#c7d8ee;background:#061221;border:1px solid #1c3b54;border-radius:5px;padding:5px 10px;font-size:12px}
 .analytics-player-chart-controls button[aria-pressed=true]{border-color:#42b3ff;background:#123451;color:#fff}
+.analytics-player-timeline.red .analytics-player-chart-controls button[aria-pressed=true]{border-color:#ff4766;background:#481727;color:#fff}
 .analytics-player-chart-heading{display:flex;justify-content:space-between;gap:10px;color:#dce9fa;font-size:13px;font-weight:700}
 .analytics-player-chart svg{display:block;width:100%;height:auto;max-height:230px;overflow:visible}
 .analytics-player-chart svg line{stroke:#19384e;stroke-width:.7}
