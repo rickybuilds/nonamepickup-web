@@ -137,6 +137,12 @@
 .analytics-capture-chart path.blue{stroke:#249fff}.analytics-capture-chart path.red{stroke:#ff4061}
 .analytics-capture-chart circle.blue{fill:#249fff}.analytics-capture-chart circle.red{fill:#ff4061}
 .analytics-capture-chart circle{cursor:help}.analytics-capture-chart circle:focus{outline:none;stroke:#fff;stroke-width:2}
+.analytics-capture-chart .analytics-touch-mark{stroke:#eaf5ff;stroke-width:.6}
+.analytics-capture-chart .analytics-capture-flag{cursor:help}
+.analytics-capture-chart .analytics-capture-flag line{stroke:#eaf5ff;stroke-width:1}
+.analytics-capture-chart .analytics-capture-flag path{stroke:#eaf5ff;stroke-width:.6}
+.analytics-capture-chart .analytics-capture-flag.blue path{fill:#249fff}.analytics-capture-chart .analytics-capture-flag.red path{fill:#ff4061}
+.analytics-capture-chart .analytics-capture-flag:focus{outline:none;filter:drop-shadow(0 0 2px #fff)}
 .analytics-chart-detail{font-size:9px;line-height:1.4;min-height:25px;margin:4px 0 0;color:#b8d6ee}
 .analytics-wide{max-width:100%}.analytics-wide .analytics-capture-chart{max-height:340px}
 .analytics-pace-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
