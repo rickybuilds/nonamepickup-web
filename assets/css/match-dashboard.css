@@ -149,6 +149,8 @@
 .analytics-pace-chart,.analytics-pace-events{min-width:0}
 .analytics-pace-events .analytics-detail-table td:last-child,.analytics-pace-events .analytics-detail-table th:last-child{text-align:left}
 .analytics-pace-events .analytics-detail-table td:nth-child(5),.analytics-pace-events .analytics-detail-table th:nth-child(5){text-align:left}
+.analytics-capture-row{cursor:pointer}
+.analytics-capture-row:hover,.analytics-capture-row:focus-within{background:#0c2135}
 .analytics-capture-details summary{cursor:pointer;white-space:nowrap}
 .analytics-capture-details .analytics-note{white-space:normal;max-width:260px;margin:6px 0}
 .analytics-capture-details ul{list-style:none;margin:6px 0;padding:0;max-height:180px;overflow:auto}
