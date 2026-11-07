@@ -189,14 +189,19 @@ window.matchDashboard = (() => {
       segments.push({id,length,values,start:duration});duration+=length;
     }
     if(!segments.length)return empty("No round records available.");
+    const rawStep=Math.max(1,total/4),magnitude=10**Math.floor(Math.log10(rawStep));
+    const valueStep=[1,2,5,10].map(n=>n*magnitude).find(n=>n>=rawStep),axisMax=Math.max(valueStep,Math.ceil(total/valueStep)*valueStep);
+    const valueTicks=Array.from({length:axisMax/valueStep+1},(_,i)=>i*valueStep);
     let cumulative=0;
-    const x=s=>48+s/duration*444,y=value=>130-value/Math.max(1,total)*108;
+    const x=s=>48+s/duration*444,y=value=>130-value/axisMax*108;
     const points=[`${x(0)},${y(0)}`,...segments.flatMap(segment=>segment.values.map((value,i)=>{cumulative+=value;return `${x(segment.start+Math.min((i+1)*60,segment.length))},${y(cumulative)}`;}))].join(" ");
-    const step=[180,300,600,900,1800,3600].find(t=>t>=duration/5)||Math.max(60,Math.ceil(duration/300)*60);
+    const step=[60,120,180,360,600,900,1800,3600].find(t=>t*1.01>=duration/5)||Math.max(60,Math.ceil(duration/300)*60);
     const times=Array.from({length:Math.floor(duration/step)+1},(_,i)=>i*step);
+    if(duration-times[times.length-1]<step*.15&&times.length>1)times.pop();
+    times.push(duration);
     const name=selected===null?team.label:(players[0].stats.display_name||players[0].player.name||players[0].player.display_name||"Player");
     const description=`${name}: ${format(total)} cumulative ${label.toLowerCase()}, grouped by minute`;
-    return `<div class="analytics-player-chart"><div class="analytics-player-chart-heading"><span>${esc(name)} · ${esc(label)} over time</span><strong>${format(total)}</strong></div><svg viewBox="0 0 520 158" role="img" aria-label="${attr(description)}"><line x1="48" x2="492" y1="130" y2="130"/><line x1="48" x2="492" y1="22" y2="22"/><text x="42" y="134" text-anchor="end">0</text><text x="42" y="26" text-anchor="end">${format(total)}</text>${times.map(t=>`<text x="${x(t)}" y="150" text-anchor="${t===0?"start":duration-t<step*.1?"end":"middle"}">${paceClock(t)}</text>`).join("")}${segments.slice(1).map(segment=>`<line class="analytics-round-marker" x1="${x(segment.start)}" x2="${x(segment.start)}" y1="22" y2="130"/>`).join("")}<polyline class="${team.color}" points="${points}"/></svg><p class="analytics-note">Cumulative ${esc(label.toLowerCase())} · grouped by minute${segments.length>1?" · dashed line marks the next round":""}</p></div>`;
+    return `<div class="analytics-player-chart"><div class="analytics-player-chart-heading"><span>${esc(name)} · ${esc(label)} over time</span><strong>${format(total)}</strong></div><svg viewBox="0 0 520 158" role="img" aria-label="${attr(description)}">${valueTicks.map(value=>`<line x1="48" x2="492" y1="${y(value)}" y2="${y(value)}"/><text x="42" y="${y(value)+4}" text-anchor="end">${format(value)}</text>`).join("")}${times.map(t=>`<text x="${x(t)}" y="150" text-anchor="${t===0?"start":t===duration?"end":"middle"}">${paceClock(t)}</text>`).join("")}${segments.slice(1).map(segment=>`<line class="analytics-round-marker" x1="${x(segment.start)}" x2="${x(segment.start)}" y1="22" y2="130"/>`).join("")}<polyline class="${team.color}" points="${points}"/></svg><p class="analytics-note">Cumulative ${esc(label.toLowerCase())} · grouped by minute${segments.length>1?" · dashed line marks the next round":""}</p></div>`;
   }
   function timeline(data,filter,state) {
     return `<div class="analytics-two-col">${data.teams.filter(t=>filter==="both"||filter===t.color).map(team=>{
