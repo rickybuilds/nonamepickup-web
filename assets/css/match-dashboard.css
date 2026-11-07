@@ -83,7 +83,7 @@
 #match-analytics .analytics-player-name:hover{color:#65cdff}
 .analytics-player-name-line{display:flex;align-items:center;gap:4px;min-width:0}
 .analytics-player-name-line .analytics-player-name{min-width:0;flex:1}
-.analytics-player.analytics-player-mvp{border-color:#a7853c;background:#17170f;box-shadow:inset 3px 0 #d8b15d}
+.analytics-player.analytics-player-mvp{border-color:#a7853c;background:#17170f}
 .analytics-player.analytics-player-mvp>summary:hover,.analytics-player.analytics-player-mvp[open]>summary{background:#252014;border-bottom-color:#a7853c}
 #match-analytics .analytics-player-mvp .analytics-player-name{color:#f4d58a}
 .analytics-mvp-badge{display:inline-flex;margin-bottom:4px;border:1px solid #a7853c;border-radius:3px;padding:2px 4px;background:#352b13;color:#ffe3a1;font-size:8px;font-weight:800;line-height:1;white-space:nowrap;letter-spacing:.04em}
