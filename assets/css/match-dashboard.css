@@ -175,10 +175,20 @@
 .analytics-player-chart svg{display:block;width:100%;height:auto;max-height:230px;overflow:visible}
 .analytics-player-chart svg line{stroke:#19384e;stroke-width:.7}
 .analytics-player-chart svg .analytics-round-marker{stroke:#8da8c2;stroke-dasharray:3 3}
+.analytics-player-chart svg .analytics-round-marker-label{fill:#b8d6ee;font-size:8px}
 .analytics-player-chart svg text{fill:#a6bed5;font:9px Inter,sans-serif}
 .analytics-player-chart svg polyline{fill:none;stroke-width:2;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .analytics-player-chart svg polyline.blue{stroke:#42b3ff}.analytics-player-chart svg polyline.red{stroke:#ff4766}
 .analytics-player-chart .analytics-note{margin:3px 0 0}
+.analytics-round-table-scroll{margin-top:12px}
+.analytics-round-comparison{min-width:500px;table-layout:fixed;white-space:normal}
+.analytics-round-comparison th,.analytics-round-comparison td{vertical-align:top;text-align:left;padding:7px}
+.analytics-round-comparison th:first-child{width:25%}
+.analytics-round-comparison th small{display:block;color:var(--analytics-muted);font-weight:400;margin-top:3px}
+.analytics-round-comparison td span,.analytics-round-comparison td strong{display:block;font-size:12px;line-height:1.4}
+.analytics-round-comparison td span{color:var(--analytics-muted)}
+.analytics-round-comparison td strong{color:#dce9fa;font-weight:600;margin-top:3px}
+.analytics-round-comparison .analytics-timeline-player{font-size:13px;border:0;border-radius:3px}
 .analytics-round-block h3{display:flex;justify-content:space-between}
 .analytics-round-totals{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}
 .analytics-round-totals dt{font-size:9px;color:var(--analytics-muted)}.analytics-round-totals dd{margin:4px 0;font-weight:700}
