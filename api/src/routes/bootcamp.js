@@ -21,6 +21,46 @@ function bootcampEnabled(value) {
   return typeof value === "string" && value.trim().toLowerCase() === "true";
 }
 
+const BOOTCAMP_CLASSES = ["", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "HWGuy", "Pyro", "Spy", "Engineer", "Civilian"];
+function bootcampClassName(value) {
+  return BOOTCAMP_CLASSES[Number(value)] || "Any class";
+}
+function bootcampTimeDisplay(value) {
+  const ms = Number(value);
+  if (!Number.isFinite(ms) || ms <= 0) return "-";
+  const seconds = ms / 1000;
+  return seconds >= 60
+    ? String(Math.floor(seconds / 60)) + ":" + (seconds % 60).toFixed(3).padStart(6, "0")
+    : seconds.toFixed(3);
+}
+function bootcampRouteView(row) {
+  const referenceTimeMs = row.reference_time_ms == null ? null : Number(row.reference_time_ms);
+  return {
+    id: Number(row.id), slug: row.slug, name: row.name, map: row.map, type: row.type,
+    classId: Number(row.class_id), className: bootcampClassName(row.class_id),
+    callout: row.callout || "", targetCrit: row.target_crit || "",
+    configVersion: Number(row.config_version), referenceRunId: row.reference_run_id == null ? null : Number(row.reference_run_id),
+    referenceTimeMs, referenceTimeDisplay: referenceTimeMs == null ? null : bootcampTimeDisplay(referenceTimeMs),
+    tierPercents: {
+      bronze: Number(row.tier_bronze_pct), silver: Number(row.tier_silver_pct),
+      gold: Number(row.tier_gold_pct), platinum: Number(row.tier_plat_pct)
+    },
+    checkpoints: Number(row.checkpoints || 0),
+    endKind: ["zone", "entity", "flag"][Number(row.end_kind)] || "zone"
+  };
+}
+function bootcampDrillView(row) {
+  return {
+    id: Number(row.id), slug: row.slug, name: row.name, map: row.map,
+    kind: row.kind, classId: Number(row.class_id), className: bootcampClassName(row.class_id),
+    tierScores: {
+      bronze: Number(row.tier_bronze), silver: Number(row.tier_silver),
+      gold: Number(row.tier_gold), platinum: Number(row.tier_plat)
+    },
+    sets: Number(row.sets || 0), bestScore: row.best_score == null ? null : Number(row.best_score)
+  };
+}
+
 function procedureChanged(result) {
   if (Array.isArray(result)) return result.some(procedureChanged);
   return Boolean(result && typeof result === "object" && Number(result.changed) === 1);
@@ -479,6 +519,78 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
     }
   });
+  router.get("/maps/:map", async (req, res) => {
+    const map = req.params.map;
+    if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(map))
+      return res.status(400).json({ error: "invalid_map" });
+    try {
+      const [maps, routes, drills, points, records] = await Promise.all([
+        query("SELECT m.map, m.config_version, m.in_rotation, m.rotation_order FROM bootcamp_maps m WHERE m.map = ? LIMIT 1", [map]),
+        query(`
+          SELECT r.id, r.slug, r.name, r.map, r.type, r.class_id, r.callout, r.target_crit, r.config_version,
+                 CASE WHEN ref.run_id IS NULL THEN NULL ELSE r.reference_run_id END AS reference_run_id,
+                 r.tier_bronze_pct, r.tier_silver_pct, r.tier_gold_pct, r.tier_plat_pct,
+                 r.end_kind,
+                 (SELECT COUNT(*) FROM bootcamp_runs b WHERE b.route_id = r.id AND b.config_version = r.config_version
+                    AND b.valid = 1 AND b.mode = 1 AND b.finalization_required = 0
+                    AND (b.flagged = 0 OR b.reviewed = 1)) AS runs,
+                 (SELECT COUNT(DISTINCT b.steamid) FROM bootcamp_runs b WHERE b.route_id = r.id AND b.config_version = r.config_version
+                    AND b.valid = 1 AND b.mode = 1 AND b.finalization_required = 0
+                    AND (b.flagged = 0 OR b.reviewed = 1)) AS runners,
+                 ref.time_ms AS reference_time_ms
+            FROM bootcamp_routes r
+            LEFT JOIN bootcamp_public_route_ghosts ref ON ref.run_id = r.reference_run_id AND ref.route_id = r.id
+           WHERE r.map = ? AND r.enabled = 1 ORDER BY r.name, r.id LIMIT 100
+        `, [map]),
+        query(`
+          SELECT d.id, d.slug, d.name, d.map, d.kind, d.class_id,
+                 d.tier_bronze, d.tier_silver, d.tier_gold, d.tier_plat,
+                 (SELECT COUNT(*) FROM bootcamp_drill_sets s WHERE s.drill_id = d.id AND s.finalization_required = 0
+                    AND (s.recording_token IS NULL OR EXISTS (SELECT 1 FROM bootcamp_finalized_drill_sets f WHERE f.drill_set_id = s.id))) AS sets,
+                 (SELECT MAX(s.score) FROM bootcamp_drill_sets s WHERE s.drill_id = d.id AND s.finalization_required = 0
+                    AND (s.recording_token IS NULL OR EXISTS (SELECT 1 FROM bootcamp_finalized_drill_sets f WHERE f.drill_set_id = s.id))) AS best_score
+            FROM bootcamp_drills d WHERE d.map = ? AND d.enabled = 1 ORDER BY d.name, d.id LIMIT 100
+        `, [map]),
+        query("SELECT kind, COUNT(*) AS n FROM bootcamp_points WHERE map = ? GROUP BY kind", [map]),
+        query(`
+          SELECT run_id, steamid, player_name, route_id, class_id, time_ms, has_replay FROM (
+            SELECT b.id AS run_id, b.steamid, b.player_name, b.route_id, b.class_id, b.time_ms,
+                   EXISTS(SELECT 1 FROM bootcamp_public_route_ghosts g WHERE g.run_id = b.id) AS has_replay,
+                   ROW_NUMBER() OVER (PARTITION BY b.route_id, b.class_id ORDER BY b.time_ms, b.id) AS player_rank
+              FROM bootcamp_runs b
+              JOIN bootcamp_routes r ON r.id = b.route_id AND r.map = b.map AND r.config_version = b.config_version AND r.enabled = 1
+             WHERE b.map = ? AND b.valid = 1 AND b.mode = 1 AND b.finalization_required = 0
+               AND (b.flagged = 0 OR b.reviewed = 1)
+          ) current_runs WHERE player_rank = 1 ORDER BY time_ms, run_id LIMIT 500
+        `, [map])
+      ]);
+      if (!maps.length) return res.status(404).json({ error: "map_not_found" });
+      const recordByRoute = new Map();
+      for (const row of records) {
+        if (!recordByRoute.has(Number(row.route_id))) recordByRoute.set(Number(row.route_id), row);
+      }
+      const pointCounts = Object.fromEntries(points.map(row => [row.kind, Number(row.n)]));
+      return res.json({
+        map: maps[0].map, configVersion: Number(maps[0].config_version),
+        inRotation: Number(maps[0].in_rotation) === 1, rotationOrder: Number(maps[0].rotation_order),
+        points: pointCounts,
+        routes: routes.map(row => {
+          const route = bootcampRouteView(row);
+          const record = recordByRoute.get(route.id);
+          return { ...route, runs: Number(row.runs), runners: Number(row.runners), record: record ? {
+            runId: Number(record.run_id), steamId: record.steamid, steamid: record.steamid,
+            playerName: record.player_name || record.steamid, classId: Number(record.class_id),
+            className: bootcampClassName(record.class_id), timeMs: Number(record.time_ms),
+            timeDisplay: bootcampTimeDisplay(record.time_ms), hasReplay: Number(record.has_replay) === 1
+          } : null };
+        }),
+        drills: drills.map(row => bootcampDrillView(row))
+      });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/maps/:map]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
   router.get("/drills/:id/leaderboard", async (req, res) => {
     if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
       return res.status(400).json({ error: "invalid_drill_id" });
@@ -509,6 +621,70 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
     }
   });
+  router.get("/routes/:id", async (req, res) => {
+    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
+      return res.status(400).json({ error: "invalid_route_id" });
+    const routeId = Number(req.params.id);
+    try {
+      const routes = await query(`
+        SELECT r.id, r.slug, r.name, r.map, r.type, r.class_id, r.callout, r.target_crit, r.config_version,
+               CASE WHEN ref.run_id IS NULL THEN NULL ELSE r.reference_run_id END AS reference_run_id,
+               ref.time_ms AS reference_time_ms, r.tier_bronze_pct, r.tier_silver_pct, r.tier_gold_pct,
+               r.tier_plat_pct, r.end_kind
+          FROM bootcamp_routes r
+          LEFT JOIN bootcamp_public_route_ghosts ref ON ref.run_id = r.reference_run_id AND ref.route_id = r.id
+         WHERE r.id = ? AND r.enabled = 1 LIMIT 1
+      `, [routeId]);
+      if (!routes.length) return res.status(404).json({ error: "route_not_found" });
+      const route = routes[0];
+      const [checkpoints, board, recent, legacy] = await Promise.all([
+        query("SELECT idx FROM bootcamp_route_checkpoints WHERE route_id = ? ORDER BY idx LIMIT 32", [routeId]),
+        query(`
+          SELECT run_id, steamid, player_name, class_id, time_ms, tier, has_replay, flagged, reviewed, created_at FROM (
+            SELECT b.id AS run_id, b.steamid, b.player_name, b.class_id, b.time_ms, b.tier,
+                   EXISTS(SELECT 1 FROM bootcamp_public_route_ghosts g WHERE g.run_id = b.id) AS has_replay,
+                   b.flagged, b.reviewed, b.created_at,
+                   ROW_NUMBER() OVER (PARTITION BY b.steamid, b.class_id ORDER BY b.time_ms, b.id) AS player_rank
+              FROM bootcamp_runs b
+              JOIN bootcamp_routes r ON r.id = b.route_id AND r.map = b.map AND r.config_version = b.config_version AND r.enabled = 1
+             WHERE b.route_id = ? AND b.valid = 1 AND b.mode = 1 AND b.finalization_required = 0
+               AND (b.flagged = 0 OR b.reviewed = 1)
+          ) published WHERE player_rank = 1 ORDER BY time_ms, run_id LIMIT 100
+        `, [routeId]),
+        query(`
+          SELECT b.id AS run_id, b.steamid, b.player_name, b.class_id, b.mode, b.time_ms, b.valid,
+                 b.invalid_reason, b.tier, EXISTS(SELECT 1 FROM bootcamp_public_route_ghosts g WHERE g.run_id = b.id) AS has_replay,
+                 b.created_at
+            FROM bootcamp_runs b JOIN bootcamp_routes r ON r.id = b.route_id AND r.map = b.map
+             AND r.config_version = b.config_version AND r.enabled = 1
+           WHERE b.route_id = ? AND b.valid = 1 AND b.mode = 1 AND b.finalization_required = 0
+             AND (b.flagged = 0 OR b.reviewed = 1)
+           ORDER BY b.id DESC LIMIT 25
+        `, [routeId]),
+        query(`SELECT COUNT(*) AS legacy_run_count FROM bootcamp_runs b
+                WHERE b.route_id = ? AND b.config_version < ? AND b.valid = 1 AND b.mode = 1
+                  AND b.finalization_required = 0 AND (b.flagged = 0 OR b.reviewed = 1)`, [routeId, Number(route.config_version)])
+      ]);
+      const leaderboard = board.map((row, index) => ({
+        rank: index + 1, runId: Number(row.run_id), steamid: row.steamid, steamId: row.steamid,
+        playerName: row.player_name || row.steamid, classId: Number(row.class_id), className: bootcampClassName(row.class_id),
+        timeMs: Number(row.time_ms), timeDisplay: bootcampTimeDisplay(row.time_ms), tier: Number(row.tier),
+        hasReplay: Number(row.has_replay) === 1, pendingReview: Number(row.flagged) === 1 && Number(row.reviewed) !== 1,
+        createdAt: row.created_at
+      }));
+      return res.json({ route: { ...bootcampRouteView(route), checkpoints: checkpoints.length },
+        leaderboard, recentRuns: recent.map(row => ({
+          runId: Number(row.run_id), steamid: row.steamid, steamId: row.steamid,
+          playerName: row.player_name || row.steamid, classId: Number(row.class_id), className: bootcampClassName(row.class_id),
+          mode: "ranked", timeMs: Number(row.time_ms), timeDisplay: bootcampTimeDisplay(row.time_ms),
+          valid: true, invalidReason: null, tier: Number(row.tier), hasReplay: Number(row.has_replay) === 1,
+          createdAt: row.created_at
+        })), legacyRuns: Number(legacy[0]?.legacy_run_count || 0) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/routes/:id]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
   router.get("/players/:steamId", async (req, res) => {
     const steamId = req.params.steamId;
     if (!/^STEAM_[0-5]:[01]:\d{1,20}$/.test(steamId))
@@ -517,10 +693,11 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       const [licenses, runs, drillBests] = await Promise.all([
         query("SELECT level, endorsements, granted_at FROM bootcamp_licenses WHERE steamid = ? LIMIT 1", [steamId]),
         query(`
-          SELECT run_id, route_id, map, slug, route_name, class_id, time_ms, tier
+          SELECT run_id, route_id, map, slug, route_name, player_name, class_id, time_ms, tier, has_replay
             FROM (
               SELECT b.id AS run_id, r.id AS route_id, r.map, r.slug, r.name AS route_name,
-                     b.class_id, b.time_ms, b.tier,
+                     b.player_name, b.class_id, b.time_ms, b.tier,
+                     EXISTS(SELECT 1 FROM bootcamp_public_route_ghosts g WHERE g.run_id = b.id) AS has_replay,
                      ROW_NUMBER() OVER (PARTITION BY b.route_id, b.class_id ORDER BY b.time_ms, b.id) AS player_rank
                 FROM bootcamp_runs b
                 JOIN bootcamp_routes r ON r.id = b.route_id AND r.config_version = b.config_version
@@ -529,9 +706,9 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
             ) ranked WHERE player_rank = 1 ORDER BY map, route_name, class_id LIMIT 500
         `, [steamId]),
         query(`
-          SELECT set_id, drill_id, map, slug, drill_name, kind, class_id, score, tier FROM (
+          SELECT set_id, player_name, drill_id, map, slug, drill_name, kind, class_id, score, tier FROM (
             SELECT s.id AS set_id, d.id AS drill_id, d.map, d.slug, d.name AS drill_name, d.kind,
-                   s.class_id, s.score, s.tier,
+                   s.player_name, s.class_id, s.score, s.tier,
                    ROW_NUMBER() OVER (PARTITION BY s.drill_id, s.class_id ORDER BY s.score DESC, s.id) AS player_rank
               FROM bootcamp_drill_sets s
               JOIN bootcamp_drills d ON d.id = s.drill_id AND d.map = s.map
@@ -549,20 +726,65 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
         `, [steamId])
       ]);
       const license = licenses[0];
-      return res.json({ steamId, license: license ? {
+      const playerName = runs[0]?.player_name || drillBests[0]?.player_name || steamId;
+      return res.json({ steamId, playerName, player: { playerName, steamIds: [steamId], discordId: null }, license: license ? {
         level: license.level, endorsements: String(license.endorsements || "").split(",").map(value => value.trim()).filter(Boolean),
         grantedAt: license.granted_at
       } : null, personalBests: runs.map(row => ({
-        runId: Number(row.run_id), routeId: Number(row.route_id), map: row.map,
+        runId: Number(row.run_id), routeId: Number(row.route_id), playerName: row.player_name || steamId, map: row.map,
         slug: row.slug, routeName: row.route_name, classId: Number(row.class_id),
-        timeMs: Number(row.time_ms), tier: Number(row.tier)
+        timeMs: Number(row.time_ms), timeDisplay: bootcampTimeDisplay(row.time_ms),
+        hasReplay: Number(row.has_replay) === 1, tier: Number(row.tier)
       })), drillBests: drillBests.map(row => ({
-        setId: Number(row.set_id), drillId: Number(row.drill_id), map: row.map, slug: row.slug,
+        setId: Number(row.set_id), drillId: Number(row.drill_id), playerName: row.player_name || steamId, map: row.map, slug: row.slug,
         drillName: row.drill_name, kind: row.kind, classId: Number(row.class_id),
         score: Number(row.score), tier: Number(row.tier)
       })) });
     } catch (error) {
       logRouteError("[/api/bootcamp/players/:steamId]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
+  router.get("/drills/:id", async (req, res) => {
+    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
+      return res.status(400).json({ error: "invalid_drill_id" });
+    const drillId = Number(req.params.id);
+    try {
+      const drills = await query(`
+        SELECT d.id, d.slug, d.name, d.map, d.kind, d.class_id, d.tier_bronze, d.tier_silver,
+               d.tier_gold, d.tier_plat
+          FROM bootcamp_drills d WHERE d.id = ? AND d.enabled = 1 LIMIT 1
+      `, [drillId]);
+      if (!drills.length) return res.status(404).json({ error: "drill_not_found" });
+      const rows = await query(`
+        SELECT set_id, steamid, player_name, class_id, score, tier, ghost_id, details_json, created_at FROM (
+          SELECT s.id AS set_id, s.steamid, s.player_name, s.class_id, s.score, s.tier, s.ghost_id,
+                 s.details_json, s.created_at,
+                 ROW_NUMBER() OVER (PARTITION BY s.steamid, s.class_id ORDER BY s.score DESC, s.id) AS player_rank
+            FROM bootcamp_drill_sets s
+            JOIN bootcamp_drills d ON d.id = s.drill_id AND d.map = s.map AND d.enabled = 1
+           WHERE s.drill_id = ? AND s.finalization_required = 0
+             AND (s.recording_token IS NULL OR EXISTS (
+               SELECT 1 FROM bootcamp_finalized_drill_sets f
+               JOIN bootcamp_ghosts g ON g.id = s.ghost_id AND g.drill_set_id = s.id AND g.is_complete = 1
+                    AND g.pos_frames >= 2 AND g.map = s.map AND g.steamid = s.steamid AND g.class_id = s.class_id
+               WHERE f.drill_set_id = s.id AND EXISTS (
+                 SELECT 1 FROM bootcamp_ghost_chunks c WHERE c.ghost_id = g.id AND c.track = 'pos' AND c.chunk_id = 0
+               )
+             ))
+        ) published WHERE player_rank = 1 ORDER BY score DESC, set_id LIMIT 100
+      `, [drillId]);
+      const leaderboard = rows.map((row, index) => {
+        let details = null;
+        try { details = row.details_json ? JSON.parse(row.details_json) : null; } catch { /* malformed legacy details are omitted */ }
+        return { rank: index + 1, setId: Number(row.set_id), steamid: row.steamid, steamId: row.steamid,
+          playerName: row.player_name || row.steamid, classId: Number(row.class_id),
+          className: bootcampClassName(row.class_id), score: Number(row.score), tier: Number(row.tier),
+          ghostId: row.ghost_id == null ? null : Number(row.ghost_id), details, createdAt: row.created_at };
+      });
+      return res.json({ drill: bootcampDrillView(drills[0]), leaderboard });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/drills/:id]", error);
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
     }
   });

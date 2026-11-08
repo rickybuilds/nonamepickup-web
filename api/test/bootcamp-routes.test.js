@@ -115,6 +115,60 @@ test("drill catalog and leaderboard validate inputs and return class-specific sc
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
+test("legacy Bootcamp detail pages receive only current published map, route, and drill results", async () => {
+  const seen = [];
+  const app = express();
+  app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => {
+    seen.push({ sql, args });
+    if (/FROM bootcamp_maps m/i.test(sql)) return [{ map: "2fort", config_version: 3, in_rotation: 1, rotation_order: 0 }];
+    if (/FROM bootcamp_points/i.test(sql)) return [{ kind: "crit", n: 1 }, { kind: "spot", n: 2 }];
+    if (/FROM bootcamp_drills d/i.test(sql) && /WHERE d\.map/i.test(sql))
+      return [{ id: 9, slug: "sg", name: "Sentry placement", kind: "sg", class_id: 9, tier_bronze: 40, tier_silver: 60, tier_gold: 80, tier_plat: 95, sets: 3, best_score: 85 }];
+    if (/FROM bootcamp_routes r/i.test(sql) && /WHERE r\.map/i.test(sql))
+      return [{ id: 4, slug: "lantest", name: "LAN test", map: "2fort", type: "walk", class_id: 0,
+        target_crit: "lantestflag", config_version: 3, reference_time_ms: 12000, runs: 3, runners: 2 }];
+    if (/FROM bootcamp_runs b/i.test(sql) && /ROW_NUMBER/i.test(sql))
+      return [{ run_id: 7, route_id: 4, steamid: "STEAM_0:1:4", player_name: "Runner", class_id: 1, time_ms: 11000, tier: 2, has_replay: 1 }];
+    if (/FROM bootcamp_runs b/i.test(sql) && /ORDER BY b\.id DESC LIMIT 25/i.test(sql)) return [];
+    if (/FROM bootcamp_runs b/i.test(sql) && /legacy/i.test(sql)) return [{ legacy_run_count: 1 }];
+    if (/FROM bootcamp_routes r/i.test(sql) && /WHERE r\.id/i.test(sql))
+      return [{ id: 4, slug: "lantest", name: "LAN test", map: "2fort", type: "walk", class_id: 0,
+        target_crit: "lantestflag", config_version: 3, start_x: 0, start_y: 0, start_z: 0,
+        start_radius: 48, start_height: 72, end_kind: 0, end_x: 100, end_y: 0, end_z: 0,
+        end_radius: 48, end_height: 72, tier_bronze_pct: 90, tier_silver_pct: 80, tier_gold_pct: 70,
+        tier_plat_pct: 60, reference_time_ms: 12000 }];
+    if (/bootcamp_route_checkpoints/i.test(sql)) return [];
+    if (/FROM bootcamp_drills d/i.test(sql) && /WHERE d\.id/i.test(sql))
+      return [{ id: 9, slug: "sg", name: "Sentry placement", map: "2fort", kind: "sg", class_id: 9,
+        tier_bronze: 40, tier_silver: 60, tier_gold: 80, tier_plat: 95 }];
+    if (/FROM bootcamp_drill_sets s/i.test(sql) && /ROW_NUMBER/i.test(sql))
+      return [{ set_id: 21, steamid: "STEAM_0:1:4", player_name: "Runner", class_id: 9, score: 85, tier: 3, ghost_id: 31, details_json: "{}" }];
+    throw new Error(`Unexpected query: ${sql}`);
+  } }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise(resolve => server.once("listening", resolve));
+    const base = `http://127.0.0.1:${server.address().port}/api/bootcamp`;
+    const map = await (await fetch(`${base}/maps/2fort`)).json();
+    assert.equal(map.routes[0].record.runId, 7);
+    assert.equal(map.drills[0].bestScore, 85);
+    const route = await (await fetch(`${base}/routes/4`)).json();
+    assert.equal(route.route.targetCrit, "lantestflag");
+    assert.equal(route.leaderboard[0].hasReplay, true);
+    assert.equal(route.legacyRuns, 1);
+    const drill = await (await fetch(`${base}/drills/9`)).json();
+    assert.equal(drill.drill.name, "Sentry placement");
+    assert.equal(drill.leaderboard[0].ghostId, 31);
+    for (const q of seen.filter(item => /FROM bootcamp_runs b|FROM bootcamp_drill_sets s/i.test(item.sql))) {
+      assert.match(q.sql, /finalization_required\s*=\s*0/i);
+      if (/bootcamp_runs/i.test(q.sql)) assert.match(q.sql, /flagged\s*=\s*0\s+OR\s+b?\.reviewed\s*=\s*1/i);
+      else assert.match(q.sql, /bootcamp_finalized_drill_sets/i);
+    }
+    assert.equal((await fetch(`${base}/routes/nope`)).status, 400);
+    assert.equal((await fetch(`${base}/drills/nope`)).status, 400);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
 test("skill points expose all-time best tiers and monthly tier-improvement standings", async () => {
   const seen = [];
   const app = express();

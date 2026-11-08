@@ -31,11 +31,16 @@ test("Bootcamp page and assets are disabled by default", async () => {
     await new Promise(resolve => server.once("listening", resolve));
     const base = `http://127.0.0.1:${server.address().port}`;
     assert.equal((await fetch(base + "/index.html")).status, 200);
-    for (const file of ["/bootcamp.html", "/bootcamp-review.html", "/BOOTCAMP.HTML", "/bootcamp%2ehtml", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css", "/assets/js/bootcamp-review.js", "/assets/css/bootcamp-review.css"]) {
+    for (const file of ["/bootcamp.html", "/bootcamp-review.html", "/bootcamp-map.html", "/bootcamp-route.html",
+      "/bootcamp-drill.html", "/bootcamp-player.html", "/BOOTCAMP.HTML", "/bootcamp%2ehtml",
+      "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css", "/assets/js/bootcamp-review.js",
+      "/assets/css/bootcamp-review.css", "/assets/js/bootcamp.js", "/assets/css/bootcamp.css"]) {
       assert.equal((await fetch(base + file)).status, 404);
     }
     process.env.BOOTCAMP_API_ENABLED = "true";
-    for (const file of ["/bootcamp.html", "/bootcamp-review.html", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css", "/assets/js/bootcamp-review.js", "/assets/css/bootcamp-review.css"]) {
+    for (const file of ["/bootcamp.html", "/bootcamp-review.html", "/bootcamp-map.html", "/bootcamp-route.html",
+      "/bootcamp-drill.html", "/bootcamp-player.html", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css",
+      "/assets/js/bootcamp-review.js", "/assets/css/bootcamp-review.css", "/assets/js/bootcamp.js", "/assets/css/bootcamp.css"]) {
       assert.equal((await fetch(base + file)).status, 200);
     }
   } finally {
@@ -71,4 +76,17 @@ test("the shared 3D viewer consumes TFTR when available and keeps the legacy rep
   assert.match(viewer, /import \{ fetchBootcampReplay \} from "\.\/bootcamp-tftr-client\.mjs\?v=1"/);
   assert.match(viewer, /query\.get\("source"\) === "bootcamp"/);
   assert.match(viewer, /return fetchBootcampReplay\(firstParam\(query, \["runId", "run_id", "run"\]\), replayPath\)/);
+});
+
+test("Bootcamp detail navigation uses current page routes and published replay run IDs", () => {
+  const root = path.resolve(__dirname, "../..");
+  const hub = fs.readFileSync(path.join(root, "assets/js/bootcamp-hub.js"), "utf8");
+  const legacyViews = fs.readFileSync(path.join(root, "assets/js/bootcamp.js"), "utf8");
+  assert.match(hub, /bootcamp-map\.html\?map=/);
+  assert.match(hub, /bootcamp-route\.html\?id=/);
+  assert.match(hub, /bootcamp-drill\.html\?id=/);
+  assert.match(hub, /bootcamp-player\.html\?id=/);
+  assert.match(legacyViews, /source=bootcamp&runId=/);
+  assert.match(legacyViews, /compareRunId=/);
+  assert.doesNotMatch(legacyViews, /bootcampRunId|bootcampGhostId|\/api\/bootcamp\/review/);
 });

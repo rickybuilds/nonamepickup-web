@@ -153,6 +153,15 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
     assert.equal((await (await fetch(`${base}/replay/run/${runIds[2]}`)).json()).runId, runIds[2]);
     const reviewedBoard = await (await fetch(`${base}/routes/${routeId}/leaderboard`)).json();
     assert.equal(reviewedBoard.runs[0].timeMs, 1000);
+    const mapDetail = await (await fetch(`${base}/maps/${map}`)).json();
+    const routeCard = mapDetail.routes.find(row => row.id === routeId);
+    assert.ok(routeCard?.record?.runId);
+    assert.equal(mapDetail.drills.find(row => row.id === drillId)?.bestScore, 90);
+    const routeDetail = await (await fetch(`${base}/routes/${routeId}`)).json();
+    assert.ok(routeDetail.leaderboard.some(row => row.runId === runIds[2]));
+    assert.ok(routeDetail.recentRuns.every(row => row.valid && row.mode === "ranked"));
+    const drillDetail = await (await fetch(`${base}/drills/${drillId}`)).json();
+    assert.deepEqual(drillDetail.leaderboard.map(row => [row.classId, row.score]), [[4, 90], [3, 80], [6, 77]]);
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));
     if (routeId) {

@@ -41,13 +41,18 @@
     }); body.append(tr); });
     grid.append(body); wrap.append(grid); return wrap;
   }
-  function itemList(items, label, detail, action) {
+  function itemList(items, label, detail, action, detailHref) {
     const list = element("ul", undefined, "bc-list");
     items.forEach(item => {
-      const li = element("li"), text = element("div"), button = element("button", "Leaderboard");
+      const li = element("li"), text = element("div"), actions = element("div", undefined, "bc-actions"), button = element("button", "Leaderboard");
       text.append(element("strong", label(item)), element("span", detail(item), "bc-detail"));
       button.type = "button"; button.setAttribute("aria-label", `View ${label(item)} leaderboard`);
-      button.addEventListener("click", () => action(item)); li.append(text, button); list.append(li);
+      button.addEventListener("click", () => action(item)); actions.append(button);
+      if (detailHref) {
+        const link = element("a", "Details", "bc-secondary-link");
+        link.href = detailHref(item); link.setAttribute("aria-label", `Open ${label(item)} details`); actions.append(link);
+      }
+      li.append(text, actions); list.append(li);
     });
     return list;
   }
@@ -63,7 +68,9 @@
       const headers = ["Rank", "Player", "Class", kind === "routes" ? "Time" : "Score"];
       if (kind === "routes") headers.push("Replay");
       target.replaceChildren(table(headers, scores.map((row, index) => {
-        const cells = [index + 1, row.playerName || row.steamId, className(row.classId),
+        const player = element("a", row.playerName || row.steamId || "Unknown");
+        if (row.steamId) player.href = `bootcamp-player.html?id=${encodeURIComponent(row.steamId)}`;
+        const cells = [index + 1, player, className(row.classId),
           kind === "routes" ? time(row.timeMs) : Number(row.score).toFixed(2)];
         if (kind === "routes") {
           if (row.hasReplay && Number.isSafeInteger(Number(row.runId)) && Number(row.runId) > 0) {
@@ -92,10 +99,12 @@
       ]);
       if (token !== mapRequest) return;
       target.replaceChildren(element("h3", "Routes"));
-      if (routeData.routes.length) target.append(itemList(routeData.routes, row => row.name, row => row.type, row => showRanking("routes", row)));
+      if (routeData.routes.length) target.append(itemList(routeData.routes, row => row.name, row => row.type,
+        row => showRanking("routes", row), row => `bootcamp-route.html?id=${encodeURIComponent(row.id)}`));
       else target.append(element("p", "No routes configured.", "bc-empty"));
       target.append(element("h3", "Drills"));
-      if (drillData.drills.length) target.append(itemList(drillData.drills, row => row.name, row => row.kind, row => showRanking("drills", row)));
+      if (drillData.drills.length) target.append(itemList(drillData.drills, row => row.name, row => row.kind,
+        row => showRanking("drills", row), row => `bootcamp-drill.html?id=${encodeURIComponent(row.id)}`));
       else target.append(element("p", "No drills configured.", "bc-empty"));
     } catch {
       if (token === mapRequest) message(target, "Could not load this map. Please try again.", true);
@@ -108,9 +117,13 @@
       if (!data.maps.length) return message(target, "No training maps are available yet.");
       const list = element("ul", undefined, "bc-list");
       data.maps.forEach(row => {
-        const li = element("li"), label = element("span", `${row.map} · ${row.routeCount} routes`), button = element("button", "View map");
+        const li = element("li"), label = element("span", `${row.map} · ${row.routeCount} routes`), actions = element("div", undefined, "bc-actions"), button = element("button", "View map");
         button.type = "button"; button.setAttribute("aria-label", `View ${row.map}`);
-        button.addEventListener("click", () => selectMap(row.map)); li.append(label, button); list.append(li);
+        button.addEventListener("click", () => selectMap(row.map));
+        const link = element("a", "Full page", "bc-secondary-link");
+        link.href = `bootcamp-map.html?map=${encodeURIComponent(row.map)}`;
+        link.setAttribute("aria-label", `Open ${row.map} Bootcamp page`);
+        actions.append(button, link); li.append(label, actions); list.append(li);
       });
       target.replaceChildren(list);
     } catch { message(target, "Could not load training maps. Please refresh to try again.", true); }

@@ -1,0 +1,403 @@
+/* Noname TFC Bootcamp pages. Builds on speedruns.css. */
+
+.bootcamp-page {
+  --bc-bronze: #d08a4f;
+  --bc-silver: #cbd5e1;
+  --bc-gold: #fbbf24;
+  --bc-platinum: #9cdcfe;
+}
+
+.bootcamp-section .speedrun-section-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.bootcamp-section .speedrun-section-heading > div:first-child {
+  display: block;
+}
+
+.bootcamp-block {
+  min-width: 0;
+}
+
+.bootcamp-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.bootcamp-columns.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bootcamp-columns > .bootcamp-section {
+  min-width: 0;
+}
+
+.bootcamp-lookup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bootcamp-lookup input {
+  min-width: 0;
+  width: 220px;
+  max-width: 100%;
+}
+
+/* Tier badges */
+.bootcamp-tier {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.bootcamp-tier.none { color: #475569; border-color: transparent; }
+.bootcamp-tier.bronze { color: var(--bc-bronze); }
+.bootcamp-tier.silver { color: var(--bc-silver); }
+.bootcamp-tier.gold { color: var(--bc-gold); }
+.bootcamp-tier.platinum { color: var(--bc-platinum); box-shadow: 0 0 10px rgba(156, 220, 254, .35); }
+
+.bootcamp-chip {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: #bae6fd;
+  background: rgba(56, 189, 248, .14);
+  font-size: 11px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.bootcamp-chip.warn {
+  color: #fde68a;
+  background: rgba(251, 191, 36, .16);
+}
+
+.bootcamp-level {
+  font-weight: 900;
+}
+
+.bootcamp-level.permit { color: var(--bc-silver); }
+.bootcamp-level.licensed { color: #57f287; }
+.bootcamp-level.platinum { color: var(--bc-platinum); }
+
+.bootcamp-muted {
+  color: #64748b;
+}
+
+.bootcamp-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: nowrap;
+}
+
+.bootcamp-sub {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bootcamp-replay {
+  color: #38bdf8;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.bootcamp-table td {
+  vertical-align: middle;
+}
+
+.bootcamp-note {
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.bootcamp-note code,
+.bootcamp-table code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, .9);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Weekly challenge banner */
+.bootcamp-challenge {
+  display: grid;
+  gap: 4px;
+  margin-top: 24px;
+  padding: 16px 18px;
+  border: 1px solid rgba(251, 191, 36, .35);
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(251, 191, 36, .12), rgba(15, 23, 42, .4));
+}
+
+.bootcamp-challenge[hidden] {
+  display: none;
+}
+
+.bootcamp-challenge-kicker {
+  color: var(--bc-gold);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.bootcamp-challenge strong {
+  color: #f8fafc;
+  font-size: 18px;
+}
+
+.bootcamp-challenge span:last-child {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* How it works */
+.bootcamp-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: bc-step;
+}
+
+.bootcamp-steps li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 2px 12px;
+  align-items: start;
+}
+
+.bootcamp-steps li::before {
+  counter-increment: bc-step;
+  content: counter(bc-step);
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #0b1220;
+  background: #38bdf8;
+  font-weight: 900;
+}
+
+.bootcamp-steps strong {
+  color: #e0f2fe;
+}
+
+.bootcamp-steps span {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* Tier cutoffs */
+.bootcamp-tier-cutoffs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bootcamp-tier-cutoffs > div {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, .5);
+}
+
+.bootcamp-tier-cutoffs strong {
+  color: #f8fafc;
+  font-family: Orbitron, Inter, sans-serif;
+  font-size: 20px;
+}
+
+.bootcamp-tier-cutoffs small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* License card */
+.bootcamp-license-card {
+  max-width: 560px;
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .3);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, .95), rgba(15, 23, 42, .95));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .35);
+}
+
+.bootcamp-license-card[hidden] {
+  display: none;
+}
+
+.bootcamp-license-card.level-permit { border-color: rgba(203, 213, 225, .5); }
+.bootcamp-license-card.level-licensed { border-color: rgba(87, 242, 135, .55); }
+.bootcamp-license-card.level-platinum { border-color: rgba(156, 220, 254, .8); box-shadow: 0 0 40px rgba(156, 220, 254, .2); }
+
+.bootcamp-license-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(56, 189, 248, .12);
+}
+
+.bootcamp-license-card.level-licensed .bootcamp-license-head { background: rgba(87, 242, 135, .12); }
+.bootcamp-license-card.level-platinum .bootcamp-license-head { background: rgba(156, 220, 254, .18); }
+
+.bootcamp-license-head span {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.bootcamp-license-head strong {
+  color: #f8fafc;
+  font-family: Orbitron, Inter, sans-serif;
+  font-size: 20px;
+}
+
+.bootcamp-license-body {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+}
+
+.bootcamp-license-body span {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.bootcamp-license-body strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #e2e8f0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bootcamp-license-endorse {
+  grid-column: 1 / -1;
+}
+
+.bootcamp-license-endorse > div {
+  margin-top: 6px;
+}
+
+.bootcamp-license-body .bootcamp-chip {
+  display: inline-block;
+  color: #bae6fd;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Tier grid */
+.bootcamp-grid-map + .bootcamp-grid-map {
+  margin-top: 18px;
+}
+
+.bootcamp-grid-map h3 {
+  margin: 0 0 10px;
+  color: #e0f2fe;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.bootcamp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.bootcamp-grid-cell {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-left-width: 4px;
+  border-radius: 8px;
+  color: inherit;
+  background: rgba(15, 23, 42, .5);
+  text-decoration: none;
+}
+
+.bootcamp-grid-cell:hover {
+  background: rgba(30, 41, 59, .7);
+}
+
+.bootcamp-grid-cell strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: #f1f5f9;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bootcamp-grid-cell small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bootcamp-grid-cell.tier-bronze { border-left-color: var(--bc-bronze); }
+.bootcamp-grid-cell.tier-silver { border-left-color: var(--bc-silver); }
+.bootcamp-grid-cell.tier-gold { border-left-color: var(--bc-gold); }
+.bootcamp-grid-cell.tier-platinum { border-left-color: var(--bc-platinum); }
+
+@media (max-width: 1100px) {
+  .bootcamp-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .bootcamp-columns.two,
+  .bootcamp-license-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bootcamp-tier-cutoffs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.bootcamp-section .speedrun-section-subtitle {
+  margin: 6px 0 0;
+}
+
+.speedrun-table a.bootcamp-replay,
+.speedrun-list a.bootcamp-replay {
+  color: #38bdf8;
+}

@@ -17,6 +17,10 @@
 .bc-list { list-style: none; margin: .75rem 0 0; padding: 0; }
 .bc-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid #344154; color: #e6edf7; }
 .bc-list li:last-child { border-bottom: 0; }
+.bc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.bc-secondary-link { display: inline-flex; align-items: center; color: #c5eaff; border: 1px solid #4b6078; border-radius: 6px; padding: .65rem .85rem; font-size: .875rem; font-weight: 700; text-decoration: none; }
+.bc-secondary-link:hover { color: #fff; background: #1a2838; }
+.bc-secondary-link:focus-visible { outline: 3px solid #91d5ff; outline-offset: 2px; }
 .bc-detail { display: block; color: #b6c4d7; font-size: .875rem; margin-top: .2rem; }
 .bc-table-wrap { overflow-x: auto; }
 .bc-table { width: 100%; border-collapse: collapse; color: #e6edf7; font-variant-numeric: tabular-nums; text-align: left; }
