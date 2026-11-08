@@ -26,3 +26,5 @@
 .bc-panel ::selection, .bc-section ::selection { background: #337aa2; color: #fff; }
 @media (max-width: 720px) { .bc-layout { grid-template-columns: minmax(0, 1fr); } .bc-form-row { flex-wrap: wrap; } .bc-form-row input { box-sizing: border-box; flex-basis: 100%; } }
 .bootcamp-hub { color: #e6edf7; background-color: #0a0c10; }
+.bc-challenge { margin: 1.25rem 0; border-color: rgba(114, 216, 255, .36); }
+.bc-challenge h3 { margin: .6rem 0 .25rem; }

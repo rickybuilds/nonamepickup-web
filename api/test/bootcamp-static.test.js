@@ -12,6 +12,8 @@ test("the Bootcamp hub opens a profile from the Steam-ID deep link", () => {
   assert.match(script, /get\("steamid"\)/);
   assert.match(script, /profileForm\.requestSubmit\(\)/);
   assert.match(script, /profile\.drillBests\?/);
+  assert.match(script, /api\/bootcamp\/challenge\/current/);
+  assert.match(fs.readFileSync(path.resolve(__dirname, "../../bootcamp.html"), "utf8"), /id="weekly-challenge"/);
 });
 
 test("Bootcamp page and assets are disabled by default", async () => {

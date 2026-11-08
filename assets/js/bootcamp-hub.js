@@ -115,6 +115,20 @@
       target.replaceChildren(list);
     } catch { message(target, "Could not load training maps. Please refresh to try again.", true); }
   }
+  async function loadChallenge() {
+    const target = byId("bc-challenge-content");
+    try {
+      const data = await get("/api/bootcamp/challenge/current");
+      if (!data.challenge) return message(target, "No weekly challenge is active right now.");
+      const challenge = data.challenge;
+      target.replaceChildren(element("h3", challenge.title),
+        element("p", `${challenge.map} · ${challenge.targetName} · ${challenge.targetType === "route" ? "Fastest valid time wins" : "Highest published score wins"}`, "bc-detail"));
+      if (!data.standings.length) return target.append(element("p", "No eligible results this week yet.", "bc-empty"));
+      const rows = data.standings.slice(0, 10).map((row, index) => [index + 1, row.playerName || row.steamId,
+        className(row.classId), challenge.targetType === "route" ? time(row.timeMs) : Number(row.score).toFixed(2)]);
+      target.append(table(["Rank", "Player", "Class", challenge.targetType === "route" ? "Time" : "Score"], rows));
+    } catch { message(target, "Could not load this week's challenge. Please try again.", true); }
+  }
   const profileForm = byId("bc-profile-form");
   profileForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -143,5 +157,6 @@
     byId("bc-steam").value = profileId;
     profileForm.requestSubmit();
   }
+  loadChallenge();
   loadMaps();
 }());
