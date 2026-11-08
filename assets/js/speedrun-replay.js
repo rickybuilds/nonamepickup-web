@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 import { configureReplayMapMaterial } from "./replay-map-materials.js?v=20260730mapmaterials2";
 import { replayRunPath, bootcampRunsCompatible } from "./replay-context.mjs?v=1";
+import { BootcampReplayOverview } from "./bootcamp-overview.mjs?v=1";
 
 // replay-format:start
 /**
@@ -238,6 +239,7 @@ const state = {
 };
 const freeRoamKeys = new Set();
 let freeRoamDrag = null;
+let bootcampOverview = null;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070a0f);
@@ -2647,6 +2649,37 @@ function updatePlayer() {
   const runTimer = $("replay-run-timer");
   if (runTimer) runTimer.textContent = formatTime(Math.min(state.playbackTime, state.primaryDuration));
   updateSplitActiveState();
+
+  document.body.classList.toggle("bootcamp-overview-active", state.replay?.source === "bootcamp");
+  const overviewPanel = $("bootcamp-overview-panel");
+  if (state.replay?.source === "bootcamp" && overviewPanel) {
+    overviewPanel.hidden = false;
+    if (!bootcampOverview) {
+      bootcampOverview = new BootcampReplayOverview({
+        mapCanvas: $("bootcamp-overview-map"),
+        speedCanvas: $("bootcamp-overview-speed"),
+        status: $("bootcamp-overview-status"),
+        onSeek: seekToReplayTime
+      });
+    }
+    const pointFromViewFrame = current => current?.p && state.origin
+      ? { x: current.p.x + state.origin.x, y: state.origin.y - current.p.z }
+      : null;
+    const comparisonLegend = $("bootcamp-overview-comparison-legend");
+    if (comparisonLegend) comparisonLegend.hidden = !state.comparison;
+    bootcampOverview.render({
+      replay: { ...state.replay, frames: state.normalized },
+      comparison: state.comparison ? { ...state.comparison.replay, frames: state.comparison.normalized } : null,
+      primaryFrame: pointFromViewFrame(frame),
+      comparisonFrame: pointFromViewFrame(comparisonFrame),
+      timelineStart: Number(state.normalized[0]?.t) || 0,
+      comparisonStart: Number(state.comparison?.normalized[0]?.t) || 0,
+      time: state.playbackTime,
+      duration: state.duration
+    });
+  } else if (overviewPanel) {
+    overviewPanel.hidden = true;
+  }
 }
 
 function resize() {

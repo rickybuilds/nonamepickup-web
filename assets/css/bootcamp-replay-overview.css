@@ -1,0 +1,128 @@
+.bootcamp-overview-panel {
+  box-sizing: border-box;
+  width: min(1380px, calc(100% - 48px));
+  margin: 24px auto 40px;
+  padding: clamp(16px, 2vw, 28px);
+  color: #e5edf5;
+  background: #0d141c;
+  border: 1px solid rgba(145, 170, 194, .2);
+  border-radius: 14px;
+}
+
+.bootcamp-overview-panel[hidden] { display: none; }
+
+.replay-page.bootcamp-overview-active {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.replay-page.bootcamp-overview-active .replay-main {
+  height: auto;
+  min-height: 0;
+}
+
+.replay-page.bootcamp-overview-active .replay-stage {
+  height: calc(100vh - 74px);
+  min-height: 520px;
+}
+
+.bootcamp-overview-heading,
+.bootcamp-overview-timeline-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.bootcamp-overview-heading h2,
+.bootcamp-overview-timeline-heading h3 {
+  margin: 0;
+  color: #f3f7fa;
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+
+.bootcamp-overview-heading p {
+  margin: 6px 0 0;
+  color: #a5b5c4;
+  font-size: .92rem;
+  line-height: 1.5;
+}
+
+.bootcamp-overview-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 14px;
+  color: #c0ccd7;
+  font-size: .78rem;
+}
+
+.bootcamp-overview-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.bootcamp-overview-legend i { width: 9px; height: 9px; border-radius: 50%; background: #53c5ff; }
+.bootcamp-overview-legend i.comparison { background: #ff76bb; }
+
+.bootcamp-overview-map,
+.bootcamp-overview-speed {
+  display: block;
+  width: 100%;
+  border: 1px solid rgba(145, 170, 194, .18);
+  border-radius: 8px;
+  background: #0b1118;
+}
+
+.bootcamp-overview-map {
+  height: clamp(250px, 43vw, 520px);
+  margin-top: 18px;
+}
+
+.bootcamp-overview-status {
+  min-height: 1.25rem;
+  margin: 8px 0 18px;
+  color: #a5b5c4;
+  font-size: .78rem;
+}
+
+.bootcamp-overview-timeline-heading {
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.bootcamp-overview-timeline-heading h3 { font-size: .98rem; }
+.bootcamp-overview-timeline-heading span { color: #91a2b3; font-size: .75rem; }
+.bootcamp-overview-speed { height: 112px; cursor: crosshair; }
+.bootcamp-overview-speed:focus-visible { outline: 2px solid #53c5ff; outline-offset: 3px; }
+
+.bootcamp-overview-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.bootcamp-overview-event {
+  min-height: 36px;
+  padding: 7px 10px;
+  color: #c8d4de;
+  background: #17232e;
+  border: 1px solid rgba(145, 170, 194, .22);
+  border-radius: 6px;
+  font: inherit;
+  font-size: .72rem;
+  cursor: pointer;
+}
+
+.bootcamp-overview-event:hover { color: #fff; border-color: #53c5ff; }
+.bootcamp-overview-event.comparison { border-color: rgba(255, 118, 187, .45); }
+.bootcamp-overview-event:focus-visible { outline: 2px solid #53c5ff; outline-offset: 2px; }
+.bootcamp-overview-events-empty { color: #91a2b3; font-size: .78rem; }
+
+@media (max-width: 640px) {
+  .bootcamp-overview-panel { width: min(1380px, calc(100% - 28px)); margin: 14px auto 26px; padding: 14px; }
+  .replay-page.bootcamp-overview-active .replay-stage { height: calc(100vh - 58px); }
+  .bootcamp-overview-heading { flex-direction: column; }
+  .bootcamp-overview-legend { justify-content: flex-start; }
+  .bootcamp-overview-map { height: min(72vw, 340px); }
+  .bootcamp-overview-speed { height: 100px; }
+}

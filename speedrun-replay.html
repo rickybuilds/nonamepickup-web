@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/speedruns.css?v=20260910leaderboardfit2">
   <link rel="stylesheet" href="assets/css/speedrun-replay.css?v=20261014timinghud13">
+  <link rel="stylesheet" href="assets/css/bootcamp-replay-overview.css?v=1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script type="importmap">
     {
@@ -205,6 +206,26 @@
           <span id="replay-duration">0:00.000</span>
         </label>
       </section>
+    </section>
+    <section id="bootcamp-overview-panel" class="bootcamp-overview-panel" aria-labelledby="bootcamp-overview-title" hidden>
+      <div class="bootcamp-overview-heading">
+        <div>
+          <h2 id="bootcamp-overview-title">Route overview</h2>
+          <p>Watch the route, compare movement speed, and jump to a recorded event.</p>
+        </div>
+        <div class="bootcamp-overview-legend" aria-label="Run colors">
+          <span><i class="primary"></i>Current run</span>
+          <span id="bootcamp-overview-comparison-legend" hidden><i class="comparison"></i>Compared run</span>
+        </div>
+      </div>
+      <canvas id="bootcamp-overview-map" class="bootcamp-overview-map" role="img" aria-label="Top-down route path on the map overview"></canvas>
+      <p id="bootcamp-overview-status" class="bootcamp-overview-status" role="status" aria-live="polite">Loading map overview…</p>
+      <div class="bootcamp-overview-timeline-heading">
+        <h3>Movement speed</h3>
+        <span>HU/s · event ticks</span>
+      </div>
+      <canvas id="bootcamp-overview-speed" class="bootcamp-overview-speed" tabindex="0" role="img" aria-label="Movement speed timeline; click or use arrow keys to seek the replay"></canvas>
+      <div id="bootcamp-replay-events" class="bootcamp-overview-events" role="group" aria-label="Recorded replay events"></div>
     </section>
   </main>
   <!-- Cloudflare Web Analytics -->

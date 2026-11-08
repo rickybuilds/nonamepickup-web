@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "maps": {
+    "2fort": {
+      "image": "/assets/images/bootcamp-overviews/2fort.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [0.2904243119266055, 0, 511.5, 0, -0.05559738955823293, 383.5],
+      "transformSource": {
+        "format": "GoldSrc overview + BSP world bounds",
+        "overview": { "zoom": 1.02, "origin": [0, 0, -1064], "rotated": false },
+        "worldBounds": { "minX": -1744, "maxX": 1744, "minY": -3984, "maxY": 3984 },
+        "contentBounds": { "left": 5, "top": 162, "right": 1018, "bottom": 605 }
+      }
+    }
+  }
+}

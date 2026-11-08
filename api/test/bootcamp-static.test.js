@@ -39,3 +39,23 @@ test("Bootcamp page and assets are disabled by default", async () => {
     await new Promise(resolve => server.close(resolve));
   }
 });
+
+test("the 2D replay overview is confined to Bootcamp replays and has map metadata", () => {
+  const root = path.resolve(__dirname, "../..");
+  const page = fs.readFileSync(path.join(root, "speedrun-replay.html"), "utf8");
+  const viewer = fs.readFileSync(path.join(root, "assets/js/speedrun-replay.js"), "utf8");
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "assets/data/bootcamp-overviews.json"), "utf8"));
+  assert.match(page, /id="bootcamp-overview-panel"[^>]*hidden/);
+  assert.match(page, /id="bootcamp-overview-speed"[^>]*tabindex="0"/);
+  assert.match(page, /assets\/css\/bootcamp-replay-overview\.css/);
+  assert.match(viewer, /state\.replay\?\.source === "bootcamp"/);
+  assert.match(viewer, /new BootcampReplayOverview/);
+  assert.match(viewer, /document\.body\.classList\.toggle\("bootcamp-overview-active", state\.replay\?\.source === "bootcamp"\)/);
+  const overviewCss = fs.readFileSync(path.join(root, "assets/css/bootcamp-replay-overview.css"), "utf8");
+  assert.match(overviewCss, /\.replay-page\.bootcamp-overview-active\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.match(overviewCss, /\.bootcamp-overview-active\s+\.replay-stage\s*\{[^}]*height:\s*calc\(100vh - 74px\)/s);
+  assert.match(overviewCss, /\.bootcamp-overview-event\s*\{[^}]*min-height:\s*36px/s);
+  assert.deepEqual(Object.keys(manifest.maps), ["2fort"]);
+  assert.equal(manifest.maps["2fort"].transform.length, 6);
+  assert.ok(fs.existsSync(path.join(root, "assets/images/bootcamp-overviews/2fort.png")));
+});
