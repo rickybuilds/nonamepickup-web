@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 import { configureReplayMapMaterial } from "./replay-map-materials.js?v=20260730mapmaterials2";
+import { replayRunPath, bootcampRunsCompatible } from "./replay-context.mjs?v=1";
 
 // replay-format:start
 /**
@@ -758,8 +759,10 @@ function apiReplayPath(query) {
   const runId = firstParam(query, ["runId", "run_id", "run"]);
   if (runId) {
     if (!/^\d+$/.test(runId) || Number(runId) <= 0) throw new Error("Invalid replay run ID.");
+    if (query.get("source") === "bootcamp") return replayRunPath(runId, "bootcamp");
     return `/api/speedruns/replay/run/${encodeURIComponent(runId)}`;
   }
+  if (query.get("source") === "bootcamp") throw new Error("Missing Bootcamp replay run ID.");
   const map = firstParam(query, ["map", "mapName", "m"]);
   const classId = firstParam(query, ["classId", "class", "class_id", "cls", "c"]);
   const steamid = firstParam(query, ["steamid", "steamId", "steam_id", "steam"]);
@@ -1386,7 +1389,10 @@ async function loadComparison(path, { closePanel = true } = {}) {
     if (frames.length < 2) throw new Error("Comparison replay has too few frames.");
     if (replay.map !== state.replay?.map) throw new Error("Runs must be from the same map.");
     if (Number(replay.classId) !== Number(state.replay?.classId)) throw new Error("Runs must use the same class.");
-    if (!splitMetadataCompatible(state.replay?.splitMetadata, replay.splitMetadata)) {
+    const compatible = state.replay?.source === "bootcamp"
+      ? bootcampRunsCompatible(state.replay, replay)
+      : replay.source !== "bootcamp" && splitMetadataCompatible(state.replay?.splitMetadata, replay.splitMetadata);
+    if (!compatible) {
       throw new Error("Runs must use the same ruleset and checkpoint sequence.");
     }
 
@@ -1440,6 +1446,18 @@ async function loadComparisonCandidates() {
   select.replaceChildren(new Option("Loading runs...", ""));
 
   try {
+    if (state.replay.source === "bootcamp") {
+      const data = await fetchJson(`/api/bootcamp/routes/${encodeURIComponent(state.replay.routeId)}/leaderboard`);
+      const runs = (data.runs || []).filter(row => row.hasReplay && Number(row.classId) === Number(state.replay.classId) &&
+        Number(row.runId) !== Number(state.replay.runId));
+      select.replaceChildren(new Option(runs.length ? "Choose a run..." : "No other replay-enabled runs", ""));
+      for (const row of runs) addComparisonOption(select, replayRunPath(row.runId, "bootcamp"), `${row.playerName || row.steamId} — ${runTime(row.timeMs)}`);
+      select.disabled = !runs.length;
+      addButton.disabled = true;
+      state.comparisonCandidatesLoaded = true;
+      if (status) status.textContent = runs.length ? "" : "No other replay-enabled runs were found for this route and class.";
+      return;
+    }
     const data = await fetchJson(`/api/speedruns/maps/${encodeURIComponent(state.replay.map)}`);
     const candidates = [];
     const seen = new Set();
@@ -3158,7 +3176,8 @@ async function init() {
     $("replay-subtitle").textContent = `${replay.playerName || replay.steamid || "Unknown"} · ${runTime(replay.timeMs)} · ${state.normalized.length.toLocaleString()} frames${projectileSummary}`;
     $("replay-duration").textContent = runTime(replay.timeMs);
     $("replay-slider").max = String(Math.max(1, Math.round(state.duration * 1000)));
-    $("replay-map-link").href = `speedrun-map.html?map=${encodeURIComponent(replay.map || "")}`;
+    $("replay-map-link").href = replay.source === "bootcamp" ? "bootcamp.html" : `speedrun-map.html?map=${encodeURIComponent(replay.map || "")}`;
+    if (replay.source === "bootcamp") $("replay-map-link").textContent = "Bootcamp";
     document.title = `NoName TFC | ${replay.map || "Speedrun"} Replay`;
 
     buildSceneForReplay();
@@ -3172,7 +3191,8 @@ async function init() {
 
     const compareRunId = firstParam(params(), ["compareRunId", "compare_run_id"]);
     if (compareRunId && /^\d+$/.test(compareRunId) && Number(compareRunId) !== Number(replay.runId)) {
-      await loadComparison(`/api/speedruns/replay/run/${encodeURIComponent(compareRunId)}`, { closePanel: true });
+      const path = replay.source === "bootcamp" ? replayRunPath(compareRunId, "bootcamp") : `/api/speedruns/replay/run/${encodeURIComponent(compareRunId)}`;
+      await loadComparison(path, { closePanel: true });
     }
     updatePlayer();
     setStatus("");

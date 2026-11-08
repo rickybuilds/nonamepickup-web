@@ -9,7 +9,7 @@ test("public replay reconstructs ordered chunks through the eligible ghost view"
   app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => {
     calls.push({ sql, args });
     const common = { ghost_id: 7, run_id: 3, map: "openfire", route_id: 2, route_name: "Ramp", class_id: 5,
-      player_name: "Runner", steamid: "STEAM_0:1:4", time_ms: 12000, frame_interval: 0.02, pos_frames: 2 };
+      player_name: "Runner", steamid: "STEAM_0:1:4", time_ms: 12000, config_version: 2, frame_interval: 0.02, pos_frames: 2 };
     return [
       { ...common, track: "event", chunk_id: 0, data: "0.5,8,0,0;" },
       { ...common, track: "pos", chunk_id: 0, data: "0,1,2,3,0,90,0,0,-;" },

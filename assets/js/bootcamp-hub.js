@@ -34,7 +34,11 @@
     headers.forEach(text => { const th = element("th", text); th.scope = "col"; headerRow.append(th); });
     head.append(headerRow); grid.append(head);
     const body = element("tbody");
-    rows.forEach(row => { const tr = element("tr"); row.forEach(value => tr.append(element("td", value))); body.append(tr); });
+    rows.forEach(row => { const tr = element("tr"); row.forEach(value => {
+      const td = element("td");
+      if (value instanceof Node) td.append(value); else td.textContent = String(value);
+      tr.append(td);
+    }); body.append(tr); });
     grid.append(body); wrap.append(grid); return wrap;
   }
   function itemList(items, label, detail, action) {
@@ -56,9 +60,21 @@
       if (token !== rankingRequest) return;
       const scores = kind === "routes" ? data.runs : data.scores;
       if (!scores.length) return message(target, "No results yet.");
-      target.replaceChildren(table(["Rank", "Player", "Class", kind === "routes" ? "Time" : "Score"],
-        scores.map((row, index) => [index + 1, row.playerName || row.steamId, className(row.classId),
-          kind === "routes" ? time(row.timeMs) : Number(row.score).toFixed(2)])));
+      const headers = ["Rank", "Player", "Class", kind === "routes" ? "Time" : "Score"];
+      if (kind === "routes") headers.push("Replay");
+      target.replaceChildren(table(headers, scores.map((row, index) => {
+        const cells = [index + 1, row.playerName || row.steamId, className(row.classId),
+          kind === "routes" ? time(row.timeMs) : Number(row.score).toFixed(2)];
+        if (kind === "routes") {
+          if (row.hasReplay && Number.isSafeInteger(Number(row.runId)) && Number(row.runId) > 0) {
+            const link = element("a", "Watch");
+            link.href = `speedrun-replay.html?source=bootcamp&runId=${encodeURIComponent(row.runId)}`;
+            link.setAttribute("aria-label", `Watch ${row.playerName || row.steamId}'s replay`);
+            cells.push(link);
+          } else cells.push("Unavailable");
+        }
+        return cells;
+      })));
     } catch {
       if (token === rankingRequest) message(target, "Could not load the leaderboard. Please try again.", true);
     }

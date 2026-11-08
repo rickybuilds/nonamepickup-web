@@ -28,7 +28,7 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
       // route-version change between separate authorization and data queries.
       const rows = await query(`
         SELECT g.id AS ghost_id, g.run_id, g.map, g.route_id, r.name AS route_name,
-               g.class_id, g.player_name, g.steamid, b.time_ms, g.frame_interval, g.pos_frames,
+               g.class_id, g.player_name, g.steamid, b.time_ms, b.config_version, g.frame_interval, g.pos_frames,
                c.track, c.chunk_id, c.data
           FROM bootcamp_public_route_ghosts g
           JOIN bootcamp_runs b ON b.id = g.run_id AND b.finalization_required = 0
@@ -56,7 +56,8 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
         return res.status(422).json({ error: "replay_invalid" });
       return res.json({ source: "bootcamp", runId: Number(first.run_id), ghostId: Number(first.ghost_id),
         map: first.map, routeId: Number(first.route_id), routeName: first.route_name,
-        classId: Number(first.class_id), playerName: first.player_name, steamId: first.steamid,
+        classId: Number(first.class_id), playerName: first.player_name, steamId: first.steamid, steamid: first.steamid,
+        configVersion: Number(first.config_version),
         timeMs: Number(first.time_ms), frameInterval: Number(first.frame_interval), frames, events });
     } catch (error) {
       logRouteError("[/api/bootcamp/replay/run/:id]", error);
@@ -173,9 +174,10 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
     }
     try {
       const rows = await query(`
-        SELECT run_id, steamid, player_name, class_id, time_ms
+        SELECT run_id, steamid, player_name, class_id, time_ms, has_replay
           FROM (
             SELECT b.id AS run_id, b.steamid, b.player_name, b.class_id, b.time_ms,
+                   EXISTS(SELECT 1 FROM bootcamp_public_route_ghosts g WHERE g.run_id = b.id) AS has_replay,
                    ROW_NUMBER() OVER (PARTITION BY b.steamid, b.class_id ORDER BY b.time_ms, b.id) AS player_rank
               FROM bootcamp_runs b
               JOIN bootcamp_routes r ON r.id = b.route_id AND r.config_version = b.config_version
@@ -187,7 +189,7 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
       `, [Number(req.params.id)]);
       return res.json({ runs: rows.map(row => ({
         runId: Number(row.run_id), steamId: row.steamid, playerName: row.player_name,
-        classId: Number(row.class_id), timeMs: Number(row.time_ms)
+        classId: Number(row.class_id), timeMs: Number(row.time_ms), hasReplay: Number(row.has_replay) === 1
       })) });
     } catch (error) {
       logRouteError("[/api/bootcamp/routes/:id/leaderboard]", error);

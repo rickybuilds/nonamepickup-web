@@ -14,7 +14,7 @@ test("route leaderboard accepts a numeric route and returns only the query resul
   const seen = [];
   app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => {
     seen.push({ sql, args });
-    return [{ run_id: 8, steamid: "STEAM_0:1:4", player_name: "Runner", class_id: 5, time_ms: 12000 }];
+    return [{ run_id: 8, steamid: "STEAM_0:1:4", player_name: "Runner", class_id: 5, time_ms: 12000, has_replay: 1 }];
   } }));
   const server = app.listen(0, "127.0.0.1");
   try {
@@ -24,6 +24,7 @@ test("route leaderboard accepts a numeric route and returns only the query resul
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.runs[0].timeMs, 12000);
+    assert.equal(body.runs[0].hasReplay, true);
     assert.deepEqual(seen[0].args, [4]);
     assert.match(seen[0].sql, /flagged\s*=\s*0\s+OR\s+\w+\.reviewed\s*=\s*1/i);
     assert.equal((await fetch(`${base}/api/bootcamp/routes/not-a-number/leaderboard`)).status, 400);
