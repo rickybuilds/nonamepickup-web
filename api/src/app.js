@@ -206,6 +206,7 @@ function createApp({
         .map(row => row.id);
 
       const historyByPlayer = new Map();
+      const recentFormCutoff = Math.floor(Date.now() / 1000) - 45 * 86400;
       const distinctRankedMatches = new Set();
       const chunks = [];
       for (let i = 0; i < eligibleIds.length; i += 450) chunks.push(eligibleIds.slice(i, i + 450));
@@ -222,6 +223,7 @@ function createApp({
               rc.after,
               rc.delta,
               rc.ts,
+              m.created_at,
               m.winner,
               m.blue_ids,
               m.red_ids,
@@ -277,6 +279,7 @@ function createApp({
             after: row.after == null ? null : Number(row.after),
             before: row.before == null ? null : Number(row.before),
             delta: Number(row.delta || 0),
+            created_at: Number(row.created_at),
             result,
             is_mvp: !!row.is_mvp
           });
@@ -304,8 +307,9 @@ function createApp({
 
         row.elo_delta_recent = Math.round(current - baseline);
         row.elo_trend = trend;
-        row.recent_results = history.slice(-10).map(item => item.result || "?");
-        row.recent_form = history.slice(-10).map(item => ({
+        const recentForm = history.filter(item => item.created_at >= recentFormCutoff).slice(-10);
+        row.recent_results = recentForm.map(item => item.result || "?");
+        row.recent_form = recentForm.map(item => ({
           result: item.result || "?",
           is_mvp: item.is_mvp
         }));
