@@ -92,7 +92,7 @@ function decodeReplay(rows) {
     frameInterval: Number(first.frame_interval), frames, events } };
 }
 
-function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), logRouteError = console.error, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN } = {}) {
+function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN } = {}) {
   const router = express.Router();
   function requireBootcampAdmin(req, res, next) {
     if (!adminUser || !adminPassword) return res.status(503).json({ error: "bootcamp_admin_not_configured" });
@@ -752,7 +752,16 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       ]);
       const license = licenses[0];
       const playerName = runs[0]?.player_name || drillBests[0]?.player_name || steamId;
-      return res.json({ steamId, playerName, player: { playerName, steamIds: [steamId], discordId: null }, license: license ? {
+      let discordId = null;
+      if (typeof findDiscordIdBySteam === "function") {
+        try {
+          discordId = findDiscordIdBySteam(steamId) || null;
+        } catch (error) {
+          // Keep Bootcamp profiles available if the optional shared identity lookup fails.
+          logRouteError("[/api/bootcamp/players/:steamId identity]", error);
+        }
+      }
+      return res.json({ steamId, playerName, player: { playerName, steamIds: [steamId], discordId }, license: license ? {
         level: license.level, endorsements: String(license.endorsements || "").split(",").map(value => value.trim()).filter(Boolean),
         grantedAt: license.granted_at, cosignedBy: license.cosigned_by || null
       } : null, personalBests: runs.map(row => ({

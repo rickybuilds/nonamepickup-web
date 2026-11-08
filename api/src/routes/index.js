@@ -144,7 +144,16 @@ app.use("/api/speedruns", createSpeedrunsRouter({
   logRouteError
 }));
 if (bootcampEnabled(process.env.BOOTCAMP_API_ENABLED)) {
-  app.use("/api/bootcamp", createBootcampRouter({ logRouteError }));
+  app.use("/api/bootcamp", createBootcampRouter({
+    logRouteError,
+    // Reuse NoName's existing Steam/Discord links; never copy identities into Bootcamp tables.
+    findDiscordIdBySteam: steamId => db.prepare(`
+      SELECT discord_id FROM player_steam_ids
+      WHERE steam_id = ?
+      ORDER BY is_primary DESC, display_name ASC, discord_id ASC
+      LIMIT 1
+    `).get(steamId)?.discord_id || null
+  }));
 }
 app.use("/api/speedruns/comparisons", createSpeedrunComparisonsRouter({
   logRouteError

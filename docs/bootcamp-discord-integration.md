@@ -25,3 +25,9 @@ IDs. It filters records through the isolated Bootcamp schema; it does not
 expose or mutate speedrun records. License recomputation is transactional and
 uses the website's shared license evaluator. Do not run production migrations
 or enable production flags as part of development verification.
+
+The public player profile's `player.discordId` field resolves from NoName's
+existing `player_steam_ids` table using the requested Steam ID. Bootcamp does
+not maintain a duplicate account-link table. Unlinked players return `null`; an
+identity-store lookup error is logged and does not make the Bootcamp profile
+unavailable.
