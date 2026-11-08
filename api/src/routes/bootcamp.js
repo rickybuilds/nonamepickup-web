@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const { timingSafeEqual } = require("node:crypto");
 const { speedrunQuery } = require("../db/mariadb");
 const { joinReplayChunks, parseReplayFrames } = require("../helpers/replay");
 
@@ -18,9 +19,111 @@ function bootcampEnabled(value) {
   return typeof value === "string" && value.trim().toLowerCase() === "true";
 }
 
-function createBootcampRouter({ query = speedrunQuery, logRouteError = console.error } = {}) {
+function procedureChanged(result) {
+  if (Array.isArray(result)) return result.some(procedureChanged);
+  return Boolean(result && typeof result === "object" && Number(result.changed) === 1);
+}
+
+function decodeReplay(rows) {
+  if (!rows.length) return { error: "replay_not_found", status: 404 };
+  if (rows.length > 512) return { error: "replay_invalid", status: 422 };
+  const chunks = { pos: [], event: [] };
+  let bytes = 0;
+  for (const row of rows) {
+    if (!Object.hasOwn(chunks, row.track) || Number(row.chunk_id) !== chunks[row.track].length)
+      return { error: "replay_invalid", status: 422 };
+    const value = Buffer.isBuffer(row.data) ? row.data.toString("utf8") : String(row.data ?? "");
+    bytes += Buffer.byteLength(value);
+    if (bytes > 8 * 1024 * 1024) return { error: "replay_invalid", status: 422 };
+    chunks[row.track].push(value);
+  }
+  const frames = parseReplayFrames(joinReplayChunks(chunks.pos));
+  const events = parseBootcampEvents(joinReplayChunks(chunks.event));
+  const first = rows[0];
+  if (frames.length < 2 || frames.length > 3600 || events.length > 512 ||
+      (Number(first.pos_frames) > 0 && frames.length !== Number(first.pos_frames)))
+    return { error: "replay_invalid", status: 422 };
+  return { replay: { source: "bootcamp", runId: Number(first.run_id), ghostId: Number(first.ghost_id),
+    map: first.map, routeId: Number(first.route_id), routeName: first.route_name,
+    classId: Number(first.class_id), playerName: first.player_name, steamId: first.steamid, steamid: first.steamid,
+    configVersion: Number(first.config_version), timeMs: Number(first.time_ms),
+    frameInterval: Number(first.frame_interval), frames, events } };
+}
+
+function createBootcampRouter({ query = speedrunQuery, logRouteError = console.error, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD } = {}) {
   const router = express.Router();
-  router.get("/replay/run/:id", async (req, res) => {
+  function requireBootcampAdmin(req, res, next) {
+    if (!adminUser || !adminPassword) return res.status(503).json({ error: "bootcamp_admin_not_configured" });
+    const [scheme, encoded = ""] = String(req.get("authorization") || "").split(/\s+/, 2);
+    let suppliedUser = "", suppliedPassword = "";
+    try {
+      if (scheme === "Basic") [suppliedUser, suppliedPassword] = Buffer.from(encoded, "base64").toString("utf8").split(/:(.*)/s, 2);
+    } catch { /* malformed authorization is treated as a failed login */ }
+    const safeEqual = (left, right) => {
+      const a = Buffer.from(String(left)), b = Buffer.from(String(right));
+      return a.length === b.length && timingSafeEqual(a, b);
+    };
+    if (!safeEqual(suppliedUser, adminUser) || !safeEqual(suppliedPassword, adminPassword)) {
+      res.set("WWW-Authenticate", 'Basic realm="TFC Bootcamp review"');
+      return res.status(401).json({ error: "bootcamp_admin_unauthorized" });
+    }
+    res.set("Cache-Control", "no-store");
+    return next();
+  }
+
+  router.get("/admin/reviews", requireBootcampAdmin, async (req, res) => {
+    const limitText = req.query.limit === undefined ? "50" : String(req.query.limit);
+    if (!/^(?:[1-9]\d?|100)$/.test(limitText)) return res.status(400).json({ error: "invalid_limit" });
+    try {
+      const rows = await query(`
+        SELECT b.id AS run_id, b.steamid, b.player_name, b.map, b.route_id, r.name AS route_name,
+               b.class_id, b.time_ms, b.tier, b.config_version, b.created_at, g.id AS ghost_id
+          FROM bootcamp_runs b
+          JOIN bootcamp_routes r ON r.id = b.route_id AND r.map = b.map AND r.config_version = b.config_version
+          JOIN bootcamp_ghosts g ON g.id = b.ghost_id AND g.run_id = b.id AND g.route_id = b.route_id
+               AND g.map = b.map AND g.class_id = b.class_id AND g.is_complete = 1
+         WHERE b.flagged = 1 AND b.reviewed = 0 AND b.valid = 1 AND b.mode = 1
+           AND b.finalization_required = 0
+         ORDER BY b.created_at, b.id LIMIT ?
+      `, [Number(limitText)]);
+      return res.json({ reviews: rows.map(row => ({ runId: Number(row.run_id), steamId: row.steamid,
+        playerName: row.player_name, map: row.map, routeId: Number(row.route_id), routeName: row.route_name,
+        classId: Number(row.class_id), timeMs: Number(row.time_ms), tier: Number(row.tier),
+        configVersion: Number(row.config_version), createdAt: row.created_at, ghostId: Number(row.ghost_id) })) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/admin/reviews]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
+
+  router.post("/admin/reviews/:id", requireBootcampAdmin, async (req, res) => {
+    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
+      return res.status(400).json({ error: "invalid_run_id" });
+    if (!req.is("application/json") || !req.body || Object.keys(req.body).length !== 1 ||
+        !["approve", "reject"].includes(req.body.verdict)) return res.status(400).json({ error: "invalid_review_verdict" });
+    const runId = Number(req.params.id), approve = req.body.verdict === "approve" ? 1 : 0;
+    try {
+      // The procedure atomically commits review, tier changes and events. This
+      // eligibility guard prevents direct IDs from bypassing the visible queue.
+      const eligible = await query(`
+        SELECT b.id FROM bootcamp_runs b
+          JOIN bootcamp_routes r ON r.id = b.route_id AND r.map = b.map AND r.config_version = b.config_version
+          JOIN bootcamp_ghosts g ON g.id = b.ghost_id AND g.run_id = b.id AND g.route_id = b.route_id
+               AND g.map = b.map AND g.class_id = b.class_id AND g.is_complete = 1
+         WHERE b.id = ? AND b.flagged = 1 AND b.reviewed = 0 AND b.valid = 1 AND b.mode = 1
+           AND b.finalization_required = 0 LIMIT 1
+      `, [runId]);
+      if (!eligible.length) return res.status(409).json({ error: "review_not_pending" });
+      const result = await query("CALL bootcamp_review_run(?, ?)", [runId, approve]);
+      if (!procedureChanged(result)) return res.status(409).json({ error: "review_not_pending" });
+      return res.json({ reviewed: true, runId, verdict: req.body.verdict });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/admin/reviews/:id]", error);
+      return res.status(503).json({ error: "bootcamp_review_unavailable" });
+    }
+  });
+
+  async function sendReplay(req, res, admin) {
     if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
       return res.status(400).json({ error: "invalid_run_id" });
     try {
@@ -30,40 +133,23 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
         SELECT g.id AS ghost_id, g.run_id, g.map, g.route_id, r.name AS route_name,
                g.class_id, g.player_name, g.steamid, b.time_ms, b.config_version, g.frame_interval, g.pos_frames,
                c.track, c.chunk_id, c.data
-          FROM bootcamp_public_route_ghosts g
-          JOIN bootcamp_runs b ON b.id = g.run_id AND b.finalization_required = 0
-          JOIN bootcamp_routes r ON r.id = g.route_id
+          FROM ${admin ? "bootcamp_ghosts" : "bootcamp_public_route_ghosts"} g
+          JOIN bootcamp_runs b ON b.id = g.run_id AND b.ghost_id = g.id AND b.finalization_required = 0
+          JOIN bootcamp_routes r ON r.id = g.route_id AND r.id = b.route_id
           LEFT JOIN bootcamp_ghost_chunks c ON c.ghost_id = g.id AND c.track IN ('pos', 'event')
-         WHERE g.run_id = ? ORDER BY c.track, c.chunk_id LIMIT 513
+         WHERE g.run_id = ? ${admin ? "AND b.flagged = 1 AND b.reviewed = 0 AND b.valid = 1 AND b.mode = 1 AND r.config_version = b.config_version" : ""}
+         ORDER BY c.track, c.chunk_id LIMIT 513
       `, [Number(req.params.id)]);
-      if (!rows.length) return res.status(404).json({ error: "replay_not_found" });
-      if (rows.length > 512) return res.status(422).json({ error: "replay_invalid" });
-      const chunks = { pos: [], event: [] };
-      let bytes = 0;
-      for (const row of rows) {
-        if (!Object.hasOwn(chunks, row.track) || Number(row.chunk_id) !== chunks[row.track].length)
-          return res.status(422).json({ error: "replay_invalid" });
-        const value = Buffer.isBuffer(row.data) ? row.data.toString("utf8") : String(row.data ?? "");
-        bytes += Buffer.byteLength(value);
-        if (bytes > 8 * 1024 * 1024) return res.status(422).json({ error: "replay_invalid" });
-        chunks[row.track].push(value);
-      }
-      const frames = parseReplayFrames(joinReplayChunks(chunks.pos));
-      const events = parseBootcampEvents(joinReplayChunks(chunks.event));
-      const first = rows[0];
-      if (frames.length < 2 || frames.length > 3600 || events.length > 512 ||
-          (Number(first.pos_frames) > 0 && frames.length !== Number(first.pos_frames)))
-        return res.status(422).json({ error: "replay_invalid" });
-      return res.json({ source: "bootcamp", runId: Number(first.run_id), ghostId: Number(first.ghost_id),
-        map: first.map, routeId: Number(first.route_id), routeName: first.route_name,
-        classId: Number(first.class_id), playerName: first.player_name, steamId: first.steamid, steamid: first.steamid,
-        configVersion: Number(first.config_version),
-        timeMs: Number(first.time_ms), frameInterval: Number(first.frame_interval), frames, events });
+      const result = decodeReplay(rows);
+      if (result.error) return res.status(result.status).json({ error: result.error });
+      return res.json(result.replay);
     } catch (error) {
-      logRouteError("[/api/bootcamp/replay/run/:id]", error);
+      logRouteError(`[${admin ? "admin/" : ""}/api/bootcamp/replay/run/:id]`, error);
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
     }
-  });
+  }
+  router.get("/replay/run/:id", (req, res) => sendReplay(req, res, false));
+  router.get("/admin/reviews/:id/replay", requireBootcampAdmin, (req, res) => sendReplay(req, res, true));
   router.get("/maps", async (_req, res) => {
     try {
       const rows = await query(`

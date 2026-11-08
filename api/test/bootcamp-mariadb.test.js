@@ -32,7 +32,9 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
       await db.execute("INSERT INTO bootcamp_ghost_chunks (ghost_id, track, chunk_id, data) VALUES (?, 'pos', 0, ?)", [ghost.insertId, "0,1,2,3,0,90,0,0,-;1,4,5,6,0,91,0,2,-;"]);
     }
     const app = express();
-    app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => (await db.execute(sql, args))[0] }));
+    app.use(express.json());
+    app.use("/api/bootcamp", createBootcampRouter({ adminUser: "reviewer", adminPassword: "test-only",
+      query: async (sql, args) => (await db.execute(sql, args))[0] }));
     server = app.listen(0, "127.0.0.1");
     await new Promise(resolve => server.once("listening", resolve));
     const base = `http://127.0.0.1:${server.address().port}/api/bootcamp`;
@@ -51,6 +53,18 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
     assert.equal(drills.drills[0].id, drillId);
     const drillBoard = await (await fetch(`${base}/drills/${drillId}/leaderboard`)).json();
     assert.deepEqual(drillBoard.scores.map(row => [row.classId, row.score]), [[3, 80], [6, 77]]);
+    const auth = `Basic ${Buffer.from("reviewer:test-only").toString("base64")}`;
+    const reviewQueue = await (await fetch(`${base}/admin/reviews`, { headers: { authorization: auth } })).json();
+    assert.ok(reviewQueue.reviews.some(run => run.runId === runIds[2] && run.ghostId));
+    const pendingReplay = await fetch(`${base}/admin/reviews/${runIds[2]}/replay`, { headers: { authorization: auth } });
+    assert.equal(pendingReplay.status, 200);
+    assert.equal((await pendingReplay.json()).frames.length, 2);
+    const approval = await fetch(`${base}/admin/reviews/${runIds[2]}`, { method: "POST",
+      headers: { authorization: auth, "content-type": "application/json" }, body: JSON.stringify({ verdict: "approve" }) });
+    assert.equal(approval.status, 200);
+    assert.equal((await (await fetch(`${base}/replay/run/${runIds[2]}`)).json()).runId, runIds[2]);
+    const reviewedBoard = await (await fetch(`${base}/routes/${routeId}/leaderboard`)).json();
+    assert.equal(reviewedBoard.runs[0].timeMs, 1000);
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));
     if (routeId) {

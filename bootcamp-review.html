@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Bootcamp Reviews | NoName TFC</title>
+  <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="assets/css/bootcamp-review.css?v=1">
+  <script src="assets/js/bootcamp-review.js?v=1" defer></script>
+</head>
+<body class="bootcamp-review-page">
+  <main class="br-shell">
+    <header><a href="bootcamp.html">← Training hub</a><p class="br-kicker">TFC BOOTCAMP</p><h1>Record review</h1>
+      <p>Inspect flagged ranked runs and their movement replay before publishing a record.</p></header>
+    <form id="br-login" class="br-login">
+      <label>Reviewer username<input name="username" autocomplete="username" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit">Load review queue</button>
+      <p id="br-status" role="status" aria-live="polite">Reviewer credentials are sent only to this site. Use HTTPS.</p>
+    </form>
+    <section id="br-queue" aria-label="Pending reviews"></section>
+    <template id="br-card-template">
+      <article class="br-card">
+        <div class="br-meta"></div>
+        <div class="br-replay"><canvas width="800" height="420" aria-label="Top-down player movement replay"></canvas>
+          <div class="br-controls"><button type="button" data-action="play">Play</button><input data-action="seek" type="range" min="0" value="0" aria-label="Replay position"><output data-action="time"></output></div>
+        </div>
+        <div class="br-actions"><button type="button" data-action="approve">Approve and publish</button><button type="button" data-action="reject" class="br-reject">Reject run</button></div>
+      </article>
+    </template>
+  </main>
+</body>
+</html>

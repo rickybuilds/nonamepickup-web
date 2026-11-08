@@ -11,7 +11,8 @@ function registerStaticFiles(app, publicDir) {
       let requestPath;
       try { requestPath = path.posix.normalize(decodeURIComponent(req.path).replace(/\\/g, "/")).toLowerCase(); }
       catch { return res.status(400).end(); }
-      if (["/bootcamp.html", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css"].includes(requestPath) &&
+      if (["/bootcamp.html", "/bootcamp-review.html", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css",
+        "/assets/js/bootcamp-review.js", "/assets/css/bootcamp-review.css"].includes(requestPath) &&
           !bootcampEnabled(process.env.BOOTCAMP_API_ENABLED)) return res.status(404).end();
       return next();
     });

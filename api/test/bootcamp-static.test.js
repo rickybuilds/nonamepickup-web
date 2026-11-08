@@ -15,11 +15,11 @@ test("Bootcamp page and assets are disabled by default", async () => {
     await new Promise(resolve => server.once("listening", resolve));
     const base = `http://127.0.0.1:${server.address().port}`;
     assert.equal((await fetch(base + "/index.html")).status, 200);
-    for (const file of ["/bootcamp.html", "/BOOTCAMP.HTML", "/bootcamp%2ehtml", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css"]) {
+    for (const file of ["/bootcamp.html", "/bootcamp-review.html", "/BOOTCAMP.HTML", "/bootcamp%2ehtml", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css", "/assets/js/bootcamp-review.js", "/assets/css/bootcamp-review.css"]) {
       assert.equal((await fetch(base + file)).status, 404);
     }
     process.env.BOOTCAMP_API_ENABLED = "true";
-    for (const file of ["/bootcamp.html", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css"]) {
+    for (const file of ["/bootcamp.html", "/bootcamp-review.html", "/assets/js/bootcamp-hub.js", "/assets/css/bootcamp-hub.css", "/assets/js/bootcamp-review.js", "/assets/css/bootcamp-review.css"]) {
       assert.equal((await fetch(base + file)).status, 200);
     }
   } finally {
