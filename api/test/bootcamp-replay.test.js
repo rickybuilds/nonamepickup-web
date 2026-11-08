@@ -77,7 +77,11 @@ test("public replay metadata exposes frame context without loading replay chunks
 });
 
 test("published Bootcamp replay exposes the TFTR v1 sidecar without changing JSON replay output", async () => {
-  const calls = [], app = express();
+  const calls = [], cacheCalls = { get: 0, put: 0 }, cacheValues = new Map(), app = express();
+  const sidecarCache = {
+    async get(key) { cacheCalls.get++; return cacheValues.get(key) || null; },
+    async put(key, data) { cacheCalls.put++; cacheValues.set(key, Buffer.from(data)); }
+  };
   const record = { id: 7, run_id: 3, map: "openfire", route_id: 2, class_id: 5, time_ms: 12000,
     config_version: 4, is_complete: 1, frame_interval: 1 / 30, tier_tag: 2 };
   const tracks = {
@@ -89,7 +93,7 @@ test("published Bootcamp replay exposes the TFTR v1 sidecar without changing JSO
     record[`${track}_frames`] = rows.reduce((sum, row) => sum + (row.data.match(/;/g) || []).length, 0);
     record[`spool_${track}_sha`] = crypto.createHash("sha256").update(rows.map(row => row.data).join(""), "utf8").digest("hex");
   }
-  app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => {
+  app.use("/api/bootcamp", createBootcampRouter({ sidecarCache, query: async (sql, args) => {
     calls.push({ sql, args });
     if (/tftr sidecar/i.test(sql)) return [record];
     if (/bootcamp_ghost_chunks/i.test(sql) && /'input'/i.test(sql)) return Object.entries(tracks).flatMap(([track, rows]) => rows.map(row => ({ track, ...row })));
@@ -127,10 +131,32 @@ test("published Bootcamp replay exposes the TFTR v1 sidecar without changing JSO
     const firstEvent = firstFrame + 2 * 39;
     assert.equal(bytes.readUInt32LE(firstEvent), 15);
     assert.equal(bytes.readUInt8(firstEvent + 4), 8);
+    const cached = await fetch(`${base}/replay/run/3/tftr`);
+    assert.equal(cached.status, 200);
+    assert.deepEqual(Buffer.from(await cached.arrayBuffer()), bytes);
+    assert.deepEqual(cacheCalls, { get: 2, put: 1 });
+    assert.equal(calls.filter(call => /tftr sidecar/i.test(call.sql)).length, 2);
+    assert.equal(calls.filter(call => /bootcamp_ghost_chunks/i.test(call.sql)).length, 1);
     assert.ok(calls.some(call => /b\.finalization_required\s*=\s*0/i.test(call.sql) && /b\.flagged\s*=\s*0/i.test(call.sql)));
     const legacy = await fetch(`${base}/replay/run/3`);
     assert.equal(legacy.status, 200);
     assert.equal((await legacy.json()).source, "bootcamp");
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test("TFTR cache is not read when the database says the replay is no longer public", async () => {
+  let cacheReads = 0;
+  const app = express();
+  app.use("/api/bootcamp", createBootcampRouter({
+    query: async sql => /tftr sidecar/i.test(sql) ? [] : [],
+    sidecarCache: { async get() { cacheReads++; return Buffer.from("stale sidecar"); }, async put() {} }
+  }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise(resolve => server.once("listening", resolve));
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/bootcamp/replay/run/99/tftr`);
+    assert.equal(response.status, 404);
+    assert.equal(cacheReads, 0);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 

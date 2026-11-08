@@ -335,6 +335,7 @@ function createApp({
     db,
     fs,
     SUPPORTERS_FILE,
+    PUBLIC_DIR,
     sendError,
     logRouteError,
     positiveInt,

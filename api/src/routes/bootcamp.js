@@ -1,10 +1,11 @@
 "use strict";
 
 const express = require("express");
-const { timingSafeEqual } = require("node:crypto");
+const { createHash, timingSafeEqual } = require("node:crypto");
 const { speedrunQuery, getSpeedrunPool } = require("../db/mariadb");
 const { joinReplayChunks, parseReplayFrames } = require("../helpers/replay");
 const { TRACKS, encodeBootcampTftr } = require("../helpers/bootcampTftr");
+const { bootcampReplayCacheKey } = require("../services/bootcampReplayCache");
 const { recomputeBootcampLicense } = require("../services/bootcampLicenseStore");
 
 function parseBootcampEvents(serialized) {
@@ -92,7 +93,7 @@ function decodeReplay(rows) {
     frameInterval: Number(first.frame_interval), frames, events } };
 }
 
-function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN } = {}) {
+function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), sidecarCache = null, logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN } = {}) {
   const router = express.Router();
   function requireBootcampAdmin(req, res, next) {
     if (!adminUser || !adminPassword) return res.status(503).json({ error: "bootcamp_admin_not_configured" });
@@ -252,22 +253,37 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       `, [Number(req.params.id)]);
       if (!records.length) return res.status(404).json({ error: "replay_not_found" });
       const record = records[0];
-      const chunkRows = await query(`
-        SELECT track, chunk_id, data FROM bootcamp_ghost_chunks
-         WHERE ghost_id = ? AND track IN ('pos', 'proj', 'input', 'cmd', 'event')
-         ORDER BY FIELD(track, 'pos', 'proj', 'input', 'cmd', 'event'), chunk_id
-         LIMIT 2560
-      `, [Number(record.id)]);
-      const tracks = Object.fromEntries(TRACKS.map(track => [track, []]));
-      for (const row of chunkRows) {
-        if (!Object.hasOwn(tracks, row.track)) return res.status(422).json({ error: "replay_invalid" });
-        tracks[row.track].push(row);
-      }
       let sidecar;
-      try { sidecar = encodeBootcampTftr(record, tracks); }
-      catch (error) {
-        if (error.status === 422) return res.status(422).json({ error: "replay_invalid", reason: error.message });
-        throw error;
+      const cacheKey = bootcampReplayCacheKey(record);
+      if (sidecarCache) {
+        try {
+          const cached = await sidecarCache.get(cacheKey);
+          if (cached) sidecar = { data: cached, sha256: createHash("sha256").update(cached).digest("hex") };
+        } catch (error) {
+          logRouteError("[/api/bootcamp/replay/run/:id/tftr cache read]", error);
+        }
+      }
+      if (!sidecar) {
+        const chunkRows = await query(`
+          SELECT track, chunk_id, data FROM bootcamp_ghost_chunks
+           WHERE ghost_id = ? AND track IN ('pos', 'proj', 'input', 'cmd', 'event')
+           ORDER BY FIELD(track, 'pos', 'proj', 'input', 'cmd', 'event'), chunk_id
+           LIMIT 2560
+        `, [Number(record.id)]);
+        const tracks = Object.fromEntries(TRACKS.map(track => [track, []]));
+        for (const row of chunkRows) {
+          if (!Object.hasOwn(tracks, row.track)) return res.status(422).json({ error: "replay_invalid" });
+          tracks[row.track].push(row);
+        }
+        try { sidecar = encodeBootcampTftr(record, tracks); }
+        catch (error) {
+          if (error.status === 422) return res.status(422).json({ error: "replay_invalid", reason: error.message });
+          throw error;
+        }
+        if (sidecar.data && sidecarCache) {
+          try { await sidecarCache.put(cacheKey, sidecar.data); }
+          catch (error) { logRouteError("[/api/bootcamp/replay/run/:id/tftr cache write]", error); }
+        }
       }
       if (!sidecar.data) return res.status(406).json({ error: "tftr_sidecar_unavailable", reason: sidecar.reason });
       res.set("Content-Type", "application/vnd.nn.ghost-sidecar");

@@ -27,7 +27,8 @@ matches the route's current configuration version. It verifies chunk order,
 sample counts, per-track SHA-256 values, field validity and size limits before
 encoding the response. The binary header exposes format version 1 through both
 the TFTR payload and `X-TFTR-Version`; `X-TFTR-SHA256` identifies the exact
-response bytes. Responses are not cached.
+response bytes. HTTP responses are marked `no-store`; replay bytes use the
+private server-side cache described below.
 
 The shared 3D replay viewer requests TFTR first and then the small metadata
 response, avoiding the JSON movement payload for current recordings. If the
@@ -40,9 +41,18 @@ from the JSON endpoint. The TFTR endpoint responds with `406` and
 or structure failures return `422`; recordings that are not publicly eligible
 return `404`.
 
-This is database-backed generation on request. It does not yet store the
-sidecar in object storage or maintain a server cache. The route is mounted only
-when `BOOTCAMP_API_ENABLED=true`, which remains opt-in.
+The server maintains a private filesystem cache under
+`TFCBOT_DATA_DIR/bootcamp/replay-cache` (default data directory: `/root/tfcbot`).
+Cache keys bind the ghost/run identity, current route config version, frame
+counts and stored track hashes. Cache entries have an internal SHA-256 check,
+expire after 30 days, and are pruned to at most 1,000 entries or 256 MiB. The
+cache refuses paths inside the public web root. Every request still checks
+current public replay eligibility in MariaDB before reading the cache, so
+pending, rejected, invalid or stale-geometry runs cannot be served from a stale
+cache file. Cache read/write failures are logged and fall back to database
+encoding. The route is mounted only when `BOOTCAMP_API_ENABLED=true`, which
+remains opt-in. Remote object storage is not configured; this is local durable
+cache storage, not a replicated archive.
 
 ## Mentor license co-sign
 
