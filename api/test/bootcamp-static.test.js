@@ -13,7 +13,12 @@ test("the Bootcamp hub opens a profile from the Steam-ID deep link", () => {
   assert.match(script, /profileForm\.requestSubmit\(\)/);
   assert.match(script, /profile\.drillBests\?/);
   assert.match(script, /api\/bootcamp\/challenge\/current/);
-  assert.match(fs.readFileSync(path.resolve(__dirname, "../../bootcamp.html"), "utf8"), /id="weekly-challenge"/);
+  assert.match(script, /leaderboards\/skill-points\?period=monthly/);
+  assert.match(script, /leaderboards\/skill-points\?period=all_time/);
+  const page = fs.readFileSync(path.resolve(__dirname, "../../bootcamp.html"), "utf8");
+  assert.match(page, /id="weekly-challenge"/);
+  assert.match(page, /id="bc-monthly-points"/);
+  assert.match(page, /id="bc-alltime-points"/);
 });
 
 test("Bootcamp page and assets are disabled by default", async () => {

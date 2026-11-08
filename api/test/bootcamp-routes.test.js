@@ -114,3 +114,35 @@ test("drill catalog and leaderboard validate inputs and return class-specific sc
     assert.equal((await fetch(`${base}/maps/bad%20map/drills`)).status, 400);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
+
+test("skill points expose all-time best tiers and monthly tier-improvement standings", async () => {
+  const seen = [];
+  const app = express();
+  app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => {
+    seen.push({ sql, args });
+    if (/FROM bootcamp_tiers/i.test(sql)) return [{ steamid: "STEAM_0:1:4", player_name: "Runner", points: 12, objectives: 6 }];
+    return [{ steamid: "STEAM_0:1:5", player_name: "Monthly", points: 3, objectives: 2 }];
+  } }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise(resolve => server.once("listening", resolve));
+    const base = `http://127.0.0.1:${server.address().port}/api/bootcamp/leaderboards/skill-points`;
+    const allTime = await (await fetch(base)).json();
+    assert.equal(allTime.period, "all_time");
+    assert.deepEqual(allTime.scores[0], { steamId: "STEAM_0:1:4", playerName: "Runner", points: 12, objectives: 6 });
+    assert.match(seen[0].sql, /bootcamp_tiers/i);
+    assert.match(seen[0].sql, /WHEN\s+4\s+THEN\s+5/i);
+
+    const monthlyResponse = await fetch(`${base}?period=monthly&month=2026-11`);
+    assert.equal(monthlyResponse.status, 200);
+    const monthly = await monthlyResponse.json();
+    assert.equal(monthly.period, "monthly");
+    assert.equal(monthly.month, "2026-11");
+    assert.deepEqual(monthly.scores[0], { steamId: "STEAM_0:1:5", playerName: "Monthly", points: 3, objectives: 2 });
+    assert.deepEqual(seen[1].args, ["2026-11-01 00:00:00", "2026-12-01 00:00:00"]);
+    assert.match(seen[1].sql, /LAG\s*\(/i);
+    assert.match(seen[1].sql, /tier_up/i);
+    assert.equal((await fetch(`${base}?period=monthly&month=2026-13`)).status, 400);
+    assert.equal((await fetch(`${base}?period=weekly`)).status, 400);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});

@@ -129,6 +129,27 @@
       target.append(table(["Rank", "Player", "Class", challenge.targetType === "route" ? "Time" : "Score"], rows));
     } catch { message(target, "Could not load this week's challenge. Please try again.", true); }
   }
+  async function loadSkillPoints() {
+    const monthTarget = byId("bc-monthly-points"), allTimeTarget = byId("bc-alltime-points");
+    const month = new Date().toISOString().slice(0, 7);
+    try {
+      const [monthly, allTime] = await Promise.all([
+        get(`/api/bootcamp/leaderboards/skill-points?period=monthly&month=${encodeURIComponent(month)}`),
+        get("/api/bootcamp/leaderboards/skill-points?period=all_time")
+      ]);
+      const render = (target, scores) => {
+        if (!scores.length) return message(target, "No tier points recorded yet.");
+        target.replaceChildren(table(["Rank", "Player", "Points", "Objectives"], scores.map((row, index) =>
+          [index + 1, row.playerName || row.steamId, row.points, row.objectives])));
+      };
+      byId("bc-monthly-heading").textContent = `Skill points · ${month}`;
+      render(monthTarget, monthly.scores);
+      render(allTimeTarget, allTime.scores);
+    } catch {
+      message(monthTarget, "Could not load monthly skill points. Please try again.", true);
+      message(allTimeTarget, "Could not load all-time skill points. Please try again.", true);
+    }
+  }
   const profileForm = byId("bc-profile-form");
   profileForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -158,5 +179,6 @@
     profileForm.requestSubmit();
   }
   loadChallenge();
+  loadSkillPoints();
   loadMaps();
 }());

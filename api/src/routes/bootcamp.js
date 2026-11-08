@@ -175,6 +175,77 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
     }
   });
+  router.get("/leaderboards/skill-points", async (req, res) => {
+    const period = req.query.period === undefined ? "all_time" : String(req.query.period);
+    if (!["all_time", "monthly"].includes(period))
+      return res.status(400).json({ error: "invalid_period" });
+
+    let month = null, startsAt = null, endsAt = null;
+    if (period === "monthly") {
+      month = req.query.month === undefined
+        ? new Date().toISOString().slice(0, 7)
+        : String(req.query.month);
+      const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
+      if (!match || Number(match[1]) < 2000 || Number(match[1]) > 9998)
+        return res.status(400).json({ error: "invalid_month" });
+      const year = Number(match[1]), monthIndex = Number(match[2]) - 1;
+      const start = new Date(0);
+      start.setUTCFullYear(year, monthIndex, 1);
+      start.setUTCHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setUTCMonth(end.getUTCMonth() + 1);
+      const sqlDate = value => `${value.getUTCFullYear().toString().padStart(4, "0")}-${String(value.getUTCMonth() + 1).padStart(2, "0")}-${String(value.getUTCDate()).padStart(2, "0")} 00:00:00`;
+      startsAt = sqlDate(start);
+      endsAt = sqlDate(end);
+    }
+
+    try {
+      const rows = period === "all_time" ? await query(`
+        SELECT t.steamid,
+               COALESCE((SELECT e.player_name FROM bootcamp_events e WHERE e.steamid = t.steamid
+                          ORDER BY e.created_at DESC, e.id DESC LIMIT 1), '') AS player_name,
+               SUM(CASE t.tier WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 5 ELSE 0 END) AS points,
+               COUNT(*) AS objectives
+          FROM bootcamp_tiers t
+         GROUP BY t.steamid
+        HAVING points > 0
+         ORDER BY points DESC, t.steamid ASC LIMIT 100
+      `, []) : await query(`
+        WITH tier_progress AS (
+          SELECT e.id, e.steamid, e.player_name, e.target_type, e.target_id, e.map, e.class_id,
+                 e.tier, e.created_at,
+                 COALESCE(LAG(e.tier) OVER (
+                   PARTITION BY e.steamid, e.target_type, e.target_id, e.map, e.class_id
+                   ORDER BY e.created_at, e.id
+                 ), 0) AS previous_tier
+            FROM bootcamp_events e
+           WHERE e.kind = 'tier_up' AND e.target_type IN ('route', 'drill')
+        )
+        SELECT totals.steamid,
+               COALESCE((SELECT e.player_name FROM bootcamp_events e WHERE e.steamid = totals.steamid
+                          ORDER BY e.created_at DESC, e.id DESC LIMIT 1), '') AS player_name,
+               totals.points, totals.objectives
+          FROM (
+            SELECT steamid,
+                   SUM((CASE tier WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 5 ELSE 0 END) -
+                       (CASE previous_tier WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 5 ELSE 0 END)) AS points,
+                   COUNT(DISTINCT target_type, target_id, map, class_id) AS objectives
+              FROM tier_progress
+             WHERE created_at >= ? AND created_at < ? AND tier > previous_tier
+             GROUP BY steamid
+            HAVING points > 0
+          ) totals
+         ORDER BY totals.points DESC, totals.steamid ASC LIMIT 100
+      `, [startsAt, endsAt]);
+      return res.json({ period, month, startsAt, endsAt, scores: rows.map(row => ({
+        steamId: row.steamid, playerName: row.player_name || "",
+        points: Number(row.points), objectives: Number(row.objectives)
+      })) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/leaderboards/skill-points]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
   router.get("/integrations/discord/events/cursor", requireDiscordService, async (_req, res) => {
     try {
       const rows = await query("SELECT COALESCE(MAX(id), 0) AS latest_id FROM bootcamp_events", []);

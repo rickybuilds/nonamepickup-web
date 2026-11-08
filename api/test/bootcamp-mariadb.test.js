@@ -4,6 +4,47 @@ const assert = require("node:assert/strict");
 const express = require("express");
 const { createBootcampRouter } = require("../src/routes/bootcamp");
 
+test("skill-point boards calculate current tier weights and monthly improvements in MariaDB", { skip: process.env.BOOTCAMP_LOCAL_DB_TEST !== "1" }, async () => {
+  const mysql = require("mysql2/promise");
+  const db = await mysql.createConnection({ host: "127.0.0.1", port: 34079, user: "root", database: "bootcamp_local_test" });
+  const steam = `STEAM_0:1:${Date.now()}`;
+  const targets = [Date.now() % 100000000, (Date.now() + 1) % 100000000, (Date.now() + 2) % 100000000];
+  let server;
+  try {
+    await db.execute("INSERT INTO bootcamp_tiers (steamid, target_type, target_id, map, class_id, tier) VALUES (?, 'route', ?, 'skill_test', 1, 3), (?, 'drill', ?, 'skill_test', 3, 4), (?, 'drill', ?, 'skill_test', 4, 2)",
+      [steam, targets[0], steam, targets[1], steam, targets[2]]);
+    const events = [
+      ["2026-10-31 23:59:59", targets[0], 1, "Bronze"],
+      ["2026-11-02 00:00:00", targets[0], 2, "Silver"],
+      ["2026-11-03 00:00:00", targets[0], 3, "Gold"],
+      ["2026-11-04 00:00:00", targets[1], 4, "Platinum"],
+      ["2026-11-30 23:59:59", targets[2], 2, "Silver"]
+    ];
+    for (const [createdAt, targetId, tier, name] of events) {
+      await db.execute("INSERT INTO bootcamp_events (kind, steamid, player_name, map, target_type, target_id, class_id, tier, created_at) VALUES ('tier_up', ?, ?, 'skill_test', ?, ?, ?, ?, ?)",
+        [steam, name, targetId === targets[0] ? "route" : "drill", targetId, targetId === targets[0] ? 1 : targetId === targets[1] ? 3 : 4, tier, createdAt]);
+    }
+    const app = express();
+    app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => (await db.execute(sql, args))[0] }));
+    server = app.listen(0, "127.0.0.1");
+    await new Promise(resolve => server.once("listening", resolve));
+    const base = `http://127.0.0.1:${server.address().port}/api/bootcamp/leaderboards/skill-points`;
+    const [allTime, monthly] = await Promise.all([
+      fetch(`${base}?period=all_time`).then(response => response.json()),
+      fetch(`${base}?period=monthly&month=2026-11`).then(response => response.json())
+    ]);
+    assert.deepEqual(allTime.scores.find(row => row.steamId === steam),
+      { steamId: steam, playerName: "Silver", points: 10, objectives: 3 });
+    assert.deepEqual(monthly.scores.find(row => row.steamId === steam),
+      { steamId: steam, playerName: "Silver", points: 9, objectives: 3 });
+  } finally {
+    if (server) await new Promise(resolve => server.close(resolve));
+    await db.execute("DELETE FROM bootcamp_events WHERE steamid = ?", [steam]);
+    await db.execute("DELETE FROM bootcamp_tiers WHERE steamid = ?", [steam]);
+    await db.end();
+  }
+});
+
 test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs in MariaDB", { skip: process.env.BOOTCAMP_LOCAL_DB_TEST !== "1" }, async () => {
   const mysql = require("mysql2/promise");
   const db = await mysql.createConnection({ host: "127.0.0.1", port: 34079, user: "root", database: "bootcamp_local_test" });
