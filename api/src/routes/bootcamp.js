@@ -208,7 +208,16 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
           SELECT s.id AS set_id, s.steamid, s.player_name, s.class_id, s.score, s.tier,
                  ROW_NUMBER() OVER (PARTITION BY s.steamid, s.class_id ORDER BY s.score DESC, s.id) AS player_rank
             FROM bootcamp_drill_sets s JOIN bootcamp_drills d ON d.id = s.drill_id AND d.enabled = 1
-           WHERE s.drill_id = ?
+           WHERE s.drill_id = ? AND s.finalization_required = 0
+             AND (s.recording_token IS NULL OR EXISTS (
+               SELECT 1 FROM bootcamp_finalized_drill_sets f
+               JOIN bootcamp_ghosts g ON g.id = s.ghost_id AND g.drill_set_id = s.id
+                    AND g.is_complete = 1 AND g.pos_frames >= 2 AND g.map = s.map
+                    AND g.steamid = s.steamid AND g.class_id = s.class_id
+               WHERE f.drill_set_id = s.id AND EXISTS (
+                 SELECT 1 FROM bootcamp_ghost_chunks c WHERE c.ghost_id = g.id AND c.track = 'pos' AND c.chunk_id = 0
+               )
+             ))
         ) ranked WHERE player_rank = 1 ORDER BY score DESC, set_id LIMIT 100
       `, [Number(req.params.id)]);
       return res.json({ scores: rows.map(row => ({

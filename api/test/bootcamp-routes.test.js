@@ -98,6 +98,10 @@ test("drill catalog and leaderboard validate inputs and return class-specific sc
     assert.equal((await (await fetch(`${base}/drills/7/leaderboard`)).json()).scores[0].score, 85);
     assert.deepEqual(seen[1].args, [7]);
     assert.match(seen[1].sql, /PARTITION BY s\.steamid, s\.class_id/i);
+    assert.match(seen[1].sql, /s\.finalization_required\s*=\s*0/i);
+    assert.match(seen[1].sql, /bootcamp_finalized_drill_sets/i);
+    assert.match(seen[1].sql, /g\.is_complete\s*=\s*1/i);
+    assert.match(seen[1].sql, /s\.recording_token\s+IS\s+NULL/i);
     assert.equal((await fetch(`${base}/drills/0/leaderboard`)).status, 400);
     assert.equal((await fetch(`${base}/maps/bad%20map/drills`)).status, 400);
   } finally { await new Promise(resolve => server.close(resolve)); }

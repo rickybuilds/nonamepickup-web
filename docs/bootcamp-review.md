@@ -16,6 +16,8 @@ The review page lists only flagged, valid, finalized ranked runs with a complete
 
 All reviewer responses use `Cache-Control: no-store`. The endpoints return 503 when reviewer credentials are not configured, 401 for bad credentials, and 409 when a run is no longer eligible. Configure the web API database account with the permissions required by migrations `001_bootcamp_schema.sql` through `013_claim_recordings.sql`, including EXECUTE on `bootcamp_review_run`.
 
+The drill leaderboard preserves historical sets created before recording bindings (`recording_token IS NULL`). New bound sets are visible only after `bootcamp_finalize_drill_set` clears the pending flag, writes its finalized marker and links a complete position recording that matches the set's player, map and class. Missing replay data or an inconsistent marker does not make a new score public.
+
 ## Validation
 
 The route unit tests cover authentication, pending eligibility, validation, replay isolation and decision handling. Set `BOOTCAMP_LOCAL_DB_TEST=1` only against the disposable local Bootcamp database to run `api/test/bootcamp-mariadb.test.js`; that integration verifies a pending replay is private before approval and public after the atomic review publishes it. Do not run the fixture against production.

@@ -15,8 +15,24 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
     routeId = route.insertId;
     const [drill] = await db.execute("INSERT INTO bootcamp_drills (map, slug, kind, name, class_id) VALUES (?, 'hold', 'position', 'Hold', 3)", [map]);
     drillId = drill.insertId;
-    for (const [classId, score] of [[3, 60], [3, 80], [3, 75], [6, 77]])
-      await db.execute("INSERT INTO bootcamp_drill_sets (steamid, player_name, map, drill_id, class_id, score, tier) VALUES (?, 'Tester', ?, ?, ?, ?, 2)", [steam, map, drillId, classId, score]);
+    const drillSetIds = [];
+    for (const [classId, score] of [[3, 60], [3, 80], [3, 75], [6, 77]]) {
+      const [set] = await db.execute("INSERT INTO bootcamp_drill_sets (steamid, player_name, map, drill_id, class_id, score, tier) VALUES (?, 'Tester', ?, ?, ?, ?, 2)", [steam, map, drillId, classId, score]);
+      drillSetIds.push(set.insertId);
+    }
+    const tokenBase = (Date.now() % 100_000_000) * 10;
+    for (const [score, finalizationRequired, token] of [[999, 1, tokenBase], [1000, 0, tokenBase + 1]]) {
+      const [set] = await db.execute("INSERT INTO bootcamp_drill_sets (steamid, player_name, map, drill_id, class_id, score, tier, finalization_required, recording_token) VALUES (?, 'Tester', ?, ?, 3, ?, 4, ?, ?)",
+        [steam, map, drillId, score, finalizationRequired, token]);
+      drillSetIds.push(set.insertId);
+    }
+    const [publishedSet] = await db.execute("INSERT INTO bootcamp_drill_sets (steamid, player_name, map, drill_id, class_id, score, tier, finalization_required, recording_token) VALUES (?, 'Tester', ?, ?, 4, 90, 2, 1, ?)", [steam, map, drillId, tokenBase + 2]);
+    drillSetIds.push(publishedSet.insertId);
+    const [drillGhost] = await db.execute("INSERT INTO bootcamp_ghosts (drill_set_id, map, class_id, steamid, player_name, kind, pos_frames, is_complete) VALUES (?, ?, 4, ?, 'Tester', 'drill', 2, 1)",
+      [publishedSet.insertId, map, steam]);
+    await db.execute("UPDATE bootcamp_drill_sets SET ghost_id = ? WHERE id = ?", [drillGhost.insertId, publishedSet.insertId]);
+    await db.execute("INSERT INTO bootcamp_ghost_chunks (ghost_id, track, chunk_id, data) VALUES (?, 'pos', 0, ?)", [drillGhost.insertId, "0,1,2,3,0,90,0,0,-;1,4,5,6,0,91,0,2,-;"]);
+    await db.execute("CALL bootcamp_finalize_drill_set(?)", [publishedSet.insertId]);
     await db.execute("INSERT INTO bootcamp_route_classes (route_id, class_id) VALUES (?, 1), (?, 5)", [routeId, routeId]);
     await db.execute("INSERT INTO bootcamp_licenses (steamid, level, endorsements) VALUES (?, 'permit', 'offense')", [steam]);
     const runIds = [];
@@ -52,7 +68,7 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
     const drills = await (await fetch(`${base}/maps/${map}/drills`)).json();
     assert.equal(drills.drills[0].id, drillId);
     const drillBoard = await (await fetch(`${base}/drills/${drillId}/leaderboard`)).json();
-    assert.deepEqual(drillBoard.scores.map(row => [row.classId, row.score]), [[3, 80], [6, 77]]);
+    assert.deepEqual(drillBoard.scores.map(row => [row.classId, row.score]), [[4, 90], [3, 80], [6, 77]]);
     const auth = `Basic ${Buffer.from("reviewer:test-only").toString("base64")}`;
     const reviewQueue = await (await fetch(`${base}/admin/reviews`, { headers: { authorization: auth } })).json();
     assert.ok(reviewQueue.reviews.some(run => run.runId === runIds[2] && run.ghostId));
@@ -75,6 +91,11 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
       await db.execute("DELETE FROM bootcamp_routes WHERE id = ?", [routeId]);
     }
     if (drillId) {
+      await db.execute("DELETE FROM bootcamp_events WHERE target_type = 'drill' AND target_id = ? AND steamid = ?", [drillId, steam]);
+      await db.execute("DELETE FROM bootcamp_tiers WHERE target_type = 'drill' AND target_id = ? AND steamid = ?", [drillId, steam]);
+      await db.execute("DELETE c FROM bootcamp_ghost_chunks c JOIN bootcamp_ghosts g ON g.id = c.ghost_id WHERE g.drill_set_id IN (SELECT id FROM bootcamp_drill_sets WHERE drill_id = ?)", [drillId]);
+      await db.execute("DELETE FROM bootcamp_ghosts WHERE drill_set_id IN (SELECT id FROM bootcamp_drill_sets WHERE drill_id = ?)", [drillId]);
+      await db.execute("DELETE FROM bootcamp_finalized_drill_sets WHERE drill_set_id IN (SELECT id FROM bootcamp_drill_sets WHERE drill_id = ?)", [drillId]);
       await db.execute("DELETE FROM bootcamp_drill_sets WHERE drill_id = ?", [drillId]);
       await db.execute("DELETE FROM bootcamp_drills WHERE id = ?", [drillId]);
     }
