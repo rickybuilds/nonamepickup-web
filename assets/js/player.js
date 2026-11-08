@@ -321,7 +321,8 @@ function getPlayerResult(match,playerId){
 }
 
 function renderPlayerLastTen(rows,playerId){
-  const results=(Array.isArray(rows)?rows:[]).slice(0,10).map(match=>{
+  const cutoff=Math.floor(Date.now()/1000)-45*86400;
+  const results=(Array.isArray(rows)?rows:[]).filter(match=>Number(match.created_at)>=cutoff).slice(0,10).map(match=>{
     const result=getPlayerResult(match,playerId);
     return {
       result:result==="Win"?"W":result==="Loss"?"L":result==="Tie"?"T":"?",
