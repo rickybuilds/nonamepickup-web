@@ -278,6 +278,7 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
   router.get("/stats/streaks", (req, res) => {
     try {
       const data = cached("stats_streaks", () => {
+        const cutoff45d = Math.floor(Date.now() / 1000) - 45 * 86400;
         const activeRows = db.prepare(`
         WITH player_games AS (
           SELECT 
@@ -300,6 +301,7 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
           LEFT JOIN ratings r ON r.player_id = rc.player_id
           WHERE m.status = 'completed'
             AND m.winner IS NOT NULL
+            AND m.created_at >= ?
         ),
         marked AS (
           SELECT
@@ -333,7 +335,7 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
         FROM current_streaks
         ORDER BY active DESC, last_played DESC
         LIMIT 2
-      `).all();
+      `).all(cutoff45d);
 
         const currentStreakLeaders = activeRows.map(row => ({
           id: String(row.player_id),

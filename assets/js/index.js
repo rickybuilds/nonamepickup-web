@@ -252,7 +252,7 @@
     setHtml("card-most-active", playerLink(topActive));
     setText("card-most-active-note", topActive ? `${number(topActive.games)} games · last 30 days` : "No 30 day activity");
     setHtml("card-streak", playerLink(streak));
-    setText("card-streak-note", streak ? `${number(streak.wins)} wins · hot right now` : "No active streak");
+    setText("card-streak-note", streak ? `${number(streak.wins)} wins · last 45 days` : "No active streak in 45 days");
     setHtml("card-elo-surge", playerLink(elo));
     setText("card-elo-note", elo ? `${number(elo.delta) >= 0 ? "+" : ""}${number(elo.delta)} Elo` : "No 30 day surge");
     setHtml("card-mvp-leader", playerLink(mvpLeader));
@@ -301,7 +301,7 @@
     const rows = [
       ["Most Active", players?.topActive, players?.topActive ? `${number(players.topActive.games)} games (30d)` : "-"],
       ["Fastest Rising", top?.[0], top?.[0] ? `${number(top[0].delta) >= 0 ? "+" : ""}${number(top[0].delta)} Elo (30d)` : "-"],
-      ["Longest Win Streak", streaks?.currentStreak, streaks?.currentStreak ? `${number(streaks.currentStreak.wins)} wins` : "-"],
+      ["Current Win Streak (45d)", streaks?.currentStreak, streaks?.currentStreak ? `${number(streaks.currentStreak.wins)} wins` : "-"],
       ["Best MVP Rate", mvps?.rateLeader, mvps?.rateLeader ? `${number(mvps.rateLeader.mvp_pct).toFixed(1)}%` : "-"],
       ["Most Improved This Month", top?.[1] || top?.[0], (top?.[1] || top?.[0]) ? `${number((top?.[1] || top?.[0]).delta) >= 0 ? "+" : ""}${number((top?.[1] || top?.[0]).delta)} Elo` : "-"]
     ];

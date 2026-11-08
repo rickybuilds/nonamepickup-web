@@ -435,11 +435,16 @@
 .trend-down { color: #fb7185; }
 .trend-flat { color: #94a3b8; }
 
+.leaderboard-table th:nth-child(7),
+.leaderboard-table td:nth-child(7) {
+  text-align: left;
+}
+
 .leaderboard-last10 {
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   white-space: nowrap;
 }
 

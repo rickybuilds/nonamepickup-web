@@ -329,8 +329,7 @@ function renderPlayerLastTen(rows,playerId){
       is_mvp:!!match.is_mvp
     };
   });
-  const padded=[...results,...Array(Math.max(0,10-results.length)).fill("?")].slice(0,10);
-  setHtml("player2-last10",padded.map(entry=>renderLastTenMarker(entry?.result??entry,!!entry?.is_mvp)).join(""));
+  setHtml("player2-last10",results.filter(entry=>["W","L","T"].includes(entry.result)).map(entry=>renderLastTenMarker(entry.result,!!entry.is_mvp)).join(""));
 }
 
 function fitPlayerName(){
