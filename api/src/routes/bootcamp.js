@@ -135,9 +135,9 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
                c.track, c.chunk_id, c.data
           FROM ${admin ? "bootcamp_ghosts" : "bootcamp_public_route_ghosts"} g
           JOIN bootcamp_runs b ON b.id = g.run_id AND b.ghost_id = g.id AND b.finalization_required = 0
-          JOIN bootcamp_routes r ON r.id = g.route_id AND r.id = b.route_id
+          JOIN bootcamp_routes r ON r.id = g.route_id AND r.id = b.route_id AND r.map = b.map
           LEFT JOIN bootcamp_ghost_chunks c ON c.ghost_id = g.id AND c.track IN ('pos', 'event')
-         WHERE g.run_id = ? ${admin ? "AND b.flagged = 1 AND b.reviewed = 0 AND b.valid = 1 AND b.mode = 1 AND r.config_version = b.config_version" : ""}
+         WHERE g.run_id = ? ${admin ? "AND g.route_id = b.route_id AND g.map = b.map AND g.class_id = b.class_id AND g.is_complete = 1 AND b.flagged = 1 AND b.reviewed = 0 AND b.valid = 1 AND b.mode = 1 AND r.config_version = b.config_version" : ""}
          ORDER BY c.track, c.chunk_id LIMIT 513
       `, [Number(req.params.id)]);
       const result = decodeReplay(rows);

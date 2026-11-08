@@ -71,6 +71,7 @@ test("pending replay can be inspected only through the authenticated review endp
     assert.equal(response.headers.get("cache-control"), "no-store");
     assert.equal((await response.json()).frames.length, 2);
     assert.match(calls[0].sql, /FROM\s+bootcamp_ghosts/i);
+    assert.match(calls[0].sql, /g\.is_complete\s*=\s*1/i);
     assert.match(calls[0].sql, /b\.flagged\s*=\s*1/i);
   } finally { await app.close(); }
 });
