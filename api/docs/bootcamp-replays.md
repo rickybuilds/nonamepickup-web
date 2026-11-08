@@ -43,3 +43,14 @@ return `404`.
 This is database-backed generation on request. It does not yet store the
 sidecar in object storage or maintain a server cache. The route is mounted only
 when `BOOTCAMP_API_ENABLED=true`, which remains opt-in.
+
+## Mentor license co-sign
+
+The Discord Bot may record an optional mentor attestation with the service-only
+endpoint `POST /api/bootcamp/integrations/discord/licenses/cosign`. It accepts
+`{ "steamId": "STEAM_0:1:123", "mentorDiscordId": "12345678901234567" }`
+with the configured `BOOTCAMP_DISCORD_API_TOKEN`. The Bot exposes this only
+when `BOOTCAMP_MENTOR_COSIGN_ENABLED=true` and a mentor role is configured.
+The endpoint is idempotent for the same mentor, rejects an existing different
+attestation with `409`, and does not grant or change tier-based license levels.
+The player profile returns the stored Discord ID as `license.cosignedBy`.

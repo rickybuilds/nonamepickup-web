@@ -428,6 +428,31 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       connection?.release();
     }
   });
+  router.post("/integrations/discord/licenses/cosign", requireDiscordService, async (req, res) => {
+    if (!req.is("application/json") || !req.body || Object.keys(req.body).length !== 2 ||
+        typeof req.body.steamId !== "string" || !/^STEAM_[0-5]:[01]:\d{1,20}$/.test(req.body.steamId) ||
+        typeof req.body.mentorDiscordId !== "string" || !/^\d{17,20}$/.test(req.body.mentorDiscordId))
+      return res.status(400).json({ error: "invalid_license_cosign_request" });
+    try {
+      // The single-row upsert is atomic: the same mentor can retry safely,
+      // while a different mentor cannot replace an existing attestation.
+      await query(`
+        INSERT INTO bootcamp_licenses (steamid, level, endorsements, cosigned_by)
+        VALUES (?, 'none', '', ?)
+        ON DUPLICATE KEY UPDATE cosigned_by = IF(
+          cosigned_by IS NULL OR cosigned_by = VALUES(cosigned_by),
+          VALUES(cosigned_by), cosigned_by
+        )
+      `, [req.body.steamId, req.body.mentorDiscordId]);
+      const rows = await query("SELECT cosigned_by FROM bootcamp_licenses WHERE steamid = ? LIMIT 1", [req.body.steamId]);
+      if (String(rows[0]?.cosigned_by || "") !== req.body.mentorDiscordId)
+        return res.status(409).json({ error: "license_already_cosigned" });
+      return res.json({ cosigned: true, steamId: req.body.steamId, mentorDiscordId: req.body.mentorDiscordId });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/integrations/discord/licenses/cosign]", error);
+      return res.status(503).json({ error: "bootcamp_license_cosign_unavailable" });
+    }
+  });
   router.get("/challenge/current", async (_req, res) => {
     try {
       const rows = await query(`
@@ -691,7 +716,7 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       return res.status(400).json({ error: "invalid_steam_id" });
     try {
       const [licenses, runs, drillBests] = await Promise.all([
-        query("SELECT level, endorsements, granted_at FROM bootcamp_licenses WHERE steamid = ? LIMIT 1", [steamId]),
+        query("SELECT level, endorsements, granted_at, cosigned_by FROM bootcamp_licenses WHERE steamid = ? LIMIT 1", [steamId]),
         query(`
           SELECT run_id, route_id, map, slug, route_name, player_name, class_id, time_ms, tier, has_replay
             FROM (
@@ -729,7 +754,7 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       const playerName = runs[0]?.player_name || drillBests[0]?.player_name || steamId;
       return res.json({ steamId, playerName, player: { playerName, steamIds: [steamId], discordId: null }, license: license ? {
         level: license.level, endorsements: String(license.endorsements || "").split(",").map(value => value.trim()).filter(Boolean),
-        grantedAt: license.granted_at
+        grantedAt: license.granted_at, cosignedBy: license.cosigned_by || null
       } : null, personalBests: runs.map(row => ({
         runId: Number(row.run_id), routeId: Number(row.route_id), playerName: row.player_name || steamId, map: row.map,
         slug: row.slug, routeName: row.route_name, classId: Number(row.class_id),

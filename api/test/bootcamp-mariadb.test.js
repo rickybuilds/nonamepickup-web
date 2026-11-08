@@ -46,6 +46,40 @@ test("skill-point boards calculate current tier weights and monthly improvements
   }
 });
 
+test("mentor co-sign is idempotent, conflict-safe, and visible in a MariaDB player profile", { skip: process.env.BOOTCAMP_LOCAL_DB_TEST !== "1" }, async () => {
+  const mysql = require("mysql2/promise");
+  const db = await mysql.createConnection({ host: "127.0.0.1", port: 34079, user: "root", database: "bootcamp_local_test" });
+  const steam = `STEAM_0:1:${Date.now()}`;
+  const mentor = "12345678901234567", otherMentor = "76543210987654321";
+  let server;
+  try {
+    const app = express();
+    app.use(express.json());
+    app.use("/api/bootcamp", createBootcampRouter({
+      query: async (sql, args) => (await db.execute(sql, args))[0],
+      discordServiceToken: "local-test-token"
+    }));
+    server = app.listen(0, "127.0.0.1");
+    await new Promise(resolve => server.once("listening", resolve));
+    const base = `http://127.0.0.1:${server.address().port}/api/bootcamp`;
+    const post = mentorDiscordId => fetch(`${base}/integrations/discord/licenses/cosign`, {
+      method: "POST", headers: { authorization: "Bearer local-test-token", "content-type": "application/json" },
+      body: JSON.stringify({ steamId: steam, mentorDiscordId })
+    });
+    assert.equal((await post(mentor)).status, 200);
+    assert.equal((await post(mentor)).status, 200);
+    assert.equal((await post(otherMentor)).status, 409);
+    const profile = await (await fetch(`${base}/players/${steam}`)).json();
+    assert.equal(profile.license.cosignedBy, mentor);
+    const [rows] = await db.execute("SELECT level, cosigned_by FROM bootcamp_licenses WHERE steamid = ?", [steam]);
+    assert.deepEqual(rows, [{ level: "none", cosigned_by: mentor }]);
+  } finally {
+    if (server) await new Promise(resolve => server.close(resolve));
+    await db.execute("DELETE FROM bootcamp_licenses WHERE steamid = ?", [steam]);
+    await db.end();
+  }
+});
+
 test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs in MariaDB", { skip: process.env.BOOTCAMP_LOCAL_DB_TEST !== "1" }, async () => {
   const mysql = require("mysql2/promise");
   const db = await mysql.createConnection({ host: "127.0.0.1", port: 34079, user: "root", database: "bootcamp_local_test" });
