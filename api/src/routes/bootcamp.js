@@ -234,7 +234,7 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
     if (!/^STEAM_[0-5]:[01]:\d{1,20}$/.test(steamId))
       return res.status(400).json({ error: "invalid_steam_id" });
     try {
-      const [licenses, runs] = await Promise.all([
+      const [licenses, runs, drillBests] = await Promise.all([
         query("SELECT level, endorsements, granted_at FROM bootcamp_licenses WHERE steamid = ? LIMIT 1", [steamId]),
         query(`
           SELECT run_id, route_id, map, slug, route_name, class_id, time_ms, tier
@@ -247,6 +247,25 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
                WHERE b.steamid = ? AND b.valid = 1 AND b.mode = 1 AND b.finalization_required = 0
                  AND (b.flagged = 0 OR b.reviewed = 1)
             ) ranked WHERE player_rank = 1 ORDER BY map, route_name, class_id LIMIT 500
+        `, [steamId]),
+        query(`
+          SELECT set_id, drill_id, map, slug, drill_name, kind, class_id, score, tier FROM (
+            SELECT s.id AS set_id, d.id AS drill_id, d.map, d.slug, d.name AS drill_name, d.kind,
+                   s.class_id, s.score, s.tier,
+                   ROW_NUMBER() OVER (PARTITION BY s.drill_id, s.class_id ORDER BY s.score DESC, s.id) AS player_rank
+              FROM bootcamp_drill_sets s
+              JOIN bootcamp_drills d ON d.id = s.drill_id AND d.map = s.map
+             WHERE s.steamid = ? AND s.finalization_required = 0
+               AND (s.recording_token IS NULL OR EXISTS (
+                 SELECT 1 FROM bootcamp_finalized_drill_sets f
+                 JOIN bootcamp_ghosts g ON g.id = s.ghost_id AND g.drill_set_id = s.id
+                      AND g.is_complete = 1 AND g.pos_frames >= 2 AND g.map = s.map
+                      AND g.steamid = s.steamid AND g.class_id = s.class_id
+                 WHERE f.drill_set_id = s.id AND EXISTS (
+                   SELECT 1 FROM bootcamp_ghost_chunks c WHERE c.ghost_id = g.id AND c.track = 'pos' AND c.chunk_id = 0
+                 )
+               ))
+          ) ranked WHERE player_rank = 1 ORDER BY map, drill_name, class_id LIMIT 500
         `, [steamId])
       ]);
       const license = licenses[0];
@@ -257,6 +276,10 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
         runId: Number(row.run_id), routeId: Number(row.route_id), map: row.map,
         slug: row.slug, routeName: row.route_name, classId: Number(row.class_id),
         timeMs: Number(row.time_ms), tier: Number(row.tier)
+      })), drillBests: drillBests.map(row => ({
+        setId: Number(row.set_id), drillId: Number(row.drill_id), map: row.map, slug: row.slug,
+        drillName: row.drill_name, kind: row.kind, classId: Number(row.class_id),
+        score: Number(row.score), tier: Number(row.tier)
       })) });
     } catch (error) {
       logRouteError("[/api/bootcamp/players/:steamId]", error);

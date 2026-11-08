@@ -39,6 +39,7 @@ test("map catalog and player profile expose only bounded parameterized queries",
     if (/FROM bootcamp_maps/i.test(sql)) return [{ map: "openfire", route_count: 2 }];
     if (/FROM bootcamp_licenses/i.test(sql)) return [{ level: "permit", endorsements: "offense,engineer", granted_at: null }];
     if (/FROM bootcamp_runs/i.test(sql)) return [{ run_id: 10, route_id: 4, map: "openfire", slug: "main", route_name: "Main", class_id: 5, time_ms: 12000, tier: 2 }];
+    if (/FROM bootcamp_drill_sets/i.test(sql)) return [{ set_id: 11, drill_id: 7, map: "openfire", slug: "hold", drill_name: "Hold", kind: "position", class_id: 3, score: 90, tier: 2 }];
     if (/FROM bootcamp_routes/i.test(sql)) return [{ id: 4, slug: "main", name: "Main", type: "conc", class_id: 5, config_version: 1 }];
     throw new Error("Unexpected query");
   } }));
@@ -54,6 +55,13 @@ test("map catalog and player profile expose only bounded parameterized queries",
     assert.equal(profile.license.level, "permit");
     assert.deepEqual(profile.license.endorsements, ["offense", "engineer"]);
     assert.equal(profile.personalBests[0].timeMs, 12000);
+    assert.equal(profile.drillBests[0].score, 90);
+    const drillQuery = seen.find(item => /FROM bootcamp_drill_sets/i.test(item.sql));
+    assert.deepEqual(drillQuery.args, ["STEAM_0:1:4"]);
+    assert.match(drillQuery.sql, /finalization_required\s*=\s*0/i);
+    assert.match(drillQuery.sql, /bootcamp_finalized_drill_sets/i);
+    assert.match(drillQuery.sql, /s\.recording_token\s+IS\s+NULL/i);
+    assert.match(drillQuery.sql, /g\.is_complete\s*=\s*1/i);
     const runQuery = seen.find(item => /FROM bootcamp_runs/i.test(item.sql));
     assert.deepEqual(runQuery.args, ["STEAM_0:1:4"]);
     assert.match(runQuery.sql, /finalization_required\s*=\s*0/i);

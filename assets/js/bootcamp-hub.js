@@ -130,6 +130,10 @@
       if (profile.personalBests.length) target.append(table(["Map", "Route", "Class", "Time", "Tier"], profile.personalBests.map(row =>
         [row.map, row.routeName, className(row.classId), time(row.timeMs), tiers[row.tier] || "Unranked"])));
       else target.append(element("p", "No published personal bests yet.", "bc-empty"));
+      target.append(element("h3", "Drill bests"));
+      if (profile.drillBests?.length) target.append(table(["Map", "Drill", "Class", "Score", "Tier"], profile.drillBests.map(row =>
+        [row.map, row.drillName, className(row.classId), Number(row.score).toFixed(2), tiers[row.tier] || "Unranked"])));
+      else target.append(element("p", "No finalized drill scores yet.", "bc-empty"));
     } catch {
       if (token === profileRequest) message(target, "Could not load this player. Please try again.", true);
     }

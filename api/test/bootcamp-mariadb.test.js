@@ -59,6 +59,7 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
     const profile = await (await fetch(`${base}/players/${steam}`)).json();
     assert.equal(profile.license.level, "permit");
     assert.deepEqual(profile.personalBests.map(run => run.timeMs), [12000]);
+    assert.deepEqual(profile.drillBests.map(row => [row.classId, row.score]), [[3, 80], [4, 90], [6, 77]]);
     const leaderboard = await (await fetch(`${base}/routes/${routeId}/leaderboard`)).json();
     assert.deepEqual(leaderboard.runs.map(run => run.timeMs), [12000]);
     const replay = await fetch(`${base}/replay/run/${runIds[0]}`);
