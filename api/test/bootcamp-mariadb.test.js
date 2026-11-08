@@ -1,6 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const express = require("express");
 const { createBootcampRouter } = require("../src/routes/bootcamp");
 
@@ -87,6 +88,19 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
       const [ghost] = await db.execute("INSERT INTO bootcamp_ghosts (run_id, map, route_id, class_id, steamid, player_name, pos_frames, is_complete) VALUES (?, ?, ?, 5, ?, 'Tester', 2, ?)", [run.insertId, map, routeId, steam, time === 15000 ? 0 : 1]);
       await db.execute("UPDATE bootcamp_runs SET ghost_id = ? WHERE id = ?", [ghost.insertId, run.insertId]);
       await db.execute("INSERT INTO bootcamp_ghost_chunks (ghost_id, track, chunk_id, data) VALUES (?, 'pos', 0, ?)", [ghost.insertId, "0,1,2,3,0,90,0,0,-;1,4,5,6,0,91,0,2,-;"]);
+      if (time === 12000) {
+        const tracks = { pos: "0,1,2,3,4,5,6,7,8,9,10,11,12;0.033,2,3,4,5,6,7,0,8,9,10,11,0;",
+          proj: "0,projectile;", input: "0,1;", cmd: "0,1;", event: "0.5,8,0,0;" };
+        await db.execute("DELETE FROM bootcamp_ghost_chunks WHERE ghost_id = ?", [ghost.insertId]);
+        const hashes = {};
+        for (const [track, data] of Object.entries(tracks)) {
+          await db.execute("INSERT INTO bootcamp_ghost_chunks (ghost_id, track, chunk_id, data) VALUES (?, ?, 0, ?)", [ghost.insertId, track, data]);
+          hashes[`spool_${track}_sha`] = crypto.createHash("sha256").update(data, "utf8").digest("hex");
+        }
+        await db.execute(`UPDATE bootcamp_ghosts SET proj_frames = 1, input_frames = 1, cmd_frames = 1, event_frames = 1,
+            spool_pos_sha = ?, spool_proj_sha = ?, spool_input_sha = ?, spool_cmd_sha = ?, spool_event_sha = ? WHERE id = ?`,
+          [hashes.spool_pos_sha, hashes.spool_proj_sha, hashes.spool_input_sha, hashes.spool_cmd_sha, hashes.spool_event_sha, ghost.insertId]);
+      }
     }
     const app = express();
     app.use(express.json());
@@ -106,7 +120,17 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
     const replay = await fetch(`${base}/replay/run/${runIds[0]}`);
     assert.equal(replay.status, 200);
     assert.equal((await replay.json()).frames.length, 2);
-    for (const id of runIds.slice(2)) assert.equal((await fetch(`${base}/replay/run/${id}`)).status, 404);
+    const tftr = await fetch(`${base}/replay/run/${runIds[0]}/tftr`);
+    assert.equal(tftr.status, 200);
+    assert.match(tftr.headers.get("content-type"), /application\/vnd\.nn\.ghost-sidecar/);
+    const tftrBytes = Buffer.from(await tftr.arrayBuffer());
+    assert.equal(tftrBytes.subarray(0, 4).toString("ascii"), "TFTR");
+    assert.equal(tftrBytes.readUInt16LE(4), 1);
+    assert.equal(tftr.headers.get("x-tftr-sha256"), crypto.createHash("sha256").update(tftrBytes).digest("hex"));
+    for (const id of runIds.slice(2)) {
+      assert.equal((await fetch(`${base}/replay/run/${id}`)).status, 404);
+      assert.equal((await fetch(`${base}/replay/run/${id}/tftr`)).status, 404);
+    }
     const drills = await (await fetch(`${base}/maps/${map}/drills`)).json();
     assert.equal(drills.drills[0].id, drillId);
     const drillBoard = await (await fetch(`${base}/drills/${drillId}/leaderboard`)).json();

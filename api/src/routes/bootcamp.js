@@ -4,6 +4,7 @@ const express = require("express");
 const { timingSafeEqual } = require("node:crypto");
 const { speedrunQuery, getSpeedrunPool } = require("../db/mariadb");
 const { joinReplayChunks, parseReplayFrames } = require("../helpers/replay");
+const { TRACKS, encodeBootcampTftr } = require("../helpers/bootcampTftr");
 const { recomputeBootcampLicense } = require("../services/bootcampLicenseStore");
 
 function parseBootcampEvents(serialized) {
@@ -160,6 +161,57 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
     }
   }
+  router.get("/replay/run/:id/tftr", async (req, res) => {
+    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
+      return res.status(400).json({ error: "invalid_run_id" });
+    try {
+      // Match the same public route-run authority as the existing JSON replay
+      // endpoint; pending reviews and stale route versions never get sidecars.
+      const records = await query(`
+        /* tftr sidecar */
+        SELECT g.id, g.run_id, g.map, g.route_id, g.class_id, g.frame_interval,
+               g.pos_frames, g.proj_frames, g.input_frames, g.cmd_frames, g.event_frames,
+               g.spool_pos_sha, g.spool_proj_sha, g.spool_input_sha, g.spool_cmd_sha, g.spool_event_sha,
+               g.tier_tag, g.is_complete, b.time_ms, b.config_version
+          FROM bootcamp_ghosts g
+          JOIN bootcamp_runs b ON b.id = g.run_id AND b.ghost_id = g.id AND b.route_id = g.route_id
+               AND b.map = g.map AND b.class_id = g.class_id
+          JOIN bootcamp_routes r ON r.id = b.route_id AND r.map = b.map AND r.config_version = b.config_version
+         WHERE b.id = ? AND g.is_complete = 1 AND b.valid = 1 AND b.mode = 1
+           AND (b.flagged = 0 OR b.reviewed = 1) AND b.finalization_required = 0
+         LIMIT 1
+      `, [Number(req.params.id)]);
+      if (!records.length) return res.status(404).json({ error: "replay_not_found" });
+      const record = records[0];
+      const chunkRows = await query(`
+        SELECT track, chunk_id, data FROM bootcamp_ghost_chunks
+         WHERE ghost_id = ? AND track IN ('pos', 'proj', 'input', 'cmd', 'event')
+         ORDER BY FIELD(track, 'pos', 'proj', 'input', 'cmd', 'event'), chunk_id
+         LIMIT 2560
+      `, [Number(record.id)]);
+      const tracks = Object.fromEntries(TRACKS.map(track => [track, []]));
+      for (const row of chunkRows) {
+        if (!Object.hasOwn(tracks, row.track)) return res.status(422).json({ error: "replay_invalid" });
+        tracks[row.track].push(row);
+      }
+      let sidecar;
+      try { sidecar = encodeBootcampTftr(record, tracks); }
+      catch (error) {
+        if (error.status === 422) return res.status(422).json({ error: "replay_invalid", reason: error.message });
+        throw error;
+      }
+      if (!sidecar.data) return res.status(406).json({ error: "tftr_sidecar_unavailable", reason: sidecar.reason });
+      res.set("Content-Type", "application/vnd.nn.ghost-sidecar");
+      res.set("Content-Disposition", `attachment; filename="bootcamp-run-${Number(record.run_id)}.tftr"`);
+      res.set("X-TFTR-Version", "1");
+      res.set("X-TFTR-SHA256", sidecar.sha256);
+      res.set("Cache-Control", "no-store");
+      return res.status(200).send(sidecar.data);
+    } catch (error) {
+      logRouteError("[/api/bootcamp/replay/run/:id/tftr]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
   router.get("/replay/run/:id", (req, res) => sendReplay(req, res, false));
   router.get("/admin/reviews/:id/replay", requireBootcampAdmin, (req, res) => sendReplay(req, res, true));
   router.get("/maps", async (_req, res) => {
