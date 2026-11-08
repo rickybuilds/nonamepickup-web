@@ -55,7 +55,7 @@ test("the 2D replay overview is confined to Bootcamp replays and has map metadat
   assert.match(overviewCss, /\.replay-page\.bootcamp-overview-active\s*\{[^}]*overflow-y:\s*auto/s);
   assert.match(overviewCss, /\.bootcamp-overview-active\s+\.replay-stage\s*\{[^}]*height:\s*calc\(100vh - 74px\)/s);
   assert.match(overviewCss, /\.bootcamp-overview-event\s*\{[^}]*min-height:\s*36px/s);
-  assert.deepEqual(Object.keys(manifest.maps), ["2fort"]);
+  assert.deepEqual(Object.keys(manifest.maps).sort(), ["2fort", "avanti", "badlands", "casbah", "crossover2", "cz2", "dustbowl", "epicenter", "flagrun", "hunted", "push", "ravelin", "rock2", "warpath", "well"].sort());
   assert.equal(manifest.maps["2fort"].transform.length, 6);
   assert.ok(fs.existsSync(path.join(root, "assets/images/bootcamp-overviews/2fort.png")));
 });

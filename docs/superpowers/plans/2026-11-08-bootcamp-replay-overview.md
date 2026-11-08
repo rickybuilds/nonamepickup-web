@@ -32,7 +32,7 @@
 
 - [x] Test affine coordinate mapping against the measured manifest bounds, image Y inversion, rotated transforms, invalid points, and viewport fitting.
 - [x] Implement pure projection/viewport helpers with invalid-transform rejection.
-- [x] Convert the 2fort overview BMP's green transparent key to PNG alpha and record the BSP bounds-derived transform in the manifest.
+- [x] Convert the 2fort overview BMP's green transparent key to PNG alpha and record the GoldSrc zoom/origin transform in the manifest (BSP and visible-pixel bounds retained as provenance).
 
 ### Task 2: Replay controls and timeline UI
 
@@ -56,7 +56,18 @@
 - [x] Inspect the isolated overview in headless Edge at desktop and mobile viewport widths; run Impeccable detector once. Full shared-viewer playback remains unverified in browser.
 - [ ] Update `docs/IMPLEMENTATION_PROGRESS.md` and the plugin continuation checkpoint, commit and push the website branch.
 
+### Task 5: Verified map overview coverage
+
+**Files:** Extend `assets/data/bootcamp-overviews.json` and `assets/images/bootcamp-overviews/` from local matching GoldSrc overview/BSP sources; add `tools/generate-bootcamp-overviews.ps1` and `docs/bootcamp-replay-overviews.md`.
+
+- [x] Add a failing requirement test for all available TFC map overview assets and their affine bounds.
+- [x] Use GoldSrc `ROTATED` orientation to map both axes correctly; the original 2fort projection exposed the swapped-axis case.
+- [x] Generate 15 transparent maps from the local matching TFC `.bmp`, `.txt`, and BSP v30 world model sources.
+- [x] Verify the official zoom/origin/rotation projection formula against all 15 generated maps and their BSP/source bounds.
+- [x] Run the complete website Bootcamp suite (26 pass, 2 MariaDB-only tests skipped).
+- [ ] Rerender all-map browser fixtures, record the current full website suite baseline, and commit/push the coverage extension.
+
 ## Rulings
 
 - Use the existing shared replay page instead of creating a second viewer so its playback controls and comparison state remain authoritative.
-- Include only verified map imagery/transform data; initial raster coverage is 2fort because that is the only Bootcamp map with a local measured run and available client overview in this environment. The rest use the coordinate-grid fallback until their metadata is supplied.
+- Include only verified map imagery/transform data. The local TFC installation provides 15 matched source sets; only those maps receive overview images. Maps without matched local sources (including openfire here) use the coordinate-grid fallback.

@@ -5,12 +5,585 @@
       "image": "/assets/images/bootcamp-overviews/2fort.png",
       "width": 1024,
       "height": 768,
-      "transform": [0.2904243119266055, 0, 511.5, 0, -0.05559738955823293, 383.5],
+      "transform": [
+        0.0,
+        -0.1275,
+        512.0,
+        -0.1275,
+        0.0,
+        384.0
+      ],
       "transformSource": {
-        "format": "GoldSrc overview + BSP world bounds",
-        "overview": { "zoom": 1.02, "origin": [0, 0, -1064], "rotated": false },
-        "worldBounds": { "minX": -1744, "maxX": 1744, "minY": -3984, "maxY": 3984 },
-        "contentBounds": { "left": 5, "top": 162, "right": 1018, "bottom": 605 }
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.02,
+          "origin": [
+            0.0,
+            0.0,
+            -1064.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -1744.0,
+          "minY": -3984.0,
+          "minZ": -1424.0,
+          "maxX": 1744.0,
+          "maxY": 3984.0,
+          "maxZ": 64.0
+        },
+        "contentBounds": {
+          "left": 5,
+          "top": 162,
+          "right": 1018,
+          "bottom": 605
+        }
+      }
+    },
+    "avanti": {
+      "image": "/assets/images/bootcamp-overviews/avanti.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.15,
+        533.6,
+        -0.15,
+        0.0,
+        428.7
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.2,
+          "origin": [
+            298.0,
+            144.0,
+            -512.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -1848.0,
+          "minY": -3880.0,
+          "minZ": -576.0,
+          "maxX": 2424.0,
+          "maxY": 3712.0,
+          "maxZ": 880.0
+        },
+        "contentBounds": {
+          "left": 2,
+          "top": 90,
+          "right": 1023,
+          "bottom": 674
+        }
+      }
+    },
+    "badlands": {
+      "image": "/assets/images/bootcamp-overviews/badlands.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.11875,
+        512.0,
+        -0.11875,
+        0.0,
+        383.05
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 0.95,
+          "origin": [
+            -8.0,
+            0.0,
+            -400.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -3232.0,
+          "minY": -3664.0,
+          "minZ": -640.0,
+          "maxX": 3216.0,
+          "maxY": 3664.0,
+          "maxZ": 856.0
+        },
+        "contentBounds": {
+          "left": 79,
+          "top": 2,
+          "right": 944,
+          "bottom": 765
+        }
+      }
+    },
+    "casbah": {
+      "image": "/assets/images/bootcamp-overviews/casbah.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.1375,
+        494.95,
+        -0.1375,
+        0.0,
+        459.9
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.1,
+          "origin": [
+            552.0,
+            -124.0,
+            -64.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -2176.0,
+          "minY": -3904.0,
+          "minZ": -192.0,
+          "maxX": 3712.0,
+          "maxY": 3648.0,
+          "maxZ": 576.0
+        },
+        "contentBounds": {
+          "left": 1,
+          "top": 23,
+          "right": 1014,
+          "bottom": 733
+        }
+      }
+    },
+    "crossover2": {
+      "image": "/assets/images/bootcamp-overviews/crossover2.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.13875,
+        512.0,
+        -0.13875,
+        0.0,
+        384.0
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.11,
+          "origin": [
+            0.0,
+            0.0,
+            -640.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -1168.0,
+          "minY": -3712.0,
+          "minZ": -656.0,
+          "maxX": 1168.0,
+          "maxY": 3712.0,
+          "maxZ": 720.0
+        },
+        "contentBounds": {
+          "left": 0,
+          "top": 224,
+          "right": 1023,
+          "bottom": 543
+        }
+      }
+    },
+    "cz2": {
+      "image": "/assets/images/bootcamp-overviews/cz2.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.14625,
+        549.44,
+        -0.14625,
+        0.0,
+        405.06
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.17,
+          "origin": [
+            144.0,
+            256.0,
+            -353.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -2432.0,
+          "minY": -3232.0,
+          "minZ": -384.0,
+          "maxX": 2720.0,
+          "maxY": 3744.0,
+          "maxZ": 576.0
+        },
+        "contentBounds": {
+          "left": 5,
+          "top": 13,
+          "right": 1018,
+          "bottom": 754
+        }
+      }
+    },
+    "dustbowl": {
+      "image": "/assets/images/bootcamp-overviews/dustbowl.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.1225,
+        0.0,
+        566.88,
+        0.0,
+        -0.1225,
+        417.32
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 0.98,
+          "origin": [
+            -448.0,
+            272.0,
+            -464.0
+          ],
+          "rotated": 1
+        },
+        "worldBounds": {
+          "minX": -3984.0,
+          "minY": -2848.0,
+          "minZ": -576.0,
+          "maxX": 3088.0,
+          "maxY": 3408.0,
+          "maxZ": 784.0
+        },
+        "contentBounds": {
+          "left": 197,
+          "top": 0,
+          "right": 929,
+          "bottom": 765
+        }
+      }
+    },
+    "epicenter": {
+      "image": "/assets/images/bootcamp-overviews/epicenter.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.1725,
+        518.9,
+        -0.1725,
+        0.0,
+        455.76
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.38,
+          "origin": [
+            416.0,
+            40.0,
+            -32.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -1824.0,
+          "minY": -3104.0,
+          "minZ": -184.0,
+          "maxX": 2656.0,
+          "maxY": 3104.0,
+          "maxZ": 640.0
+        },
+        "contentBounds": {
+          "left": 6,
+          "top": 31,
+          "right": 1020,
+          "bottom": 734
+        }
+      }
+    },
+    "flagrun": {
+      "image": "/assets/images/bootcamp-overviews/flagrun.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.1375,
+        0.0,
+        512.0,
+        0.0,
+        -0.1375,
+        478.875
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.1,
+          "origin": [
+            0.0,
+            690.0,
+            -64.0
+          ],
+          "rotated": 1
+        },
+        "worldBounds": {
+          "minX": -3840.0,
+          "minY": -1056.0,
+          "minZ": -400.0,
+          "maxX": 3840.0,
+          "maxY": 2464.0,
+          "maxZ": 1280.0
+        },
+        "contentBounds": {
+          "left": 3,
+          "top": 224,
+          "right": 1020,
+          "bottom": 609
+        }
+      }
+    },
+    "hunted": {
+      "image": "/assets/images/bootcamp-overviews/hunted.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.17625,
+        0.0,
+        588.14,
+        0.0,
+        -0.17625,
+        370.605
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.41,
+          "origin": [
+            -432.0,
+            -76.0,
+            -2400.0
+          ],
+          "rotated": 1
+        },
+        "worldBounds": {
+          "minX": -2624.0,
+          "minY": -2272.0,
+          "minZ": -2416.0,
+          "maxX": 1760.0,
+          "maxY": 2080.0,
+          "maxZ": -904.0
+        },
+        "contentBounds": {
+          "left": 127,
+          "top": 11,
+          "right": 896,
+          "bottom": 764
+        }
+      }
+    },
+    "push": {
+      "image": "/assets/images/bootcamp-overviews/push.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.14375,
+        511.28125,
+        -0.14375,
+        0.0,
+        384.0
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.15,
+          "origin": [
+            0.0,
+            -5.0,
+            -64.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -1520.0,
+          "minY": -3536.0,
+          "minZ": -96.0,
+          "maxX": 1520.0,
+          "maxY": 3536.0,
+          "maxZ": 448.0
+        },
+        "contentBounds": {
+          "left": 4,
+          "top": 167,
+          "right": 1018,
+          "bottom": 600
+        }
+      }
+    },
+    "ravelin": {
+      "image": "/assets/images/bootcamp-overviews/ravelin.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.13,
+        512.0,
+        -0.13,
+        0.0,
+        384.0
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.04,
+          "origin": [
+            0.0,
+            0.0,
+            -424.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -1536.0,
+          "minY": -3936.0,
+          "minZ": -224.0,
+          "maxX": 1536.0,
+          "maxY": 3936.0,
+          "maxZ": 1056.0
+        },
+        "contentBounds": {
+          "left": 3,
+          "top": 188,
+          "right": 1020,
+          "bottom": 579
+        }
+      }
+    },
+    "rock2": {
+      "image": "/assets/images/bootcamp-overviews/rock2.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.12875,
+        512.0,
+        -0.12875,
+        0.0,
+        384.0
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.03,
+          "origin": [
+            0.0,
+            0.0,
+            -240.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -2784.0,
+          "minY": -3968.0,
+          "minZ": -320.0,
+          "maxX": 2784.0,
+          "maxY": 3968.0,
+          "maxZ": 1120.0
+        },
+        "contentBounds": {
+          "left": 5,
+          "top": 29,
+          "right": 1018,
+          "bottom": 738
+        }
+      }
+    },
+    "warpath": {
+      "image": "/assets/images/bootcamp-overviews/warpath.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.13375,
+        0.0,
+        497.02,
+        0.0,
+        -0.13375,
+        384.0
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.07,
+          "origin": [
+            112.0,
+            0.0,
+            72.0
+          ],
+          "rotated": 1
+        },
+        "worldBounds": {
+          "minX": -3748.0,
+          "minY": -3024.0,
+          "minZ": -72.0,
+          "maxX": 3972.0,
+          "maxY": 3024.0,
+          "maxZ": 912.0
+        },
+        "contentBounds": {
+          "left": 5,
+          "top": 1,
+          "right": 1018,
+          "bottom": 766
+        }
+      }
+    },
+    "well": {
+      "image": "/assets/images/bootcamp-overviews/well.png",
+      "width": 1024,
+      "height": 768,
+      "transform": [
+        0.0,
+        -0.125,
+        512.0,
+        -0.125,
+        0.0,
+        384.0
+      ],
+      "transformSource": {
+        "format": "GoldSrc overview projection from ZOOM/ORIGIN/ROTATED; BSP v30 bounds and transparent-key bounds retained for audit",
+        "overview": {
+          "zoom": 1.0,
+          "origin": [
+            0.0,
+            0.0,
+            -208.0
+          ],
+          "rotated": 0
+        },
+        "worldBounds": {
+          "minX": -1504.0,
+          "minY": -4064.0,
+          "minZ": -256.0,
+          "maxX": 1504.0,
+          "maxY": 4064.0,
+          "maxZ": 1312.0
+        },
+        "contentBounds": {
+          "left": 5,
+          "top": 200,
+          "right": 1018,
+          "bottom": 567
+        }
       }
     }
   }

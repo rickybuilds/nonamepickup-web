@@ -5,17 +5,38 @@ const path = require('node:path');
 let helperModule;
 const helpers = () => helperModule ||= import('../../assets/js/bootcamp-overview.mjs');
 
-test('projects 2fort world bounds into the measured overview content bounds', async () => {
+test('applies the authoritative GoldSrc zoom, origin, and rotation projection to 2fort', async () => {
   const { projectWorldPoint } = await helpers();
   const root = path.resolve(__dirname, '../..');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/bootcamp-overviews.json'), 'utf8'));
   const map = manifest.maps['2fort'];
-  const bounds = map.transformSource.worldBounds;
-  const content = map.transformSource.contentBounds;
-  const first = projectWorldPoint({ x: bounds.minX, y: bounds.maxY }, map);
-  const last = projectWorldPoint({ x: bounds.maxX, y: bounds.minY }, map);
-  assert.ok(Math.abs(first.x - content.left) < 0.01 && Math.abs(first.y - content.top) < 0.01);
-  assert.ok(Math.abs(last.x - content.right) < 0.01 && Math.abs(last.y - content.bottom) < 0.01);
+  const { zoom, origin, rotated } = map.transformSource.overview;
+  const scale = map.width * zoom / 8192;
+  const expected = rotated
+    ? [scale, 0, map.width / 2 - scale * origin[0], 0, -scale, map.height / 2 + scale * origin[1]]
+    : [0, -scale, map.width / 2 + scale * origin[1], -scale, 0, map.height / 2 + scale * origin[0]];
+  assert.ok(map.transform.every((value, index) => Math.abs(value - expected[index]) < 1e-10));
+  assert.deepEqual(projectWorldPoint({ x: origin[0], y: origin[1] }, map), { x: map.width / 2, y: map.height / 2 });
+});
+
+test('covers every bundled TFC overview map with a transparent raster and world transform', async () => {
+  const { projectWorldPoint } = await helpers();
+  const root = path.resolve(__dirname, '../..');
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/data/bootcamp-overviews.json'), 'utf8'));
+  const requiredMaps = ['2fort', 'avanti', 'badlands', 'casbah', 'crossover2', 'cz2', 'dustbowl', 'epicenter', 'flagrun', 'hunted', 'push', 'ravelin', 'rock2', 'warpath', 'well'];
+  assert.deepEqual(Object.keys(manifest.maps).sort(), requiredMaps.sort());
+  for (const name of requiredMaps) {
+    const map = manifest.maps[name];
+    assert.ok(fs.existsSync(path.join(root, map.image.replace(/^\//, ''))), `missing overview image for ${name}`);
+    assert.equal(map.transform.length, 6, `missing affine transform for ${name}`);
+    assert.ok(map.transformSource.worldBounds && map.transformSource.contentBounds && map.transformSource.overview, `missing transform provenance for ${name}`);
+    const { zoom, origin, rotated } = map.transformSource.overview;
+    const scale = map.width * zoom / 8192;
+    const expected = rotated
+      ? [scale, 0, map.width / 2 - scale * origin[0], 0, -scale, map.height / 2 + scale * origin[1]]
+      : [0, -scale, map.width / 2 + scale * origin[1], -scale, 0, map.height / 2 + scale * origin[0]];
+    assert.ok(map.transform.every((value, index) => Math.abs(value - expected[index]) < 1e-10), `GoldSrc transform mismatch for ${name}`);
+  }
 });
 
 test('projects rotated map coordinates with the full affine transform', async () => {
