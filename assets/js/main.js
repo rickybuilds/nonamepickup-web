@@ -577,10 +577,10 @@ async function loadLeaderboard() {
   function renderLastTen(row) {
     const raw = Array.isArray(row.recent_form) ? row.recent_form.slice(-10).reverse()
       : Array.isArray(row.recent_results) ? row.recent_results.slice(-10).reverse() : [];
-    const padded = [...raw, ...Array(Math.max(0, 10 - raw.length)).fill("?")].slice(0, 10);
+    const results = raw.filter(entry => ["W", "L", "T"].includes(entry?.result ?? entry));
     return `
       <span class="leaderboard-last10" aria-label="Last 10 results">
-        ${padded.map(entry => renderLastTenMarker(entry?.result ?? entry, !!entry?.is_mvp)).join("")}
+        ${results.map(entry => renderLastTenMarker(entry?.result ?? entry, !!entry?.is_mvp)).join("")}
       </span>
     `;
   }
