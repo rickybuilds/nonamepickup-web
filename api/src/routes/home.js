@@ -56,6 +56,7 @@ function createHomeRouter({ db, cached, logRouteError, sendError }) {
         const cutoff1d = now - 86400;
         const cutoff7d = now - (7 * 86400);
         const cutoff30d = now - (30 * 86400);
+        const cutoff45d = now - (45 * 86400);
 
         const summaryRow = timed("home:summary", () => one(`
           SELECT
@@ -196,34 +197,10 @@ function createHomeRouter({ db, cached, logRouteError, sendError }) {
           LIMIT 1
         `), "mvp_pct"));
 
-        const longestWinStreak = timed("home:longestWinStreak", () => {
-          const byPlayer = new Map();
-          for (const row of playerGames) {
-            if (!row.winner) continue;
-            const id = String(row.id);
-            const stat = byPlayer.get(id) || { id, player: row.player, current: 0, best: 0 };
-            const team = teamFor(row);
-            if (team && row.winner === team) {
-              stat.current += 1;
-              stat.best = Math.max(stat.best, stat.current);
-            } else {
-              stat.current = 0;
-            }
-            byPlayer.set(id, stat);
-          }
-          return player([...byPlayer.values()].map(row => ({
-            id: row.id,
-            player: row.player,
-            wins: row.best
-          })).filter(row => row.wins > 0).sort((a, b) =>
-            b.wins - a.wins || String(a.player).localeCompare(String(b.player))
-          )[0], "wins");
-        });
-
         const activeWinStreak = timed("home:activeWinStreak", () => {
           const byPlayer = new Map();
           for (const row of playerGames) {
-            if (!row.winner) continue;
+            if (!row.winner || Number(row.created_at) < cutoff45d) continue;
             const id = String(row.id);
             const list = byPlayer.get(id) || [];
             list.push(row);
@@ -281,7 +258,7 @@ function createHomeRouter({ db, cached, logRouteError, sendError }) {
             mostWins && { label: "The Kingmaker", ...mostWins, unit: "wins" },
             mostMvps && { label: "The Closer", ...mostMvps, unit: "MVPs" },
             highestMvpRate && { label: "The Specialist", ...highestMvpRate, unit: "% MVP rate" },
-            (activeWinStreak || longestWinStreak) && { label: "The Hot Hand", ...(activeWinStreak || longestWinStreak), unit: "wins" },
+            activeWinStreak && { label: "The Hot Hand", ...activeWinStreak, unit: "wins" },
             biggest30dEloSurge && { label: "The Rocket", ...biggest30dEloSurge, unit: "Elo" }
           ].filter(Boolean)
         };
