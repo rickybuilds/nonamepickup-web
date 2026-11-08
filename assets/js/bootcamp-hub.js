@@ -115,7 +115,8 @@
       target.replaceChildren(list);
     } catch { message(target, "Could not load training maps. Please refresh to try again.", true); }
   }
-  byId("bc-profile-form").addEventListener("submit", async event => {
+  const profileForm = byId("bc-profile-form");
+  profileForm.addEventListener("submit", async event => {
     event.preventDefault();
     const steam = byId("bc-steam").value.trim(), target = byId("bc-profile"), token = ++profileRequest;
     if (!/^STEAM_[0-5]:[01]:\d{1,20}$/.test(steam)) return message(target, "Enter a Steam ID such as STEAM_0:1:12345.", true);
@@ -133,5 +134,10 @@
       if (token === profileRequest) message(target, "Could not load this player. Please try again.", true);
     }
   });
+  const profileId = new URLSearchParams(location.search).get("steamid") || new URLSearchParams(location.search).get("id") || "";
+  if (profileId) {
+    byId("bc-steam").value = profileId;
+    profileForm.requestSubmit();
+  }
   loadMaps();
 }());

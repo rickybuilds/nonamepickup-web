@@ -3,7 +3,15 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const express = require("express");
 const path = require("node:path");
+const fs = require("node:fs");
 const { registerStaticFiles } = require("../src/middleware/staticFiles");
+
+test("the Bootcamp hub opens a profile from the Steam-ID deep link", () => {
+  const script = fs.readFileSync(path.resolve(__dirname, "../../assets/js/bootcamp-hub.js"), "utf8");
+  assert.match(script, /new URLSearchParams\(location\.search\)/);
+  assert.match(script, /get\("steamid"\)/);
+  assert.match(script, /profileForm\.requestSubmit\(\)/);
+});
 
 test("Bootcamp page and assets are disabled by default", async () => {
   const old = process.env.BOOTCAMP_API_ENABLED;
