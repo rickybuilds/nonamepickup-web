@@ -51,6 +51,31 @@ test("public replay rejects missing, incomplete and fragmented recordings", asyn
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
+test("public replay metadata exposes frame context without loading replay chunks", async () => {
+  const calls = [], app = express();
+  app.use("/api/bootcamp", createBootcampRouter({ query: async (sql, args) => {
+    calls.push({ sql, args });
+    if (/bootcamp replay metadata/i.test(sql)) return [{ run_id: 3, ghost_id: 7, map: "openfire", route_id: 2,
+      route_name: "Ramp", class_id: 5, player_name: "Runner", steamid: "STEAM_0:1:4", time_ms: 12000,
+      config_version: 4, frame_interval: 1 / 30, frame_count: 2 }];
+    return [];
+  } }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise(resolve => server.once("listening", resolve));
+    const base = `http://127.0.0.1:${server.address().port}/api/bootcamp/replay/run`;
+    const response = await fetch(`${base}/3/metadata`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { source: "bootcamp", runId: 3, ghostId: 7, map: "openfire", routeId: 2,
+      routeName: "Ramp", classId: 5, playerName: "Runner", steamid: "STEAM_0:1:4", timeMs: 12000,
+      configVersion: 4, frameInterval: 1 / 30, frameCount: 2 });
+    assert.deepEqual(calls[0].args, [3]);
+    assert.match(calls[0].sql, /b\.finalization_required\s*=\s*0/i);
+    assert.doesNotMatch(calls[0].sql, /bootcamp_ghost_chunks/i);
+    assert.equal((await fetch(`${base}/0/metadata`)).status, 400);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
 test("published Bootcamp replay exposes the TFTR v1 sidecar without changing JSON replay output", async () => {
   const calls = [], app = express();
   const record = { id: 7, run_id: 3, map: "openfire", route_id: 2, class_id: 5, time_ms: 12000,

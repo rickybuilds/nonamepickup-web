@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 import { configureReplayMapMaterial } from "./replay-map-materials.js?v=20260730mapmaterials2";
 import { replayRunPath, bootcampRunsCompatible } from "./replay-context.mjs?v=1";
+import { fetchBootcampReplay } from "./bootcamp-tftr-client.mjs?v=1";
 import { BootcampReplayOverview } from "./bootcamp-overview.mjs?v=1";
 
 // replay-format:start
@@ -780,7 +781,11 @@ function apiReplayPath(query) {
 }
 
 async function fetchReplay() {
-  const res = await fetch(apiReplayPath(params()), { cache: "no-store" });
+  const query = params();
+  const replayPath = apiReplayPath(query);
+  if (query.get("source") === "bootcamp")
+    return fetchBootcampReplay(firstParam(query, ["runId", "run_id", "run"]), replayPath);
+  const res = await fetch(replayPath, { cache: "no-store" });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error || `Replay request failed (${res.status})`);
   return json;

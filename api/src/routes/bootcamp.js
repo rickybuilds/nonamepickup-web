@@ -161,6 +161,35 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
     }
   }
+  router.get("/replay/run/:id/metadata", async (req, res) => {
+    if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
+      return res.status(400).json({ error: "invalid_run_id" });
+    try {
+      const rows = await query(`
+        /* bootcamp replay metadata */
+        SELECT b.id AS run_id, g.id AS ghost_id, g.map, g.route_id, r.name AS route_name,
+               g.class_id, g.player_name, g.steamid, b.time_ms, b.config_version,
+               g.frame_interval, g.pos_frames AS frame_count
+          FROM bootcamp_ghosts g
+          JOIN bootcamp_runs b ON b.id = g.run_id AND b.ghost_id = g.id AND b.route_id = g.route_id
+               AND b.map = g.map AND b.class_id = g.class_id
+          JOIN bootcamp_routes r ON r.id = b.route_id AND r.map = b.map AND r.config_version = b.config_version
+         WHERE b.id = ? AND g.is_complete = 1 AND b.valid = 1 AND b.mode = 1
+           AND (b.flagged = 0 OR b.reviewed = 1) AND b.finalization_required = 0
+         LIMIT 1
+      `, [Number(req.params.id)]);
+      if (!rows.length) return res.status(404).json({ error: "replay_not_found" });
+      const row = rows[0];
+      res.set("Cache-Control", "no-store");
+      return res.json({ source: "bootcamp", runId: Number(row.run_id), ghostId: Number(row.ghost_id),
+        map: row.map, routeId: Number(row.route_id), routeName: row.route_name, classId: Number(row.class_id),
+        playerName: row.player_name, steamid: row.steamid, timeMs: Number(row.time_ms),
+        configVersion: Number(row.config_version), frameInterval: Number(row.frame_interval), frameCount: Number(row.frame_count) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/replay/run/:id/metadata]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
   router.get("/replay/run/:id/tftr", async (req, res) => {
     if (!/^[1-9]\d*$/.test(req.params.id) || !Number.isSafeInteger(Number(req.params.id)))
       return res.status(400).json({ error: "invalid_run_id" });

@@ -127,9 +127,15 @@ test("Bootcamp public APIs exclude pending, invalid, unfinalized and legacy runs
     assert.equal(tftrBytes.subarray(0, 4).toString("ascii"), "TFTR");
     assert.equal(tftrBytes.readUInt16LE(4), 1);
     assert.equal(tftr.headers.get("x-tftr-sha256"), crypto.createHash("sha256").update(tftrBytes).digest("hex"));
+    const replayMetadata = await fetch(`${base}/replay/run/${runIds[0]}/metadata`);
+    assert.equal(replayMetadata.status, 200);
+    const replayContext = await replayMetadata.json();
+    assert.deepEqual([replayContext.runId, replayContext.map, replayContext.routeId, replayContext.frameCount],
+      [runIds[0], map, routeId, 2]);
     for (const id of runIds.slice(2)) {
       assert.equal((await fetch(`${base}/replay/run/${id}`)).status, 404);
       assert.equal((await fetch(`${base}/replay/run/${id}/tftr`)).status, 404);
+      assert.equal((await fetch(`${base}/replay/run/${id}/metadata`)).status, 404);
     }
     const drills = await (await fetch(`${base}/maps/${map}/drills`)).json();
     assert.equal(drills.drills[0].id, drillId);

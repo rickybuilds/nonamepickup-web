@@ -64,3 +64,11 @@ test("the 2D replay overview is confined to Bootcamp replays and has map metadat
   assert.equal(manifest.maps["2fort"].transform.length, 6);
   assert.ok(fs.existsSync(path.join(root, "assets/images/bootcamp-overviews/2fort.png")));
 });
+
+test("the shared 3D viewer consumes TFTR when available and keeps the legacy replay fallback", () => {
+  const root = path.resolve(__dirname, "../..");
+  const viewer = fs.readFileSync(path.join(root, "assets/js/speedrun-replay.js"), "utf8");
+  assert.match(viewer, /import \{ fetchBootcampReplay \} from "\.\/bootcamp-tftr-client\.mjs\?v=1"/);
+  assert.match(viewer, /query\.get\("source"\) === "bootcamp"/);
+  assert.match(viewer, /return fetchBootcampReplay\(firstParam\(query, \["runId", "run_id", "run"\]\), replayPath\)/);
+});
