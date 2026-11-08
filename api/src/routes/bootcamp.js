@@ -2,8 +2,9 @@
 
 const express = require("express");
 const { timingSafeEqual } = require("node:crypto");
-const { speedrunQuery } = require("../db/mariadb");
+const { speedrunQuery, getSpeedrunPool } = require("../db/mariadb");
 const { joinReplayChunks, parseReplayFrames } = require("../helpers/replay");
+const { recomputeBootcampLicense } = require("../services/bootcampLicenseStore");
 
 function parseBootcampEvents(serialized) {
   return String(serialized || "").split(";").map(line => line.trim()).filter(Boolean).map(line => {
@@ -50,7 +51,7 @@ function decodeReplay(rows) {
     frameInterval: Number(first.frame_interval), frames, events } };
 }
 
-function createBootcampRouter({ query = speedrunQuery, logRouteError = console.error, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD } = {}) {
+function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), logRouteError = console.error, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN } = {}) {
   const router = express.Router();
   function requireBootcampAdmin(req, res, next) {
     if (!adminUser || !adminPassword) return res.status(503).json({ error: "bootcamp_admin_not_configured" });
@@ -67,6 +68,17 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
       res.set("WWW-Authenticate", 'Basic realm="TFC Bootcamp review"');
       return res.status(401).json({ error: "bootcamp_admin_unauthorized" });
     }
+    res.set("Cache-Control", "no-store");
+    return next();
+  }
+
+  function requireDiscordService(req, res, next) {
+    if (!discordServiceToken) return res.status(503).json({ error: "bootcamp_service_not_configured" });
+    const [scheme, supplied = ""] = String(req.get("authorization") || "").split(/\s+/, 2);
+    const expected = Buffer.from(String(discordServiceToken));
+    const actual = Buffer.from(scheme === "Bearer" ? supplied : "");
+    if (expected.length !== actual.length || !timingSafeEqual(expected, actual))
+      return res.status(401).json({ error: "bootcamp_service_unauthorized" });
     res.set("Cache-Control", "no-store");
     return next();
   }
@@ -161,6 +173,67 @@ function createBootcampRouter({ query = speedrunQuery, logRouteError = console.e
     } catch (error) {
       logRouteError("[/api/bootcamp/maps]", error);
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
+  router.get("/integrations/discord/events/cursor", requireDiscordService, async (_req, res) => {
+    try {
+      const rows = await query("SELECT COALESCE(MAX(id), 0) AS latest_id FROM bootcamp_events", []);
+      return res.json({ latestId: Number(rows[0]?.latest_id || 0) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/integrations/discord/events/cursor]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
+  router.get("/integrations/discord/events", requireDiscordService, async (req, res) => {
+    const afterText = req.query.after_id === undefined ? "0" : String(req.query.after_id);
+    const limitText = req.query.limit === undefined ? "100" : String(req.query.limit);
+    if (!/^(?:0|[1-9]\d*)$/.test(afterText) || !Number.isSafeInteger(Number(afterText)) ||
+        !/^(?:[1-9]\d?|1\d\d|200)$/.test(limitText))
+      return res.status(400).json({ error: "invalid_event_cursor" });
+    try {
+      const rows = await query(`
+        SELECT e.id, e.kind, e.steamid, e.player_name, e.target_type, e.target_id,
+               COALESCE(r.name, d.name) AS target_name, COALESCE(r.map, d.map, e.map) AS map,
+               e.class_id, e.tier, e.value_ms, e.created_at,
+               (SELECT b.id FROM bootcamp_runs b
+                 WHERE e.kind = 'record' AND b.steamid = e.steamid AND b.route_id = e.target_id
+                   AND b.time_ms = e.value_ms AND b.valid = 1 AND b.mode = 1
+                 ORDER BY b.id DESC LIMIT 1) AS replay_run_id
+          FROM bootcamp_events e
+          LEFT JOIN bootcamp_routes r ON e.target_type = 'route' AND r.id = e.target_id
+          LEFT JOIN bootcamp_drills d ON e.target_type = 'drill' AND d.id = e.target_id
+         WHERE e.id > ? ORDER BY e.id LIMIT ?
+      `, [Number(afterText), Number(limitText)]);
+      return res.json({ events: rows.map(row => ({
+        id: Number(row.id), kind: row.kind, steamId: row.steamid, playerName: row.player_name || "",
+        targetType: row.target_type || "", targetId: row.target_id == null ? null : Number(row.target_id),
+        targetName: row.target_name || "", map: row.map || "", classId: row.class_id == null ? null : Number(row.class_id),
+        tier: row.tier == null ? null : Number(row.tier), valueMs: row.value_ms == null ? null : Number(row.value_ms),
+        replayRunId: row.replay_run_id == null ? null : Number(row.replay_run_id), createdAt: row.created_at
+      })) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/integrations/discord/events]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
+  router.post("/integrations/discord/licenses/recompute", requireDiscordService, async (req, res) => {
+    if (!req.is("application/json") || !req.body || Object.keys(req.body).length !== 1 ||
+        typeof req.body.steamId !== "string" || !/^STEAM_[0-5]:[01]:\d{1,20}$/.test(req.body.steamId))
+      return res.status(400).json({ error: "invalid_license_request" });
+    let connection;
+    try {
+      connection = await connectionFactory();
+      const rules = (() => {
+        try { return JSON.parse(process.env.BOOTCAMP_LICENSE_RULES || "{}"); }
+        catch { return {}; }
+      })();
+      const result = await recomputeBootcampLicense(connection, req.body.steamId, rules);
+      return res.json({ steamId: req.body.steamId, ...result });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/integrations/discord/licenses/recompute]", error);
+      return res.status(503).json({ error: "bootcamp_license_unavailable" });
+    } finally {
+      connection?.release();
     }
   });
   router.get("/challenge/current", async (_req, res) => {
