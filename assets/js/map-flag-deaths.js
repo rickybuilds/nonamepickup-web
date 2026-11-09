@@ -97,8 +97,12 @@
         pixels.data[i]=16; pixels.data[i+1]=21; pixels.data[i+2]=28;
       }
       bg.putImageData(pixels,0,0);
+      const playerKey = death => death.playerId ? "discord:" + death.playerId : death.steamId ? "steam:" + death.steamId : "";
       const players = new Map();
-      for (const death of response.deaths) if (death.steamId) players.set(death.steamId, death.playerName);
+      for (const death of response.deaths) {
+        const key = playerKey(death);
+        if (key) players.set(key, death.playerName);
+      }
       for (const [id, player] of [...players].sort((a,b) => a[1].localeCompare(b[1]))) {
         const option = document.createElement("option"); option.value=id; option.textContent=player; select.append(option);
       }
@@ -109,7 +113,7 @@
       const ox = Number(origin[1]), oy = Number(origin[2]);
       function draw() {
         context.drawImage(background,0,0);
-        const rows = select.value ? response.deaths.filter(d => d.steamId === select.value) : response.deaths;
+        const rows = select.value ? response.deaths.filter(d => playerKey(d) === select.value) : response.deaths;
         let paths = "";
         for (const d of rows) {
           const x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
