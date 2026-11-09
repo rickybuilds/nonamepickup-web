@@ -106,20 +106,34 @@
 
 .muted-message:first-child { border-top: 0; }
 
-.muted-message-meta {
+.muted-message-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 8px 10px;
   align-items: center;
   font: 600 12px "Inter", system-ui, sans-serif;
 }
 
+.muted-message-row time,
+.muted-username,
+.muted-channel { flex: 0 0 auto; }
+
+.muted-message-row time,
+.muted-username,
+.muted-channel { display: inline-flex; align-items: center; gap: 10px; }
+
+.muted-message-row time::after,
+.muted-username::after,
+.muted-channel::after { color: #64748b; content: "—"; font-weight: 500; }
+
+.muted-message-row time { color: #a8b4c8; font-variant-numeric: tabular-nums; }
 .muted-username { color: #f1f5f9; font-size: 13px; font-weight: 800; }
 .muted-channel { color: #93c5fd; }
-.muted-message time { margin-left: auto; color: #a8b4c8; font: 600 12px "Inter", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 
 .muted-message-content {
-  margin: 11px 0 0;
+  min-width: 0;
+  flex: 1 1 280px;
+  margin: 0;
   color: #d6deea;
   font: 500 14px/1.6 "Inter", system-ui, sans-serif;
   overflow-wrap: anywhere;
@@ -158,7 +172,8 @@
   .muted-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
   .muted-toolbar input { grid-column: 1 / -1; }
   .muted-message { padding: 15px; }
-  .muted-message time { width: 100%; margin-left: 0; }
+  .muted-message-row { align-items: baseline; }
+  .muted-message-content { flex-basis: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

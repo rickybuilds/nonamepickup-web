@@ -51,12 +51,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const date = messageDate(message);
       return `
         <article class="muted-message">
-          <div class="muted-message-meta">
+          <div class="muted-message-row">
+            <time${date.datetime ? ` datetime="${escapeHtml(date.datetime)}"` : ""}>${escapeHtml(date.label)}</time>
             <strong class="muted-username">${escapeHtml(message.username)}</strong>
             <span class="muted-channel"># ${escapeHtml(message.channel_name)}</span>
-            <time${date.datetime ? ` datetime="${escapeHtml(date.datetime)}"` : ""}>${escapeHtml(date.label)}</time>
+            <p class="muted-message-content">${escapeHtml(message.content || "(empty message)")}</p>
           </div>
-          <p class="muted-message-content">${escapeHtml(message.content || "(empty message)")}</p>
         </article>
       `;
     }).join("");
