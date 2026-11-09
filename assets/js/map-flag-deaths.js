@@ -54,8 +54,8 @@
             y = canvas.height - y;
             // Phantom’s recorded coordinates are rotated relative to its overview.
             const dx = x - canvas.width / 2, dy = y - canvas.height / 2;
-            x = canvas.width / 2 - dy;
-            y = canvas.height / 2 + dx;
+            x = canvas.width / 2 + dy;
+            y = canvas.height / 2 - dx;
           }
           if (x<0 || y<0 || x>=canvas.width || y>=canvas.height) continue;
           context.beginPath(); context.arc(x,y,2.2,0,Math.PI*2); context.fill();
