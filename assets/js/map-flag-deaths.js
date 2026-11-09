@@ -42,7 +42,10 @@
         const option = document.createElement("option"); option.value=id; option.textContent=player; select.append(option);
       }
       select.disabled = !players.size;
-      const scale = canvas.width * Number(zoom[1]) / 8192, ox = Number(origin[1]), oy = Number(origin[2]);
+      // Phantom’s bitmap was rendered at a different scale than its overview TXT.
+      // Its two recorded flag bases align with their image markers at 768 / 8192.
+      const scale = flipVertical ? canvas.height / 8192 : canvas.width * Number(zoom[1]) / 8192;
+      const ox = Number(origin[1]), oy = Number(origin[2]);
       function draw() {
         context.drawImage(background,0,0);
         const rows = select.value ? response.deaths.filter(d => d.steamId === select.value) : response.deaths;
