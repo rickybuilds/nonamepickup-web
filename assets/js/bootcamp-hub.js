@@ -142,6 +142,23 @@
       target.append(table(["Rank", "Player", "Class", challenge.targetType === "route" ? "Time" : "Score"], rows));
     } catch { message(target, "Could not load this week's challenge. Please try again.", true); }
   }
+  async function loadSeason() {
+    const section = byId("bc-season"), target = byId("bc-season-content");
+    try {
+      const data = await get("/api/bootcamp/seasons/current");
+      if (!data.season) return;
+      section.hidden = false;
+      const season = data.season;
+      target.replaceChildren(element("h3", season.title),
+        element("p", `Season standings · ${season.startsAt.slice(0, 10)} to ${season.endsAt.slice(0, 10)} UTC`, "bc-detail"));
+      if (!data.standings.length) return target.append(element("p", "No tier improvements recorded this season yet.", "bc-empty"));
+      target.append(table(["Rank", "Player", "Points", "Objectives"], data.standings.slice(0, 100).map(row =>
+        [row.rank, row.playerName || row.steamId, row.points, row.objectives])));
+    } catch {
+      section.hidden = false;
+      message(target, "Could not load season standings. Please try again.", true);
+    }
+  }
   async function loadSkillPoints() {
     const monthTarget = byId("bc-monthly-points"), allTimeTarget = byId("bc-alltime-points");
     const month = new Date().toISOString().slice(0, 7);
@@ -192,6 +209,7 @@
     profileForm.requestSubmit();
   }
   loadChallenge();
+  loadSeason();
   loadSkillPoints();
   loadMaps();
 }());

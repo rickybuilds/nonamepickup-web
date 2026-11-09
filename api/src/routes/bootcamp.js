@@ -93,7 +93,7 @@ function decodeReplay(rows) {
     frameInterval: Number(first.frame_interval), frames, events } };
 }
 
-function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), sidecarCache = null, logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN } = {}) {
+function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), sidecarCache = null, logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN, seasonsEnabled = bootcampEnabled(process.env.BOOTCAMP_SEASONS_ENABLED) } = {}) {
   const router = express.Router();
   function requireBootcampAdmin(req, res, next) {
     if (!adminUser || !adminPassword) return res.status(503).json({ error: "bootcamp_admin_not_configured" });
@@ -381,6 +381,93 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
     } catch (error) {
       logRouteError("[/api/bootcamp/leaderboards/skill-points]", error);
       return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
+  router.get("/seasons/current", async (_req, res) => {
+    if (!seasonsEnabled) return res.json({ season: null, standings: [] });
+    res.set("Cache-Control", "no-store");
+    try {
+      const rows = await query(`
+        SELECT id, slug, title,
+               DATE_FORMAT(starts_at, '%Y-%m-%d %H:%i:%s') AS starts_at,
+               DATE_FORMAT(ends_at, '%Y-%m-%d %H:%i:%s') AS ends_at
+          FROM bootcamp_seasons
+         WHERE enabled = 1 AND starts_at <= UTC_TIMESTAMP() AND ends_at > UTC_TIMESTAMP()
+         ORDER BY starts_at DESC, id DESC LIMIT 1
+      `, []);
+      const row = rows[0];
+      if (!row) return res.json({ season: null, standings: [] });
+      const season = { id: Number(row.id), slug: row.slug, title: row.title,
+        startsAt: row.starts_at, endsAt: row.ends_at };
+      const scores = await query(`
+        WITH tier_progress AS (
+          SELECT e.id, e.steamid, e.player_name, e.target_type, e.target_id, e.map, e.class_id,
+                 e.tier, e.created_at,
+                 COALESCE(LAG(e.tier) OVER (
+                   PARTITION BY e.steamid, e.target_type, e.target_id, e.map, e.class_id
+                   ORDER BY e.created_at, e.id
+                 ), 0) AS previous_tier
+            FROM bootcamp_events e
+           WHERE e.kind = 'tier_up' AND e.target_type IN ('route', 'drill')
+        )
+        SELECT totals.steamid,
+               COALESCE((SELECT e.player_name FROM bootcamp_events e WHERE e.steamid = totals.steamid
+                          ORDER BY e.created_at DESC, e.id DESC LIMIT 1), '') AS player_name,
+               totals.points, totals.objectives
+          FROM (
+            SELECT steamid,
+                   SUM((CASE tier WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 5 ELSE 0 END) -
+                       (CASE previous_tier WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 5 ELSE 0 END)) AS points,
+                   COUNT(DISTINCT target_type, target_id, map, class_id) AS objectives
+              FROM tier_progress
+             WHERE created_at >= ? AND created_at < ? AND tier > previous_tier
+             GROUP BY steamid
+            HAVING points > 0
+          ) totals
+         ORDER BY totals.points DESC, totals.steamid ASC LIMIT 100
+      `, [row.starts_at, row.ends_at]);
+      return res.json({ season, standings: scores.map((score, index) => ({ rank: index + 1,
+        steamId: score.steamid, playerName: score.player_name || score.steamid,
+        points: Number(score.points), objectives: Number(score.objectives) })) });
+    } catch (error) {
+      logRouteError("[/api/bootcamp/seasons/current]", error);
+      return res.status(503).json({ error: "bootcamp_database_unavailable" });
+    }
+  });
+  router.post("/admin/seasons", (req, res, next) => {
+    if (!seasonsEnabled) return res.status(404).json({ error: "not_found" });
+    return requireBootcampAdmin(req, res, next);
+  }, async (req, res) => {
+    const body = req.body || {};
+    const keys = Object.keys(body).sort();
+    if (!req.is("application/json") || keys.join(",") !== "endsAt,slug,startsAt,title" ||
+        typeof body.slug !== "string" || !/^[a-z0-9][a-z0-9_-]{0,47}$/.test(body.slug) ||
+        typeof body.title !== "string" || !body.title.trim() || body.title.trim().length > 96)
+      return res.status(400).json({ error: "invalid_season_request" });
+    const parseUtc = value => {
+      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) return null;
+      const time = Date.parse(value);
+      if (!Number.isFinite(time) || new Date(time).toISOString() !== value.replace(/Z$/, ".000Z")) return null;
+      return `${value.slice(0, 10)} ${value.slice(11, 19)}`;
+    };
+    const startsAt = parseUtc(body.startsAt), endsAt = parseUtc(body.endsAt);
+    if (!startsAt || !endsAt || startsAt >= endsAt) return res.status(400).json({ error: "invalid_season_window" });
+    try {
+      const overlapping = await query(`
+        SELECT id FROM bootcamp_seasons WHERE enabled = 1 AND starts_at < ? AND ends_at > ? LIMIT 1
+      `, [endsAt, startsAt]);
+      if (overlapping.length) return res.status(409).json({ error: "season_window_overlaps" });
+      const result = await query(`
+        INSERT INTO bootcamp_seasons (slug, title, starts_at, ends_at, created_by)
+        VALUES (?, ?, ?, ?, ?)
+      `, [body.slug, body.title.trim(), startsAt, endsAt, adminUser]);
+      const id = Number(result?.insertId);
+      if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Season insert did not return an ID");
+      return res.status(201).json({ season: { id, slug: body.slug, title: body.title.trim(), startsAt, endsAt } });
+    } catch (error) {
+      if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "season_slug_exists" });
+      logRouteError("[/api/bootcamp/admin/seasons]", error);
+      return res.status(503).json({ error: "bootcamp_season_unavailable" });
     }
   });
   router.get("/integrations/discord/events/cursor", requireDiscordService, async (_req, res) => {

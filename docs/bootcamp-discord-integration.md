@@ -8,11 +8,17 @@ these website API endpoints:
 - `POST /api/bootcamp/integrations/discord/licenses/recompute`
 - `GET /api/bootcamp/players/:steamId`
 - `GET /api/bootcamp/challenge/current`
+- `GET /api/bootcamp/seasons/current`
 
 The event cursor, feed and license recomputation endpoints require
 `Authorization: Bearer <BOOTCAMP_DISCORD_API_TOKEN>`. The public player and
 challenge endpoints remain subject to the Bootcamp API feature flag. The Bot
 does not query Bootcamp MariaDB tables directly.
+
+Season standings are additionally disabled unless
+`BOOTCAMP_SEASONS_ENABLED=true` is set on both the Website and Bot. The Website
+returns the active scheduled UTC season; the Bot exposes its standings through
+`!season`. See `api/docs/bootcamp-seasons.md` for table and schedule details.
 
 Configure `BOOTCAMP_API_ENABLED=true` and a secret `BOOTCAMP_DISCORD_API_TOKEN`
 in the website API environment. Configure the same token and `NONAME_URL` in
