@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const express = require("express");
 const crypto = require("node:crypto");
 const { createBootcampRouter } = require("../src/routes/bootcamp");
+const { encodeBootcampTftr } = require("../src/helpers/bootcampTftr");
 
 test("public replay reconstructs ordered chunks through the eligible ghost view", async () => {
   const calls = [], app = express();
@@ -77,7 +78,7 @@ test("public replay metadata exposes frame context without loading replay chunks
 });
 
 test("published Bootcamp replay exposes the TFTR v1 sidecar without changing JSON replay output", async () => {
-  const calls = [], cacheCalls = { get: 0, put: 0 }, cacheValues = new Map(), app = express();
+  const calls = [], archiveReads = [], routeErrors = [], cacheCalls = { get: 0, put: 0 }, cacheValues = new Map(), app = express();
   const sidecarCache = {
     async get(key) { cacheCalls.get++; return cacheValues.get(key) || null; },
     async put(key, data) { cacheCalls.put++; cacheValues.set(key, Buffer.from(data)); }
@@ -93,7 +94,10 @@ test("published Bootcamp replay exposes the TFTR v1 sidecar without changing JSO
     record[`${track}_frames`] = rows.reduce((sum, row) => sum + (row.data.match(/;/g) || []).length, 0);
     record[`spool_${track}_sha`] = crypto.createHash("sha256").update(rows.map(row => row.data).join(""), "utf8").digest("hex");
   }
-  app.use("/api/bootcamp", createBootcampRouter({ sidecarCache, query: async (sql, args) => {
+  app.use("/api/bootcamp", createBootcampRouter({ sidecarCache, archiveClient: { async getTftr(id) {
+    archiveReads.push(id);
+    return { data: Buffer.from("invalid archive replay"), sha256: crypto.createHash("sha256").update("invalid archive replay").digest("hex") };
+  } }, logRouteError: error => routeErrors.push(String(error)), query: async (sql, args) => {
     calls.push({ sql, args });
     if (/tftr sidecar/i.test(sql)) return [record];
     if (/bootcamp_ghost_chunks/i.test(sql) && /'input'/i.test(sql)) return Object.entries(tracks).flatMap(([track, rows]) => rows.map(row => ({ track, ...row })));
@@ -135,6 +139,8 @@ test("published Bootcamp replay exposes the TFTR v1 sidecar without changing JSO
     assert.equal(cached.status, 200);
     assert.deepEqual(Buffer.from(await cached.arrayBuffer()), bytes);
     assert.deepEqual(cacheCalls, { get: 2, put: 1 });
+    assert.deepEqual(archiveReads, [7]);
+    assert.ok(routeErrors.some(error => /archive.*does not match database replay/i.test(error)));
     assert.equal(calls.filter(call => /tftr sidecar/i.test(call.sql)).length, 2);
     assert.equal(calls.filter(call => /bootcamp_ghost_chunks/i.test(call.sql)).length, 1);
     assert.ok(calls.some(call => /b\.finalization_required\s*=\s*0/i.test(call.sql) && /b\.flagged\s*=\s*0/i.test(call.sql)));
@@ -144,11 +150,47 @@ test("published Bootcamp replay exposes the TFTR v1 sidecar without changing JSO
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
+test("website accepts an archive object only when it byte-matches eligible database tracks", async () => {
+  const record = { id: 21, run_id: 12, map: "2fort", route_id: 8, class_id: 5, time_ms: 9800,
+    config_version: 6, is_complete: 1, frame_interval: 1 / 30, pos_frames: 2,
+    proj_frames: 1, input_frames: 1, cmd_frames: 1, event_frames: 1 };
+  const tracks = {
+    pos: [{ chunk_id: 0, data: "0,1,2,3,4,5,6,7,8,9,10,11,1;0.033,2,3,4,5,6,7,0,8,9,10,11,0;" }],
+    proj: [{ chunk_id: 0, data: "0,1,2;" }], input: [{ chunk_id: 0, data: "0,1;" }],
+    cmd: [{ chunk_id: 0, data: "0,1;" }], event: [{ chunk_id: 0, data: "0.5,8,0,0;" }]
+  };
+  for (const [name, rows] of Object.entries(tracks))
+    record[`spool_${name}_sha`] = crypto.createHash("sha256").update(rows.map(row => row.data).join(""), "utf8").digest("hex");
+  const expected = encodeBootcampTftr(record, tracks);
+  let archiveReads = 0, cacheWrite;
+  const app = express();
+  app.use("/api/bootcamp", createBootcampRouter({
+    query: async sql => {
+      if (/tftr sidecar/i.test(sql)) return [record];
+      if (/bootcamp_ghost_chunks/i.test(sql)) return Object.entries(tracks).flatMap(([track, rows]) => rows.map(row => ({ track, ...row })));
+      return [];
+    },
+    archiveClient: { async getTftr(id) { archiveReads++; assert.equal(id, 21); return expected; } },
+    sidecarCache: { async get() { return null; }, async put(key, bytes) { cacheWrite = { key, bytes }; } },
+    logRouteError: error => assert.fail(`unexpected archive rejection: ${error}`)
+  }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise(resolve => server.once("listening", resolve));
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/bootcamp/replay/run/12/tftr`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), expected.data);
+    assert.equal(archiveReads, 1);
+    assert.deepEqual(cacheWrite.bytes, expected.data);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
 test("TFTR cache is not read when the database says the replay is no longer public", async () => {
-  let cacheReads = 0;
+  let cacheReads = 0, archiveReads = 0;
   const app = express();
   app.use("/api/bootcamp", createBootcampRouter({
     query: async sql => /tftr sidecar/i.test(sql) ? [] : [],
+    archiveClient: { async getTftr() { archiveReads++; return null; } },
     sidecarCache: { async get() { cacheReads++; return Buffer.from("stale sidecar"); }, async put() {} }
   }));
   const server = app.listen(0, "127.0.0.1");
@@ -157,6 +199,7 @@ test("TFTR cache is not read when the database says the replay is no longer publ
     const response = await fetch(`http://127.0.0.1:${server.address().port}/api/bootcamp/replay/run/99/tftr`);
     assert.equal(response.status, 404);
     assert.equal(cacheReads, 0);
+    assert.equal(archiveReads, 0);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 

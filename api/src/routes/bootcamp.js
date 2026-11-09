@@ -93,7 +93,7 @@ function decodeReplay(rows) {
     frameInterval: Number(first.frame_interval), frames, events } };
 }
 
-function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), sidecarCache = null, logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN, seasonsEnabled = bootcampEnabled(process.env.BOOTCAMP_SEASONS_ENABLED) } = {}) {
+function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), sidecarCache = null, archiveClient = null, logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN, seasonsEnabled = bootcampEnabled(process.env.BOOTCAMP_SEASONS_ENABLED) } = {}) {
   const router = express.Router();
   function requireBootcampAdmin(req, res, next) {
     if (!adminUser || !adminPassword) return res.status(503).json({ error: "bootcamp_admin_not_configured" });
@@ -279,6 +279,21 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
         catch (error) {
           if (error.status === 422) return res.status(422).json({ error: "replay_invalid", reason: error.message });
           throw error;
+        }
+        if (sidecar.data && archiveClient) {
+          try {
+            const archived = await archiveClient.getTftr(Number(record.id));
+            if (archived) {
+              const archiveBytes = Buffer.isBuffer(archived.data) ? archived.data : Buffer.from(archived.data || []);
+              const archiveHash = createHash("sha256").update(archiveBytes).digest("hex");
+              if (archiveHash === sidecar.sha256 && archiveBytes.equals(sidecar.data))
+                sidecar = { data: archiveBytes, sha256: archiveHash };
+              else
+                logRouteError("[/api/bootcamp/replay/run/:id/tftr archive] archive sidecar does not match database replay");
+            }
+          } catch (error) {
+            logRouteError("[/api/bootcamp/replay/run/:id/tftr archive read]", error);
+          }
         }
         if (sidecar.data && sidecarCache) {
           try { await sidecarCache.put(cacheKey, sidecar.data); }

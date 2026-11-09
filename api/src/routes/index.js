@@ -23,6 +23,7 @@ const { createCoolestDudeRouter } = require("./coolestDude");
 const { createSpellingRouter } = require("./spelling");
 const { createDefenseIqRouter } = require("./defenseIq");
 const { BootcampReplayCache } = require("../services/bootcampReplayCache");
+const { createBootcampReplayArchiveClient } = require("../services/bootcampReplayArchive");
 
 function registerRoutes(app, {
   leaderboardHandler,
@@ -151,6 +152,11 @@ if (bootcampEnabled(process.env.BOOTCAMP_API_ENABLED)) {
   app.use("/api/bootcamp", createBootcampRouter({
     logRouteError,
     sidecarCache: new BootcampReplayCache(path.join(DATA_DIR, "bootcamp", "replay-cache"), { publicRoot: PUBLIC_DIR }),
+    archiveClient: createBootcampReplayArchiveClient({
+      enabled: bootcampEnabled(process.env.BOOTCAMP_REPLAY_ARCHIVE_ENABLED),
+      baseUrl: process.env.BOOTCAMP_REPLAY_ARCHIVE_URL,
+      token: process.env.BOOTCAMP_REPLAY_ARCHIVE_TOKEN
+    }),
     // Reuse NoName's existing Steam/Discord links; never copy identities into Bootcamp tables.
     findDiscordIdBySteam: steamId => db.prepare(`
       SELECT discord_id FROM player_steam_ids
