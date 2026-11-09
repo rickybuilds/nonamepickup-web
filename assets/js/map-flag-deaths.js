@@ -86,10 +86,10 @@
       setZoom(1);
       const background = document.createElement("canvas"); background.width = canvas.width; background.height = canvas.height;
       const bg = background.getContext("2d");
-      // This overview has vertically mirrored artwork in the supplied bitmap.
-      // The overview projection below already maps coordinates to the flipped image.
-      const flipVertical = name.toLowerCase() === "phantom_lg";
-      if (flipVertical) { bg.translate(0, canvas.height); bg.scale(1, -1); }
+      // The supplied BMPs are vertically inverted relative to their TGA sources.
+      // The world-to-overview projection maps to the corrected image orientation.
+      bg.translate(0, canvas.height);
+      bg.scale(1, -1);
       bg.drawImage(image, 0, 0);
       bg.setTransform(1, 0, 0, 1, 0, 0);
       const pixels = bg.getImageData(0, 0, canvas.width, canvas.height);
