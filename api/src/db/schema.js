@@ -1,6 +1,7 @@
 "use strict";
 
 const { NN_MVP_CUTOFF_EPOCH } = require("../lib/canonicalMvp");
+const { ensureBootcampAccountLinkSchema } = require("./bootcampAccountLinkSchema");
 
 const NN_MVP_COLUMNS = {
   nn_mvp_player_key: "TEXT",
@@ -88,6 +89,8 @@ function initializeSchema(db) {
   CREATE INDEX IF NOT EXISTS idx_pickup_flag_carries_session
     ON pickup_flag_carries(match_id, round_number, session_id);
 `);
+
+  ensureBootcampAccountLinkSchema(db);
 
   ensureColumns(db, "matches", NN_MVP_COLUMNS);
 

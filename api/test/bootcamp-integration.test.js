@@ -2,16 +2,19 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const express = require("express");
+const { DatabaseSync } = require("node:sqlite");
 const { createBootcampRouter } = require("../src/routes/bootcamp");
+const { ensureBootcampAccountLinkSchema } = require("../src/db/bootcampAccountLinkSchema");
 
-function setup(query, token = "service-secret", connectionFactory) {
+function setup(query, token = "service-secret", connectionFactory, extraOptions = {}) {
   const calls = [];
   const app = express();
   app.use(express.json());
   app.use("/api/bootcamp", createBootcampRouter({
     query: async (sql, args) => { calls.push({ sql, args }); return query(sql, args); },
     discordServiceToken: token,
-    connectionFactory
+    connectionFactory,
+    ...extraOptions
   }));
   const server = app.listen(0, "127.0.0.1");
   return new Promise(resolve => server.once("listening", () => resolve({
@@ -44,6 +47,46 @@ test("Discord event feed is authenticated, bounded, and returns Bootcamp event c
     assert.equal((await fetch(`${app.base}/integrations/discord/events?after_id=-1`, { headers: { authorization: app.auth } })).status, 400);
     assert.equal((await fetch(`${app.base}/integrations/discord/events?after_id=6&limit=201`, { headers: { authorization: app.auth } })).status, 400);
   } finally { await app.close(); }
+});
+
+test("account-link status defaults to disabled and is safe to expose publicly", async () => {
+  const app = await setup(async () => []);
+  try {
+    const response = await fetch(`${app.base}/account-link/status`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.deepEqual(await response.json(), { enabled: false });
+  } finally { await app.close(); }
+});
+
+test("configured account-link route is mounted under the Bootcamp API and creates only a short-lived flow", async () => {
+  const db = new DatabaseSync(":memory:");
+  ensureBootcampAccountLinkSchema(db);
+  db.exec(`CREATE TABLE player_steam_ids (
+    discord_id TEXT NOT NULL, steam_id TEXT NOT NULL, display_name TEXT,
+    is_primary INTEGER NOT NULL DEFAULT 0, notes TEXT, created_at INTEGER, updated_at INTEGER,
+    PRIMARY KEY(discord_id, steam_id)
+  )`);
+  const app = await setup(async () => [], "service-secret", undefined, {
+    accountLinkDb: db,
+    accountLinkEnabled: true,
+    accountLinkSteamReturnUrl: "https://example.test/api/bootcamp/account-link/steam/callback",
+    accountLinkDiscordClientId: "discord-client-id",
+    accountLinkDiscordClientSecret: "discord-client-secret",
+    accountLinkDiscordRedirectUrl: "https://example.test/api/bootcamp/account-link/discord/callback",
+    accountLinkHubUrl: "https://example.test/bootcamp.html"
+  });
+  try {
+    const status = await fetch(`${app.base}/account-link/status`);
+    assert.deepEqual(await status.json(), { enabled: true });
+    const start = await fetch(`${app.base}/account-link/start`, { redirect: "manual" });
+    assert.equal(start.status, 302);
+    assert.equal(new URL(start.headers.get("location")).origin, "https://steamcommunity.com");
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM bootcamp_account_link_flows").get().count, 1);
+  } finally {
+    await app.close();
+    db.close();
+  }
 });
 
 test("Discord event feed fails closed without a configured service token", async () => {

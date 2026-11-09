@@ -204,6 +204,23 @@
     }
   });
   const profileId = new URLSearchParams(location.search).get("steamid") || new URLSearchParams(location.search).get("id") || "";
+  const accountLink = byId("bc-account-link"), accountLinkStatus = byId("bc-account-link-status");
+  const linkResults = {
+    linked: "Steam and Discord are linked. Your license role sync will run shortly.",
+    steam_conflict: "That Steam account is already linked to another Discord account. Ask a server admin for help if this is a mistake.",
+    "steam-failed": "Steam verification did not complete. Restart the link flow and try again.",
+    "discord-failed": "Discord verification did not complete. Restart the link flow and try again."
+  };
+  const linkResult = new URLSearchParams(location.search).get("account_link");
+  if (linkResults[linkResult]) {
+    accountLinkStatus.textContent = linkResults[linkResult];
+    accountLinkStatus.dataset.state = linkResult === "linked" ? "success" : "error";
+    accountLinkStatus.hidden = false;
+    history.replaceState(null, "", `${location.pathname}${location.hash}`);
+  }
+  get("/api/bootcamp/account-link/status").then(status => {
+    if (status.enabled) accountLink.hidden = false;
+  }).catch(() => { /* linking stays hidden if its optional status endpoint is unavailable */ });
   if (profileId) {
     byId("bc-steam").value = profileId;
     profileForm.requestSubmit();

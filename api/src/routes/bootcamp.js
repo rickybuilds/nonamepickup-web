@@ -7,6 +7,7 @@ const { joinReplayChunks, parseReplayFrames } = require("../helpers/replay");
 const { TRACKS, encodeBootcampTftr } = require("../helpers/bootcampTftr");
 const { bootcampReplayCacheKey } = require("../services/bootcampReplayCache");
 const { recomputeBootcampLicense } = require("../services/bootcampLicenseStore");
+const { createBootcampAccountLinkRouter } = require("./bootcampAccountLink");
 
 function parseBootcampEvents(serialized) {
   return String(serialized || "").split(";").map(line => line.trim()).filter(Boolean).map(line => {
@@ -93,8 +94,13 @@ function decodeReplay(rows) {
     frameInterval: Number(first.frame_interval), frames, events } };
 }
 
-function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), sidecarCache = null, archiveClient = null, logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN, seasonsEnabled = bootcampEnabled(process.env.BOOTCAMP_SEASONS_ENABLED) } = {}) {
+function createBootcampRouter({ query = speedrunQuery, connectionFactory = () => getSpeedrunPool().getConnection(), sidecarCache = null, archiveClient = null, logRouteError = console.error, findDiscordIdBySteam = () => null, adminUser = process.env.BOOTCAMP_ADMIN_USER, adminPassword = process.env.BOOTCAMP_ADMIN_PASSWORD, discordServiceToken = process.env.BOOTCAMP_DISCORD_API_TOKEN, seasonsEnabled = bootcampEnabled(process.env.BOOTCAMP_SEASONS_ENABLED), accountLinkDb = null, accountLinkEnabled = bootcampEnabled(process.env.BOOTCAMP_ACCOUNT_LINK_ENABLED), accountLinkSteamReturnUrl = process.env.BOOTCAMP_ACCOUNT_LINK_STEAM_RETURN_URL, accountLinkDiscordClientId = process.env.BOOTCAMP_ACCOUNT_LINK_DISCORD_CLIENT_ID, accountLinkDiscordClientSecret = process.env.BOOTCAMP_ACCOUNT_LINK_DISCORD_CLIENT_SECRET, accountLinkDiscordRedirectUrl = process.env.BOOTCAMP_ACCOUNT_LINK_DISCORD_REDIRECT_URL, accountLinkHubUrl = process.env.BOOTCAMP_HUB_URL, accountLinkFetch = globalThis.fetch } = {}) {
   const router = express.Router();
+  router.use("/account-link", createBootcampAccountLinkRouter({
+    db: accountLinkDb, enabled: accountLinkEnabled, steamReturnUrl: accountLinkSteamReturnUrl,
+    discordClientId: accountLinkDiscordClientId, discordClientSecret: accountLinkDiscordClientSecret,
+    discordRedirectUrl: accountLinkDiscordRedirectUrl, hubUrl: accountLinkHubUrl, fetchImpl: accountLinkFetch
+  }));
   function requireBootcampAdmin(req, res, next) {
     if (!adminUser || !adminPassword) return res.status(503).json({ error: "bootcamp_admin_not_configured" });
     const [scheme, encoded = ""] = String(req.get("authorization") || "").split(/\s+/, 2);

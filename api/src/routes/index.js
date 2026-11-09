@@ -151,6 +151,13 @@ app.use("/api/speedruns", createSpeedrunsRouter({
 if (bootcampEnabled(process.env.BOOTCAMP_API_ENABLED)) {
   app.use("/api/bootcamp", createBootcampRouter({
     logRouteError,
+    accountLinkDb: db,
+    accountLinkEnabled: bootcampEnabled(process.env.BOOTCAMP_ACCOUNT_LINK_ENABLED),
+    accountLinkSteamReturnUrl: process.env.BOOTCAMP_ACCOUNT_LINK_STEAM_RETURN_URL,
+    accountLinkDiscordClientId: process.env.BOOTCAMP_ACCOUNT_LINK_DISCORD_CLIENT_ID,
+    accountLinkDiscordClientSecret: process.env.BOOTCAMP_ACCOUNT_LINK_DISCORD_CLIENT_SECRET,
+    accountLinkDiscordRedirectUrl: process.env.BOOTCAMP_ACCOUNT_LINK_DISCORD_REDIRECT_URL,
+    accountLinkHubUrl: process.env.BOOTCAMP_HUB_URL,
     sidecarCache: new BootcampReplayCache(path.join(DATA_DIR, "bootcamp", "replay-cache"), { publicRoot: PUBLIC_DIR }),
     archiveClient: createBootcampReplayArchiveClient({
       enabled: bootcampEnabled(process.env.BOOTCAMP_REPLAY_ARCHIVE_ENABLED),

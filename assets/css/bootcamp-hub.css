@@ -8,6 +8,10 @@
 .bc-panel h2, .bc-section h2 { margin: 0 0 .75rem; color: #f8fafc; font-size: 1.25rem; }
 .bc-panel h3, .bc-section h3 { color: #e6edf7; font-size: 1rem; margin: 1.5rem 0 .5rem; }
 .bc-panel label { display: block; color: #e6edf7; font-weight: 600; margin: 1rem 0 .4rem; }
+.bc-account-link { margin: 0 0 1.25rem; padding: 0 0 1.25rem; border-bottom: 1px solid #344154; }
+.bc-account-link p, .bc-account-link-status { color: #b6c4d7; line-height: 1.55; }
+.bc-account-link-status[data-state="success"] { color: #b6efc0; }
+.bc-account-link-status[data-state="error"] { color: #ffb4ae; }
 .bc-form-row { display: flex; gap: .5rem; }
 .bc-form-row input { min-width: 0; flex: 1; padding: .7rem; color: #f8fafc; background: #090f19; border: 1px solid #65758d; border-radius: 6px; }
 .bc-form-row input::placeholder { color: #a3b0c1; }

@@ -16,11 +16,17 @@ test("the Bootcamp hub opens a profile from the Steam-ID deep link", () => {
   assert.match(script, /api\/bootcamp\/seasons\/current/);
   assert.match(script, /leaderboards\/skill-points\?period=monthly/);
   assert.match(script, /leaderboards\/skill-points\?period=all_time/);
+  assert.match(script, /api\/bootcamp\/account-link\/status/);
+  assert.match(script, /status\.enabled\) accountLink\.hidden = false/);
+  assert.match(script, /steam_conflict/);
   const page = fs.readFileSync(path.resolve(__dirname, "../../bootcamp.html"), "utf8");
   assert.match(page, /id="weekly-challenge"/);
   assert.match(page, /id="bc-season"[^>]*hidden/);
   assert.match(page, /id="bc-monthly-points"/);
   assert.match(page, /id="bc-alltime-points"/);
+  assert.match(page, /id="bc-account-link"[^>]*hidden/);
+  assert.match(page, /id="bc-account-link-status"[^>]*role="status"[^>]*hidden/);
+  assert.match(page, /href="\/api\/bootcamp\/account-link\/start"/);
 });
 
 test("Bootcamp page and assets are disabled by default", async () => {

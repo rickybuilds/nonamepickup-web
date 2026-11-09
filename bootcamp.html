@@ -59,6 +59,11 @@
         </section>
         <section class="bc-panel" aria-labelledby="profile-heading">
           <h2 id="profile-heading">Player progress</h2>
+          <div id="bc-account-link" class="bc-account-link" hidden>
+            <p>Connect a Steam account and Discord account to sync your Bootcamp license and player profile.</p>
+            <a class="bc-secondary-link" href="/api/bootcamp/account-link/start">Link Steam and Discord</a>
+          </div>
+          <p id="bc-account-link-status" class="bc-account-link-status" role="status" aria-live="polite" hidden></p>
           <form id="bc-profile-form">
             <label for="bc-steam">Steam ID</label>
             <div class="bc-form-row"><input id="bc-steam" name="steam" placeholder="STEAM_0:1:12345" autocomplete="off" required><button type="submit">Find player</button></div>
