@@ -48,9 +48,15 @@
         const rows = select.value ? response.deaths.filter(d => d.steamId === select.value) : response.deaths;
         context.fillStyle = "rgba(255, 154, 65, .8)";
         for (const d of rows) {
-          const x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
+          let x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
           let y = Number(rotated[1]) ? canvas.height/2-(d.y-oy)*scale : canvas.height/2-(d.x-ox)*scale;
-          if (flipVertical) y = canvas.height - y;
+          if (flipVertical) {
+            y = canvas.height - y;
+            // Phantom’s recorded coordinates are rotated relative to its overview.
+            const dx = x - canvas.width / 2, dy = y - canvas.height / 2;
+            x = canvas.width / 2 - dy;
+            y = canvas.height / 2 + dx;
+          }
           if (x<0 || y<0 || x>=canvas.width || y>=canvas.height) continue;
           context.beginPath(); context.arc(x,y,2.2,0,Math.PI*2); context.fill();
         }
