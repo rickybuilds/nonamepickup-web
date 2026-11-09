@@ -1,0 +1,12 @@
+global
+{
+ZOOM	1.04
+ORIGIN	0 -40 -220
+ROTATED	0
+}
+
+layer
+{
+IMAGE	"overviews/monkey_lg.tga"
+HEIGHT	-745
+}

@@ -1,0 +1,12 @@
+global
+{
+ZOOM	0.87
+ORIGIN	-32 368 -3457
+ROTATED	1
+}
+
+layer
+{
+IMAGE	"overviews/esad_strafe2.tga"
+HEIGHT	-3457
+}

@@ -1,0 +1,14 @@
+// overview description file for concmap7map.bsp
+
+global 
+{
+	ZOOM	0.69
+	ORIGIN	640.00 48.00 -96.00
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/concmap7.bmp"
+	HEIGHT	-3969
+}

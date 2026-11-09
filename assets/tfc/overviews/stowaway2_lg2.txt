@@ -1,0 +1,14 @@
+// overview description file for stowaway2_lg2
+
+global 
+{
+	ZOOM	1.30
+	ORIGIN	992	-64	-280
+	ROTATED	1
+}
+
+layer 
+{
+	IMAGE	"overviews/stowaway2_lg2.tga"
+	HEIGHT	-1025
+}

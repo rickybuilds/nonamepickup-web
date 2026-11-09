@@ -1,0 +1,14 @@
+// overview description file for pushNN
+
+global 
+{
+	ZOOM	1.05
+	ORIGIN	136	0	296
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/pushNN.tga"
+	HEIGHT	-97
+}

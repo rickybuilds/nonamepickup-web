@@ -20,7 +20,8 @@
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
   <link rel="stylesheet" href="assets/css/map.css?v=20260618p">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
-  <script src="assets/js/maps.js?v=20260618i" defer></script>
+  <script src="assets/js/maps.js?v=20261109flagdeaths" defer></script>
+  <script src="assets/js/map-flag-deaths.js?v=20261109" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -169,14 +170,14 @@
       </section>
 
       <section class="map-v2-top-grid">
-        <article class="map-v2-panel score-panel">
-          <div class="map-v2-panel-header">
-            <h2>Score Trend</h2>
-            <span id="score-trend-label">Last 25 Matches</span>
-          </div>
-          <div class="chart-box">
-            <canvas id="map-v2-score-chart"></canvas>
-          </div>
+        <article class="map-v2-panel flag-death-panel">
+          <div class="map-v2-panel-header"><h2>Flag Carrier Deaths</h2><span id="flag-death-count">Loading…</span></div>
+          <p class="flag-death-description">Where players died carrying the flag in recorded pickup rounds.</p>
+          <label class="flag-death-filter" for="flag-death-player">Player
+            <select id="flag-death-player" disabled><option value="">All players</option></select>
+          </label>
+          <div class="flag-death-map"><canvas id="flag-death-canvas" role="img" aria-label="Flag carrier death locations on the map"></canvas></div>
+          <p id="flag-death-status" class="flag-death-status" role="status">Loading recorded deaths…</p>
         </article>
 
         <article class="map-v2-panel outcome-panel">

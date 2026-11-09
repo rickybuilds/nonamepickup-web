@@ -1,0 +1,14 @@
+// overview description file for nexus_b4
+
+global 
+{
+	ZOOM	1.0
+	ORIGIN	0.00 	0.00	128
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/nexus_b4.tga"
+	HEIGHT	-289
+}

@@ -49,6 +49,19 @@ function initializeSchema(db) {
   CREATE INDEX IF NOT EXISTS idx_steam_profiles_steam_id64
     ON steam_profiles(steam_id64);
 
+  CREATE TABLE IF NOT EXISTS pickup_flag_death_rounds (
+    match_id TEXT NOT NULL, round_number INTEGER NOT NULL, map TEXT NOT NULL,
+    artifact_sha256 TEXT NOT NULL, processed_at INTEGER NOT NULL,
+    PRIMARY KEY (match_id, round_number)
+  );
+  CREATE INDEX IF NOT EXISTS idx_pickup_flag_death_rounds_map ON pickup_flag_death_rounds(map);
+  CREATE TABLE IF NOT EXISTS pickup_flag_deaths (
+    match_id TEXT NOT NULL, round_number INTEGER NOT NULL, session_id INTEGER NOT NULL,
+    time_ms INTEGER NOT NULL, steam_id TEXT NOT NULL, player_name TEXT NOT NULL,
+    x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL,
+    PRIMARY KEY (match_id, round_number, session_id, time_ms)
+  );
+
   CREATE TABLE IF NOT EXISTS pickup_flag_carry_rounds (
     match_id TEXT NOT NULL,
     round_number INTEGER NOT NULL,

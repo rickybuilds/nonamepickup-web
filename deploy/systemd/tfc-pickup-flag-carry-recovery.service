@@ -10,6 +10,7 @@ Group=root
 WorkingDirectory=/var/www/tfcbot/api
 UMask=0077
 ExecStart=/usr/bin/env node scripts/backfillPickupFlagCarry.js
+ExecStart=/usr/bin/env node scripts/backfillPickupFlagDeaths.js
 TimeoutStartSec=0
 NoNewPrivileges=true
 PrivateTmp=true

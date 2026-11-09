@@ -1,0 +1,14 @@
+// overview description file for brutalist_b8
+
+global 
+{
+	ZOOM	1.04
+	ORIGIN	-1136	304	0
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/brutalist_b8.tga"
+	HEIGHT	-500
+}

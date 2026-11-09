@@ -4,7 +4,6 @@
 // =============================================
 
 (() => {
-  let scoreChart = null;
   let outcomeChart = null;
   let allPlayers = [];
   let allMatches = [];
@@ -231,64 +230,7 @@ function playerLink(p,cls=""){
   function renderCharts() {
     if (typeof Chart === "undefined") return;
 
-    const scoreCanvas = $("map-v2-score-chart");
     const outcomeCanvas = $("map-v2-outcome-chart");
-    const rows = [...allMatches]
-      .filter(m => m.score_blue != null && m.score_red != null)
-      .reverse();
-
-    if (scoreCanvas) {
-      if (scoreChart) scoreChart.destroy();
-      scoreChart = new Chart(scoreCanvas.getContext("2d"), {
-        type: "line",
-        data: {
-          labels: rows.map((_, i) => i + 1),
-          datasets: [
-            {
-              label: "Team 1 Score",
-              data: rows.map(m => Number(m.score_blue || 0)),
-              borderColor: "#3b82f6",
-              backgroundColor: "rgba(59,130,246,.12)",
-              borderWidth: 3,
-              tension: .35,
-              pointRadius: 3,
-              pointHoverRadius: 6
-            },
-            {
-              label: "Team 2 Score",
-              data: rows.map(m => Number(m.score_red || 0)),
-              borderColor: "#ef4444",
-              backgroundColor: "rgba(239,68,68,.12)",
-              borderWidth: 3,
-              tension: .35,
-              pointRadius: 3,
-              pointHoverRadius: 6
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              labels: { color: "#cbd5e1", boxWidth: 14, font: { weight: "bold" } }
-            }
-          },
-          scales: {
-            x: {
-              title: { display: true, text: "Match (Oldest → Newest)", color: "#94a3b8" },
-              grid: { color: "rgba(148,163,184,.08)" },
-              ticks: { color: "#94a3b8" }
-            },
-            y: {
-              beginAtZero: true,
-              grid: { color: "rgba(148,163,184,.08)" },
-              ticks: { color: "#94a3b8" }
-            }
-          }
-        }
-      });
-    }
 
     if (outcomeCanvas) {
       const s = calcStats();
@@ -349,7 +291,6 @@ function playerLink(p,cls=""){
   }
 
   function renderAll() {
-    setText("score-trend-label", "All Matches");
     setText("recent-label", `${allMatches.length} Loaded`);
     renderKpis();
     renderHeroIntel();

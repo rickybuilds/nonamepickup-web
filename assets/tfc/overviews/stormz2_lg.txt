@@ -1,0 +1,14 @@
+// overview description file for stormz2_lg
+
+global 
+{
+	ZOOM	1.29
+	ORIGIN	-256	-256	148
+	ROTATED	1
+}
+
+layer 
+{
+	IMAGE	"overviews/stormz2_lg.tga"
+	HEIGHT	-385
+}

@@ -1,0 +1,14 @@
+// overview description file for snowlake beta8
+
+global 
+{
+	ZOOM	1.14
+	ORIGIN	0	-860	48
+	ROTATED	1
+}
+
+layer 
+{
+	IMAGE	"overviews/snowlake_b8.tga"
+	HEIGHT	-737
+}

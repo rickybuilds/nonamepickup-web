@@ -1,0 +1,12 @@
+global
+{
+ZOOM	1.22
+ORIGIN	-16 0 -129
+ROTATED	0
+}
+
+layer
+{
+IMAGE	"overviews/haste_r.tga"
+HEIGHT	-129
+}

@@ -1,0 +1,12 @@
+global 
+{
+ZOOM	1.09
+ORIGIN	137.5 -691.5 -1290
+ROTATED	1
+}
+
+layer 
+{
+IMAGE	"overviews/bayeux.tga"
+HEIGHT	-1290
+}

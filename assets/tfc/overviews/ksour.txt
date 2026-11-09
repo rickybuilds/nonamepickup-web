@@ -1,0 +1,14 @@
+// overview description file for Ksour.bsp
+
+global 
+{
+	ZOOM	1.10
+	ORIGIN	-1056 	-704	448
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/ksour.tga"
+	HEIGHT	-1025
+}

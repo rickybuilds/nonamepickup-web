@@ -1,0 +1,14 @@
+// overview description file for ss_nyx.bsp
+
+global 
+{
+	ZOOM	1.27
+	ORIGIN	64 	192	-2004
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/ss_nyx.tga"
+	HEIGHT	-2004
+}

@@ -1,0 +1,14 @@
+// overview description file for raiden 9
+
+global 
+{
+	ZOOM	1.04
+	ORIGIN	-919 	5	59
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/raiden9.tga"
+	HEIGHT	-683
+}

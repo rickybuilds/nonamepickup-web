@@ -1,0 +1,14 @@
+// overview description file for spaceape_l
+
+global 
+{
+	ZOOM	1.10
+	ORIGIN	1045	-26	-283
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/spaceape_l.tga"
+	HEIGHT	-882.5
+}

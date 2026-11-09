@@ -1,0 +1,14 @@
+// overview description file for castra_b6		
+
+global 
+{
+	ZOOM	1.04
+	ORIGIN	0	0	-288
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/castra_b6.tga"
+	HEIGHT	-400
+}

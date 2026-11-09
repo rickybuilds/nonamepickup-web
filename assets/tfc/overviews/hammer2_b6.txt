@@ -1,0 +1,14 @@
+// overview description file for hammer2_b6			
+
+global 
+{
+	ZOOM	0.98
+	ORIGIN	0	0	-208
+	ROTATED	1
+}
+
+layer 
+{
+	IMAGE	"overviews/hammer2_b6.tga"
+	HEIGHT	-513
+}

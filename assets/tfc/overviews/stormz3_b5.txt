@@ -1,0 +1,14 @@
+// overview description file for stormz3_b5
+
+global 
+{
+	ZOOM	1.02
+	ORIGIN	0.00 	0.00	272
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/stormz3_b5.tga"
+	HEIGHT	-257
+}

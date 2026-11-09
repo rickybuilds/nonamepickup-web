@@ -1,0 +1,14 @@
+// overview description file for mulch_trench.bsp
+
+global 
+{
+	ZOOM	1.19
+	ORIGIN	64 	-752	  -768
+	ROTATED	1
+}
+
+layer 
+{
+	IMAGE	"E:\SIERRA\Half-Life\tfc\overviews\mulch_trench.tga"
+	HEIGHT	-768
+}

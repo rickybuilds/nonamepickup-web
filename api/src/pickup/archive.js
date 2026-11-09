@@ -11,6 +11,7 @@ const { TextDecoder } = require("node:util");
 const { parseCsv, parseCsvDocument, normalizeRoster } = require("./csv");
 const { validateManifest } = require("./manifest");
 const { pickupError } = require("./errors");
+const { locateFlagDeaths, flagObjectiveIds, confirmedDeathCandidates } = require("./flagDeaths");
 const { createFlagCarryAccumulator, measureCarryDistances, recordedFlagCarries, summarizeFlagCarries } = require("./flagCarry");
 
 const REQUIRED_FILES = Object.freeze([
@@ -1001,8 +1002,27 @@ async function validateArchive({
     : new Set();
   const recordedCarries = recordedFlagCarries(flagCarries, seenSessions);
   const flagCarryBySession = summarizeFlagCarries(recordedCarries);
+  let flagDeaths = manifest.schema_version >= 6 ? [] : null;
+  if (manifest.schema_version >= 6 && recordedCarries.length) {
+    try {
+      if (extractor.files.get(SCENE_EVENTS_FILE).size > 64 * 1024 * 1024 || eventsFile.size > 64 * 1024 * 1024) {
+        throw new Error("Flag death event streams exceed the in-memory indexing limit");
+      }
+      const sceneEvents = parseCsv(await fsp.readFile(extractor.files.get(SCENE_EVENTS_FILE).path, "utf8"), "scene_events");
+      const eventRows = parseCsv(await fsp.readFile(eventsFile.path, "utf8"), "events");
+      const age = Math.min(2000, Math.ceil(manifest.sample_interval_seconds * 2000));
+      const models = new Map([...renderModels].map(([id, model]) => [id, model.path]));
+      const flagIds = flagObjectiveIds(objectiveDefs.rows, models);
+      const deaths = confirmedDeathCandidates(sceneEvents, eventRows, objectiveDefs.rows, flagIds, age);
+      flagDeaths = await locateFlagDeaths(fs.createReadStream(extractor.files.get("players.csv").path), deaths,
+        recordedCarries.filter(carry => flagIds.has(carry.objectiveId)), age);
+    } catch (error) {
+      console.error("[pickup replay] flag death extraction failed", error);
+      flagDeaths = null;
+    }
+  }
   return { manifest, roster, complete, flagCarries: recordedCarries,
-    flagCarryBySession, extractedBytes: extractor.totalBytes };
+    flagCarryBySession, flagDeaths, extractedBytes: extractor.totalBytes };
 }
 
 module.exports = {

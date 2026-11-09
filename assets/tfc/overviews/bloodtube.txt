@@ -1,0 +1,14 @@
+// overview description file for bloodtube.bsp
+
+global 
+{
+	ZOOM	1.50
+	ORIGIN	-256	-1224	-581
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/bloodtube.tga"
+	HEIGHT	-581
+}

@@ -1,0 +1,14 @@
+// overview description file for cranked
+
+global 
+{
+	ZOOM	1.08
+	ORIGIN	-96.21 	-64.04	-214
+	ROTATED	1
+}
+
+layer 
+{
+	IMAGE	"overviews/cranked.tga"
+	HEIGHT	-832
+}

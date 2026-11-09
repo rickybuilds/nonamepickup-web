@@ -1,0 +1,14 @@
+// overview description file for proton_l
+
+global 
+{
+	ZOOM	1.08
+	ORIGIN	-183 	302	49
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/proton_l.tga"
+	HEIGHT	-775
+}

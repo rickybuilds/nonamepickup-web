@@ -477,3 +477,21 @@ Archive members are read with a fixed `tar` argument array. Match IDs and round
 numbers are validated again at the viewer boundary, and a requested filename
 cannot supply a path. The viewer requires GNU tar with zstd support on the API
 host, which is already required to inspect `.tar.zst` replay packages.
+
+### Flag-carrier death map
+
+The Map Intel page displays sampled locations for deaths recorded while a player
+was carrying a flag. Only complete verified replay rounds with schema 6 or newer
+are indexed. A death must match a recorded flag carrier interval and a recent
+living player position; ambiguous releases and captures are excluded. Positions
+are estimates at the last living sample, and missing or older telemetry is not
+counted as zero. Overview BMP and TXT files under `assets/tfc/overviews` supply
+the image and GoldSrc projection settings.
+
+New replay uploads are indexed during ingestion. To process existing archives,
+run `node api/scripts/backfillPickupFlagDeaths.js` on the website host with the
+same pickup storage, MariaDB, and `ELO_DB` configuration as the API. The script
+skips previously indexed archive hashes. The pickup flag carry recovery service
+also runs this backfill; reinstall the updated service unit and reload systemd if
+the timer is already installed. The data is unavailable until the API has been
+restarted with the new schema and the historical backfill has run.

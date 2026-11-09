@@ -1,0 +1,14 @@
+// overview description file for toasted b16
+
+global 
+{
+	ZOOM	1.07
+	ORIGIN	-136	0	80
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/toasted_b16.tga"
+	HEIGHT	-481
+}

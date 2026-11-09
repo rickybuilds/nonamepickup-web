@@ -1,0 +1,14 @@
+// overview description file for turbowave b3
+
+global 
+{
+	ZOOM	1.03
+	ORIGIN	0	496	-192
+	ROTATED	1
+}
+
+layer 
+{
+	IMAGE	"overviews/turbowave_b3.tga"
+	HEIGHT	-897
+}

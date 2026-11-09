@@ -1,0 +1,12 @@
+global
+{
+ZOOM	0.79
+ORIGIN	0 -32 -3809
+ROTATED	0
+}
+
+layer
+{
+IMAGE	"overviews/concmap_r_r.tga"
+HEIGHT	-3809
+}

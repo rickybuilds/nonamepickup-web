@@ -672,3 +672,10 @@
     drop-shadow(0 0 6px rgba(103,232,249,.95))
     drop-shadow(0 0 14px rgba(103,232,249,.75))!important;
 }
+.flag-death-description,.flag-death-status{color:#b9c9dc;font-size:.88rem;line-height:1.5;margin:8px 0 12px}
+.flag-death-filter{display:flex;align-items:center;gap:10px;color:#dbe8f5;font-size:.85rem;font-weight:700;margin-bottom:12px}
+.flag-death-filter select{max-width:100%;min-width:160px;color:#e5edf7;background:#101b2c;border:1px solid #53677f;border-radius:6px;padding:7px 10px}
+.flag-death-filter select:focus-visible{outline:2px solid #f59e42;outline-offset:2px}
+.flag-death-map{background:#10151c;overflow:hidden;border-radius:6px}
+.flag-death-map canvas{display:block;width:100%;height:auto}
+.flag-death-status{margin-bottom:0}

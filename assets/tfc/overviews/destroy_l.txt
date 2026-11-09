@@ -1,0 +1,12 @@
+global 
+{
+ZOOM	1.04
+ORIGIN	-448 0 -257
+ROTATED	0
+}
+
+layer 
+{
+IMAGE	"overviews/destroy_l.tga"
+HEIGHT	-257
+}

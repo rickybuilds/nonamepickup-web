@@ -1,0 +1,12 @@
+global
+{
+ZOOM	1.47
+ORIGIN	155.31 1022.75 -769
+ROTATED	1
+}
+
+layer
+{
+IMAGE	"overviews/fry_complex.tga"
+HEIGHT	-769
+}

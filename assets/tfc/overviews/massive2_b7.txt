@@ -1,0 +1,13 @@
+// overview description file for massive2 b7
+global
+{
+ZOOM	.96
+ORIGIN	0 8 112
+ROTATED	0
+}
+
+layer
+{
+IMAGE	"overviews/massive2_b7.tga"
+HEIGHT	-449
+}

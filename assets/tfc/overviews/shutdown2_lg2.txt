@@ -1,0 +1,14 @@
+// overview description file for shutdown 2_lg2
+
+global 
+{
+	ZOOM	1.0
+	ORIGIN	-8	144	179.17
+	ROTATED	0
+}
+
+layer 
+{
+	IMAGE	"overviews/shutdown2_lg2.tga"
+	HEIGHT	-513
+}

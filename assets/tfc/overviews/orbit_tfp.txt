@@ -1,0 +1,14 @@
+// overview description file for orbit_tfp
+
+global 
+{
+	ZOOM	1.03
+	ORIGIN	80 	1152	-1392
+	ROTATED	1
+}
+
+layer 
+{
+	IMAGE	"overviews/orbit_tfp.tga"
+	HEIGHT	-3905
+}

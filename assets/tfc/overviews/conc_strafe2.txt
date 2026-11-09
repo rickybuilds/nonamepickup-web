@@ -1,0 +1,12 @@
+global 
+{
+ZOOM	0.78
+ORIGIN	-16 -48 -3841
+ROTATED	1
+}
+
+layer 
+{
+IMAGE	"overviews/conc_strafe2.tga"
+HEIGHT	-3841
+}

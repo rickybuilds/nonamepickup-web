@@ -22,6 +22,7 @@ const { getPickupPool, closePickupPool } = require("./db/pickupMariadb");
 const { PickupRepository } = require("./pickup/repository");
 const { PickupStorage } = require("./pickup/storage");
 const { PickupIngestion } = require("./pickup/ingestion");
+const { createFlagDeathStore } = require("./pickup/flagDeathStore");
 const { createFlagCarryStore } = require("./pickup/flagCarryStore");
 const { PickupReplayViewer } = require("./pickup/viewer");
 const { PickupLiveService } = require("./pickup/live");
@@ -45,7 +46,8 @@ const pickupIngestion = new PickupIngestion({
   },
   storage: new PickupStorage(config.PICKUP_STORAGE_PATH, { publicRoot: config.PUBLIC_DIR }),
   repository: new PickupRepository(getPickupPool(config)),
-  flagCarryStore: createFlagCarryStore(db)
+  flagCarryStore: createFlagCarryStore(db),
+  flagDeathStore: createFlagDeathStore(db)
 });
 const pickupReplayViewer = new PickupReplayViewer({
   pool: getPickupPool(config),

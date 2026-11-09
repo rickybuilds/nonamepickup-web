@@ -118,11 +118,12 @@ async function streamRequestToFile(request, destination, metadata, maxUploadByte
 }
 
 class PickupIngestion {
-  constructor({ config, storage, repository, flagCarryStore, archiveValidator = validateArchive, openArchive, logger = console }) {
+  constructor({ config, storage, repository, flagCarryStore, flagDeathStore, archiveValidator = validateArchive, openArchive, logger = console }) {
     this.config = config;
     this.storage = storage;
     this.repository = repository;
     this.flagCarryStore = flagCarryStore;
+    this.flagDeathStore = flagDeathStore;
     this.archiveValidator = archiveValidator;
     this.openArchive = openArchive;
     this.logger = logger;
@@ -193,6 +194,15 @@ class PickupIngestion {
           });
         } catch (error) {
           this.logger.error?.("[pickup replay] flag_carry_store_failed", error);
+        }
+      }
+      if (validated.complete && this.flagDeathStore && Array.isArray(validated.flagDeaths)) {
+        try {
+          this.flagDeathStore.saveRound({ matchId: metadata.matchId, round: metadata.round,
+            map: validated.manifest.map, sha256: received.sha256, roster: validated.roster,
+            deaths: validated.flagDeaths });
+        } catch (error) {
+          this.logger.error?.("[pickup replay] flag_death_store_failed", error);
         }
       }
       return {
