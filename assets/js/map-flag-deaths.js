@@ -10,11 +10,16 @@
   const mapContent = document.getElementById("flag-map-content");
   const dots = document.getElementById("flag-map-dots");
   const points = document.getElementById("flag-map-points");
+  const highlight = document.getElementById("flag-map-highlight");
   const zoomIn = document.getElementById("flag-map-zoom-in");
   const zoomOut = document.getElementById("flag-map-zoom-out");
   const resetView = document.getElementById("flag-map-reset");
   const zoomLevel = document.getElementById("flag-map-zoom-level");
   const name = new URLSearchParams(location.search).get("map") || "";
+  function hideTooltip() {
+    tooltip.hidden = true;
+    highlight.setAttribute("visibility", "hidden");
+  }
   if (!canvas || !/^[a-z0-9_-]{1,64}$/i.test(name)) return;
   const context = canvas.getContext("2d");
   async function init() {
@@ -37,7 +42,7 @@
       dots.setAttribute("viewBox", "0 0 " + canvas.width + " " + canvas.height);
       let viewScale = 1;
       function setZoom(next, clientX, clientY) {
-        tooltip.hidden = true;
+        hideTooltip();
         const value = Math.min(8, Math.max(1, next));
         const rect = viewport.getBoundingClientRect();
         const x = clientX == null ? viewport.clientWidth / 2 : clientX - rect.left;
@@ -63,7 +68,7 @@
       let drag = null;
       viewport.addEventListener("pointerdown", event => {
         if (event.pointerType !== "mouse" || event.button !== 0 || viewScale <= 1) return;
-        tooltip.hidden = true;
+        hideTooltip();
         drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
         viewport.setPointerCapture(event.pointerId);
         viewport.classList.add("is-dragging");
@@ -138,9 +143,9 @@
         return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
       }
       viewport.addEventListener("pointermove", event => {
-        if (event.pointerType !== "mouse" || drag) { tooltip.hidden = true; return; }
+        if (event.pointerType !== "mouse" || drag) { hideTooltip(); return; }
         const rect = mapContent.getBoundingClientRect();
-        if (!rect.width || !rect.height) { tooltip.hidden = true; return; }
+        if (!rect.width || !rect.height) { hideTooltip(); return; }
         const x = (event.clientX - rect.left) * canvas.width / rect.width;
         const y = (event.clientY - rect.top) * canvas.height / rect.height;
         const radius = 9 * canvas.width / rect.width;
@@ -153,7 +158,10 @@
             if (dist <= closest) { nearest = point; closest = dist; }
           }
         }
-        if (!nearest) { tooltip.hidden = true; return; }
+        if (!nearest) { hideTooltip(); return; }
+        highlight.setAttribute("cx", nearest.x);
+        highlight.setAttribute("cy", nearest.y);
+        highlight.setAttribute("visibility", "visible");
         const death = nearest.death, date = matchDate(death.matchCreatedAt);
         tooltip.textContent = (death.playerName || "Unknown player") + "\nRound " + death.round + " · replay " + replayTime(death.timeMs) + "\n" + (date ? date + " · " : "") + "Game " + death.matchId;
         tooltip.hidden = false;
@@ -161,8 +169,8 @@
         tooltip.style.left = Math.max(4, Math.min(event.clientX + 14, window.innerWidth - box.width - 4)) + "px";
         tooltip.style.top = Math.max(4, Math.min(event.clientY + 14, window.innerHeight - box.height - 4)) + "px";
       });
-      viewport.addEventListener("pointerleave", () => { tooltip.hidden = true; });
-      viewport.addEventListener("scroll", () => { tooltip.hidden = true; }, { passive: true });
+      viewport.addEventListener("pointerleave", () => { hideTooltip(); });
+      viewport.addEventListener("scroll", () => { hideTooltip(); }, { passive: true });
       // Use the overview zoom and axes; Phantom’s displayed bitmap is flipped
       // above, but its world coordinates already project into that orientation.
       const scale = canvas.width * Number(zoom[1]) / 8192;
@@ -173,7 +181,7 @@
           (!matchSelect.value || d.matchId === matchSelect.value));
         let paths = "";
         buckets = new Map();
-        tooltip.hidden = true;
+        hideTooltip();
         for (const d of rows) {
           const x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
           const y = Number(rotated[1]) ? canvas.height/2-(d.y-oy)*scale : canvas.height/2-(d.x-ox)*scale;
