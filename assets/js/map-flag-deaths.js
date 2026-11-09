@@ -5,6 +5,9 @@
   const count = document.getElementById("flag-death-count");
   const select = document.getElementById("flag-death-player");
   const viewport = document.getElementById("flag-map-viewport");
+  const mapContent = document.getElementById("flag-map-content");
+  const dots = document.getElementById("flag-map-dots");
+  const points = document.getElementById("flag-map-points");
   const zoomIn = document.getElementById("flag-map-zoom-in");
   const zoomOut = document.getElementById("flag-map-zoom-out");
   const resetView = document.getElementById("flag-map-reset");
@@ -29,18 +32,19 @@
       if (!zoom || !origin || !rotated || !(Number(zoom[1]) > 0)) throw Error("Invalid overview metadata");
       canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
       viewport.style.aspectRatio = canvas.width + " / " + canvas.height;
+      dots.setAttribute("viewBox", "0 0 " + canvas.width + " " + canvas.height);
       let viewScale = 1;
       function setZoom(next, clientX, clientY) {
         const value = Math.min(8, Math.max(1, next));
         const rect = viewport.getBoundingClientRect();
         const x = clientX == null ? viewport.clientWidth / 2 : clientX - rect.left;
         const y = clientY == null ? viewport.clientHeight / 2 : clientY - rect.top;
-        const fractionX = (viewport.scrollLeft + x) / canvas.clientWidth;
-        const fractionY = (viewport.scrollTop + y) / canvas.clientHeight;
+        const fractionX = (viewport.scrollLeft + x) / mapContent.clientWidth;
+        const fractionY = (viewport.scrollTop + y) / mapContent.clientHeight;
         viewScale = value;
-        canvas.style.width = (value * 100) + "%";
-        viewport.scrollLeft = fractionX * canvas.clientWidth - x;
-        viewport.scrollTop = fractionY * canvas.clientHeight - y;
+        mapContent.style.width = (value * 100) + "%";
+        viewport.scrollLeft = fractionX * mapContent.clientWidth - x;
+        viewport.scrollTop = fractionY * mapContent.clientHeight - y;
         zoomLevel.textContent = Math.round(value * 100) + "%";
         zoomIn.disabled = value >= 8;
         zoomOut.disabled = value <= 1;
@@ -99,14 +103,13 @@
         const option = document.createElement("option"); option.value=id; option.textContent=player; select.append(option);
       }
       select.disabled = !players.size;
-      // Phantom’s bitmap was rendered at a different scale than its overview TXT.
-      // Its two recorded flag bases align with their image markers at 768 / 8192.
-      const scale = flipVertical ? canvas.height / 8192 : canvas.width * Number(zoom[1]) / 8192;
+      // Phantom is calibrated against the recorded flag room and the 3D map outline.
+      const scale = flipVertical ? canvas.width * 0.15625 / 1024 : canvas.width * Number(zoom[1]) / 8192;
       const ox = Number(origin[1]), oy = Number(origin[2]);
       function draw() {
         context.drawImage(background,0,0);
         const rows = select.value ? response.deaths.filter(d => d.steamId === select.value) : response.deaths;
-        context.fillStyle = "rgba(255, 154, 65, .8)";
+        let paths = "";
         for (const d of rows) {
           let x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
           let y = Number(rotated[1]) ? canvas.height/2-(d.y-oy)*scale : canvas.height/2-(d.x-ox)*scale;
@@ -118,8 +121,10 @@
             y = canvas.height / 2 - dx;
           }
           if (x<0 || y<0 || x>=canvas.width || y>=canvas.height) continue;
-          context.beginPath(); context.arc(x,y,2.2,0,Math.PI*2); context.fill();
+          const radius = 2.2;
+          paths += `M${x-radius} ${y}a${radius} ${radius} 0 1 0 ${radius*2} 0a${radius} ${radius} 0 1 0 ${-radius*2} 0`;
         }
+        points.setAttribute("d", paths);
         count.textContent = response.rounds ? `${rows.length.toLocaleString()} deaths` : "Not indexed";
         status.textContent = response.rounds ? `From ${response.rounds.toLocaleString()} indexed replay rounds. Positions are sampled.${response.truncated ? " Showing the first 100,000 deaths." : ""}` : "No replay rounds have been indexed for this map yet.";
       }

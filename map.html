@@ -18,10 +18,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/map.css?v=20261109zoom1">
+  <link rel="stylesheet" href="assets/css/map.css?v=20261109zoom2">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/maps.js?v=20261109flagdeaths" defer></script>
-  <script src="assets/js/map-flag-deaths.js?v=20261109zoom1" defer></script>
+  <script src="assets/js/map-flag-deaths.js?v=20261109zoom2" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -184,7 +184,7 @@
             <button id="flag-map-reset" type="button" disabled>Reset view</button>
             <span class="flag-map-hint">Scroll to zoom · drag to move</span>
           </div>
-          <div id="flag-map-viewport" class="flag-death-map" tabindex="0" aria-label="Map viewport. Use arrow keys to move when zoomed in."><canvas id="flag-death-canvas" role="img" aria-label="Flag carrier death locations on the map"></canvas></div>
+          <div id="flag-map-viewport" class="flag-death-map" tabindex="0" aria-label="Map viewport. Use arrow keys to move when zoomed in."><div id="flag-map-content" class="flag-map-content"><canvas id="flag-death-canvas" role="img" aria-label="Flag carrier death locations on the map"></canvas><svg id="flag-map-dots" class="flag-map-dots" aria-hidden="true"><path id="flag-map-points"></path></svg></div></div>
         </article>
 
         <article class="map-v2-panel outcome-panel">
