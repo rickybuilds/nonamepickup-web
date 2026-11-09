@@ -12,15 +12,13 @@
   <meta name="twitter:card" content="summary">
   <title>NoName TFC Pickups | Map Intel</title>
 
-  <!-- TODO(production): Replace the Tailwind CDN runtime with a locally built stylesheet to reduce supply-chain exposure. -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/map.css?v=20261109zoom2">
+  <link rel="stylesheet" href="assets/css/map.css?v=20261109layout1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
-  <script src="assets/js/maps.js?v=20261109flagdeaths" defer></script>
+  <script src="assets/js/maps.js?v=20261109layout1" defer></script>
   <script src="assets/js/map-flag-deaths.js?v=20261109zoom3" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -185,27 +183,6 @@
             <span class="flag-map-hint">Scroll to zoom · drag to move</span>
           </div>
           <div id="flag-map-viewport" class="flag-death-map" tabindex="0" aria-label="Map viewport. Use arrow keys to move when zoomed in."><div id="flag-map-content" class="flag-map-content"><canvas id="flag-death-canvas" role="img" aria-label="Flag carrier death locations on the map"></canvas><svg id="flag-map-dots" class="flag-map-dots" aria-hidden="true"><path id="flag-map-points"></path></svg></div></div>
-        </article>
-
-        <article class="map-v2-panel outcome-panel">
-          <div class="map-v2-panel-header">
-            <h2>Outcome Breakdown</h2>
-            <span>Completed Matches</span>
-          </div>
-          <div class="outcome-layout">
-            <div class="donut-box">
-              <canvas id="map-v2-outcome-chart"></canvas>
-              <div class="donut-center">
-                <strong id="donut-total">—</strong>
-                <span>Total</span>
-              </div>
-            </div>
-            <div class="outcome-legend">
-              <div><b class="legend-blue"></b><span>Team 1 Wins</span><strong id="legend-blue">—</strong></div>
-              <div><b class="legend-red"></b><span>Team 2 Wins</span><strong id="legend-red">—</strong></div>
-              <div><b class="legend-tie"></b><span>Ties</span><strong id="legend-tie">—</strong></div>
-            </div>
-          </div>
         </article>
 
         <article class="map-v2-panel players-panel">

@@ -320,7 +320,7 @@
 
 .map-v2-top-grid {
   display: grid;
-  grid-template-columns: 1.45fr .78fr .9fr;
+  grid-template-columns: 1.45fr .9fr;
   gap: 16px;
   margin-bottom: 16px;
 }

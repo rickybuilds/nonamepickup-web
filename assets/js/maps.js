@@ -4,7 +4,6 @@
 // =============================================
 
 (() => {
-  let outcomeChart = null;
   let allPlayers = [];
   let allMatches = [];
   let currentSort = "games";
@@ -85,10 +84,6 @@ function playerLink(p,cls=""){
     setText("kpi-margin", s.total ? s.avgMargin.toFixed(1) : "—");
     setText("kpi-margin-sub", s.avgMargin < 15 ? "Close Game" : s.avgMargin < 25 ? "Competitive" : "Blowout Risk");
 
-    setText("donut-total", s.total.toLocaleString());
-    setText("legend-blue", `${pct(s.blueWins, s.total)}  ${s.blueWins}`);
-    setText("legend-red", `${pct(s.redWins, s.total)}  ${s.redWins}`);
-    setText("legend-tie", `${pct(s.ties, s.total)}  ${s.ties}`);
 
     const tagPopularity = $("tag-popularity");
     const tagBalance = $("tag-balance");
@@ -227,37 +222,6 @@ function playerLink(p,cls=""){
     `).join("") || `<tr><td colspan="2" class="empty-row">No winning duos yet</td></tr>`;
   }
 
-  function renderCharts() {
-    if (typeof Chart === "undefined") return;
-
-    const outcomeCanvas = $("map-v2-outcome-chart");
-
-    if (outcomeCanvas) {
-      const s = calcStats();
-      if (outcomeChart) outcomeChart.destroy();
-      outcomeChart = new Chart(outcomeCanvas.getContext("2d"), {
-        type: "doughnut",
-        data: {
-          labels: ["Team 1 Wins", "Team 2 Wins", "Ties"],
-          datasets: [{
-            data: [s.blueWins, s.redWins, s.ties],
-            backgroundColor: ["#2563eb", "#dc2626", "#94a3b8"],
-            borderColor: "rgba(8,13,26,.92)",
-            borderWidth: 4,
-            hoverOffset: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: "64%",
-          plugins: { legend: { display: false } }
-        }
-      });
-    }
-  }
-
-
   function formatShortDate(ts) {
     if (!ts) return "—";
     return new Date(Number(ts) * 1000).toLocaleDateString("en-US", {
@@ -297,7 +261,6 @@ function playerLink(p,cls=""){
     renderPlayers();
     renderMatches();
     renderRivalries();
-    renderCharts();
   }
 
   function setupTabs() {
