@@ -378,6 +378,16 @@ storage environment configured:
 node scripts/measurePickupDbStorage.js YDPL6Q
 ```
 
+If the application account lacks scratch-table privileges and local MariaDB
+uses socket-authenticated root, run as the server's root user instead:
+
+```bash
+PICKUP_SIZING_SOCKET="$(mariadb -Nse 'SELECT @@socket')" node scripts/measurePickupDbStorage.js YDPL6Q
+```
+
+This uses a separate, local socket connection for the sizing run; it does not
+change the application account's privileges or expose a database password.
+
 Replace `YDPL6Q` with the desired match ID. The script creates a uniquely named
 scratch table in the configured pickup database, copies the verified complete
 round archives into bounded chunks, checks the original hashes and verifies the

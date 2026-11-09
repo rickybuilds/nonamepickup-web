@@ -5,6 +5,8 @@
 // uniquely named scratch table and verifies them; it never changes the files.
 const crypto = require("node:crypto");
 const fs = require("node:fs");
+const path = require("node:path");
+const mysql = require("mysql2/promise");
 const config = require("../src/config");
 const { getPickupPool, closePickupPool } = require("../src/db/pickupMariadb");
 const { PickupStorage } = require("../src/pickup/storage");
@@ -20,11 +22,17 @@ async function main() {
     throw new Error("Usage: node scripts/measurePickupDbStorage.js MATCH_ID");
   }
   if (!config.PICKUP_STORAGE_PATH) throw new Error("PICKUP_STORAGE_PATH is not configured");
-  if (!["127.0.0.1", "::1", "localhost"].includes(String(config.PICKUP_DB_HOST).toLowerCase())) {
+  const socketPath = String(process.env.PICKUP_SIZING_SOCKET || "");
+  if (socketPath && (!path.isAbsolute(socketPath) || !fs.statSync(socketPath).isSocket())) {
+    throw new Error("PICKUP_SIZING_SOCKET must be an absolute path to a local MariaDB socket");
+  }
+  if (!socketPath && !["127.0.0.1", "::1", "localhost"].includes(String(config.PICKUP_DB_HOST).toLowerCase())) {
     throw new Error("The sizing probe requires local MariaDB so it can check the correct filesystem's free space");
   }
 
-  const pool = getPickupPool(config);
+  const pool = socketPath
+    ? mysql.createPool({ socketPath, user: "root", database: config.PICKUP_DB_NAME, connectionLimit: 1 })
+    : getPickupPool(config);
   let connection;
   let tableCreated = false;
   const table = "replay_sizing_" + crypto.randomBytes(8).toString("hex");
@@ -146,7 +154,8 @@ async function main() {
       catch (error) { console.error(`Could not remove sizing table ${table}; ask an administrator to remove that table.`, error.message); }
     }
     if (connection) connection.release();
-    await closePickupPool();
+    if (socketPath) await pool.end();
+    else await closePickupPool();
   }
 }
 
