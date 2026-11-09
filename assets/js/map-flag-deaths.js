@@ -111,6 +111,12 @@
         const date = new Date(Number(epoch) * 1000);
         return epoch && Number.isFinite(date.getTime()) ? date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
       };
+      const matchDateTime = epoch => {
+        const date = new Date(Number(epoch) * 1000);
+        return epoch && Number.isFinite(date.getTime())
+          ? date.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })
+          : "";
+      };
       for (const match of response.matches || []) {
         const option = document.createElement("option");
         option.value = match.matchId;
@@ -162,8 +168,8 @@
         highlight.setAttribute("cx", nearest.x);
         highlight.setAttribute("cy", nearest.y);
         highlight.setAttribute("visibility", "visible");
-        const death = nearest.death, date = matchDate(death.matchCreatedAt);
-        tooltip.textContent = (death.playerName || "Unknown player") + "\nRound " + death.round + " · replay " + replayTime(death.timeMs) + "\n" + (date ? date + " · " : "") + "Game " + death.matchId;
+        const death = nearest.death, dateTime = matchDateTime(death.matchCreatedAt);
+        tooltip.textContent = (death.playerName || "Unknown player") + "\nRound " + death.round + " · replay " + replayTime(death.timeMs) + "\n" + (dateTime ? "Game: " + dateTime + "\n" : "Game time unavailable\n") + "Match " + death.matchId;
         tooltip.hidden = false;
         const box = tooltip.getBoundingClientRect();
         tooltip.style.left = Math.max(4, Math.min(event.clientX + 14, window.innerWidth - box.width - 4)) + "px";
