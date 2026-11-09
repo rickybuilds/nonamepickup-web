@@ -4,6 +4,8 @@
   const status = document.getElementById("flag-death-status");
   const count = document.getElementById("flag-death-count");
   const select = document.getElementById("flag-death-player");
+  const matchSelect = document.getElementById("flag-death-match");
+  const tooltip = document.getElementById("flag-map-tooltip");
   const viewport = document.getElementById("flag-map-viewport");
   const mapContent = document.getElementById("flag-map-content");
   const dots = document.getElementById("flag-map-dots");
@@ -35,6 +37,7 @@
       dots.setAttribute("viewBox", "0 0 " + canvas.width + " " + canvas.height);
       let viewScale = 1;
       function setZoom(next, clientX, clientY) {
+        tooltip.hidden = true;
         const value = Math.min(8, Math.max(1, next));
         const rect = viewport.getBoundingClientRect();
         const x = clientX == null ? viewport.clientWidth / 2 : clientX - rect.left;
@@ -60,6 +63,7 @@
       let drag = null;
       viewport.addEventListener("pointerdown", event => {
         if (event.pointerType !== "mouse" || event.button !== 0 || viewScale <= 1) return;
+        tooltip.hidden = true;
         drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
         viewport.setPointerCapture(event.pointerId);
         viewport.classList.add("is-dragging");
@@ -98,27 +102,85 @@
       }
       bg.putImageData(pixels,0,0);
       const playerKey = death => death.playerId ? "discord:" + death.playerId : death.steamId ? "steam:" + death.steamId : "";
-      const players = new Map();
-      for (const death of response.deaths) {
-        const key = playerKey(death);
-        if (key) players.set(key, death.playerName);
+      const matchDate = epoch => {
+        const date = new Date(Number(epoch) * 1000);
+        return epoch && Number.isFinite(date.getTime()) ? date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+      };
+      for (const match of response.matches || []) {
+        const option = document.createElement("option");
+        option.value = match.matchId;
+        const date = matchDate(match.createdAt);
+        option.textContent = date ? date + " · " + match.matchId : match.matchId;
+        matchSelect.append(option);
       }
-      for (const [id, player] of [...players].sort((a,b) => a[1].localeCompare(b[1]))) {
-        const option = document.createElement("option"); option.value=id; option.textContent=player; select.append(option);
+      matchSelect.disabled = !(response.matches || []).length;
+      function updatePlayers() {
+        const previous = select.value;
+        const players = new Map();
+        for (const death of response.deaths) {
+          if (matchSelect.value && death.matchId !== matchSelect.value) continue;
+          const key = playerKey(death);
+          if (key) players.set(key, death.playerName);
+        }
+        select.replaceChildren(new Option("All players", ""));
+        for (const [id, player] of [...players].sort((a,b) => a[1].localeCompare(b[1]))) {
+          const option = document.createElement("option"); option.value=id; option.textContent=player; select.append(option);
+        }
+        select.value = players.has(previous) ? previous : "";
+        select.disabled = !players.size;
       }
-      select.disabled = !players.size;
+      updatePlayers();
+      let buckets = new Map();
+      const bucketSize = 16;
+      function bucketKey(x, y) { return Math.floor(x / bucketSize) + ":" + Math.floor(y / bucketSize); }
+      function replayTime(ms) {
+        const seconds = Math.max(0, Math.floor(Number(ms) / 1000));
+        return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+      }
+      viewport.addEventListener("pointermove", event => {
+        if (event.pointerType !== "mouse" || drag) { tooltip.hidden = true; return; }
+        const rect = mapContent.getBoundingClientRect();
+        if (!rect.width || !rect.height) { tooltip.hidden = true; return; }
+        const x = (event.clientX - rect.left) * canvas.width / rect.width;
+        const y = (event.clientY - rect.top) * canvas.height / rect.height;
+        const radius = 9 * canvas.width / rect.width;
+        let nearest = null, closest = radius * radius;
+        const minX = Math.floor((x - radius) / bucketSize), maxX = Math.floor((x + radius) / bucketSize);
+        const minY = Math.floor((y - radius) / bucketSize), maxY = Math.floor((y + radius) / bucketSize);
+        for (let bx = minX; bx <= maxX; bx++) for (let by = minY; by <= maxY; by++) {
+          for (const point of buckets.get(bx + ":" + by) || []) {
+            const dist = (point.x - x) ** 2 + (point.y - y) ** 2;
+            if (dist <= closest) { nearest = point; closest = dist; }
+          }
+        }
+        if (!nearest) { tooltip.hidden = true; return; }
+        const death = nearest.death, date = matchDate(death.matchCreatedAt);
+        tooltip.textContent = (death.playerName || "Unknown player") + "\nRound " + death.round + " · replay " + replayTime(death.timeMs) + "\n" + (date ? date + " · " : "") + "Game " + death.matchId;
+        tooltip.hidden = false;
+        const box = tooltip.getBoundingClientRect();
+        tooltip.style.left = Math.max(4, Math.min(event.clientX + 14, window.innerWidth - box.width - 4)) + "px";
+        tooltip.style.top = Math.max(4, Math.min(event.clientY + 14, window.innerHeight - box.height - 4)) + "px";
+      });
+      viewport.addEventListener("pointerleave", () => { tooltip.hidden = true; });
+      viewport.addEventListener("scroll", () => { tooltip.hidden = true; }, { passive: true });
       // Use the overview zoom and axes; Phantom’s displayed bitmap is flipped
       // above, but its world coordinates already project into that orientation.
       const scale = canvas.width * Number(zoom[1]) / 8192;
       const ox = Number(origin[1]), oy = Number(origin[2]);
       function draw() {
         context.drawImage(background,0,0);
-        const rows = select.value ? response.deaths.filter(d => playerKey(d) === select.value) : response.deaths;
+        const rows = response.deaths.filter(d => (!select.value || playerKey(d) === select.value) &&
+          (!matchSelect.value || d.matchId === matchSelect.value));
         let paths = "";
+        buckets = new Map();
+        tooltip.hidden = true;
         for (const d of rows) {
           const x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
           const y = Number(rotated[1]) ? canvas.height/2-(d.y-oy)*scale : canvas.height/2-(d.x-ox)*scale;
           if (x<0 || y<0 || x>=canvas.width || y>=canvas.height) continue;
+          const key = bucketKey(x, y);
+          if (!buckets.has(key)) buckets.set(key, []);
+          buckets.get(key).push({ x, y, death: d });
           const radius = 2.2;
           paths += `M${x-radius} ${y}a${radius} ${radius} 0 1 0 ${radius*2} 0a${radius} ${radius} 0 1 0 ${-radius*2} 0`;
         }
@@ -126,7 +188,9 @@
         count.textContent = response.rounds ? `${rows.length.toLocaleString()} deaths` : "Not indexed";
         status.textContent = response.rounds ? `From ${response.rounds.toLocaleString()} indexed replay rounds. Positions are sampled.${response.truncated ? " Showing the first 100,000 deaths." : ""}` : "No replay rounds have been indexed for this map yet.";
       }
-      select.addEventListener("change", draw); draw();
+      select.addEventListener("change", draw);
+      matchSelect.addEventListener("change", () => { updatePlayers(); draw(); });
+      draw();
     } catch (error) {
       count.textContent = "Unavailable";
       status.textContent = error.message === "Death data unavailable" ? "Could not load recorded deaths. Please try again later." : "No usable overview is available for this map.";
