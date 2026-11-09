@@ -52,8 +52,8 @@ test("active season standings award only tier improvements within the configured
     });
     assert.deepEqual(seen[1].args, ["2026-11-01 00:00:00", "2027-02-01 00:00:00"]);
     assert.match(seen[1].sql, /LAG\s*\(/i);
-    assert.match(seen[1].sql, /created_at\s*>=\s*\?/i);
-    assert.match(seen[1].sql, /created_at\s*<\s*\?/i);
+    assert.match(seen[1].sql, /CONVERT_TZ\(created_at,\s*@@session\.time_zone,\s*['"]\+00:00['"]\)\s*>=\s*\?/i);
+    assert.match(seen[1].sql, /CONVERT_TZ\(created_at,\s*@@session\.time_zone,\s*['"]\+00:00['"]\)\s*<\s*\?/i);
     assert.match(seen[1].sql, /tier\s*>\s*previous_tier/i);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });

@@ -15,6 +15,8 @@ test("scheduled season migration and Website leaderboard work against isolated M
   const firstTarget = Date.now() % 1000000000 + 1;
   let seasonId, server;
   try {
+    // This fixture inserts ISO-8601 UTC boundaries as DATETIME values.
+    await db.query("SET time_zone = '+00:00'");
     const migration = await fs.readFile(path.resolve(__dirname, "../../../TFC-Bootcamp/migrations/015_training_seasons.sql"), "utf8");
     await db.query(migration);
     const [windowRows] = await db.query(`

@@ -34,6 +34,7 @@ test("current weekly challenge returns its route leaderboard limited to the chal
     assert.match(seen[0].sql, /UTC_TIMESTAMP\(\)/i);
     assert.deepEqual(seen[1].args, [4, "2026-11-02 00:00:00", "2026-11-09 00:00:00"]);
     assert.match(seen[1].sql, /flagged\s*=\s*0\s+OR\s+\w+\.reviewed\s*=\s*1/i);
+    assert.match(seen[1].sql, /CONVERT_TZ\(b\.created_at,\s*@@session\.time_zone,\s*['"]\+00:00['"]\)/i);
     assert.match(seen[1].sql, /finalization_required\s*=\s*0/i);
   } finally { await server.close(); }
 });
@@ -69,5 +70,6 @@ test("drill challenge standings require published, replay-complete scores", asyn
     assert.deepEqual(seen[1].args, [7, "2026-11-02 00:00:00", "2026-11-09 00:00:00"]);
     assert.match(seen[1].sql, /bootcamp_finalized_drill_sets/i);
     assert.match(seen[1].sql, /g\.is_complete\s*=\s*1/i);
+    assert.match(seen[1].sql, /CONVERT_TZ\(s\.created_at,\s*@@session\.time_zone,\s*['"]\+00:00['"]\)/i);
   } finally { await server.close(); }
 });

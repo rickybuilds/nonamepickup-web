@@ -12,6 +12,8 @@ test("skill-point boards calculate current tier weights and monthly improvements
   const targets = [Date.now() % 100000000, (Date.now() + 1) % 100000000, (Date.now() + 2) % 100000000];
   let server;
   try {
+    // Fixture strings in this test are UTC instants; keep their DATETIME session semantics explicit.
+    await db.query("SET time_zone = '+00:00'");
     await db.execute("INSERT INTO bootcamp_tiers (steamid, target_type, target_id, map, class_id, tier) VALUES (?, 'route', ?, 'skill_test', 1, 3), (?, 'drill', ?, 'skill_test', 3, 4), (?, 'drill', ?, 'skill_test', 4, 2)",
       [steam, targets[0], steam, targets[1], steam, targets[2]]);
     const events = [

@@ -368,7 +368,9 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
                        (CASE previous_tier WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 5 ELSE 0 END)) AS points,
                    COUNT(DISTINCT target_type, target_id, map, class_id) AS objectives
               FROM tier_progress
-             WHERE created_at >= ? AND created_at < ? AND tier > previous_tier
+             WHERE CONVERT_TZ(created_at, @@session.time_zone, '+00:00') >= ?
+               AND CONVERT_TZ(created_at, @@session.time_zone, '+00:00') < ?
+               AND tier > previous_tier
              GROUP BY steamid
             HAVING points > 0
           ) totals
@@ -420,7 +422,9 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
                        (CASE previous_tier WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 5 ELSE 0 END)) AS points,
                    COUNT(DISTINCT target_type, target_id, map, class_id) AS objectives
               FROM tier_progress
-             WHERE created_at >= ? AND created_at < ? AND tier > previous_tier
+             WHERE CONVERT_TZ(created_at, @@session.time_zone, '+00:00') >= ?
+               AND CONVERT_TZ(created_at, @@session.time_zone, '+00:00') < ?
+               AND tier > previous_tier
              GROUP BY steamid
             HAVING points > 0
           ) totals
@@ -582,7 +586,10 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
                  ROW_NUMBER() OVER (PARTITION BY b.steamid, b.class_id ORDER BY b.time_ms, b.id) AS player_rank
             FROM bootcamp_runs b
             JOIN bootcamp_routes r ON r.id = b.route_id AND r.map = b.map AND r.config_version = b.config_version AND r.enabled = 1
-           WHERE b.route_id = ? AND b.created_at >= ? AND b.created_at < ? AND b.valid = 1 AND b.mode = 1
+           WHERE b.route_id = ?
+             AND CONVERT_TZ(b.created_at, @@session.time_zone, '+00:00') >= ?
+             AND CONVERT_TZ(b.created_at, @@session.time_zone, '+00:00') < ?
+             AND b.valid = 1 AND b.mode = 1
              AND b.finalization_required = 0 AND (b.flagged = 0 OR b.reviewed = 1)
         ) ranked WHERE player_rank = 1 ORDER BY result, result_id LIMIT 100
       ` : `
@@ -590,7 +597,10 @@ function createBootcampRouter({ query = speedrunQuery, connectionFactory = () =>
           SELECT s.steamid, s.player_name, s.class_id, s.score, s.id AS set_id,
                  ROW_NUMBER() OVER (PARTITION BY s.steamid, s.class_id ORDER BY s.score DESC, s.id) AS player_rank
             FROM bootcamp_drill_sets s JOIN bootcamp_drills d ON d.id = s.drill_id AND d.map = s.map AND d.enabled = 1
-           WHERE s.drill_id = ? AND s.created_at >= ? AND s.created_at < ? AND s.finalization_required = 0
+           WHERE s.drill_id = ?
+             AND CONVERT_TZ(s.created_at, @@session.time_zone, '+00:00') >= ?
+             AND CONVERT_TZ(s.created_at, @@session.time_zone, '+00:00') < ?
+             AND s.finalization_required = 0
              AND (s.recording_token IS NULL OR EXISTS (
                SELECT 1 FROM bootcamp_finalized_drill_sets f
                JOIN bootcamp_ghosts g ON g.id = s.ghost_id AND g.drill_set_id = s.id AND g.is_complete = 1
