@@ -368,6 +368,32 @@ yet exist.
 
 ## Web replay viewer
 
+### Estimate database storage for one game
+
+To measure how much MariaDB allocates for the compressed round archives of a
+single complete game, run from the API directory with the pickup database and
+storage environment configured:
+
+```bash
+node scripts/measurePickupDbStorage.js YDPL6Q
+```
+
+Replace `YDPL6Q` with the desired match ID. The script creates a uniquely named
+scratch table in the configured pickup database, copies the verified complete
+round archives into bounded chunks, checks the original hashes and verifies the
+database copies by reading them back. It prints MariaDB's data and index sizes,
+the verified archive count and bytes, and a rough full-dataset estimate based on
+the sample's size ratio. It then drops only its own scratch table. If cleanup
+fails, it prints the table name for an administrator. No replay files are
+modified or deleted.
+
+The script checks free space on the MariaDB filesystem, requires a 2 GiB reserve
+plus three times the compressed sample size, and limits the sample to 128 MiB.
+It requires local MariaDB and temporary `CREATE` and `DROP` privileges in the
+configured pickup database. This measures one compressed-chunk representation, not the space
+needed for fully queryable CSV rows. The extrapolation is approximate and does
+not include database logs, backups, staging, or future growth.
+
 ### Player flag carry summaries
 
 The player profile's Offense card uses complete, verified pickup replay rounds only.
