@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A standalone, searchable view of deleted messages from muted NoName Pickup users.">
+  <meta name="robots" content="noindex,nofollow">
+  <title>NoName | Muted Messages</title>
+  <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="/assets/css/app.css?v=20261011universalscale1">
+  <link rel="stylesheet" href="/assets/css/style.css?v=20260618i">
+  <link rel="stylesheet" href="/assets/css/muted.css?v=20261109a">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="/assets/js/muted.js?v=20261109a" defer></script>
+</head>
+<body class="muted-page">
+  <main class="muted-shell">
+    <header class="muted-header">
+      <div>
+        <p class="muted-eyebrow">NONAME PICKUPS · MESSAGE ARCHIVE</p>
+        <h1>Muted messages<span>.</span></h1>
+        <p class="muted-subtitle">Messages captured before deletion in muted channels.</p>
+      </div>
+      <p id="muted-status" class="muted-status" aria-live="polite">Loading messages…</p>
+    </header>
+
+    <section class="muted-toolbar" aria-label="Message filters">
+      <label class="muted-search-label" for="muted-search">Search the archive</label>
+      <input id="muted-search" type="search" autocomplete="off" placeholder="Name, channel, or message…">
+      <label class="sr-only" for="muted-channel">Filter by channel</label>
+      <select id="muted-channel" aria-label="Filter by channel">
+        <option value="">All channels</option>
+      </select>
+      <span id="muted-count" class="muted-count">—</span>
+    </section>
+
+    <p id="muted-error" class="muted-error" role="alert" hidden></p>
+    <section id="muted-board" class="muted-board" aria-label="Muted message history" aria-live="polite">
+      <p class="muted-loading">Fetching the message archive…</p>
+    </section>
+    <p id="muted-empty" class="muted-empty" hidden>No messages match those filters.</p>
+    <footer class="muted-footer">Messages are shown as recorded by the bot.</footer>
+  </main>
+</body>
+</html>

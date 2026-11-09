@@ -14,6 +14,7 @@ const ELO_DB = process.env.ELO_DB || path.join(DATA_DIR, "elo.db");
 const SUPPORTERS_FILE = process.env.SUPPORTERS_FILE || path.join(DATA_DIR, "supporters.json");
 const QUEUE_FILE = process.env.QUEUE_FILE || path.join(DATA_DIR, "queue.json");
 const KICKED_FILE = process.env.KICKED_FILE || path.join(DATA_DIR, "kicked.json");
+const MUTED_LOGS_FILE = process.env.MUTED_LOGS_FILE || path.join(path.dirname(KICKED_FILE), "mutedlogs.json");
 const SPELLING_LISTS_FILE = process.env.SPELLING_LISTS_FILE || path.join(DATA_DIR, "spelling-lists.json");
 const SPELLING_SCORES_FILE = process.env.SPELLING_SCORES_FILE || path.join(DATA_DIR, "spelling-scores.json");
 const SPELLING_ADMIN_USER = process.env.SPELLING_ADMIN_USER || "";
@@ -79,6 +80,7 @@ const config = {
   SUPPORTERS_FILE,
   QUEUE_FILE,
   KICKED_FILE,
+  MUTED_LOGS_FILE,
   SPELLING_LISTS_FILE,
   SPELLING_SCORES_FILE,
   SPELLING_ADMIN_USER,

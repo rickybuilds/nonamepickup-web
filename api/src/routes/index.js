@@ -9,6 +9,7 @@ const { createMatchesRouter } = require("./matches");
 const { createPlayersRouter } = require("./players");
 const { createQueueRouter } = require("./queue");
 const { createKickedRouter } = require("./kicked");
+const { createMutedRouter } = require("./muted");
 const { createAnalyticsRouter } = require("./analytics");
 const { createHomeRouter } = require("./home");
 const { createSpeedrunsRouter } = require("./speedruns");
@@ -41,6 +42,7 @@ function registerRoutes(app, {
   statsSummaryStmt,
   QUEUE_FILE,
   KICKED_FILE,
+  MUTED_LOGS_FILE,
   SPELLING_LISTS_FILE,
   SPELLING_SCORES_FILE,
   SPELLING_ADMIN_USER,
@@ -155,6 +157,12 @@ app.use("/api", createQueueRouter({
 app.use("/api", createKickedRouter({
   db,
   kickedFile: KICKED_FILE,
+  fs,
+  cleanString,
+  logRouteError
+}));
+app.use("/api", createMutedRouter({
+  mutedLogsFile: MUTED_LOGS_FILE,
   fs,
   cleanString,
   logRouteError
