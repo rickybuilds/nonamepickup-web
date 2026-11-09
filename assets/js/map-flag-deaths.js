@@ -7,6 +7,9 @@
   const matchSelect = document.getElementById("flag-death-match");
   const tooltip = document.getElementById("flag-map-tooltip");
   const viewport = document.getElementById("flag-map-viewport");
+  const comingSoon = document.getElementById("flag-map-coming-soon");
+  const filters = document.getElementById("flag-death-filters");
+  const controls = document.getElementById("flag-death-controls");
   const mapContent = document.getElementById("flag-map-content");
   const dots = document.getElementById("flag-map-dots");
   const points = document.getElementById("flag-map-points");
@@ -26,17 +29,21 @@
     try {
       const manifest = await fetch("/assets/tfc/overviews/manifest.json").then(r => { if (!r.ok) throw Error("No overview index"); return r.json(); });
       const fileName = manifest[name.toLowerCase()];
-      if (!fileName) throw Error("No overview");
+      if (!fileName) throw Object.assign(new Error("No overview"), { missingOverview: true });
       const root = `/assets/tfc/overviews/${encodeURIComponent(fileName)}`;
       const [metadata, response, image] = await Promise.all([
-        fetch(root + ".txt").then(r => { if (!r.ok) throw Error("No overview metadata"); return r.text(); }),
+        fetch(root + ".txt").then(r => {
+          if (r.status === 404) throw Object.assign(new Error("No overview metadata"), { missingOverview: true });
+          if (!r.ok) throw Error("Overview metadata unavailable");
+          return r.text();
+        }),
         fetch(`/api/map/${encodeURIComponent(name)}/flag-deaths`).then(r => { if (!r.ok) throw Error("Death data unavailable"); return r.json(); }),
         new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(Error("No overview image")); img.src = root + ".bmp"; })
       ]);
       const zoom = /^\s*zoom\s+([-+\d.]+)/im.exec(metadata);
       const origin = /^\s*origin\s+([-+\d.]+)\s+([-+\d.]+)\s+([-+\d.]+)/im.exec(metadata);
       const rotated = /^\s*rotated\s+([01])/im.exec(metadata);
-      if (!zoom || !origin || !rotated || !(Number(zoom[1]) > 0)) throw Error("Invalid overview metadata");
+      if (!zoom || !origin || !rotated || !(Number(zoom[1]) > 0)) throw Object.assign(new Error("Invalid overview metadata"), { missingOverview: true });
       canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
       viewport.style.aspectRatio = canvas.width + " / " + canvas.height;
       dots.setAttribute("viewBox", "0 0 " + canvas.width + " " + canvas.height);
@@ -206,8 +213,19 @@
       matchSelect.addEventListener("change", () => { updatePlayers(); draw(); });
       draw();
     } catch (error) {
-      count.textContent = "Unavailable";
-      status.textContent = error.message === "Death data unavailable" ? "Could not load recorded deaths. Please try again later." : "No usable overview is available for this map.";
+      if (error.missingOverview) {
+        count.textContent = "Coming soon";
+        status.textContent = "This map doesn't have an overview yet.";
+        filters.hidden = true;
+        controls.hidden = true;
+        viewport.hidden = true;
+        comingSoon.hidden = false;
+      } else {
+        count.textContent = "Unavailable";
+        status.textContent = error.message === "Death data unavailable"
+          ? "Could not load recorded deaths. Please try again later."
+          : "Could not load the map overview. Please try again later.";
+      }
     }
   }
   init();

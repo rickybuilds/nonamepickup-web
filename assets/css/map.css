@@ -695,3 +695,9 @@
 .flag-map-tooltip[hidden]{display:none}
 
 .flag-map-highlight{fill:#42e7fa;stroke:#fff;stroke-width:1;vector-effect:non-scaling-stroke}
+
+.flag-map-coming-soon{position:relative;overflow:hidden;border-radius:6px;aspect-ratio:16/9;background:#0b1422}
+.flag-map-coming-soon[hidden],.flag-death-filters[hidden],.flag-death-map-controls[hidden],.flag-death-map[hidden]{display:none}
+.flag-map-coming-soon img{width:100%;height:100%;object-fit:cover;display:block}
+.flag-map-coming-soon div{position:absolute;inset:auto 0 0;padding:clamp(14px,3vw,24px);background:linear-gradient(transparent,rgba(4,10,19,.97) 45%);color:#fff;display:grid;gap:5px}
+.flag-map-coming-soon strong{font-size:1.05rem}.flag-map-coming-soon span{font-size:.86rem;color:#d4e2f0;line-height:1.4}
