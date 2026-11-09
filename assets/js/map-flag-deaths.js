@@ -87,7 +87,7 @@
       const background = document.createElement("canvas"); background.width = canvas.width; background.height = canvas.height;
       const bg = background.getContext("2d");
       // This overview has vertically mirrored artwork in the supplied bitmap.
-      // Apply the same flip to the dots so they remain aligned with the image.
+      // The overview projection below already maps coordinates to the flipped image.
       const flipVertical = name.toLowerCase() === "phantom_lg";
       if (flipVertical) { bg.translate(0, canvas.height); bg.scale(1, -1); }
       bg.drawImage(image, 0, 0);
@@ -103,23 +103,17 @@
         const option = document.createElement("option"); option.value=id; option.textContent=player; select.append(option);
       }
       select.disabled = !players.size;
-      // Phantom is calibrated against the recorded flag room and the 3D map outline.
-      const scale = flipVertical ? canvas.width * 0.15625 / 1024 : canvas.width * Number(zoom[1]) / 8192;
+      // Use the overview zoom and axes; Phantom’s displayed bitmap is flipped
+      // above, but its world coordinates already project into that orientation.
+      const scale = canvas.width * Number(zoom[1]) / 8192;
       const ox = Number(origin[1]), oy = Number(origin[2]);
       function draw() {
         context.drawImage(background,0,0);
         const rows = select.value ? response.deaths.filter(d => d.steamId === select.value) : response.deaths;
         let paths = "";
         for (const d of rows) {
-          let x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
-          let y = Number(rotated[1]) ? canvas.height/2-(d.y-oy)*scale : canvas.height/2-(d.x-ox)*scale;
-          if (flipVertical) {
-            y = canvas.height - y;
-            // Phantom’s recorded coordinates are rotated relative to its overview.
-            const dx = x - canvas.width / 2, dy = y - canvas.height / 2;
-            x = canvas.width / 2 + dy;
-            y = canvas.height / 2 - dx;
-          }
+          const x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
+          const y = Number(rotated[1]) ? canvas.height/2-(d.y-oy)*scale : canvas.height/2-(d.x-ox)*scale;
           if (x<0 || y<0 || x>=canvas.width || y>=canvas.height) continue;
           const radius = 2.2;
           paths += `M${x-radius} ${y}a${radius} ${radius} 0 1 0 ${radius*2} 0a${radius} ${radius} 0 1 0 ${-radius*2} 0`;
