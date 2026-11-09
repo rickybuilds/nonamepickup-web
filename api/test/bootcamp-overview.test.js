@@ -85,3 +85,83 @@ test('maps clicks on the plotted timeline area to the correct replay time', asyn
   assert.equal(timelineTimeAtPoint(0, rect, 12), 0);
   assert.equal(timelineTimeAtPoint(1200, rect, 12), 12);
 });
+
+function canvasStub() {
+  const strokes = [];
+  const context = {
+    strokeStyle: "", fillStyle: "", lineWidth: 1,
+    setTransform() {}, clearRect() {}, fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {},
+    arc() {}, fill() {}, fillText() {}, drawImage() {},
+    stroke() { strokes.push(this.strokeStyle); },
+  };
+  return {
+    strokes,
+    width: 0,
+    height: 0,
+    getBoundingClientRect: () => ({ width: 640, height: 320, left: 0 }),
+    getContext: () => context,
+    addEventListener() {},
+  };
+}
+
+function nodeStub(isFragment = false) {
+  return {
+    children: [],
+    isFragment,
+    appendChild(child) {
+      if (child?.isFragment) this.children.push(...child.children);
+      else this.children.push(child);
+      return child;
+    },
+    replaceChildren(...children) { this.children = children; },
+    addEventListener(name, listener) { (this.listeners ||= {})[name] = listener; },
+  };
+}
+
+test("Bootcamp 2D overview overlays both compatible runs and exposes both event timelines", async () => {
+  const oldGlobals = { fetch: globalThis.fetch, document: globalThis.document, window: globalThis.window };
+  const nodes = new Map();
+  const events = nodeStub();
+  const seeks = [];
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ maps: { testmap: {} } }) });
+  globalThis.window = { devicePixelRatio: 1 };
+  globalThis.document = {
+    getElementById: id => nodes.get(id) || (nodes.set(id, nodeStub()), nodes.get(id)),
+    createDocumentFragment: () => nodeStub(true),
+    createElement: () => nodeStub(),
+  };
+  nodes.set("bootcamp-replay-events", events);
+
+  try {
+    const { BootcampReplayOverview } = await import("../../assets/js/bootcamp-overview.mjs");
+    const mapCanvas = canvasStub();
+    const speedCanvas = canvasStub();
+    const status = { textContent: "" };
+    const overview = new BootcampReplayOverview({ mapCanvas, speedCanvas, status, onSeek: time => seeks.push(time) });
+    await overview.loadManifest();
+    overview.render({
+      replay: { runId: 1, map: "testmap", frames: [
+        { t: 0, x: 0, y: 0, z: 0 }, { t: 0.5, x: 50, y: 0, z: 25 }, { t: 1, x: 100, y: 0, z: 50 },
+      ], events: [{ t: 0.5, code: 8, a: 0 }] },
+      comparison: { runId: 2, map: "testmap", frames: [
+        { t: 10, x: 20, y: 20, z: 0 }, { t: 10.5, x: 70, y: 20, z: 25 }, { t: 11, x: 120, y: 20, z: 50 },
+      ], events: [{ t: 10.25, code: 2 }] },
+      primaryFrame: { x: 50, y: 25 }, comparisonFrame: { x: 70, y: 25 },
+      timelineStart: 0, comparisonStart: 10, time: 0.5, duration: 1,
+    });
+
+    assert.ok(mapCanvas.strokes.includes("#53c5ff"), "primary route path is drawn");
+    assert.ok(mapCanvas.strokes.includes("#ff76bb"), "comparison route path is drawn");
+    assert.ok(speedCanvas.strokes.includes("#53c5ff"), "primary movement-speed plot is drawn");
+    assert.ok(speedCanvas.strokes.includes("#ff76bb"), "comparison movement-speed plot is drawn");
+    assert.equal(events.children.length, 2);
+    assert.match(events.children[0].textContent, /Checkpoint 1/);
+    assert.match(events.children[1].textContent, /Conc primed/);
+    events.children.forEach(button => button.listeners.click());
+    assert.deepEqual(seeks, [0.5, 0.25]);
+  } finally {
+    globalThis.fetch = oldGlobals.fetch;
+    globalThis.document = oldGlobals.document;
+    globalThis.window = oldGlobals.window;
+  }
+});
