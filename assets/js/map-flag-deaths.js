@@ -4,6 +4,11 @@
   const status = document.getElementById("flag-death-status");
   const count = document.getElementById("flag-death-count");
   const select = document.getElementById("flag-death-player");
+  const viewport = document.getElementById("flag-map-viewport");
+  const zoomIn = document.getElementById("flag-map-zoom-in");
+  const zoomOut = document.getElementById("flag-map-zoom-out");
+  const resetView = document.getElementById("flag-map-reset");
+  const zoomLevel = document.getElementById("flag-map-zoom-level");
   const name = new URLSearchParams(location.search).get("map") || "";
   if (!canvas || !/^[a-z0-9_-]{1,64}$/i.test(name)) return;
   const context = canvas.getContext("2d");
@@ -23,6 +28,58 @@
       const rotated = /^\s*rotated\s+([01])/im.exec(metadata);
       if (!zoom || !origin || !rotated || !(Number(zoom[1]) > 0)) throw Error("Invalid overview metadata");
       canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+      viewport.style.aspectRatio = canvas.width + " / " + canvas.height;
+      let viewScale = 1;
+      function setZoom(next, clientX, clientY) {
+        const value = Math.min(8, Math.max(1, next));
+        const rect = viewport.getBoundingClientRect();
+        const x = clientX == null ? viewport.clientWidth / 2 : clientX - rect.left;
+        const y = clientY == null ? viewport.clientHeight / 2 : clientY - rect.top;
+        const fractionX = (viewport.scrollLeft + x) / canvas.clientWidth;
+        const fractionY = (viewport.scrollTop + y) / canvas.clientHeight;
+        viewScale = value;
+        canvas.style.width = (value * 100) + "%";
+        viewport.scrollLeft = fractionX * canvas.clientWidth - x;
+        viewport.scrollTop = fractionY * canvas.clientHeight - y;
+        zoomLevel.textContent = Math.round(value * 100) + "%";
+        zoomIn.disabled = value >= 8;
+        zoomOut.disabled = value <= 1;
+        resetView.disabled = value === 1 && viewport.scrollLeft === 0 && viewport.scrollTop === 0;
+      }
+      zoomIn.addEventListener("click", () => setZoom(viewScale * 1.35));
+      zoomOut.addEventListener("click", () => setZoom(viewScale / 1.35));
+      resetView.addEventListener("click", () => { setZoom(1); viewport.scrollTo(0, 0); resetView.disabled = true; });
+      viewport.addEventListener("wheel", event => {
+        event.preventDefault();
+        setZoom(viewScale * Math.exp(-event.deltaY * 0.0015), event.clientX, event.clientY);
+      }, { passive: false });
+      let drag = null;
+      viewport.addEventListener("pointerdown", event => {
+        if (event.pointerType !== "mouse" || event.button !== 0 || viewScale <= 1) return;
+        drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
+        viewport.setPointerCapture(event.pointerId);
+        viewport.classList.add("is-dragging");
+        event.preventDefault();
+      });
+      viewport.addEventListener("pointermove", event => {
+        if (!drag || event.pointerId !== drag.id) return;
+        viewport.scrollLeft = drag.left - (event.clientX - drag.x);
+        viewport.scrollTop = drag.top - (event.clientY - drag.y);
+      });
+      function endDrag(event) {
+        if (!drag || event.pointerId !== drag.id) return;
+        drag = null;
+        viewport.classList.remove("is-dragging");
+      }
+      viewport.addEventListener("pointerup", endDrag);
+      viewport.addEventListener("pointercancel", endDrag);
+      viewport.addEventListener("lostpointercapture", endDrag);
+      viewport.addEventListener("keydown", event => {
+        if (event.key === "+" || event.key === "=") { event.preventDefault(); setZoom(viewScale * 1.35); }
+        if (event.key === "-") { event.preventDefault(); setZoom(viewScale / 1.35); }
+        if (event.key === "0") { event.preventDefault(); setZoom(1); viewport.scrollTo(0, 0); }
+      });
+      setZoom(1);
       const background = document.createElement("canvas"); background.width = canvas.width; background.height = canvas.height;
       const bg = background.getContext("2d");
       // This overview has vertically mirrored artwork in the supplied bitmap.

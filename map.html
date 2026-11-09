@@ -18,10 +18,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/map.css?v=20260618p">
+  <link rel="stylesheet" href="assets/css/map.css?v=20261109zoom1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/maps.js?v=20261109flagdeaths" defer></script>
-  <script src="assets/js/map-flag-deaths.js?v=20261109e" defer></script>
+  <script src="assets/js/map-flag-deaths.js?v=20261109zoom1" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -177,7 +177,14 @@
             <select id="flag-death-player" disabled><option value="">All players</option></select>
           </label>
           <p id="flag-death-status" class="flag-death-status" role="status">Loading recorded deaths…</p>
-          <div class="flag-death-map"><canvas id="flag-death-canvas" role="img" aria-label="Flag carrier death locations on the map"></canvas></div>
+          <div class="flag-death-map-controls" role="group" aria-label="Map zoom">
+            <button id="flag-map-zoom-out" type="button" aria-label="Zoom out" disabled>−</button>
+            <span id="flag-map-zoom-level" aria-live="polite">100%</span>
+            <button id="flag-map-zoom-in" type="button" aria-label="Zoom in" disabled>+</button>
+            <button id="flag-map-reset" type="button" disabled>Reset view</button>
+            <span class="flag-map-hint">Scroll to zoom · drag to move</span>
+          </div>
+          <div id="flag-map-viewport" class="flag-death-map" tabindex="0" aria-label="Map viewport. Use arrow keys to move when zoomed in."><canvas id="flag-death-canvas" role="img" aria-label="Flag carrier death locations on the map"></canvas></div>
         </article>
 
         <article class="map-v2-panel outcome-panel">
