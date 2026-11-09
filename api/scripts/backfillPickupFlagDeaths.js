@@ -11,6 +11,21 @@ const { locateFlagDeaths, flagObjectiveIds, confirmedDeathCandidates } = require
 const { createFlagDeathStore } = require("../src/pickup/flagDeathStore");
 const { parseCsv } = require("../src/pickup/csv");
 
+const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function retrySqliteBusy(label, action) {
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      return action();
+    } catch (error) {
+      if (!/^SQLITE_(BUSY|LOCKED)(_|$)/.test(String(error.code || "")) || attempt === 12) throw error;
+      const delayMs = Math.min(attempt * 1000, 10000);
+      console.warn(label + ": SQLite is busy; retrying in " + (delayMs / 1000) + "s (" + attempt + "/12)");
+      await sleep(delayMs);
+    }
+  }
+}
+
 async function member(path, name, consume) {
   const child = spawn("tar", ["--zstd", "-xOf", path, name], { stdio: ["ignore", "pipe", "pipe"] });
   let errors = "";
@@ -57,7 +72,8 @@ async function processArchive(path, intervalMs) {
 async function main() {
   config.validatePickupConfiguration();
   const pool = getPickupPool(config);
-  const db = createDatabase(config.ELO_DB, config.ANALYTICS_RETENTION_DAYS);
+  const db = await retrySqliteBusy("Opening elo.db", () =>
+    createDatabase(config.ELO_DB, config.ANALYTICS_RETENTION_DAYS));
   const store = createFlagDeathStore(db);
   const storage = new PickupStorage(config.PICKUP_STORAGE_PATH, { publicRoot: config.PUBLIC_DIR });
   try {
@@ -69,13 +85,16 @@ async function main() {
       ORDER BY a.id`);
     let completed = 0, skipped = 0;
     for (const a of artifacts) {
-      if (store.hasRound(a.match_id, a.round_number, String(a.sha256))) { skipped++; continue; }
+      if (await retrySqliteBusy(`Checking artifact ${a.id}`, () =>
+        store.hasRound(a.match_id, a.round_number, String(a.sha256)))) { skipped++; continue; }
       if (Number(a.schema_version) < 6) { skipped++; continue; }
       const deaths = await processArchive(storage.artifactPath(a.storage_key), Number(a.sample_interval_ms));
       const [sessions] = await pool.execute(`SELECT rp.session_id, p.steamid, p.current_name FROM pickup_round_players rp
         JOIN pickup_players p ON p.id=rp.player_pk WHERE rp.round_pk=?`, [a.round_pk]);
-      store.saveRound({ matchId: a.match_id, round: Number(a.round_number), map: a.map, sha256: String(a.sha256),
-        roster: sessions.map(s => ({ sessionIndex: s.session_id, steamId: s.steamid, playerName: s.current_name })), deaths });
+      const round = { matchId: a.match_id, round: Number(a.round_number), map: a.map, sha256: String(a.sha256),
+        roster: sessions.map(s => ({ sessionIndex: s.session_id, steamId: s.steamid, playerName: s.current_name })), deaths };
+      const saved = await retrySqliteBusy(`Saving artifact ${a.id}`, () => store.saveRound(round));
+      if (!saved) { skipped++; continue; }
       console.log(`Indexed artifact ${a.id}: ${deaths.length} flag-carrier deaths`); completed++;
     }
     console.log(`Flag death backfill complete: ${completed} processed, ${skipped} unchanged.`);

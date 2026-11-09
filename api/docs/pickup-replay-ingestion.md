@@ -491,7 +491,9 @@ the image and GoldSrc projection settings.
 New replay uploads are indexed during ingestion. To process existing archives,
 run `node api/scripts/backfillPickupFlagDeaths.js` on the website host with the
 same pickup storage, MariaDB, and `ELO_DB` configuration as the API. The script
-skips previously indexed archive hashes. The pickup flag carry recovery service
+skips previously indexed archive hashes and retries temporary SQLite busy or locked
+errors. If retries are exhausted, rerun it to resume from the remaining rounds.
+The pickup flag carry recovery service
 also runs this backfill; reinstall the updated service unit and reload systemd if
 the timer is already installed. The data is unavailable until the API has been
 restarted with the new schema and the historical backfill has run.
