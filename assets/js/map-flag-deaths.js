@@ -188,9 +188,9 @@
       // above, but its world coordinates already project into that orientation.
       const scale = canvas.width * Number(zoom[1]) / 8192;
       const ox = Number(origin[1]), oy = Number(origin[2]);
-      // Shutdown2 is calibrated from two flag-death points marked on the all-games overview.
+      // Shutdown2 is calibrated from marked flag-death points on the all-games overview.
       const translation = name.toLowerCase() === "shutdown2_lg2"
-        ? { x: canvas.width * 56 / 1024, y: -canvas.height * 40 / 768 }
+        ? { x: canvas.width * 68 / 1024, y: -canvas.height * 40 / 768 }
         : { x: 0, y: 0 };
       function draw() {
         context.drawImage(background,0,0);
