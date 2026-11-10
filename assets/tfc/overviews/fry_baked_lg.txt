@@ -1,0 +1,14 @@
+// overview description file for fry_baked_lg
+
+global
+{
+    ZOOM    1.25
+    ORIGIN  232 -288 408
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/fry_baked_lg.bmp"
+    HEIGHT  -161
+}

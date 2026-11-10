@@ -1,0 +1,14 @@
+// overview description file for blutopia_tfp
+
+global
+{
+    ZOOM    1.05
+    ORIGIN  0 0 304
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/blutopia_tfp.bmp"
+    HEIGHT  -225
+}

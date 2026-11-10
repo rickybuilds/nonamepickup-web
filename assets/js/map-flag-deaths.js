@@ -45,10 +45,11 @@
       const rotated = /^\s*rotated\s+([01])/im.exec(metadata);
       if (!zoom || !origin || !rotated || !(Number(zoom[1]) > 0)) throw Object.assign(new Error("Invalid overview metadata"), { missingOverview: true });
       const shutdown2 = name.toLowerCase() === "shutdown2_lg2";
-      const alchimy = name.toLowerCase() === "alchimy_lg";
-      const displayOriented = shutdown2 || alchimy;
-      const cropLeft = alchimy && image.naturalWidth === 1920 && image.naturalHeight === 1080 ? 240 : 0;
-      const cropRight = shutdown2 && image.naturalWidth === 1920 && image.naturalHeight === 1080 ? 240 : 0;
+      const mapName = name.toLowerCase();
+      const displayOriented = ["shutdown2_lg2", "alchimy_lg", "openfire_lowgrens", "blutopia_tfp", "fry_baked_lg"].includes(mapName);
+      const captureDimensionsMatch = image.naturalWidth === 1920 && image.naturalHeight === 1080;
+      const cropLeft = displayOriented && captureDimensionsMatch ? 240 : 0;
+      const cropRight = shutdown2 && captureDimensionsMatch ? 240 : 0;
       const cropWidth = image.naturalWidth - cropLeft - cropRight;
       canvas.width = cropWidth; canvas.height = image.naturalHeight;
       viewport.style.aspectRatio = canvas.width + " / " + canvas.height;
@@ -108,7 +109,7 @@
       setZoom(1);
       const background = document.createElement("canvas"); background.width = canvas.width; background.height = canvas.height;
       const bg = background.getContext("2d");
-      // Shutdown2's fresh in-game BMP is already in display orientation; older overviews
+      // Fresh in-game BMP captures are already in display orientation; older overviews
       // in this collection need the vertical correction applied here.
       if (!displayOriented) {
         bg.translate(0, canvas.height);

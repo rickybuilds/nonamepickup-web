@@ -1,0 +1,14 @@
+// overview description file for openfire_lowgrens
+
+global
+{
+    ZOOM    1.42
+    ORIGIN  -560 -192 -376
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/openfire_lowgrens.bmp"
+    HEIGHT  -769
+}
