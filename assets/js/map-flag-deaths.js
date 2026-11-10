@@ -190,7 +190,7 @@
       const ox = Number(origin[1]), oy = Number(origin[2]);
       // Shutdown2 is calibrated from marked flag-death points on the all-games overview.
       const translation = name.toLowerCase() === "shutdown2_lg2"
-        ? { x: canvas.width * 68 / 1024, y: -canvas.height * 40 / 768 }
+        ? { x: canvas.width * 68 / 1024, y: 0 }
         : { x: 0, y: 0 };
       function draw() {
         context.drawImage(background,0,0);
