@@ -1,0 +1,14 @@
+// overview description file for snow_gutter
+
+global
+{
+    ZOOM    1.00
+    ORIGIN  0 0 80
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/snow_gutter.bmp"
+    HEIGHT  -625
+}
