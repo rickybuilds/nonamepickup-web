@@ -1,0 +1,14 @@
+// overview description file for 2mesa3_lg
+
+global
+{
+    ZOOM    1.19
+    ORIGIN  509.5 23 -1365.5
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/2mesa3_lg.bmp"
+    HEIGHT  -3712
+}

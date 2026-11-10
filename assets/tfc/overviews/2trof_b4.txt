@@ -1,0 +1,14 @@
+// overview description file for 2trof_b4
+
+global
+{
+    ZOOM    1.05
+    ORIGIN  0 64 384
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/2trof_b4.bmp"
+    HEIGHT  -561
+}

@@ -1,0 +1,14 @@
+// overview description file for ostargh
+
+global
+{
+    ZOOM    1.46
+    ORIGIN  -400 984 88
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/ostargh.bmp"
+    HEIGHT  -401
+}
