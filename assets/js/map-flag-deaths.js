@@ -46,7 +46,7 @@
       if (!zoom || !origin || !rotated || !(Number(zoom[1]) > 0)) throw Object.assign(new Error("Invalid overview metadata"), { missingOverview: true });
       const shutdown2 = name.toLowerCase() === "shutdown2_lg2";
       const mapName = name.toLowerCase();
-      const displayOriented = ["shutdown2_lg2", "alchimy_lg", "openfire_lowgrens", "blutopia_tfp", "fry_baked_lg", "snow_gutter", "demolish2_b4r", "schtop", "siege"].includes(mapName);
+      const displayOriented = ["shutdown2_lg2", "alchimy_lg", "openfire_lowgrens", "blutopia_tfp", "fry_baked_lg", "snow_gutter", "demolish2_b4r", "demolish2_b6", "schtop", "siege"].includes(mapName);
       const captureDimensionsMatch = image.naturalWidth === 1920 && image.naturalHeight === 1080;
       const cropLeft = displayOriented && captureDimensionsMatch ? 240 : 0;
       const cropRight = displayOriented && captureDimensionsMatch ? 240 : 0;
