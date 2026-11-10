@@ -188,9 +188,9 @@
       // above, but its world coordinates already project into that orientation.
       const scale = canvas.width * Number(zoom[1]) / 8192;
       const ox = Number(origin[1]), oy = Number(origin[2]);
-      // Shutdown2's four yard corners map to the outer yard bounds in its displayed overview.
+      // Shutdown2's upper railing corners map to the outer yard bounds in its displayed overview.
       const shutdown2 = name.toLowerCase() === "shutdown2_lg2";
-      const scaleX = shutdown2 ? canvas.width * (416 / 1024) / 2271 : scale;
+      const scaleX = shutdown2 ? canvas.width * (416 / 1024) / 2655 : scale;
       const scaleY = shutdown2 ? canvas.height * (280 / 768) / 1679 : scale;
       function draw() {
         context.drawImage(background,0,0);
