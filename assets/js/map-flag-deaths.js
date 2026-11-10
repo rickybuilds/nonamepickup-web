@@ -122,11 +122,27 @@
       bg.setTransform(1, 0, 0, 1, 0, 0);
       const pixels = bg.getImageData(0, 0, canvas.width, canvas.height);
       const sourcePixels = new Uint8ClampedArray(pixels.data);
+      const keyPixels = new Uint8Array(sourcePixels.length / 4);
+      const fringePixels = new Uint8Array(keyPixels.length);
+      for (let i=0; i<sourcePixels.length; i+=4) {
+        if (sourcePixels[i] === 0 && sourcePixels[i+1] === 255 && sourcePixels[i+2] === 0) keyPixels[i/4] = 1;
+      }
+      for (let y=0; y<canvas.height; y++) {
+        for (let x=0; x<canvas.width; x++) {
+          const index = y * canvas.width + x;
+          if (!keyPixels[index]) continue;
+          for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++) {
+            const nx=x+dx, ny=y+dy;
+            if (nx>=0 && ny>=0 && nx<canvas.width && ny<canvas.height) fringePixels[ny*canvas.width+nx]=1;
+          }
+        }
+      }
       for (let i=0; i<sourcePixels.length; i+=4) {
         const r = sourcePixels[i], g = sourcePixels[i+1], b = sourcePixels[i+2];
-        const isKey = r === 0 && g === 255 && b === 0;
+        const isKey = keyPixels[i/4] === 1;
+        const nearKey = fringePixels[i/4] === 1;
         const greenFringe = (shutdown2 && g > 45 && r < 100 && b < 80 && g > r * 1.25 && g > b * 1.5) ||
-          (displayOriented && g > 180 && r < 60 && b < 60 && g > r * 1.5 && g > b * 1.5);
+          (nearKey && g > 40 && r < g * 0.55 && b < g * 0.8);
         if (isKey || greenFringe) {
           pixels.data[i]=16; pixels.data[i+1]=21; pixels.data[i+2]=28;
         }
