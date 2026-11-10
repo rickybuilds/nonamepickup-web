@@ -1,0 +1,14 @@
+// overview description file for schtop
+
+global
+{
+    ZOOM    1.12
+    ORIGIN  0 0 408.12
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/schtop.bmp"
+    HEIGHT  -464.75
+}
