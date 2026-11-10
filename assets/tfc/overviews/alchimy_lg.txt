@@ -1,0 +1,14 @@
+// overview description file for alchimy_lg
+
+global
+{
+    ZOOM    1.32
+    ORIGIN  133 -69 -59
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/alchimy_lg.bmp"
+    HEIGHT  -1050
+}

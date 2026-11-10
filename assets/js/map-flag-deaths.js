@@ -45,8 +45,11 @@
       const rotated = /^\s*rotated\s+([01])/im.exec(metadata);
       if (!zoom || !origin || !rotated || !(Number(zoom[1]) > 0)) throw Object.assign(new Error("Invalid overview metadata"), { missingOverview: true });
       const shutdown2 = name.toLowerCase() === "shutdown2_lg2";
-      const cropX = shutdown2 && image.naturalWidth === 1920 && image.naturalHeight === 1080 ? 240 : 0;
-      const cropWidth = image.naturalWidth - cropX * 2;
+      const alchimy = name.toLowerCase() === "alchimy_lg";
+      const displayOriented = shutdown2 || alchimy;
+      const cropLeft = alchimy && image.naturalWidth === 1920 && image.naturalHeight === 1080 ? 240 : 0;
+      const cropRight = shutdown2 && image.naturalWidth === 1920 && image.naturalHeight === 1080 ? 240 : 0;
+      const cropWidth = image.naturalWidth - cropLeft - cropRight;
       canvas.width = cropWidth; canvas.height = image.naturalHeight;
       viewport.style.aspectRatio = canvas.width + " / " + canvas.height;
       dots.setAttribute("viewBox", "0 0 " + canvas.width + " " + canvas.height);
@@ -107,12 +110,12 @@
       const bg = background.getContext("2d");
       // Shutdown2's fresh in-game BMP is already in display orientation; older overviews
       // in this collection need the vertical correction applied here.
-      if (!shutdown2) {
+      if (!displayOriented) {
         bg.translate(0, canvas.height);
         bg.scale(1, -1);
         bg.drawImage(image, 0, 0);
       } else {
-        bg.drawImage(image, cropX, 0, cropWidth, canvas.height, 0, 0, canvas.width, canvas.height);
+        bg.drawImage(image, cropLeft, 0, cropWidth, canvas.height, 0, 0, canvas.width, canvas.height);
       }
       bg.setTransform(1, 0, 0, 1, 0, 0);
       const pixels = bg.getImageData(0, 0, canvas.width, canvas.height);
@@ -120,7 +123,7 @@
       for (let i=0; i<sourcePixels.length; i+=4) {
         const r = sourcePixels[i], g = sourcePixels[i+1], b = sourcePixels[i+2];
         const isKey = r === 0 && g === 255 && b === 0;
-        const greenFringe = shutdown2 && g > 45 && r < 100 && b < 80 && g > r * 1.25 && g > b * 1.5;
+        const greenFringe = displayOriented && g > 45 && r < 100 && b < 80 && g > r * 1.25 && g > b * 1.5;
         if (isKey || greenFringe) {
           pixels.data[i]=16; pixels.data[i+1]=21; pixels.data[i+2]=28;
         }
