@@ -1,0 +1,5 @@
+ZOOM 1.32
+ORIGIN 0 -104 -304
+ROTATED 1
+IMAGE "overviews/congestus_lg.bmp"
+HEIGHT -897

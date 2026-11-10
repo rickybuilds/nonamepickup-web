@@ -1,0 +1,5 @@
+ZOOM 1.10
+ORIGIN -128 528 -288
+ROTATED 1
+IMAGE "overviews/turbo_b10.bmp"
+HEIGHT -737
