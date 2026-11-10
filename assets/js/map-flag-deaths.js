@@ -188,6 +188,11 @@
       // above, but its world coordinates already project into that orientation.
       const scale = canvas.width * Number(zoom[1]) / 8192;
       const ox = Number(origin[1]), oy = Number(origin[2]);
+      // Calibrated against DXX2FJ, round 1, hydra at 11:42 (world 1841, -2271.7).
+      // The screenshot anchor places that death about 48 px right and 52 px up.
+      const translation = name.toLowerCase() === "shutdown2_lg2"
+        ? { x: canvas.width * 48 / 1024, y: -canvas.height * 52 / 768 }
+        : { x: 0, y: 0 };
       function draw() {
         context.drawImage(background,0,0);
         const rows = response.deaths.filter(d => (!select.value || playerKey(d) === select.value) &&
@@ -196,8 +201,8 @@
         buckets = new Map();
         hideTooltip();
         for (const d of rows) {
-          const x = Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale;
-          const y = Number(rotated[1]) ? canvas.height/2-(d.y-oy)*scale : canvas.height/2-(d.x-ox)*scale;
+          const x = (Number(rotated[1]) ? canvas.width/2+(d.x-ox)*scale : canvas.width/2-(d.y-oy)*scale) + translation.x;
+          const y = (Number(rotated[1]) ? canvas.height/2-(d.y-oy)*scale : canvas.height/2-(d.x-ox)*scale) + translation.y;
           if (x<0 || y<0 || x>=canvas.width || y>=canvas.height) continue;
           const key = bucketKey(x, y);
           if (!buckets.has(key)) buckets.set(key, []);
