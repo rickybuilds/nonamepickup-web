@@ -10,5 +10,5 @@ global
 layer 
 {
 	IMAGE	"overviews/shutdown2_lg2.bmp"
-	HEIGHT	-501
+	HEIGHT	-498
 }
