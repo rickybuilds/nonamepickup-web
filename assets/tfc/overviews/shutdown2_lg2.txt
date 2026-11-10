@@ -2,13 +2,13 @@
 
 global 
 {
-	ZOOM	1.0
+	ZOOM	1.22
 	ORIGIN	-8	144	179.17
 	ROTATED	0
 }
 
 layer 
 {
-	IMAGE	"overviews/shutdown2_lg2.tga"
-	HEIGHT	-513
+	IMAGE	"overviews/shutdown2_lg2.bmp"
+	HEIGHT	-501
 }
