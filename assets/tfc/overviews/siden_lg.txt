@@ -1,0 +1,14 @@
+// overview description file for siden_lg
+
+global
+{
+    ZOOM    1.08
+    ORIGIN  16 96 -16
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/siden_lg.bmp"
+    HEIGHT  -673
+}

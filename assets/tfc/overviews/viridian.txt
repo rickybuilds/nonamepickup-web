@@ -1,0 +1,14 @@
+// overview description file for viridian
+
+global
+{
+    ZOOM    0.95
+    ORIGIN  0 0 282
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/viridian.bmp"
+    HEIGHT  -161
+}
