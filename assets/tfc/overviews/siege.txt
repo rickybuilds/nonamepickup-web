@@ -1,0 +1,14 @@
+// overview description file for siege
+
+global
+{
+    ZOOM    1.03
+    ORIGIN  0 0 -260
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/siege.bmp"
+    HEIGHT  -1169
+}
