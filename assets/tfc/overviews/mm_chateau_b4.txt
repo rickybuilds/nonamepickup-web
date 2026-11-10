@@ -1,0 +1,14 @@
+// overview description file for mm_chateau_b4
+
+global
+{
+    ZOOM    0.96
+    ORIGIN  -128 128 348
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/mm_chateau_b4.bmp"
+    HEIGHT  -233
+}

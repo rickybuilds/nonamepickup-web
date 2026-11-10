@@ -1,0 +1,14 @@
+// overview description file for foundry_b3
+
+global
+{
+    ZOOM    1.07
+    ORIGIN  0 0 8
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/foundry_b3.bmp"
+    HEIGHT  -465
+}
