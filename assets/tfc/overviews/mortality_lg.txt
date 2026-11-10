@@ -1,0 +1,14 @@
+// overview description file for mortality_lg
+
+global
+{
+    ZOOM    1.05
+    ORIGIN  -992 32 -240
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/mortality_lg.bmp"
+    HEIGHT  -1025
+}

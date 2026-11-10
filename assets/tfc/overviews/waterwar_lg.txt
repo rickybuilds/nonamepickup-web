@@ -1,0 +1,14 @@
+// overview description file for waterwar_lg
+
+global
+{
+    ZOOM    0.98
+    ORIGIN  0 0 248
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/waterwar_lg.bmp"
+    HEIGHT  -289
+}

@@ -1,0 +1,14 @@
+// overview description file for voltage_lg
+
+global
+{
+    ZOOM    1.08
+    ORIGIN  816 0 32
+    ROTATED 0
+}
+
+layer
+{
+    IMAGE   "overviews/voltage_lg.bmp"
+    HEIGHT  -513
+}
