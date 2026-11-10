@@ -1,0 +1,14 @@
+// overview description file for demolish2_b4r
+
+global
+{
+    ZOOM    0.99
+    ORIGIN  749 -744.5 164
+    ROTATED 1
+}
+
+layer
+{
+    IMAGE   "overviews/demolish2_b4r.bmp"
+    HEIGHT  -345
+}

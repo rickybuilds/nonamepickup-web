@@ -46,10 +46,10 @@
       if (!zoom || !origin || !rotated || !(Number(zoom[1]) > 0)) throw Object.assign(new Error("Invalid overview metadata"), { missingOverview: true });
       const shutdown2 = name.toLowerCase() === "shutdown2_lg2";
       const mapName = name.toLowerCase();
-      const displayOriented = ["shutdown2_lg2", "alchimy_lg", "openfire_lowgrens", "blutopia_tfp", "fry_baked_lg", "snow_gutter"].includes(mapName);
+      const displayOriented = ["shutdown2_lg2", "alchimy_lg", "openfire_lowgrens", "blutopia_tfp", "fry_baked_lg", "snow_gutter", "demolish2_b4r"].includes(mapName);
       const pillarboxedCapture = ["alchimy_lg", "openfire_lowgrens", "blutopia_tfp", "fry_baked_lg"].includes(mapName);
       const captureDimensionsMatch = image.naturalWidth === 1920 && image.naturalHeight === 1080;
-      const cropLeft = (pillarboxedCapture || shutdown2 || mapName === "snow_gutter") && captureDimensionsMatch ? 240 : 0;
+      const cropLeft = (pillarboxedCapture || shutdown2 || mapName === "snow_gutter" || mapName === "demolish2_b4r") && captureDimensionsMatch ? 240 : 0;
       const cropRight = (pillarboxedCapture || shutdown2) && captureDimensionsMatch ? 240 : 0;
       const cropWidth = image.naturalWidth - cropLeft - cropRight;
       dots.classList.toggle("fry-baked-dots", mapName === "fry_baked_lg");
