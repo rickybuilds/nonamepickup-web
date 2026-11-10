@@ -125,8 +125,7 @@
       for (let i=0; i<sourcePixels.length; i+=4) {
         const r = sourcePixels[i], g = sourcePixels[i+1], b = sourcePixels[i+2];
         const isKey = r === 0 && g === 255 && b === 0;
-        const greenFringe = (shutdown2 && g > 45 && r < 100 && b < 80 && g > r * 1.25 && g > b * 1.5) ||
-          (displayOriented && g > 180 && r < 60 && b < 60 && g > r * 1.5 && g > b * 1.5);
+        const greenFringe = shutdown2 && g > 45 && r < 100 && b < 80 && g > r * 1.25 && g > b * 1.5;
         if (isKey || greenFringe) {
           pixels.data[i]=16; pixels.data[i+1]=21; pixels.data[i+2]=28;
         }
