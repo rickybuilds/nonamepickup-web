@@ -49,7 +49,7 @@
       const displayOriented = ["shutdown2_lg2", "alchimy_lg", "openfire_lowgrens", "blutopia_tfp", "fry_baked_lg"].includes(mapName);
       const captureDimensionsMatch = image.naturalWidth === 1920 && image.naturalHeight === 1080;
       const cropLeft = displayOriented && captureDimensionsMatch ? 240 : 0;
-      const cropRight = shutdown2 && captureDimensionsMatch ? 240 : 0;
+      const cropRight = displayOriented && captureDimensionsMatch ? 240 : 0;
       const cropWidth = image.naturalWidth - cropLeft - cropRight;
       canvas.width = cropWidth; canvas.height = image.naturalHeight;
       viewport.style.aspectRatio = canvas.width + " / " + canvas.height;
