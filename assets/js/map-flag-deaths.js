@@ -111,8 +111,26 @@
       bg.drawImage(image, 0, 0);
       bg.setTransform(1, 0, 0, 1, 0, 0);
       const pixels = bg.getImageData(0, 0, canvas.width, canvas.height);
-      for (let i=0; i<pixels.data.length; i+=4) if (pixels.data[i] === 0 && pixels.data[i+1] === 255 && pixels.data[i+2] === 0) {
-        pixels.data[i]=16; pixels.data[i+1]=21; pixels.data[i+2]=28;
+      const sourcePixels = new Uint8ClampedArray(pixels.data);
+      const shutdown2 = name.toLowerCase() === "shutdown2_lg2";
+      function isTransparentGreen(x, y) {
+        if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return false;
+        const i = (y * canvas.width + x) * 4;
+        return sourcePixels[i] === 0 && sourcePixels[i+1] === 255 && sourcePixels[i+2] === 0;
+      }
+      for (let y=0; y<canvas.height; y++) for (let x=0; x<canvas.width; x++) {
+        const i = (y * canvas.width + x) * 4;
+        const r = sourcePixels[i], g = sourcePixels[i+1], b = sourcePixels[i+2];
+        const isKey = r === 0 && g === 255 && b === 0;
+        let greenFringe = false;
+        if (shutdown2 && !isKey && g > 96 && r < 32 && b < 32) {
+          for (let dy=-1; dy<=1 && !greenFringe; dy++) for (let dx=-1; dx<=1; dx++) {
+            if ((dx || dy) && isTransparentGreen(x + dx, y + dy)) { greenFringe = true; break; }
+          }
+        }
+        if (isKey || greenFringe) {
+          pixels.data[i]=16; pixels.data[i+1]=21; pixels.data[i+2]=28;
+        }
       }
       bg.putImageData(pixels,0,0);
       const playerKey = death => death.playerId ? "discord:" + death.playerId : death.steamId ? "steam:" + death.steamId : "";
