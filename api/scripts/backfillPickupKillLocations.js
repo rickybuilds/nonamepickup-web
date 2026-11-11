@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 "use strict";
+// Match the API's environment even when invoked from the repository root.
+// Existing process environment values still take precedence over the file.
+require("dotenv").config({ path: require("node:path").resolve(__dirname, "../.env"), quiet: true });
 const config = require("../src/config");
 const { createDatabase } = require("../src/db");
 const { getPickupPool, closePickupPool } = require("../src/db/pickupMariadb");
@@ -10,7 +13,11 @@ const { parseCsv } = require("../src/pickup/csv");
 const { member, readText, retrySqliteBusy } = require("./backfillPickupFlagDeaths");
 
 async function main() {
-  config.validatePickupConfiguration();
+  const missing = ["PICKUP_DB_USER", "PICKUP_DB_PASSWORD", "PICKUP_STORAGE_PATH"]
+    .filter(key => !config[key]);
+  if (missing.length) {
+    throw new Error(`Missing kill backfill configuration: ${missing.join(", ")}. Configure api/.env or run with the API's environment. PICKUP_UPLOAD_TOKEN is not needed for this backfill.`);
+  }
   const pool = getPickupPool(config);
   const db = await retrySqliteBusy("Opening elo.db", () => createDatabase(config.ELO_DB, config.ANALYTICS_RETENTION_DAYS));
   const store = createKillLocationStore(db);
