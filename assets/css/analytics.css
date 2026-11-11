@@ -13,7 +13,7 @@
 
 .analytics-tabs{
   position:sticky;top:calc(var(--site-header-height,78px) + 8px);z-index:20;
-  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;
   margin-bottom:24px;padding:6px;
 }
 .analytics-tab{
