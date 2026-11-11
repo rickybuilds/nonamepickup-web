@@ -16,10 +16,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111quicksearch1">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111combobox1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
-  <script src="assets/js/capture-ratings.js?v=20261111quicksearch1" defer></script>
+  <script src="assets/js/capture-ratings.js?v=20261111combobox1" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -275,11 +275,14 @@
                   <h3>
                     Player spotlight
                   </h3>
-                  <label>
-                    Player
-                    <select id="capture-player" aria-label="Player for spotlight">
-                    </select>
-                  </label>
+                  <div class="capture-player-picker">
+                    <label for="capture-player">Player</label>
+                    <span id="capture-player-combo" class="capture-player-combo">
+                      <span class="capture-player-input"><input id="capture-player" type="text" role="combobox" aria-label="Player for spotlight" aria-autocomplete="list" aria-expanded="false" aria-controls="capture-player-options" autocomplete="off"><button id="capture-player-clear" type="button" aria-label="Clear player search">Clear</button></span>
+                      <span id="capture-player-options" role="listbox" aria-label="Qualifying players" hidden></span>
+                      <span id="capture-player-status" class="capture-player-status" role="status" aria-live="polite"></span>
+                    </span>
+                  </div>
                 </div>
                 <div id="capture-equations">
                 </div>

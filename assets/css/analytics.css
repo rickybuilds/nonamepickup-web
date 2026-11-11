@@ -376,3 +376,19 @@
 .capture-quick-search button:disabled{opacity:.5;cursor:default}
 .capture-quick-search input:focus-visible,.capture-quick-search button:focus-visible{outline:2px solid #75d5ff;outline-offset:2px}
 @media(max-width:700px){.capture-quick-search{width:100%;min-width:0}.capture-quick-search input{flex:1;width:0}}
+
+.capture-player-combo{position:relative;display:inline-block;width:220px;max-width:100%;font:12px Inter,sans-serif}
+.capture-player-input{display:flex;gap:4px}
+.capture-player-input input{width:0;flex:1;min-height:34px;padding:6px 8px;border:1px solid #41617d;border-radius:5px;background:#0b1726;color:#e7f3ff;font:inherit}
+.capture-player-input button{border:1px solid #41617d;border-radius:5px;background:#142a40;color:#d9edff;padding:4px 7px;font:inherit;cursor:pointer}
+#capture-player-options{position:absolute;z-index:40;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:#0b1726;border:1px solid #6092b9;border-radius:5px;box-shadow:0 8px 20px #0009}
+#capture-player-options[hidden]{display:none}
+#capture-player-options>span{display:block;padding:9px 10px;color:#d9edff;overflow-wrap:anywhere}
+#capture-player-options>[role=option]{cursor:pointer}
+#capture-player-options>[aria-selected=true],#capture-player-options>[role=option]:hover{background:#214765;color:#fff}
+.capture-player-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.capture-player-input input:focus-visible,.capture-player-input button:focus-visible{outline:2px solid #75d5ff;outline-offset:2px}
+#capture-context{overflow:visible;position:relative;z-index:2}
+@media(max-width:700px){.capture-player-combo{width:200px}}
+.capture-player-picker{display:flex;align-items:center;gap:6px;min-width:0}
+@media(max-width:420px){.capture-player-picker{width:100%}.capture-player-combo{flex:1;width:auto}}

@@ -14,7 +14,7 @@ class Element {
   appendChild(child) { this.children.push(child); }
   add(child) { this.appendChild(child); }
   querySelector() { return this.button; }
-  fire(name) { this.events[name]?.({ target: { closest: () => null } }); }
+  focus() {} contains() { return false; } fire(name, extra = {}) { this.events[name]?.({ target: { closest: () => null }, preventDefault() {}, ...extra }); }
 }
 async function dashboard(data) {
   const elements = new Map();
@@ -26,10 +26,11 @@ async function dashboard(data) {
   const sorts = ["player", "games", "scored", "offense", "conceded", "defense", "net"].map(key => { const e = new Element(); e.dataset.captureSort = key; e.button = new Element(); return e; });
   const views = ["overview", "players", "trends", "distribution"].map(view => { const e = new Element(); e.dataset.captureView = view; return e; });
   let ready;
-  const document = { addEventListener: (_, fn) => { ready = fn; }, getElementById: el, createElement: () => new Element(), querySelectorAll(selector) { if (selector === '[data-capture-sort]') return sorts; if (selector === '[data-capture-view]') return views; return el("capture-rows").children; }, querySelector(selector) { return sorts.find(e => selector.includes(`"${e.dataset.captureSort}"`)).button; } };
+  const documentEvents = {};
+  const document = { addEventListener: (name, fn) => { if (name === "DOMContentLoaded") ready = fn; else documentEvents[name] = fn; }, getElementById: el, createElement: () => new Element(), querySelectorAll(selector) { if (selector === '[data-capture-sort]') return sorts; if (selector === '[data-capture-view]') return views; return el("capture-rows").children; }, querySelector(selector) { return sorts.find(e => selector.includes(`"${e.dataset.captureSort}"`)).button; } };
   vm.runInNewContext(source, { document, window: { nnHelpers: { fetchJSON: async () => ({ ok: true, data }) } }, Option: function(text, value) { this.text = text; this.value = value; }, console });
   await ready();
-  return { el: id => el(`capture-${id}`), sorts, views, ids: () => el("capture-rows").children.map(row => row.dataset.player) };
+  return { outsideClick: () => documentEvents.pointerdown({target:{}}), el: id => el(`capture-${id}`), sorts, views, ids: () => el("capture-rows").children.map(row => row.dataset.player) };
 }
 const player = (id, games, offense, defense) => ({ id, player: id === "a/b" ? "Alpha <Ace>" : id, games, offense, defense, scored: 4 + offense, conceded: 4 - defense });
 const maps = [{ map: "well", games: 8, average: 4, players: [player("a/b", 5, 2, -1), player("Bravo", 8, -1, 4), player("short", 4, 5, 5)], observations: [{ matchId: "later", createdAt: 200, blueCaps: 6, redCaps: 2 }, { matchId: "early", createdAt: 100, blueCaps: 0, redCaps: 8 }, { matchId: "undated", createdAt: null, blueCaps: 0, redCaps: 0 }] }, { map: "empty", games: 1, average: 0, players: [], observations: [] }];
@@ -95,7 +96,7 @@ test("row and selector inspection update spotlight and ranks independently of ta
   ui.sorts.find(e => e.dataset.captureSort === "games").button.fire("click");
   assert.deepEqual(ui.ids(), ["Charlie", "Bravo", "Alpha"]);
   assert.equal(ui.el("equations").innerHTML, spotlight);
-  ui.el("player").value = "Alpha"; ui.el("player").fire("change");
+  ui.el("player").value = "Alpha"; ui.el("player").fire("input"); ui.el("player-options").children[0].fire("click");
   assert.match(ui.el("equations").innerHTML, /player.html\?id=Alpha/);
   assert.match(ui.el("equations").innerHTML, /Offense<\/span>.*?Rank #1 of 3/);
   ui.el("established").checked = true; ui.el("established").fire("change");
@@ -148,4 +149,37 @@ test("quick search matches partial names without changing eligibility, spotlight
   assert.deepEqual(ui.ids(), ['Bravo']);
   ui.el('map').value = 'empty'; ui.el('map').fire('change');
   assert.deepEqual(ui.ids(), []); assert.equal(ui.el('search').value, 'Bravo');
+});
+
+test('spotlight combobox filters without selecting, supports keys and synchronizes eligibility', async () => {
+  const ui = await dashboard(maps);
+  assert.equal(ui.el('player').value, 'Alpha <Ace>');
+  const before = ui.el('equations').innerHTML;
+  ui.el('player').value = 'bRa'; ui.el('player').fire('input');
+  assert.equal(ui.el('player-options').children.length, 1);
+  assert.equal(ui.el('player-options').children[0].textContent, 'Bravo');
+  assert.equal(ui.el('equations').innerHTML, before);
+  assert.equal(ui.el('player').attributes['aria-expanded'], 'true');
+  ui.el('player').fire('keydown', {key:'ArrowDown'});
+  assert.equal(ui.el('player').attributes['aria-activedescendant'], 'capture-player-option-0');
+  ui.el('player').fire('keydown', {key:'Enter'});
+  assert.equal(ui.el('player').value, 'Bravo');
+  assert.match(ui.el('equations').innerHTML, /Bravo/);
+  assert.equal(ui.el('player-options').hidden, true);
+  ui.el('player').value = 'missing'; ui.el('player').fire('input');
+  assert.match(ui.el('player-options').children[0].textContent, /No matching/);
+  ui.el('player').fire('keydown', {key:'Escape'});
+  assert.equal(ui.el('player').value, 'Bravo');
+  ui.el('player-clear').fire('click');
+  assert.equal(ui.el('player').value, '');
+  assert.equal(ui.el('player-options').children.length, 2); ui.outsideClick(); assert.equal(ui.el('player-options').hidden, true); assert.equal(ui.el('player').value, 'Bravo'); ui.el('player-clear').fire('click');
+  ui.el('player').fire('keydown', {key:'ArrowUp'});
+  ui.el('player').fire('keydown', {key:'Enter'});
+  assert.equal(ui.el('player').value, 'Bravo');
+  ui.el('rows').children.find(row => row.dataset.player === 'a/b').fire('click');
+  assert.equal(ui.el('player').value, 'Alpha <Ace>');
+  ui.el('minimum').value = '8'; ui.el('minimum').fire('change');
+  assert.equal(ui.el('player').value, 'Bravo');
+  ui.el('map').value = 'empty'; ui.el('map').fire('change');
+  assert.equal(ui.el('player').value, ''); assert.equal(ui.el('player').disabled, true);
 });

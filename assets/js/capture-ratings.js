@@ -3,6 +3,43 @@ document.addEventListener("DOMContentLoaded", async () => {
   const $ = id => document.getElementById(`capture-${id}`);
   if (!$("map")) return;
   let maps = [], view = "overview", selected = null, descending = true;
+  let eligiblePlayers = [], playerMatches = [], activePlayer = -1, playerSearch = false;
+  function dismissPlayers() {
+    playerSearch = false;
+    $("player-options").hidden = true;
+    $("player").setAttribute('aria-expanded', 'false');
+    $("player").setAttribute('aria-activedescendant', '');
+    $("player").value = eligiblePlayers.find(p => String(p.id) === selected)?.player || '';
+    $("player-status").textContent = '';
+  }
+  function showPlayers() {
+    const query = playerSearch ? $("player").value.trim().toLocaleLowerCase() : '';
+    playerMatches = eligiblePlayers.filter(p => p.player.toLocaleLowerCase().includes(query));
+    activePlayer = Math.min(activePlayer, playerMatches.length - 1);
+    $("player-options").replaceChildren();
+    playerMatches.forEach((player, index) => {
+      const option = document.createElement('span');
+      option.id = `capture-player-option-${index}`;
+      option.setAttribute('role', 'option');
+      option.setAttribute('aria-selected', String(index === activePlayer));
+      option.textContent = player.player;
+      option.addEventListener('mousedown', event => event.preventDefault());
+      option.addEventListener('click', () => choosePlayer(player));
+      $("player-options").appendChild(option);
+    });
+    if (!playerMatches.length) {
+      const empty = document.createElement('span'); empty.textContent = 'No matching qualifying players. Try another name.';
+      $("player-options").appendChild(empty);
+    }
+    $("player-options").hidden = false;
+    $("player").setAttribute('aria-expanded', 'true');
+    $("player").setAttribute('aria-activedescendant', activePlayer >= 0 ? `capture-player-option-${activePlayer}` : '');
+    $("player-status").textContent = `${playerMatches.length} matching players`;
+    $("player-options").children[activePlayer]?.scrollIntoView?.({block:'nearest'});
+  }
+  function choosePlayer(player) {
+    selected = String(player.id); $("player").focus(); dismissPlayers(); render();
+  }
   const fmt = value => Number.isFinite(value) ? value.toFixed(2) : "—";
   const signed = value => Number.isFinite(value) ? `${value >= 0.005 ? "+" : value <= -0.005 ? "−" : ""}${fmt(Math.abs(value))}` : "—";
   const tone = value => value >= 0.005 ? "capture-positive" : value <= -0.005 ? "capture-negative" : "capture-neutral";
@@ -69,7 +106,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function context(map, players) {
     const player = players.find(p => String(p.id) === selected) || players[0];
     selected = player ? String(player.id) : null;
-    $("player").value = selected || "";
+    dismissPlayers();
     $("player").disabled = !player;
     if (!player) { $("equations").innerHTML = '<p class="capture-empty">Choose a lower minimum to inspect player ratings.</p>'; return; }
     const scale = Math.max(...players.flatMap(p => [Math.abs(p.offense),Math.abs(p.defense)]),0.01);
@@ -93,7 +130,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const image = $("map-image");
     if (window.setMapImageFromName) window.setMapImageFromName(image,map.map,{fallbackSrc:'assets/images/maps/NoMap.webp'});
     else { image.src=`assets/images/maps/${encodeURIComponent(map.map)}.webp`; image.onerror=()=>{image.onerror=null;image.src='assets/images/maps/NoMap.webp';}; }
-    $("player").replaceChildren(...players.map(p => new Option(p.player,String(p.id))));
+    eligiblePlayers = players;
     const query = $("search").value.trim().toLocaleLowerCase();
     const matches = players.filter(p => p.player.toLocaleLowerCase().includes(query));
     $("player-count").textContent = query ? `(${matches.length} matching / ${players.length} qualifying)` : `(${players.length})`;
@@ -111,7 +148,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("search-clear").addEventListener('click', () => { $("search").value = ''; render(); $("search").focus(); });
   [$("trend-raw"),$("trend-rolling")].forEach(el=>el.addEventListener('change',()=>{const map=maps.find(m=>m.map===$("map").value);if(map)charts(map);}));
   $("sort").addEventListener('change',()=>{descending=$("sort").value!=='player';render();});
-  $("player").addEventListener('change',()=>{selected=$("player").value;render();});
+  $("player").addEventListener('focus', () => { activePlayer = -1; showPlayers(); });
+  $("player").addEventListener('click', showPlayers);
+  $("player").addEventListener('input', () => { playerSearch = true; activePlayer = -1; showPlayers(); });
+  $("player").addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); dismissPlayers(); }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if ($("player-options").hidden) { activePlayer = -1; showPlayers(); }
+      activePlayer = playerMatches.length ? (activePlayer + (event.key === 'ArrowDown' ? 1 : activePlayer < 0 ? 0 : -1) + playerMatches.length) % playerMatches.length : -1;
+      showPlayers();
+    }
+    if (event.key === 'Enter' && !$("player-options").hidden) { event.preventDefault(); if (activePlayer >= 0) choosePlayer(playerMatches[activePlayer]); }
+    if (event.key === 'Tab') dismissPlayers();
+  });
+  $("player-clear").addEventListener('click', () => { $("player").focus(); $("player").value = ''; playerSearch = true; activePlayer = -1; showPlayers(); });
+  document.addEventListener('pointerdown', event => { if (!$("player-combo").contains(event.target)) dismissPlayers(); });
   document.querySelectorAll('[data-capture-sort]').forEach(th=>th.querySelector('button').addEventListener('click',()=>{descending=$("sort").value===th.dataset.captureSort ? !descending : th.dataset.captureSort!=='player';$("sort").value=th.dataset.captureSort;render();}));
   document.querySelectorAll('[data-capture-view]').forEach(button=>button.addEventListener('click',()=>{view=button.dataset.captureView;setView();}));
   const descriptions={offense:'Team captures scored per game minus the map average. Higher is better.',defense:'Map average minus team captures conceded per game. Higher is better.',net:'Offense plus defense: the player’s teams’ average capture differential, not individual impact.'};
