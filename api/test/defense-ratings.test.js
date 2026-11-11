@@ -66,6 +66,46 @@ test('report cache serializes report kinds and never starts work without demand'
   await assert.rejects(cache.get('analytics',11), /Invalid limit/);
 });
 
+test('successful cold reports bootstrap sequentially without the routine refresh cooldown', async () => {
+  const {ReportCache}=require('../src/lib/reportCache');
+  const calls=[],finish=[];
+  const cache=new ReportCache({revision:()=>1,run:kind=>{calls.push(kind);return new Promise(resolve=>finish.push(resolve))}});
+  const first=cache.get('defense'),second=cache.get('analytics',5);
+  assert.deepEqual(calls,['defense']);
+  finish[0]({default:'defense'});await first;
+  assert.deepEqual(calls,['defense','analytics']);
+  finish[1]({'5':'analytics'});await second;
+  cache.invalidate();
+  assert.equal((await cache.get('defense')).status,'STALE');
+  assert.equal(calls.length,2);assert.ok(cache.timer);
+  clearTimeout(cache.timer);
+});
+
+test('cold reports cannot bypass cooldown after a failed child', async () => {
+  const {ReportCache}=require('../src/lib/reportCache');
+  const calls=[];let fail;
+  const cache=new ReportCache({revision:()=>1,run:kind=>{calls.push(kind);return new Promise((_,reject)=>{fail=reject})}});
+  const first=cache.get('defense'),second=cache.get('analytics',5);
+  fail(Error('crashed'));await assert.rejects(first,/crashed/);
+  assert.deepEqual(calls,['defense']);assert.ok(cache.timer);
+  clearTimeout(cache.timer);
+  // The queued promise intentionally remains pending: no extra worker was started.
+  void second;
+});
+
+test('warming responses request a short retry and do not log expected startup waits as failures', async () => {
+  const {createAnalyticsRouter}=require('../src/routes/analytics');
+  const {createStatsRouter}=require('../src/routes/stats');
+  for(const router of [createAnalyticsRouter,createStatsRouter]){
+    const logged=[];const headers={};let status;
+    const warming=Object.assign(Error('Report warming'),{code:'REPORT_WARMING'});
+    const routes=router({reports:{get:async()=>{throw warming}},positiveInt:()=>5,
+      logRouteError:(...args)=>logged.push(args),sendError:(_,value)=>{status=value}});
+    await routes.stack[0].route.stack.at(-1).handle({query:{}},{setHeader:(key,value)=>{headers[key]=value}});
+    assert.equal(status,503);assert.equal(headers['Retry-After'],'5');assert.equal(logged.length,0);
+  }
+});
+
 test('revision read failures preserve stale reports and apply retry backoff', async () => {
   const {ReportCache}=require('../src/lib/reportCache');
   let now=0,fail=false,reads=0;

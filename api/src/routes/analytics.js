@@ -12,8 +12,8 @@ function createAnalyticsRouter({ db, positiveInt, sendError, logRouteError, repo
       reportHeaders(res, report, "Analytics");
       res.send(report.body);
     } catch (error) {
-      logRouteError("[/api/analytics]", error);
-      res.setHeader("Retry-After", "60");
+      if (error.code !== "REPORT_WARMING") logRouteError("[/api/analytics]", error);
+      res.setHeader("Retry-After", error.code === "REPORT_WARMING" ? "5" : "60");
       res.setHeader("Cache-Control", "no-store");
       sendError(res, 503, "analytics_warming");
     }

@@ -78,7 +78,11 @@ class ReportCache {
   drain() {
     if (this.active || !this.queue?.length || this.timer) return;
     const delay = this.nextStart - this.now();
-    if (delay > 0) {
+    const firstLoad = !this.queue[0].entry.bodies && this.queue[0].entry.failures === 0;
+    // At most two first loads can skip the cooldown, only after success.
+    // They still wait for the preceding child to close. Routine refreshes
+    // and any work after a failure retain the full resource-protection delay.
+    if (delay > 0 && !(firstLoad && this.lastRunSucceeded !== false)) {
       this.timer = setTimeout(() => { this.timer = null; this.drain(); }, delay);
       this.timer.unref?.();
       return;
@@ -97,6 +101,7 @@ class ReportCache {
       }
       this.pending.delete(task.kind);
       this.active = null;
+      this.lastRunSucceeded = !error;
       this.nextStart = this.now() + this.cooldownMs;
       this.drain();
     };
@@ -171,7 +176,7 @@ function reportHeaders(res, report, prefix) {
 
 async function coldWait(promise, ms = 1500) {
   let timer;
-  try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("Report warming")), ms); })]); }
+  try { return await Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error("Report warming"), { code: "REPORT_WARMING" })), ms); })]); }
   finally { clearTimeout(timer); }
 }
 

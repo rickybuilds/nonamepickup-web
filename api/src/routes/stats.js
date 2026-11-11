@@ -29,8 +29,8 @@ function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError,
       }
       res.send(report.body);
     } catch (error) {
-      logRouteError("[/api/stats/defense-ratings]", error);
-      res.setHeader("Retry-After", "60");
+      if (error.code !== "REPORT_WARMING") logRouteError("[/api/stats/defense-ratings]", error);
+      res.setHeader("Retry-After", error.code === "REPORT_WARMING" ? "5" : "60");
       res.setHeader("Cache-Control", "no-store");
       sendError(res, 503, "defense_ratings_warming");
     }
