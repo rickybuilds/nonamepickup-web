@@ -16,9 +16,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261009streak1">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111caps1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
+  <script src="assets/js/capture-ratings.js?v=20261111a" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -169,6 +170,23 @@
       </div>
 
       <div id="analytics-panel-maps" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-maps" data-analytics-panel="maps" hidden>
+        <section class="analytics-section page-section capture-ratings" aria-labelledby="capture-ratings-title">
+          <div class="analytics-section-heading">
+            <div><h2 id="capture-ratings-title">Capture Ratings <span class="capture-experimental">Experimental</span></h2></div>
+          </div>
+          <p>How do a player’s teams compare with the map average? Positive ratings mean more caps scored or fewer caps conceded per game.</p>
+          <p class="capture-note">Team results, not individual contributions. Teammates, opponents, roles, and small samples all affect these numbers. Only completed matches with capture records for every rostered player are included.</p>
+          <div class="capture-controls">
+            <label>Map <select id="capture-map" disabled><option>Loading maps…</option></select></label>
+            <label>Minimum games <select id="capture-minimum"><option value="1">1 game</option><option value="5">5 games</option><option value="10">10 games</option><option value="25">25 games</option></select></label>
+            <label>Sort by <select id="capture-sort"><option value="offense">Offense</option><option value="defense">Defense</option><option value="games">Games</option></select></label>
+          </div>
+          <p id="capture-summary" class="capture-summary" role="status" aria-live="polite">Loading capture ratings…</p>
+          <div class="capture-table-wrap"><table class="capture-table">
+            <thead><tr><th scope="col">Player</th><th scope="col">Games</th><th scope="col">Team caps / game</th><th scope="col">Offense</th><th scope="col">Conceded / game</th><th scope="col">Defense</th></tr></thead>
+            <tbody id="capture-rows"></tbody>
+          </table></div>
+        </section>
         <section class="analytics-section page-section">
           <div class="analytics-section-heading">
             <div><h2>Map Records</h2></div>

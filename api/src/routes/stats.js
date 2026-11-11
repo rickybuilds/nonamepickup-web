@@ -5,6 +5,83 @@ const express = require("express");
 function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteError }) {
   const router = express.Router();
 
+  router.get("/stats/capture-ratings", (req, res) => {
+    try {
+      const data = cached("capture_ratings_v1", () => {
+        const matches = db.prepare(`
+          SELECT match_id, map_name, blue_ids, red_ids
+          FROM matches
+          WHERE status='completed' AND map_name IS NOT NULL AND TRIM(map_name) != ''
+            AND map_name != '(unknown)'
+        `).all();
+        const stats = db.prepare(`
+          SELECT s.match_id, s.player_key, s.steam_id, s.flag_captures,
+            pk.discord_id AS key_id, sid.discord_id AS steam_id_link
+          FROM match_player_stats s
+          JOIN matches m ON m.match_id=s.match_id AND m.status='completed'
+          LEFT JOIN player_steam_ids pk ON pk.steam_id=s.player_key
+          LEFT JOIN player_steam_ids sid ON sid.steam_id=s.steam_id
+        `).all();
+        const names = new Map(db.prepare("SELECT player_id, display_name FROM ratings").all()
+          .map(row => [String(row.player_id), row.display_name]));
+        const byMatch = new Map();
+        for (const row of stats) {
+          if (!byMatch.has(row.match_id)) byMatch.set(row.match_id, []);
+          byMatch.get(row.match_id).push(row);
+        }
+        const maps = new Map();
+        for (const match of matches) {
+          let blue, red;
+          try {
+            blue = JSON.parse(match.blue_ids);
+            red = JSON.parse(match.red_ids);
+          } catch { continue; }
+          if (!Array.isArray(blue) || !Array.isArray(red) || !blue.length || !red.length) continue;
+          blue = blue.map(String); red = red.map(String);
+          const roster = [...blue, ...red];
+          if (new Set(roster).size !== roster.length) continue;
+          const players = new Map();
+          let valid = true;
+          for (const row of byMatch.get(match.match_id) || []) {
+            const candidates = [...new Set([row.key_id, row.steam_id_link, row.player_key]
+              .filter(value => value != null && roster.includes(String(value))).map(String))];
+            const captures = Number(row.flag_captures);
+            if (candidates.length !== 1 || row.flag_captures == null || !Number.isInteger(captures) || captures < 0 || players.has(candidates[0])) {
+              valid = false; break;
+            }
+            players.set(candidates[0], captures);
+          }
+          if (!valid || players.size !== roster.length) continue;
+          const blueCaps = blue.reduce((sum, id) => sum + players.get(id), 0);
+          const redCaps = red.reduce((sum, id) => sum + players.get(id), 0);
+          if (!maps.has(match.map_name)) maps.set(match.map_name, { map: match.map_name, games: 0, totalCaps: 0, players: new Map() });
+          const map = maps.get(match.map_name);
+          map.games++; map.totalCaps += blueCaps + redCaps;
+          for (const [team, scored, conceded] of [[blue, blueCaps, redCaps], [red, redCaps, blueCaps]]) {
+            for (const id of team) {
+              if (!map.players.has(id)) map.players.set(id, { id, player: names.get(id) || id, games: 0, scored: 0, conceded: 0 });
+              const player = map.players.get(id);
+              player.games++; player.scored += scored; player.conceded += conceded;
+            }
+          }
+        }
+        return [...maps.values()].map(map => {
+          const average = map.totalCaps / (map.games * 2);
+          return { map: map.map, games: map.games, average, players: [...map.players.values()].map(player => ({
+            id: player.id, player: player.player, games: player.games,
+            scored: player.scored / player.games, conceded: player.conceded / player.games,
+            offense: player.scored / player.games - average,
+            defense: average - player.conceded / player.games
+          })) };
+        }).sort((a, b) => b.games - a.games || a.map.localeCompare(b.map));
+      });
+      res.json({ ok: true, data });
+    } catch (error) {
+      logRouteError("[/api/stats/capture-ratings]", error);
+      sendError(res, 500, "capture_ratings_failed");
+    }
+  });
+
   router.get("/stats/mostGamesAndTies", (req, res) => {
     try {
       const data = cached("stats_most_games_24h_v2", () => {
