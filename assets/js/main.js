@@ -71,9 +71,20 @@ document.querySelectorAll(".site-nav .nav-more").forEach(menu => {
 
 async function fetchJSON(url) {
   try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    const report = /^\/api\/(?:analytics|stats\/defense-ratings)(?:\?|$)/.test(url);
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (res.ok) return await res.json();
+      if (report && res.status === 503 && attempt < 3) {
+        const payload = await res.json();
+        if (["analytics_warming", "defense_ratings_warming"].includes(payload.error)) {
+          const seconds = Math.min(120, Math.max(5, Number(res.headers.get("Retry-After")) || 60));
+          await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+          continue;
+        }
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
   } catch (e) {
     console.error(`Failed: ${url}`, e);
     return { ok: false, data: [] };

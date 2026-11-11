@@ -1,19 +1,38 @@
 "use strict";
 
 const express = require("express");
-const { loadDefenseRatings } = require("../lib/defenseRatings");
+const compression = require("compression");
 const { loadDiscordDisplayNames } = require("../lib/discordDisplayNames");
+const { reportsFor, reportHeaders, coldWait } = require("../lib/reportCache");
 
-function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError, logRouteError }) {
+function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError, logRouteError, reports }) {
   const router = express.Router();
 
-  router.get("/stats/defense-ratings", (req, res) => {
+  router.get("/stats/defense-ratings", compression({ threshold: 1024, level: 1 }), async (req, res) => {
     try {
-      const data = cachedFor("defense_ratings_discord_grouped_v4", 5 * 60 * 1000, () => loadDefenseRatings(db));
-      res.json({ ok: true, data });
+      const report = await coldWait((reports || reportsFor(db)).get("defense"));
+      reportHeaders(res, report, "Defense");
+      if (req.query.detail === "summary" || req.query.detail === "selected") {
+        const payload = JSON.parse(report.body);
+        const selected = req.query.detail === "selected";
+        const classId = req.query.class;
+        if (selected && (!payload.data.classes.some(item => item.id === classId) ||
+            !payload.data.maps.some(item => item.map === req.query.map))) {
+          return sendError(res, 400, "invalid_defense_selection");
+        }
+        payload.data.maps = payload.data.maps.filter(map => !selected || map.map === req.query.map).map(map => ({
+          ...map, classes: map.classes && Object.fromEntries(Object.entries(map.classes)
+            .filter(([id]) => !selected || id === classId)
+            .map(([id, bucket]) => [id, { ...bucket, observations: selected ? bucket.observations : [] }]))
+        }));
+        return res.json(payload);
+      }
+      res.send(report.body);
     } catch (error) {
       logRouteError("[/api/stats/defense-ratings]", error);
-      sendError(res, 500, "defense_ratings_failed");
+      res.setHeader("Retry-After", "60");
+      res.setHeader("Cache-Control", "no-store");
+      sendError(res, 503, "defense_ratings_warming");
     }
   });
 

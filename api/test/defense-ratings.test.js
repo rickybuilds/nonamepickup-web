@@ -5,6 +5,204 @@ const { DatabaseSync } = require("node:sqlite");
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
+test('report cache serves stale data, coalesces limits and retains success through backoff', async () => {
+  const { ReportCache } = require('../src/lib/reportCache');
+  let now = 0, revision = 'v1', calls = 0, finish;
+  const cache = new ReportCache({ now: () => now, revision: () => revision, ttlMs: 45,
+    cooldownMs: 100, retryMs: 200, run: () => { calls++; return new Promise((resolve, reject) => { finish = { resolve, reject }; }); } });
+  const cold = cache.get('analytics', 5);
+  const concurrent = cache.get('analytics', 10);
+  assert.equal(calls, 1);
+  finish.resolve({ '5': '{"limit":5}', '10': '{"limit":10}' });
+  assert.equal((await cold).body, '{"limit":5}');
+  assert.equal((await concurrent).body, '{"limit":10}');
+  assert.equal((await cache.get('analytics', 5)).status, 'HIT');
+  now = 101; revision = 'v2';
+  const stale = await cache.get('analytics', 5);
+  assert.equal(stale.status, 'STALE'); assert.equal(stale.body, '{"limit":5}');
+  assert.equal(calls, 2);
+  finish.reject(new Error('worker crash'));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal((await cache.get('analytics', 5)).status, 'BACKOFF');
+  assert.equal(calls, 2);
+  now = 302;
+  assert.equal((await cache.get('analytics', 5)).body, '{"limit":5}');
+  finish.resolve({ '5': 'new', '10': 'new10' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal((await cache.get('analytics', 10)).body, 'new10');
+});
+
+test('report cache unchanged data avoids rebuild; cold failures and invalidation recover', async () => {
+  const { ReportCache } = require('../src/lib/reportCache');
+  let now = 0, calls = 0, fail = true;
+  const cache = new ReportCache({ now: () => now, revision: () => 'same', ttlMs: 10,
+    cooldownMs: 20, retryMs: 30, run: async () => { calls++; if (fail) throw Error('failed'); return {default:'ok'}; } });
+  await assert.rejects(cache.get('defense'), /failed/);
+  await assert.rejects(cache.get('defense'), /backoff/);
+  fail = false; now = 31;
+  assert.equal((await cache.get('defense')).body, 'ok');
+  now = 100;
+  assert.equal((await cache.get('defense')).status, 'HIT');
+  assert.equal(calls, 2);
+  cache.invalidate();
+  assert.equal((await cache.get('defense')).status, 'STALE');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls, 3);
+});
+
+test('report cache serializes report kinds and never starts work without demand', async () => {
+  const { ReportCache } = require('../src/lib/reportCache');
+  const calls = [], completions = [];
+  const cache = new ReportCache({ revision: () => 'v1', cooldownMs:0, run: kind => {
+    calls.push(kind); return new Promise(resolve => completions.push(resolve));
+  } });
+  const a = cache.get('analytics', 5), b = cache.get('defense');
+  assert.deepEqual(calls, ['analytics']);
+  completions[0]({'5':'a'}); await a;
+  assert.deepEqual(calls, ['analytics','defense']);
+  completions[1]({default:'b'}); await b;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls.length, 2); assert.equal(cache.pending.size, 0);
+  await assert.rejects(cache.get('analytics',11), /Invalid limit/);
+});
+
+test('revision read failures preserve stale reports and apply retry backoff', async () => {
+  const {ReportCache}=require('../src/lib/reportCache');
+  let now=0,fail=false,reads=0;
+  const cache=new ReportCache({now:()=>now,ttlMs:10,cooldownMs:0,retryMs:100,
+    revision:()=>{reads++;if(fail)throw Error('database busy');return 'v1'},run:async()=>({default:'good'})});
+  await cache.get('defense');now=11;fail=true;
+  const stale=await cache.get('defense');
+  assert.equal(stale.body,'good');assert.equal(stale.status,'BACKOFF');
+  await cache.get('defense');assert.equal(reads,2);
+  now=112;fail=false;assert.equal((await cache.get('defense')).body,'good');
+});
+
+test('revision markers track imports and successful MVP changes, ignoring unavailable retry timestamps', () => {
+  const {createRevisionReader}=require('../src/lib/reportCache');
+  let now=0;const db=new DatabaseSync(':memory:');
+  try {
+    db.exec(`CREATE TABLE matches(status TEXT,created_at INTEGER,nn_mvp_status TEXT,nn_mvp_computed_at INTEGER);
+      CREATE TABLE match_stat_imports(status TEXT,imported_at INTEGER);
+      CREATE TABLE tfcstats_imports(imported_at INTEGER);
+      INSERT INTO matches VALUES('completed',1,'unavailable',10),('completed',2,'available',11);
+      INSERT INTO match_stat_imports VALUES('ok',10);`);
+    const read=createRevisionReader(db,()=>now);const first=read();
+    db.exec("UPDATE matches SET nn_mvp_computed_at=99 WHERE nn_mvp_status='unavailable'");now=45001;
+    assert.equal(read(),first);
+    db.exec("UPDATE matches SET nn_mvp_computed_at=100 WHERE nn_mvp_status='available'");now+=45001;
+    const changed=read();assert.notEqual(changed,first);
+    db.exec("UPDATE match_stat_imports SET imported_at=100");now+=45001;
+    assert.notEqual(read(),changed);
+  } finally {db.close();}
+});
+
+test('report worker timeout kills child and waits for close; crash and spawn failure reject', async () => {
+  const {runReport} = require('../src/lib/reportCache');
+  const {EventEmitter} = require('node:events');
+  const child = new EventEmitter(); let killed, closed = false;
+  child.kill = signal => { killed = signal; setTimeout(() => { closed = true; child.emit('close',null); },5); };
+  await assert.rejects(runReport('unused','analytics',{spawn:()=>child,timeoutMs:5}), /timed out/);
+  assert.equal(killed,'SIGKILL'); assert.equal(closed,true);
+  for (const event of ['error','crash']) {
+    const broken = new EventEmitter(); broken.kill=()=>{};
+    const pending=runReport('unused','defense',{spawn:()=>broken});
+    if(event==='error')broken.emit('error',new Error('spawn failed'));
+    broken.emit('close',1);
+    await assert.rejects(pending,event==='error'?/spawn failed/:/without a result/);
+  }
+});
+
+test('report worker reads a file-backed database without mutating it and honors resource options', async () => {
+  const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+  const {fork}=require('node:child_process');
+  const {runReport}=require('../src/lib/reportCache');
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'noname-report-'));
+  const file=path.join(dir,'fixture.db');
+  const db=new DatabaseSync(file);db.exec("CREATE TABLE matches(match_id TEXT,map_name TEXT,status TEXT); INSERT INTO matches VALUES('m','well','completed')");db.close();
+  const before=fs.readFileSync(file);
+  try {
+    let metrics;
+    const result=await runReport(file,'defense',{onMetrics:value=>{metrics=value},spawn:(worker,args,options)=>{
+      assert.deepEqual(options.execArgv,['--max-old-space-size=192']);
+      assert.equal(options.windowsHide,true);
+      return fork(worker,args,options);
+    }});
+    assert.equal(JSON.parse(result.default).data.maps[0].map,'well');
+    assert.ok(metrics.priority>0);assert.ok(metrics.rssMiB>0);
+    assert.deepEqual(fs.readFileSync(file),before);
+  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('analytics projections share one build while preserving fixed lists and per-weapon limits', () => {
+  const {projectAnalytics}=require('../src/lib/analyticsProjection');
+  const rows=Array.from({length:10},(_,i)=>({id:i}));
+  const data={mvps:rows,mvp_rate:rows,activity:rows};
+  for(const key of ['mvp_results','streaks','per_game','combat','flags','roles','rounds','matches','chaos'])data[key]={leaders:rows};
+  data.chaos.least_flag_touches=Array.from({length:50},(_,i)=>i);
+  data.weapons={totals:rows,maps:rows,leaders:['a','b'].flatMap(weapon=>rows.map(row=>({...row,weapon})))};
+  data.maps={most_played:rows,total_kills:rows,average_team_score:rows,details:rows,leaders:rows};
+  for(let limit=1;limit<=10;limit++){
+    const result=projectAnalytics({ok:true,data},limit).data;
+    assert.equal(result.mvps.length,limit);assert.equal(result.rounds.leaders.length,limit);
+    assert.equal(result.weapons.leaders.length,limit*2);assert.equal(result.maps.most_played.length,limit);
+    assert.equal(result.chaos.least_flag_touches.length,50);assert.equal(result.maps.leaders.length,10);
+    assert.equal(result.weapons.totals.length,10);assert.equal(result.activity.length,10);
+    assert.equal(data.mvps.length,10);
+  }
+});
+
+test('defense detail projections preserve ratings, filter observations and reject invalid selections', async () => {
+  const {createStatsRouter}=require('../src/routes/stats');
+  const bucket={baseline:7,players:[{id:'1',defense:2,estimated:true}],observations:[{conceded:5}],status:'estimated'};
+  const payload={ok:true,data:{classes:[{id:'soldier'},{id:'engineer'}],maps:[{map:'well',classes:{soldier:bucket,engineer:bucket}},{map:'2fort',classes:{soldier:bucket}}],coverage:{sources:[{rows:10}]}}};
+  const router=createStatsRouter({reports:{get:async()=>({body:JSON.stringify(payload),status:'HIT',age:0})},sendError:(res,status,error)=>{res.status=status;res.error=error},logRouteError:(_,e)=>{throw e}});
+  const handler=router.stack.find(layer=>layer.route?.path==='/stats/defense-ratings').route.stack.at(-1).handle;
+  for(const detail of ['summary','selected']){
+    let result;await handler({query:{detail,map:'well',class:'soldier'}},{setHeader(){},type(){},json:p=>{result=p}});
+    assert.deepEqual(result.data.coverage,payload.data.coverage);
+    const selected=result.data.maps[0].classes.soldier;
+    assert.equal(selected.baseline,7);assert.deepEqual(selected.players,bucket.players);
+    assert.equal(selected.observations.length,detail==='summary'?0:1);
+    assert.equal(result.data.maps.length,detail==='summary'?2:1);
+    if(detail==='selected')assert.deepEqual(Object.keys(result.data.maps[0].classes),['soldier']);
+  }
+  const res={setHeader(){},type(){}};
+  await handler({query:{detail:'selected',map:'missing',class:'soldier'}},res);
+  assert.equal(res.status,400);assert.equal(res.error,'invalid_defense_selection');
+});
+
+test('cold HTTP wait is bounded without cancelling the shared refresh and a new cache starts cold', async () => {
+  const {ReportCache,coldWait}=require('../src/lib/reportCache');
+  let finish,calls=0;
+  const settings={revision:()=>1,cooldownMs:0,run:()=>{calls++;return new Promise(resolve=>{finish=resolve})}};
+  const cache=new ReportCache(settings),pending=cache.get('defense');
+  await assert.rejects(coldWait(pending,5),/warming/);
+  assert.equal(calls,1);assert.equal(cache.pending.size,1);
+  finish({default:'ready'});await pending;
+  assert.equal((await cache.get('defense')).status,'HIT');
+  const restarted=new ReportCache(settings),cold=restarted.get('defense');
+  assert.equal(calls,2);finish({default:'after restart'});
+  assert.equal((await cold).status,'MISS');
+});
+
+test('report clients retry bounded warming responses and leave unrelated failures alone', async () => {
+  const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+  const source=fs.readFileSync(path.join(__dirname,'../../assets/js/main.js'),'utf8');
+  const fn=source.slice(source.indexOf('async function fetchJSON('),source.indexOf('function escapeHtml('));
+  let calls=0;const delays=[];
+  const context={console:{error(){}},setTimeout:(callback,ms)=>{delays.push(ms);callback()},fetch:async()=>{
+    calls++;return calls===1?{ok:false,status:503,headers:{get:()=> '60'},json:async()=>({ok:false,error:'analytics_warming'})}:{ok:true,json:async()=>({ok:true,data:{ready:true}})};
+  }};
+  vm.createContext(context);vm.runInContext(fn,context);
+  assert.equal((await context.fetchJSON('/api/analytics?limit=5')).ok,true);
+  assert.equal(calls,2);assert.deepEqual(delays,[60000]);
+  calls=0;await context.fetchJSON('/api/leaderboard');assert.equal(calls,1);
+  calls=0;context.fetch=async()=>{calls++;return {ok:false,status:503,headers:{get:()=> '60'},json:async()=>({ok:false,error:'defense_ratings_warming'})}};
+  assert.equal((await context.fetchJSON('/api/stats/defense-ratings')).ok,false);
+  assert.equal(calls,4);
+});
+
 test('shared ratings names use Discord display names rather than game aliases',()=>{
   const {loadDiscordDisplayNames}=require('../src/lib/discordDisplayNames');
   const db=new DatabaseSync(':memory:');
@@ -107,30 +305,29 @@ test("defense ratings use linked round role and class data as clearly labeled es
   } finally { db.close(); }
 });
 
-test("defense endpoint preserves API envelope and unavailable contract for every class/filter", () => {
+test("defense endpoint preserves API envelope and unavailable contract for every class/filter", async () => {
   const { createStatsRouter } = require("../src/routes/stats");
   const db = new DatabaseSync(":memory:");
   try {
     db.exec("CREATE TABLE matches (match_id TEXT, map_name TEXT, status TEXT); INSERT INTO matches VALUES ('m','well','completed')");
-    const keys = [];
-    const router = createStatsRouter({ db, cachedFor: (key, ttl, fn) => { keys.push(key); assert.equal(ttl, 300000); return fn(); }, sendError: () => assert.fail("unexpected API error"), logRouteError: (_, error) => { throw error; } });
-    const handler = router.stack.find(layer => layer.route?.path === "/stats/defense-ratings").route.stack[0].handle;
+    const reports = { get: async kind => { assert.equal(kind, 'defense'); return { body: JSON.stringify({ok:true,data:loadDefenseRatings(db)}), status:'HIT', age:0 }; } };
+    const router = createStatsRouter({ db, reports, sendError: () => assert.fail("unexpected API error"), logRouteError: (_, error) => { throw error; } });
+    const handler = router.stack.find(layer => layer.route?.path === "/stats/defense-ratings").route.stack.at(-1).handle;
     for (const classId of ["soldier", "demoman", "hwguy", "engineer", "invalid"]) {
       let response;
-      handler({ query: { class: classId, map: "well", minimum: "5", sort: "defense" } }, { json(value) { response = value; } });
+      await handler({ query: { class: classId, map: "well", minimum: "5", sort: "defense" } }, { setHeader(){}, type(){}, send(value) { response = JSON.parse(value); } });
       assert.equal(response.ok, true); assert.equal(response.data.status, "unavailable");
       assert.equal(response.data.maps[0].baseline, null); assert.deepEqual(response.data.maps[0].players, []);
       assert.equal(response.data.classes.length, 4);
     }
-    assert.ok(keys.every(key => key === "defense_ratings_discord_grouped_v4"));
   } finally { db.close(); }
 });
 
-test("defense endpoint reports failures without leaking internal errors", () => {
+test("defense endpoint reports failures without leaking internal errors", async () => {
   const { createStatsRouter } = require("../src/routes/stats");
   const logged = [], errors = [];
-  const router = createStatsRouter({ db: {}, cachedFor: () => { throw new Error("private database path"); }, logRouteError: (...args) => logged.push(args), sendError: (_, code, message) => errors.push({ code, message }) });
-  router.stack.find(layer => layer.route?.path === "/stats/defense-ratings").route.stack[0].handle({}, {});
-  assert.deepEqual(errors, [{ code: 500, message: "defense_ratings_failed" }]);
+  const router = createStatsRouter({ db: {}, reports: {get: async () => { throw new Error("private database path"); }}, logRouteError: (...args) => logged.push(args), sendError: (_, code, message) => errors.push({ code, message }) });
+  await router.stack.find(layer => layer.route?.path === "/stats/defense-ratings").route.stack.at(-1).handle({}, {setHeader(){}});
+  assert.deepEqual(errors, [{ code: 503, message: "defense_ratings_warming" }]);
   assert.equal(logged.length, 1);
 });
