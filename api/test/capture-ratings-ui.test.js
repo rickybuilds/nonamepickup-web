@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const source = fs.readFileSync(path.join(__dirname, "../../assets/js/capture-ratings.js"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "../../assets/js/ratings-controls.js"), "utf8") + "\n" + fs.readFileSync(path.join(__dirname, "../../assets/js/capture-ratings.js"), "utf8");
 const html = fs.readFileSync(path.join(__dirname, "../../analytics.html"), "utf8");
 class Element {
   constructor() { this.value = ""; this.dataset = {}; this.children = []; this.events = {}; this.attributes = {}; this.classList = { toggle() {} }; this.hidden = true; }

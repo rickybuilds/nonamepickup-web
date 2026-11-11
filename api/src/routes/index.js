@@ -123,6 +123,7 @@ app.use("/api", createMapsRouter({
 app.use("/api", createStatsRouter({
   db,
   cached,
+  cachedFor,
   statsSummaryStmt,
   sendError,
   logRouteError

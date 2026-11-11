@@ -1,9 +1,20 @@
 "use strict";
 
 const express = require("express");
+const { loadDefenseRatings } = require("../lib/defenseRatings");
 
-function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteError }) {
+function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError, logRouteError }) {
   const router = express.Router();
+
+  router.get("/stats/defense-ratings", (req, res) => {
+    try {
+      const data = cachedFor("defense_ratings_foundation_v1", 5 * 60 * 1000, () => loadDefenseRatings(db));
+      res.json({ ok: true, data });
+    } catch (error) {
+      logRouteError("[/api/stats/defense-ratings]", error);
+      sendError(res, 500, "defense_ratings_failed");
+    }
+  });
 
   router.get("/stats/capture-ratings", (req, res) => {
     try {

@@ -16,10 +16,12 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111combobox1">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111defense1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
-  <script src="assets/js/capture-ratings.js?v=20261111combobox1" defer></script>
+  <script src="assets/js/ratings-controls.js?v=20261111defense1" defer></script>
+  <script src="assets/js/defense-ratings.js?v=20261111defense1" defer></script>
+  <script src="assets/js/capture-ratings.js?v=20261111defense1" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -108,6 +110,7 @@
         <button id="analytics-tab-weapons" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-weapons" data-analytics-tab="weapons" tabindex="-1">Weapons</button>
         <button id="analytics-tab-maps" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-maps" data-analytics-tab="maps" tabindex="-1">Maps</button>
         <button id="analytics-tab-capture-ratings" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-capture-ratings" data-analytics-tab="capture-ratings" tabindex="-1">Capture Ratings</button>
+        <button id="analytics-tab-defense-ratings" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-defense-ratings" data-analytics-tab="defense-ratings" tabindex="-1">Defense Ratings</button>
         <button id="analytics-tab-players" class="analytics-tab" type="button" role="tab" aria-selected="false" aria-controls="analytics-panel-players" data-analytics-tab="players" tabindex="-1">Players</button>
       </nav>
 
@@ -406,6 +409,39 @@
           </div>
         </section>
 
+      </div>
+
+      <div id="analytics-panel-defense-ratings" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-defense-ratings" data-analytics-panel="defense-ratings" hidden>
+        <section class="analytics-section page-section capture-ratings defense-ratings" aria-labelledby="defense-title">
+          <header class="capture-header">
+            <div><h2 id="defense-title">Defense Ratings <span class="capture-experimental">Experimental</span></h2><p>Map-specific defensive class analysis, grounded in verified participation.</p></div>
+            <details class="capture-help"><summary>What would this rating measure?</summary><p>Baseline team caps conceded minus the player’s team caps conceded in verified defensive-class participation. Higher is better. This is an observational team-result association, not individual defensive impact.</p></details>
+          </header>
+          <div class="defense-classes" role="group" aria-label="Defensive class">
+            <button type="button" data-defense-class="soldier" aria-pressed="true"><img src="assets/images/classes/Soldierold_tfc.png" alt="" width="42" height="48"><span>Soldier</span></button>
+            <button type="button" data-defense-class="demoman" aria-pressed="false"><img src="assets/images/classes/Demomanold_tfc.png" alt="" width="42" height="48"><span>Demoman</span></button>
+            <button type="button" data-defense-class="hwguy" aria-pressed="false"><img src="assets/images/classes/Heavyold_tfc.png" alt="" width="42" height="48"><span>HWGuy</span></button>
+            <button type="button" data-defense-class="engineer" aria-pressed="false"><img src="assets/images/classes/Engineerold_tfc.png" alt="" width="42" height="48"><span>Engineer</span></button>
+          </div>
+          <div class="capture-controls">
+            <label>Map<select id="defense-map" disabled><option>Loading maps…</option></select></label>
+            <label>Minimum games<select id="defense-minimum" aria-describedby="defense-filter-note"><option value="5">≥ 5 games</option><option value="10">≥ 10 games</option><option value="25">≥ 25 games</option></select></label>
+            <label>Sort by<select id="defense-sort" aria-describedby="defense-filter-note"><option value="defense">Defense rating</option><option value="conceded">Captures conceded</option><option value="games">Eligible appearances</option><option value="player">Player name</option></select></label>
+            <div class="capture-view-control"><span>View</span><div class="capture-views" role="group" aria-label="Defense dashboard view"><button type="button" data-defense-view="overview" aria-pressed="true">Overview</button><button type="button" data-defense-view="players" aria-pressed="false">Players</button><button type="button" data-defense-view="trends" aria-pressed="false">Trends</button><button type="button" data-defense-view="distribution" aria-pressed="false">Distribution</button></div></div>
+          </div>
+          <p id="defense-filter-note" class="capture-footnote">Minimum and sort preferences are retained. No verified defensive-class data is available to apply them to.</p>
+          <p id="defense-summary" class="capture-summary" role="status" aria-live="polite">Checking defensive-class data coverage…</p>
+          <div id="defense-dashboard" hidden>
+            <section class="capture-panel defense-telemetry" aria-labelledby="defense-telemetry-title"><div class="defense-telemetry-heading"><span class="defense-data-status">Telemetry required</span><h3 id="defense-telemetry-title">Class-specific ratings are unavailable</h3></div><p id="defense-reason"></p><p>Aggregate class time and round roles cannot establish when a player defended in a specific class. Missing participation is unavailable, never zero.</p><details><summary>Data needed for verified ratings</summary><ul id="defense-missing"></ul><p>Class comparisons, sample tiers, and numerical rankings will remain unavailable until compatible participation units and a baseline can be verified.</p></details></section>
+            <div id="defense-kpis" class="capture-kpis defense-kpis"></div>
+            <div class="capture-analysis">
+              <section id="defense-context" class="capture-panel capture-context"><div class="capture-panel-heading"><h3>Defender spotlight</h3><div class="capture-player-picker"><label for="defense-player">Player</label><span id="defense-player-combo" class="capture-player-combo"><span class="capture-player-input"><input id="defense-player" type="text" role="combobox" aria-label="Defender for spotlight" aria-autocomplete="list" aria-expanded="false" aria-controls="defense-player-options" autocomplete="off" placeholder="Search qualifying defenders…"><button id="defense-player-clear" type="button" aria-label="Clear defender search">Clear</button></span><span id="defense-player-options" class="ratings-player-options" role="listbox" aria-label="Qualifying defenders" hidden></span><span id="defense-player-status" class="capture-player-status" role="status" aria-live="polite"></span></span></div></div><div id="defense-spotlight" class="defense-unavailable"></div></section>
+              <section id="defense-distribution-panel" class="capture-panel"><div class="capture-panel-heading"><h3>Captures conceded distribution</h3></div><div id="defense-distribution" class="defense-unavailable"></div></section>
+              <section id="defense-trends-panel" class="capture-panel"><div class="capture-panel-heading"><h3>Defensive performance trend</h3></div><div id="defense-trend" class="defense-unavailable"></div></section>
+            </div>
+            <section id="defense-leaderboard" class="capture-panel"><div class="capture-panel-heading"><h3>Defensive class leaderboard</h3><span id="defense-ranking-context"></span></div><p id="defense-leaderboard-empty" class="defense-unavailable"></p><p class="capture-footnote">No class membership or defensive role is inferred from preferred classes, brief appearances, or captures conceded. Minimum-game and sort selections are retained; no unverified players are ranked.</p></section>
+          </div>
+        </section>
       </div>
 
       <div id="analytics-panel-maps" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-maps" data-analytics-panel="maps" hidden>
