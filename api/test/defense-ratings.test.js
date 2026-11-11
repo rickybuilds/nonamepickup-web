@@ -72,7 +72,7 @@ test("defense ratings use linked round role and class data as clearly labeled es
     assert.equal(result.status,'estimated'); assert.equal(soldier.status,'estimated'); assert.equal(soldier.games,1);
     assert.equal(soldier.baseline,7); assert.equal(soldier.players[0].player,'Discord Alice'); assert.equal(soldier.players[0].profileId,'123'); assert.equal(soldier.players[0].defense,0);
     assert.equal(soldier.players[0].estimated,true); assert.equal(result.methodology.threshold.dominantClass,.7);
-    assert.deepEqual(soldier.observations[0].playerIds,['STEAM_TEST']);
+    assert.deepEqual(soldier.observations[0].playerIds,['123']);
     for(const className of ['demoman','hwguy','engineer','soldier']) {
       db.prepare("UPDATE match_player_round_stats SET role=? WHERE player_key='STEAM_TEST'").run(className);
       db.prepare("UPDATE match_player_classes SET class_name=? WHERE player_key='STEAM_TEST' AND class_name!='medic'").run(className);
@@ -85,6 +85,19 @@ test("defense ratings use linked round role and class data as clearly labeled es
     const shared=loadDefenseRatings(db).maps[0].classes.soldier;
     assert.equal(shared.games,1);assert.equal(shared.baseline,7);assert.equal(shared.players.length,2);
     assert.equal(shared.observations[0].playerIds.length,2);
+    db.exec("UPDATE player_steam_ids SET discord_id='123' WHERE steam_id='SECOND'");
+    const merged=loadDefenseRatings(db).maps[0].classes.soldier;
+    assert.equal(merged.players.length,1);assert.equal(merged.players[0].id,'123');
+    assert.equal(merged.players[0].games,1);assert.equal(merged.players[0].conceded,7);
+    assert.deepEqual(merged.observations[0].playerIds,['123']);
+    db.exec(`INSERT INTO matches VALUES ('m2','phantom_lg','completed',2);
+      INSERT INTO match_rounds VALUES ('m2',1,900,30,0,'Team A','Team B');
+      INSERT INTO match_player_round_stats VALUES ('m2','SECOND','Alias',1,'Team B','Soldier',0),('m2','OFFENSE','Bob',1,'Team A','Medic',3);
+      INSERT INTO match_player_classes VALUES ('m2','SECOND',1,'soldier',900);`);
+    const combined=loadDefenseRatings(db).maps[0].classes.soldier;
+    assert.equal(combined.players.length,1);assert.equal(combined.players[0].games,2);
+    assert.equal(combined.players[0].conceded,5);assert.equal(combined.baseline,5);
+    db.exec("DELETE FROM matches WHERE match_id='m2'; UPDATE player_steam_ids SET discord_id='456' WHERE steam_id='SECOND'");
     db.exec("UPDATE match_player_classes SET seconds=1000 WHERE player_key='SECOND'");
     assert.equal(loadDefenseRatings(db).coverage.exclusions.invalidDuration,1);
     db.exec("UPDATE match_player_classes SET seconds=700 WHERE player_key='SECOND'; INSERT INTO match_player_classes VALUES ('m','SECOND',1,'medic',200)");
@@ -109,7 +122,7 @@ test("defense endpoint preserves API envelope and unavailable contract for every
       assert.equal(response.data.maps[0].baseline, null); assert.deepEqual(response.data.maps[0].players, []);
       assert.equal(response.data.classes.length, 4);
     }
-    assert.ok(keys.every(key => key === "defense_ratings_estimated_v3"));
+    assert.ok(keys.every(key => key === "defense_ratings_discord_grouped_v4"));
   } finally { db.close(); }
 });
 

@@ -70,7 +70,7 @@ function loadDefenseRatings(db) {
     WHERE m.map_name IS NOT NULL AND TRIM(m.map_name) != '' AND m.map_name != '(unknown)' AND c.seconds IS NOT NULL AND c.seconds >= 0`).all();
   const groups = new Map();
   for (const row of rows) { const key=`${row.match_id}|${row.player_key}|${row.round_num}`; if(!groups.has(key)) groups.set(key,{...row,classes:new Map()}); const g=groups.get(key); const name=String(row.class_name||'').toLowerCase(); g.classes.set(name,(g.classes.get(name)||0)+Number(row.seconds)); }
-  const byMapClass = new Map(), qualifyingPlayers = new Set(); let eligibleAppearances=0, linkedObservations=0;
+  const byMapClass = new Map(), qualifyingPlayers = new Set(), seenAppearances = new Set(); let eligibleAppearances=0, linkedObservations=0;
   for (const g of groups.values()) {
     const role=String(g.role||'').toLowerCase(); if(!g.defense_team || String(g.team_name)!==String(g.defense_team)) continue;
     const total=[...g.classes.values()].reduce((sum,s)=>sum+s,0), duration=Number(g.duration_seconds);
@@ -89,10 +89,15 @@ function loadDefenseRatings(db) {
       const key=`${g.map_name}|${item.id}`; if(!byMapClass.has(key)) byMapClass.set(key,{map:g.map_name,classId:item.id,rounds:new Map(),players:new Map()}); const b=byMapClass.get(key);
       const roundKey=`${g.match_id}|${g.round_num}|${g.team_name}`, conceded=Number(capture.caps);
       if(!b.rounds.has(roundKey))b.rounds.set(roundKey,{matchId:String(g.match_id),roundNum:Number(g.round_num),createdAt:Number(g.created_at)||null,conceded,team:g.team_name,playerIds:[]});
-      b.rounds.get(roundKey).playerIds.push(String(g.player_key));
       const profileId=profileIds.get(String(g.player_key))||null;
-      if(!b.players.has(g.player_key)) b.players.set(g.player_key,{id:String(g.player_key),profileId,player:profileId?(discordNames.get(profileId)||`Discord user ${profileId}`):'Unlinked player',games:0,conceded:0}); const p=b.players.get(g.player_key); p.games++; p.conceded+=conceded;
-      eligibleAppearances++; qualifyingPlayers.add(String(g.player_key));
+      const playerId=profileId||String(g.player_key);
+      // Linked Steam accounts belong to one Discord player. Count a shared round once.
+      const appearanceKey=`${key}|${roundKey}|${playerId}`;
+      if(seenAppearances.has(appearanceKey))continue;
+      seenAppearances.add(appearanceKey);
+      b.rounds.get(roundKey).playerIds.push(playerId);
+      if(!b.players.has(playerId)) b.players.set(playerId,{id:playerId,profileId,player:profileId?(discordNames.get(profileId)||`Discord user ${profileId}`):'Unlinked player',games:0,conceded:0}); const p=b.players.get(playerId); p.games++; p.conceded+=conceded;
+      eligibleAppearances++; qualifyingPlayers.add(playerId);
     }
   }
   const classMaps=new Map(); for(const b of byMapClass.values()){const observations=[...b.rounds.values()].sort((a,z)=>(a.createdAt??Infinity)-(z.createdAt??Infinity)||a.matchId.localeCompare(z.matchId)); const baseline=observations.length?observations.reduce((s,o)=>s+o.conceded,0)/observations.length:null; classMaps.set(`${b.map}|${b.classId}`,{games:observations.length,baseline,observations,players:[...b.players.values()].map(p=>({...p,conceded:p.conceded/p.games,defense:baseline-p.conceded/p.games,estimated:true})).sort((a,z)=>z.defense-a.defense||z.games-a.games||a.player.localeCompare(z.player)),status:observations.length?'estimated':'unavailable'}); linkedObservations+=observations.length; }
