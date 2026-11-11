@@ -5,6 +5,18 @@ const { DatabaseSync } = require("node:sqlite");
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
+test('shared ratings names use Discord display names rather than game aliases',()=>{
+  const {loadDiscordDisplayNames}=require('../src/lib/discordDisplayNames');
+  const db=new DatabaseSync(':memory:');
+  try{
+    db.exec(`CREATE TABLE ratings(player_id TEXT,display_name TEXT);
+      CREATE TABLE discord_names(discord_id TEXT,display_name TEXT,global_name TEXT,username TEXT);
+      INSERT INTO ratings VALUES ('1','Cached Discord'),('2','Fallback Discord');
+      INSERT INTO discord_names VALUES ('1','Server Display','Global Name','username');`);
+    const names=loadDiscordDisplayNames(db);assert.equal(names.get('1'),'Server Display');assert.equal(names.get('2'),'Fallback Discord');
+  }finally{db.close();}
+});
+
 test("defense metadata never promotes aggregate class time or isolated role events into class ratings", () => {
   const db = new DatabaseSync(":memory:");
   try {
@@ -44,18 +56,41 @@ test("defense ratings use linked round role and class data as clearly labeled es
   try {
     db.exec(`CREATE TABLE matches (match_id TEXT, map_name TEXT, status TEXT, created_at INTEGER);
       CREATE TABLE match_player_classes (match_id TEXT, player_key TEXT, round_num INTEGER, class_name TEXT, seconds INTEGER);
-      CREATE TABLE match_player_round_stats (match_id TEXT, player_key TEXT, display_name TEXT, round_num INTEGER, team_name TEXT, role TEXT);
+      CREATE TABLE match_player_round_stats (match_id TEXT, player_key TEXT, display_name TEXT, round_num INTEGER, team_name TEXT, role TEXT, flag_captures INTEGER);
       CREATE TABLE match_rounds (match_id TEXT, round_num INTEGER, duration_seconds INTEGER, team1_score INTEGER, team2_score INTEGER, offense_team TEXT, defense_team TEXT);
-      CREATE TABLE player_steam_ids (steam_id TEXT);
+      CREATE TABLE player_steam_ids (steam_id TEXT, discord_id TEXT);
+      CREATE TABLE ratings (player_id TEXT,display_name TEXT);
+      CREATE TABLE discord_names (discord_id TEXT,display_name TEXT,global_name TEXT,username TEXT);
       INSERT INTO matches VALUES ('m','phantom_lg','completed',1);
-      INSERT INTO player_steam_ids VALUES ('STEAM_TEST');
+      INSERT INTO player_steam_ids VALUES ('STEAM_TEST','123');
+      INSERT INTO ratings VALUES ('123','Cached Alice');
+      INSERT INTO discord_names VALUES ('123','Discord Alice','Global Alice','alice');
       INSERT INTO match_rounds VALUES ('m',1,900,70,20,'Team A','Team B');
-      INSERT INTO match_player_round_stats VALUES ('m','STEAM_TEST','Alice',1,'Team B','Soldier');
+      INSERT INTO match_player_round_stats VALUES ('m','STEAM_TEST','Alice',1,'Team B','Soldier',0),('m','OFFENSE','Bob',1,'Team A','Medic',7);
       INSERT INTO match_player_classes VALUES ('m','STEAM_TEST',1,'soldier',800),('m','STEAM_TEST',1,'medic',20);`);
     const result=loadDefenseRatings(db); const map=result.maps[0]; const soldier=map.classes.soldier;
     assert.equal(result.status,'estimated'); assert.equal(soldier.status,'estimated'); assert.equal(soldier.games,1);
-    assert.equal(soldier.baseline,7); assert.equal(soldier.players[0].player,'Alice'); assert.equal(soldier.players[0].defense,0);
+    assert.equal(soldier.baseline,7); assert.equal(soldier.players[0].player,'Discord Alice'); assert.equal(soldier.players[0].profileId,'123'); assert.equal(soldier.players[0].defense,0);
     assert.equal(soldier.players[0].estimated,true); assert.equal(result.methodology.threshold.dominantClass,.7);
+    assert.deepEqual(soldier.observations[0].playerIds,['STEAM_TEST']);
+    for(const className of ['demoman','hwguy','engineer','soldier']) {
+      db.prepare("UPDATE match_player_round_stats SET role=? WHERE player_key='STEAM_TEST'").run(className);
+      db.prepare("UPDATE match_player_classes SET class_name=? WHERE player_key='STEAM_TEST' AND class_name!='medic'").run(className);
+      assert.equal(loadDefenseRatings(db).maps[0].classes[className].players[0].games,1);
+    }
+    // A second defender shares the outcome; it must not double-weight the baseline.
+    db.exec(`INSERT INTO player_steam_ids VALUES ('SECOND','456');
+      INSERT INTO match_player_round_stats VALUES ('m','SECOND','Second',1,'Team B','Soldier',0);
+      INSERT INTO match_player_classes VALUES ('m','SECOND',1,'soldier',900);`);
+    const shared=loadDefenseRatings(db).maps[0].classes.soldier;
+    assert.equal(shared.games,1);assert.equal(shared.baseline,7);assert.equal(shared.players.length,2);
+    assert.equal(shared.observations[0].playerIds.length,2);
+    db.exec("UPDATE match_player_classes SET seconds=1000 WHERE player_key='SECOND'");
+    assert.equal(loadDefenseRatings(db).coverage.exclusions.invalidDuration,1);
+    db.exec("UPDATE match_player_classes SET seconds=700 WHERE player_key='SECOND'; INSERT INTO match_player_classes VALUES ('m','SECOND',1,'medic',200)");
+    assert.equal(loadDefenseRatings(db).coverage.exclusions.suspiciousClass,1);
+    db.exec("UPDATE match_player_round_stats SET flag_captures=NULL WHERE player_key='OFFENSE'");
+    assert.equal(loadDefenseRatings(db).status,'unavailable');
   } finally { db.close(); }
 });
 
@@ -74,7 +109,7 @@ test("defense endpoint preserves API envelope and unavailable contract for every
       assert.equal(response.data.maps[0].baseline, null); assert.deepEqual(response.data.maps[0].players, []);
       assert.equal(response.data.classes.length, 4);
     }
-    assert.ok(keys.every(key => key === "defense_ratings_estimated_v2"));
+    assert.ok(keys.every(key => key === "defense_ratings_estimated_v3"));
   } finally { db.close(); }
 });
 

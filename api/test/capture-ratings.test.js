@@ -5,6 +5,7 @@ const { createStatsRouter } = require("../src/routes/stats");
 
 function payload(matches, stats) {
   const db = { prepare(sql) { return { all() {
+    if (sql.includes('sqlite_master')) return [{name:'ratings'}];
     if (sql.includes("FROM match_player_stats s")) return stats;
     if (sql.includes("FROM ratings")) return [{ player_id: "a", display_name: "Alpha" }];
     if (sql.includes("FROM matches")) return matches;

@@ -2,13 +2,14 @@
 
 const express = require("express");
 const { loadDefenseRatings } = require("../lib/defenseRatings");
+const { loadDiscordDisplayNames } = require("../lib/discordDisplayNames");
 
 function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError, logRouteError }) {
   const router = express.Router();
 
   router.get("/stats/defense-ratings", (req, res) => {
     try {
-      const data = cachedFor("defense_ratings_estimated_v2", 5 * 60 * 1000, () => loadDefenseRatings(db));
+      const data = cachedFor("defense_ratings_estimated_v3", 5 * 60 * 1000, () => loadDefenseRatings(db));
       res.json({ ok: true, data });
     } catch (error) {
       logRouteError("[/api/stats/defense-ratings]", error);
@@ -18,7 +19,7 @@ function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError,
 
   router.get("/stats/capture-ratings", (req, res) => {
     try {
-      const data = cached("capture_ratings_v2", () => {
+      const data = cached("capture_ratings_discord_v3", () => {
         const matches = db.prepare(`
           SELECT match_id, created_at, map_name, blue_ids, red_ids
           FROM matches
@@ -33,8 +34,7 @@ function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError,
           LEFT JOIN player_steam_ids pk ON pk.steam_id=s.player_key
           LEFT JOIN player_steam_ids sid ON sid.steam_id=s.steam_id
         `).all();
-        const names = new Map(db.prepare("SELECT player_id, display_name FROM ratings").all()
-          .map(row => [String(row.player_id), row.display_name]));
+        const names = loadDiscordDisplayNames(db);
         const byMatch = new Map();
         for (const row of stats) {
           if (!byMatch.has(row.match_id)) byMatch.set(row.match_id, []);
@@ -76,7 +76,7 @@ function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError,
           });
           for (const [team, scored, conceded] of [[blue, blueCaps, redCaps], [red, redCaps, blueCaps]]) {
             for (const id of team) {
-              if (!map.players.has(id)) map.players.set(id, { id, player: names.get(id) || id, games: 0, scored: 0, conceded: 0 });
+              if (!map.players.has(id)) map.players.set(id, { id, player: names.get(id) || `Discord user ${id}`, games: 0, scored: 0, conceded: 0 });
               const player = map.players.get(id);
               player.games++; player.scored += scored; player.conceded += conceded;
             }

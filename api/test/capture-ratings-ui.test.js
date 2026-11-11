@@ -77,7 +77,7 @@ test("sample tier boundaries, established filter and full-population KPIs respec
   for (const [id, tier] of [["five", "limited"], ["nine", "limited"], ["ten", "developing"], ["twentyfour", "developing"], ["twentyfive", "established"], ["fortynine", "established"], ["fifty", "extensive"]]) assert.match(ui.el("rows").children.find(r => r.dataset.player === id).innerHTML, new RegExp(`data-sample="${tier}"`));
   assert.doesNotMatch(ui.el("kpis").innerHTML, /ineligible/);
   assert.match(ui.el("kpis").innerHTML, /fifty/);
-  ui.el("established").checked = true; ui.el("established").fire("change");
+  ui.el("minimum").value = '25'; ui.el("minimum").fire("change");
   assert.deepEqual(ui.ids(), ["fifty", "fortynine", "twentyfive"]);
   ui.el("minimum").value = "50"; ui.el("minimum").fire("change"); assert.deepEqual(ui.ids(), ["fifty"]);
   ui.el("minimum").value = "100"; ui.el("minimum").fire("change"); assert.deepEqual(ui.ids(), []); assert.equal(ui.el("empty").hidden, false);
@@ -99,7 +99,7 @@ test("row and selector inspection update spotlight and ranks independently of ta
   ui.el("player").value = "Alpha"; ui.el("player").fire("input"); ui.el("player-options").children[0].fire("click");
   assert.match(ui.el("equations").innerHTML, /player.html\?id=Alpha/);
   assert.match(ui.el("equations").innerHTML, /Offense<\/span>.*?Rank #1 of 3/);
-  ui.el("established").checked = true; ui.el("established").fire("change");
+  ui.el("minimum").value = '25'; ui.el("minimum").fire("change");
   assert.equal(ui.el("player").value, "Charlie");
   assert.match(ui.el("equations").innerHTML, /Rank #1 of 2/);
 });
@@ -142,10 +142,10 @@ test("quick search matches partial names without changing eligibility, spotlight
   ui.el('search-clear').fire('click');
   assert.equal(ui.el('search').value, ''); assert.equal(ui.el('search').focused, true);
   assert.deepEqual(ui.ids(), ['Bravo']); assert.equal(ui.el('search-clear').disabled, true);
-  ui.el('established').checked = true; ui.el('established').fire('change');
+  ui.el('minimum').value = '25'; ui.el('minimum').fire('change');
   ui.el('search').value = 'Bravo'; ui.el('search').fire('input');
   assert.deepEqual(ui.ids(), []);
-  ui.el('established').checked = false; ui.el('established').fire('change');
+  ui.el('minimum').value = '5'; ui.el('minimum').fire('change');
   assert.deepEqual(ui.ids(), ['Bravo']);
   ui.el('map').value = 'empty'; ui.el('map').fire('change');
   assert.deepEqual(ui.ids(), []); assert.equal(ui.el('search').value, 'Bravo');

@@ -410,9 +410,14 @@
 .defense-telemetry summary{cursor:pointer;width:fit-content;font-weight:700}
 .defense-telemetry ul{padding-left:20px;margin:8px 0}
 .defense-kpis{grid-template-columns:1.2fr repeat(3,minmax(0,1fr))}
-.defense-ratings .defense-table{width:100%;min-width:560px;margin-top:12px;table-layout:fixed}
-.defense-table th:first-child,.defense-table td:first-child{width:40%;color:#a5ddff;font-weight:800;text-align:left}
-.defense-table th:nth-child(2),.defense-table td:nth-child(2){text-align:right}
+.defense-ratings .defense-table{width:100%;min-width:1150px;margin-top:12px;table-layout:auto}
+.defense-table td:nth-child(2)>strong{color:#a5ddff;font-weight:800}
+.defense-spotlight-rating{grid-template-columns:1fr}
+.defense-quick-search input{min-width:0;width:180px;padding:7px 9px;border:1px solid #41617d;border-radius:5px;background:#0b1726;color:#e7f3ff}
+.defense-quick-search button{padding:7px 9px;border:1px solid #41617d;border-radius:5px;background:#142a40;color:#d9edff;cursor:pointer}
+.defense-quick-search button:disabled{opacity:.5;cursor:default}
+.defense-ratings .capture-table-wrap{overflow-x:auto}
+.defense-ratings .capture-chart-controls{display:flex;flex-wrap:wrap;gap:12px;color:#bed3ea;font-size:12px;margin-bottom:8px}
 .defense-table tbody tr{cursor:pointer}
 .defense-table tbody tr:focus-visible{outline:2px solid #7dd3fc;outline-offset:-2px;background:#14304a}
 #defense-leaderboard{overflow-x:auto;scrollbar-color:#416685 #0a1523;scrollbar-width:thin}
@@ -422,7 +427,7 @@
 .defense-ratings .capture-player-input input{min-width:0}
 .defense-ratings .capture-panel-heading{flex-wrap:wrap}
 .defense-ratings #defense-spotlight{min-height:80px}
-@media(max-width:700px){.defense-ratings .defense-table{min-width:540px}.defense-ratings .capture-player-picker{width:100%}.defense-ratings .capture-player-combo{flex:1;width:auto}.defense-ratings #defense-leaderboard .capture-panel-heading{position:sticky;left:0}}
+@media(max-width:700px){.defense-ratings .capture-player-picker{width:100%}.defense-ratings .capture-player-combo{flex:1;width:auto}.defense-quick-search{width:100%;flex-wrap:wrap}.defense-quick-search input{flex:1}}
 .defense-kpis .capture-kpi>.defense-unavailable-value{font:800 clamp(18px,1.6vw,24px)/1.2 Inter,sans-serif;color:#b7c8df;margin:20px 0 12px}
 .defense-unavailable{color:#a8bfd6;font-size:12px;line-height:1.7;padding:12px 0;margin:0}
 .defense-class-context{display:flex;align-items:center;gap:14px;color:#d6e8fa}

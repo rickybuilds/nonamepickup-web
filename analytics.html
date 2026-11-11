@@ -16,11 +16,12 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111ratings-cleanup5">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111defense-v3">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
   <script src="assets/js/ratings-controls.js?v=20261111defense1" defer></script>
-  <script src="assets/js/defense-ratings.js?v=20261111defense-style4" defer></script>
+  <script src="assets/js/defense-model.js?v=20261111v3" defer></script>
+  <script src="assets/js/defense-ratings.js?v=20261111v3" defer></script>
   <script src="assets/js/capture-ratings.js?v=20261111ratings-cleanup5" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -414,11 +415,11 @@
         <section class="analytics-section page-section capture-ratings defense-ratings" aria-labelledby="defense-title">
           <header class="capture-header">
             <div><h2 id="defense-title">Defense Ratings <span class="capture-experimental">Estimated</span></h2><p>Compare a defender’s team captures conceded with the map average.</p></div>
-            <details class="capture-help"><summary>What is Defense Rating?</summary><p>Map baseline captures conceded minus the player’s team captures conceded. Higher is better. This measures team results associated with a player’s defensive appearances.</p><p id="defense-reason"></p><p>Estimated appearances require linked defensive role and class records, at least 70% dominant class time and adequate coverage.</p><ul id="defense-missing"></ul></details>
+            <details class="capture-help"><summary>What is Defense Rating?</summary><p>Map baseline captures conceded per defensive round minus the player’s team captures conceded per qualifying round. Higher is better. This measures team results associated with a player’s defensive appearances.</p><p id="defense-reason"></p><p>Estimated appearances require linked defensive role and class records, at least 70% dominant class time and at least 70% round coverage. Minimum rounds affects eligible players and charts; the all-eligible class/team-round baseline stays fixed.</p><ul id="defense-missing"></ul></details>
           </header>
           <div class="capture-controls">
             <label>Map<select id="defense-map" disabled><option>Loading maps…</option></select></label>
-            <label>Minimum games<select id="defense-minimum"><option value="5">≥ 5 games</option><option value="10">≥ 10 games</option><option value="25">≥ 25 games</option></select></label>
+            <label>Minimum rounds<select id="defense-minimum"><option value="5">≥ 5 rounds</option><option value="10">≥ 10 rounds</option><option value="25">≥ 25 rounds</option></select></label>
             <label>Sort by<select id="defense-sort"><option value="defense">Defense rating</option><option value="conceded">Captures conceded</option><option value="games">Eligible appearances</option><option value="player">Player name</option></select></label>
             <div class="capture-view-control"><span>View</span><div class="capture-views" role="group" aria-label="Defense dashboard view"><button type="button" data-defense-view="overview" aria-pressed="true">Overview</button><button type="button" data-defense-view="players" aria-pressed="false">Players</button><button type="button" data-defense-view="trends" aria-pressed="false">Trends</button><button type="button" data-defense-view="distribution" aria-pressed="false">Distribution</button></div></div>
           </div>
@@ -433,10 +434,10 @@
             <div id="defense-kpis" class="capture-kpis defense-kpis"></div>
             <div class="capture-analysis">
               <section id="defense-context" class="capture-panel capture-context"><div class="capture-panel-heading"><h3>Defender spotlight</h3><div class="capture-player-picker"><label for="defense-player">Player</label><span id="defense-player-combo" class="capture-player-combo"><span class="capture-player-input"><input id="defense-player" type="text" role="combobox" aria-label="Defender for spotlight" aria-autocomplete="list" aria-expanded="false" aria-controls="defense-player-options" autocomplete="off" placeholder="Search qualifying defenders…"><button id="defense-player-clear" type="button" aria-label="Clear defender search">Clear</button></span><span id="defense-player-options" class="ratings-player-options" role="listbox" aria-label="Qualifying defenders" hidden></span><span id="defense-player-status" class="capture-player-status" role="status" aria-live="polite"></span></span></div></div><div id="defense-spotlight" class="defense-unavailable"></div></section>
-              <section id="defense-distribution-panel" class="capture-panel"><div class="capture-panel-heading"><h3>Captures conceded distribution</h3></div><div id="defense-distribution" class="defense-unavailable"></div></section>
-              <section id="defense-trends-panel" class="capture-panel"><div class="capture-panel-heading"><h3>Defensive performance trend</h3></div><div id="defense-trend" class="defense-unavailable"></div></section>
+              <section id="defense-distribution-panel" class="capture-panel"><div class="capture-panel-heading"><h3>Captures conceded distribution</h3></div><p id="defense-distribution-count" class="capture-table-hint"></p><div id="defense-distribution" class="capture-chart"></div><p class="capture-footnote">Each eligible team-round counts once, including when multiple qualifying defenders share its result.</p></section>
+              <section id="defense-trends-panel" class="capture-panel"><div class="capture-panel-heading"><h3>Defensive performance trend</h3></div><p id="defense-trend-order" class="capture-table-hint"></p><div class="capture-chart-controls"><label><input id="defense-trend-raw" type="checkbox" checked> Team-round outcomes</label><label><input id="defense-trend-rolling" type="checkbox" checked> Trailing 5 rounds</label></div><div id="defense-trend" class="capture-chart"></div><p class="capture-footnote">Cyan points: conceded captures. Gold line: trailing five observed rounds (partial initial windows). Dashed line: all eligible class/team-round baseline.</p></section>
             </div>
-            <section id="defense-leaderboard" class="capture-panel"><div class="capture-panel-heading"><h3>Defensive class leaderboard</h3><span id="defense-ranking-context"></span></div><p id="defense-leaderboard-empty" class="defense-unavailable"></p><p class="capture-footnote">Rows are estimated from linked round-level role/class records and are explicitly labeled as estimates. Minimum-game and sort selections apply to qualifying appearances.</p></section>
+            <section id="defense-leaderboard" class="capture-panel"><div class="capture-panel-heading"><h3>Defensive class leaderboard <span id="defense-ranking-context" role="status"></span></h3><label class="defense-quick-search" for="defense-search">Player search <input id="defense-search" type="search" placeholder="Search player names…" aria-controls="defense-rows"><button id="defense-search-clear" type="button">Clear</button></label></div><div class="capture-table-wrap" role="region" tabindex="0" aria-label="Scrollable estimated defender ratings"><table class="capture-table defense-table"><thead><tr><th>Rank</th><th>Player</th><th>Class</th><th>Defensive rounds</th><th>Team conceded / round</th><th>Baseline / round</th><th>Defense rating</th><th>Round sample</th><th>Vs. baseline</th></tr></thead><tbody id="defense-rows"></tbody></table></div><p id="defense-leaderboard-empty" class="capture-empty" hidden></p></section>
           </div>
         </section>
       </div>
