@@ -26,7 +26,11 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(sorted.length){const table=document.createElement('table'); table.className='capture-table defense-table'; table.innerHTML='<thead><tr><th>Player</th><th>Games</th><th>Conceded / game</th><th>Defense rating</th></tr></thead><tbody></tbody>'; const body=table.querySelector('tbody'); sorted.forEach(p=>{const tr=document.createElement('tr');tr.tabIndex=0;tr.classList.toggle('is-selected',String(p.id)===selectedPlayer);tr.innerHTML=`<td>${esc(p.player)}</td><td>${p.games}</td><td>${p.conceded.toFixed(2)}</td><td class="${p.defense>=0?'capture-positive':'capture-negative'}">${p.defense>=0?'+':''}${p.defense.toFixed(2)}</td>`;const choose=()=>{selectedPlayer=String(p.id);render();};tr.addEventListener('click',choose);tr.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose();}});body.appendChild(tr);});$('leaderboard').appendChild(table);} picker.dismiss(); setView();
   }
   [$('map'),$('minimum'),$('sort')].forEach(c=>c.addEventListener('change',render));
-  $('class').addEventListener('change',()=>{selectedClass=$('class').value;selectedPlayer='';render();});
+  document.querySelectorAll('[data-defense-class]').forEach(button=>button.addEventListener('click',()=>{
+    selectedClass=button.dataset.defenseClass;selectedPlayer='';
+    document.querySelectorAll('[data-defense-class]').forEach(option=>option.setAttribute('aria-pressed',String(option===button)));
+    render();
+  }));
   document.querySelectorAll('[data-defense-view]').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.defenseView;setView();}));
   try{const response=await window.nnHelpers.fetchJSON('/api/stats/defense-ratings');if(!response?.ok||!Array.isArray(response.data?.maps))throw Error('unsupported');data=response.data;$('map').replaceChildren(...data.maps.map(m=>new Option(`${m.map} (${m.completedMatches} completed)`,m.map)));if(!data.maps.length)$('map').add(new Option('No completed maps',''));$('map').disabled=!data.maps.length;render();}catch{$('map').replaceChildren(new Option('Unavailable',''));$('map').disabled=true;$('dashboard').hidden=true;$('summary').textContent='Defense data coverage could not be loaded. Refresh the page to try again.';}
 });
