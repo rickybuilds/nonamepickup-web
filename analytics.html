@@ -16,10 +16,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111intelligence2">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111quicksearch1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
-  <script src="assets/js/capture-ratings.js?v=20261111intelligence2" defer></script>
+  <script src="assets/js/capture-ratings.js?v=20261111quicksearch1" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -331,12 +331,13 @@
               <div class="capture-panel-heading">
                 <h3>
                   Player ratings
-                  <span id="capture-player-count">
+                  <span id="capture-player-count" aria-live="polite">
                   </span>
                 </h3>
-                <span>
-                  Select a row to inspect its rating
-                </span>
+                <div class="capture-quick-search">
+                  <label for="capture-search">Player quick search</label>
+                  <div><input id="capture-search" type="search" placeholder="Search player names…" autocomplete="off" aria-controls="capture-rows" aria-describedby="capture-player-count"><button id="capture-search-clear" type="button" disabled>Clear</button></div>
+                </div>
               </div>
               <p class="capture-table-hint">
                 Scroll horizontally for all metrics. O = offense; D = defense; zero = map baseline. Row numbers follow the selected sort. Sample labels describe size, not statistical confidence.

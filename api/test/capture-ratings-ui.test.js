@@ -122,3 +122,30 @@ test("small samples use available real observations and reject unavailable captu
   assert.doesNotMatch(ui.el("trend").innerHTML, /Match missing/);
   assert.match(ui.el("distribution").innerHTML, /across 2 team games/);
 });
+
+test("quick search matches partial names without changing eligibility, spotlight ranks or sorting", async () => {
+  const ui = await dashboard(maps);
+  ui.el('search').value = '  aLpH  '; ui.el('search').fire('input');
+  assert.deepEqual(ui.ids(), ['a/b']);
+  assert.match(ui.el('player-count').textContent, /1 matching \/ 2 qualifying/);
+  ui.el('rows').children[0].fire('click');
+  assert.match(ui.el('equations').innerHTML, /Alpha &lt;Ace&gt;/);
+  assert.match(ui.el('equations').innerHTML, /of 2 qualifying/);
+  ui.el('search').value = 'a'; ui.el('search').fire('input');
+  ui.sorts.find(e => e.dataset.captureSort === 'net').button.fire('click');
+  assert.deepEqual(ui.ids(), ['Bravo', 'a/b']);
+  ui.el('search').value = 'alpha'; ui.el('search').fire('input');
+  ui.el('minimum').value = '8'; ui.el('minimum').fire('change');
+  assert.deepEqual(ui.ids(), []); assert.match(ui.el('empty').textContent, /No players match/);
+  ui.el('search').focus = () => { ui.el('search').focused = true; };
+  ui.el('search-clear').fire('click');
+  assert.equal(ui.el('search').value, ''); assert.equal(ui.el('search').focused, true);
+  assert.deepEqual(ui.ids(), ['Bravo']); assert.equal(ui.el('search-clear').disabled, true);
+  ui.el('established').checked = true; ui.el('established').fire('change');
+  ui.el('search').value = 'Bravo'; ui.el('search').fire('input');
+  assert.deepEqual(ui.ids(), []);
+  ui.el('established').checked = false; ui.el('established').fire('change');
+  assert.deepEqual(ui.ids(), ['Bravo']);
+  ui.el('map').value = 'empty'; ui.el('map').fire('change');
+  assert.deepEqual(ui.ids(), []); assert.equal(ui.el('search').value, 'Bravo');
+});
