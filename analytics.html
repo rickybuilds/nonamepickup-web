@@ -419,12 +419,11 @@
           </header>
           <div class="capture-controls">
             <label>Map<select id="defense-map" disabled><option>Loading maps…</option></select></label>
-            <label>Minimum games<select id="defense-minimum" aria-describedby="defense-filter-note"><option value="5">≥ 5 games</option><option value="10">≥ 10 games</option><option value="25">≥ 25 games</option></select></label>
-            <label>Sort by<select id="defense-sort" aria-describedby="defense-filter-note"><option value="defense">Defense rating</option><option value="conceded">Captures conceded</option><option value="games">Eligible appearances</option><option value="player">Player name</option></select></label>
+            <label>Minimum games<select id="defense-minimum"><option value="5">≥ 5 games</option><option value="10">≥ 10 games</option><option value="25">≥ 25 games</option></select></label>
+            <label>Sort by<select id="defense-sort"><option value="defense">Defense rating</option><option value="conceded">Captures conceded</option><option value="games">Eligible appearances</option><option value="player">Player name</option></select></label>
             <div class="capture-view-control"><span>View</span><div class="capture-views" role="group" aria-label="Defense dashboard view"><button type="button" data-defense-view="overview" aria-pressed="true">Overview</button><button type="button" data-defense-view="players" aria-pressed="false">Players</button><button type="button" data-defense-view="trends" aria-pressed="false">Trends</button><button type="button" data-defense-view="distribution" aria-pressed="false">Distribution</button></div></div>
           </div>
-          <p id="defense-filter-note" class="capture-footnote">Minimum games counts qualifying defensive appearances for the selected class and map.</p>
-          <p id="defense-summary" class="capture-summary" role="status" aria-live="polite">Checking defensive-class data coverage…</p>
+          <p id="defense-summary" class="sr-only" role="status" aria-live="polite">Checking defensive-class data coverage…</p>
           <div id="defense-dashboard" hidden>
             <div class="defense-classes" role="group" aria-label="Defensive class">
               <button type="button" data-defense-class="soldier" aria-pressed="true"><img src="assets/images/classes/Soldierold_tfc.png" alt="" width="42" height="48"><span>Soldier</span></button>
