@@ -41,8 +41,10 @@ async function main() {
     for (const [index, artifact] of pending.entries()) {
       const path = storage.artifactPath(artifact.storage_key);
       const scene = parseCsv(await member(path, "scene_events.csv", readText), "scene_events");
+      const events = parseCsv(await member(path, "events.csv", readText), "events");
+      const entities = parseCsv(await member(path, "entity_defs.csv", readText), "entity_definitions");
       const kills = await member(path, "players.csv", stream => locateKills(stream, scene,
-        Math.min(2000, Math.ceil(Number(artifact.sample_interval_ms) * 2))));
+        Math.min(2000, Math.ceil(Number(artifact.sample_interval_ms) * 2)), { events, entities }));
       const [sessions] = await pool.execute(`SELECT rp.session_id,p.steamid,p.current_name
         FROM pickup_round_players rp JOIN pickup_players p ON p.id=rp.player_pk WHERE rp.round_pk=?`, [artifact.round_pk]);
       const saved = await retrySqliteBusy(`Saving artifact ${artifact.id}`, () => store.saveRound({

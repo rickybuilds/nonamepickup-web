@@ -36,11 +36,13 @@
     mirv: "mirvgrenade", mirvgrenade: "mirvgrenade", mirvgrenadelet: "mirvbomblet", nailgrenade: "nailgrenade", nailgren: "nailgrenade",
     supershotgun: "supershotgun", sshotgun: "supershotgun", shotgun: "shotgun", singleshotgun: "shotgun",
     sentrygun: "sentrygun", sentry: "sentrygun", buildingsentrygun: "sentrygun", dispenser: "dispenser", buildingdispenser: "dispenser",
-    ac: "assaultcannon", assaultcannon: "assaultcannon", ic: "incendiarycannon", incendiarycannon: "incendiarycannon"
+    ac: "assaultcannon", assaultcannon: "assaultcannon", ic: "incendiarycannon", incendiarycannon: "incendiarycannon",
+    rpgrocket: "rocketlauncher", rocket: "rocketlauncher", pipebomb: "pipetrap"
   };
   function weaponKey(value) {
     const raw = String(value || "unknown").trim().toLowerCase().replace(/^(?:tf_|weapon_)+/, "");
     const key = raw.replace(/[^a-z0-9]/g, "");
+    if (/^\d+$/.test(key)) return "unknown";
     return weaponAliases[key] || (weaponNameKnown(key) ? key : raw.replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")) || "unknown";
   }
   function weaponNameKnown(key) {

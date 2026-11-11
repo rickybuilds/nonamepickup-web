@@ -3,9 +3,49 @@ const readline = require("node:readline");
 
 // Scene death IDs connect the lethal event to its authoritative weapon notice.
 // Only use a recent living sample, never a corpse or a later respawn position.
-async function locateKills(stream, scene, maxAgeMs) {
+function weaponText(value) {
+  const text = String(value || "").trim();
+  return /[a-z]/i.test(text) && !/^(?:unknown|player|worldspawn)$/i.test(text) ? text : "";
+}
+
+function weaponResolver(scene, events, entities) {
+  const eventDeaths = new Map();
+  for (const event of events) {
+    if (event.event !== "death" || !weaponText(event.text)) continue;
+    const key = Number(event.actor_session) + ":" + Number(event.target_session);
+    if (!eventDeaths.has(key)) eventDeaths.set(key, []);
+    eventDeaths.get(key).push(event);
+  }
+  const removed = new Map(scene.filter(row => row.event === "entity_remove" && row.object_stream === "entity")
+    .map(row => [Number(row.object_id), Number(row.time_ms)]));
+  const byEdict = new Map();
+  for (const entity of entities) {
+    const edict = Number(entity.entity);
+    if (!byEdict.has(edict)) byEdict.set(edict, []);
+    byEdict.get(edict).push(entity);
+  }
+  return row => {
+    const time = Number(row.time_ms);
+    const matches = (eventDeaths.get(Number(row.actor_session) + ":" + Number(row.target_session)) || [])
+      .filter(event => Math.abs(Number(event.time_ms) - time) <= 100);
+    const names = new Set(matches.map(event => weaponText(event.text)));
+    if (names.size === 1) return [...names][0];
+    // death.text is an edict, NOT a weapon ID. Resolve only an unambiguous,
+    // living entity generation owned by this attacker; never map edict 10
+    // to weapon 10 or guess from the attacker's currently held weapon.
+    if (!/^\d+$/.test(String(row.text || "").trim())) return "unknown";
+    const candidates = (byEdict.get(Number(row.text)) || []).filter(entity =>
+      Number(entity.spawned_ms) <= time && (removed.get(Number(entity.entity_id)) ?? Infinity) >= time &&
+      Number(entity.owner_session) === Number(row.actor_session) && weaponText(entity.classname) &&
+      /^(?:tf_|weapon_|building_|sentrygun$|dispenser$)/i.test(entity.classname));
+    return candidates.length === 1 ? candidates[0].classname : "unknown";
+  };
+}
+
+async function locateKills(stream, scene, maxAgeMs, { events = [], entities = [] } = {}) {
   const notices = new Map(scene.filter(row => row.event === "death_notice")
-    .map(row => [Number(row.object_id), String(row.text || "").trim()]));
+    .map(row => [Number(row.object_id), weaponText(row.text)]));
+  const resolveWeapon = weaponResolver(scene, events, entities);
   const bySession = new Map();
   const seen = new Set();
   for (const row of scene) {
@@ -16,7 +56,7 @@ async function locateKills(stream, scene, maxAgeMs) {
         sessionId === attackerSession || seen.has(key)) continue;
     seen.add(key);
     const death = { sessionId, attackerSession, timeMs,
-      weapon: notices.get(Number(row.object_id)) || String(row.text || "").trim() || "unknown",
+      weapon: notices.get(Number(row.object_id)) || resolveWeapon(row),
       position: null, attackerTeam: null, victimTeam: null };
     for (const session of [sessionId, attackerSession]) {
       if (!bySession.has(session)) bySession.set(session, []);

@@ -1025,12 +1025,14 @@ async function validateArchive({
   let kills = null;
   if (manifest.schema_version >= 6) {
     try {
-      if (extractor.files.get(SCENE_EVENTS_FILE).size > 64 * 1024 * 1024) {
+      if ([SCENE_EVENTS_FILE, "events.csv", ENTITY_DEFS_FILE].some(file => extractor.files.get(file).size > 64 * 1024 * 1024)) {
         throw new Error("Kill event stream exceeds the in-memory indexing limit");
       }
       const scene = parseCsv(await fsp.readFile(extractor.files.get(SCENE_EVENTS_FILE).path, "utf8"), "scene_events");
+      const events = parseCsv(await fsp.readFile(eventsFile.path, "utf8"), "events");
+      const entities = parseCsv(await fsp.readFile(extractor.files.get(ENTITY_DEFS_FILE).path, "utf8"), "entity_definitions");
       kills = await locateKills(fs.createReadStream(extractor.files.get("players.csv").path), scene,
-        Math.min(2000, Math.ceil(manifest.sample_interval_seconds * 2000)));
+        Math.min(2000, Math.ceil(manifest.sample_interval_seconds * 2000)), { events, entities });
     } catch (error) {
       console.error("[pickup replay] kill location extraction failed", error);
     }

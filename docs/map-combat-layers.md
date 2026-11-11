@@ -1,6 +1,6 @@
 # Map combat layers
 
-The map panel defaults to flag-carrier deaths. Defensive Kills and Offensive Kills show enemy deaths caused by a player with that recorded round role. The player selector refers to the carrier in the death layer and the killer in kill layers. Team direction is the recorded in-game killer team → victim team. Weapon names come from scene death notices, with the lethal inflictor as a fallback. Unknown weapons stay selectable.
+The map panel defaults to flag-carrier deaths. Defensive Kills and Offensive Kills show enemy deaths caused by a player with that recorded round role. The player selector refers to the carrier in the death layer and the killer in kill layers. Team direction is the recorded in-game killer team → victim team. Weapon names come from scene death notices, falling back to an unambiguous death event for the same attacker and victim within 100 ms, then an identifiable attacker-owned inflictor entity generation. The scene death's raw `text` contains an entity edict, not a weapon ID; numbers must never be mapped to weapon names. Missing names display as Unknown weapon and stay selectable.
 
 Positions use the last living victim sample within two recording intervals, capped at two seconds. Suicides, friendly fire, missing positions, and unclassified round roles are excluded from kill layers. The UI reports how many located kills lack role data. Sides come from `match_player_round_stats.team_name` by Steam ID and round, matched to `match_rounds.offense_team` / `defense_team`, never class or position. The round-stat `role` field can contain a class label and is not used to infer side.
 
@@ -16,7 +16,7 @@ The startup summary shows how many artifacts remain, and each indexed artifact r
 node api/scripts/backfillPickupKillLocations.js --status
 ```
 
-Counts reflect the verified artifact list when the command starts. A resumed run skips previously saved rounds and reports only the remaining work.
+Counts reflect the verified artifact list when the command starts. A resumed run skips previously saved rounds and reports only the remaining work. Rounds with legacy numeric weapon values are automatically included for repair, even when the archive hash has not changed. Stop an older running backfill before rerunning the updated command so the older process cannot save numeric values again.
 
 The command explicitly loads `api/.env`, including when invoked from the repository root; already-exported environment values take precedence. It requires `PICKUP_DB_USER`, `PICKUP_DB_PASSWORD`, and `PICKUP_STORAGE_PATH`, with the same database settings, `ELO_DB`, and storage access as the API. It does not require `PICKUP_UPLOAD_TOKEN`. If configuration exists only in PM2's process environment, supply those same settings to the backfill process.
 
