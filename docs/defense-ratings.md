@@ -2,13 +2,13 @@
 
 ## Status
 
-The Analytics Defense Ratings tab provides a safe collection/readiness foundation. Class-specific ratings are unavailable until verified participation coverage is recorded and audited. It must not be presented as a fully operational defensive ranking system.
+The Analytics Defense Ratings tab publishes clearly labeled **estimated** class ratings when round-level role, class-duration, identity and score records pass the 70% dominance/coverage checks. These are not verified continuous participation ratings.
 
 ## What the proposed rating measures
 
-Defense rating = eligible map baseline captures conceded per game minus the player's team captures conceded per game in verified selected-class defensive appearances. Positive is favorable. It is an observational team-result association, affected by teammates, opponents, roles and sample size, not causal individual skill or contribution.
+Defense rating = eligible map defensive-team captures conceded per round minus the player's defensive-team captures conceded per round in estimated selected-class defensive appearances. Positive is favorable. It is an observational team-result association, affected by teammates, opponents, roles and sample size, not causal individual skill or contribution.
 
-No baseline or numeric class rating is currently published. Neither the map-wide Capture Ratings baseline nor a class-conditioned baseline can safely stand in for missing eligible class observations. Before enabling ratings, choose and document one compatible observation unit and denominator across baseline, players, ranks and charts. If full-game participation is verified, the Capture Ratings game tiers may be reused; if using rounds or time intervals, game thresholds must not be applied to those units unchanged.
+The API never mixes estimated and verified observations. Estimated baselines use unique defensive team-rounds for the selected class; player minimums are eligible appearances, not full matches.
 
 ## Source investigation
 
@@ -20,7 +20,7 @@ No baseline or numeric class rating is currently published. Neither the map-wide
 - Capture and combat event tables: event timestamps and class snapshots cannot prove continuous defensive participation.
 - Pickup/replay ingestion: persists session team, primary class and joined/left times. Primary class and snapshots cannot prove uninterrupted class plus verified defensive duty.
 
-Runtime table coverage is reported by the API. Table presence or nonzero rows are evidence of records, not proof of reliable full participation. No local production match database is included, so no actual class calculation example can be verified. No source records are modified or synthesized.
+Runtime table coverage and linked-row counts are reported by the API. Table presence or nonzero rows are evidence of records, not proof of reliable full participation. Suspicious Scout/Medic/Spy durations (>=120 seconds or >50% of recorded time) are excluded and documented as diagnostic anomalies. No source records are modified or synthesized.
 
 ## Missing collection contract
 
@@ -30,7 +30,7 @@ The current repository does not own a validated game-server class/role recorder 
 
 ## UI and extension
 
-The dedicated Analytics tab supports selecting the four primary defensive classes, map and view controls within the NoName design system. Unsupported leaderboard, spotlight, ranking, trend and distribution values explicitly communicate unavailable data. Completed-map record counts are labeled as coverage, not eligible class appearances. No invented class comparisons or confidence intervals are shown. Existing Capture Ratings remains operational.
+The dedicated Analytics tab supports selecting the four primary defensive classes, map and view controls within the NoName design system. Estimated status is shown throughout the telemetry, KPI, spotlight and leaderboard views. Existing Capture Ratings remains operational.
 
 Future metrics can extend the shared loaded-data controller/components once the API can return verified eligible class observations with a stable baseline, denominator and coverage metadata. The API does not turn class names or preferred classes into ratings.
 

@@ -8,7 +8,7 @@ function createStatsRouter({ db, cached, cachedFor, statsSummaryStmt, sendError,
 
   router.get("/stats/defense-ratings", (req, res) => {
     try {
-      const data = cachedFor("defense_ratings_foundation_v1", 5 * 60 * 1000, () => loadDefenseRatings(db));
+      const data = cachedFor("defense_ratings_estimated_v2", 5 * 60 * 1000, () => loadDefenseRatings(db));
       res.json({ ok: true, data });
     } catch (error) {
       logRouteError("[/api/stats/defense-ratings]", error);
