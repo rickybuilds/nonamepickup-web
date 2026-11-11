@@ -20,6 +20,9 @@ async function dashboard(data) {
   const elements = new Map();
   const el = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
   el("capture-minimum").value = html.match(/<select id="capture-minimum">\s*<option value="(\d+)"/)[1]; el("capture-sort").value = "offense";
+  el("capture-established").checked = false;
+  el("capture-trend-raw").checked = true;
+  el("capture-trend-rolling").checked = true;
   const sorts = ["player", "games", "scored", "offense", "conceded", "defense", "net"].map(key => { const e = new Element(); e.dataset.captureSort = key; e.button = new Element(); return e; });
   const views = ["overview", "players", "trends", "distribution"].map(view => { const e = new Element(); e.dataset.captureView = view; return e; });
   let ready;
@@ -56,12 +59,66 @@ test("dashboard views retain filters and map changes expose genuine empty states
   const none = await dashboard([]); assert.match(none.el("summary").textContent, /No matches/);
 });
 
-test("charts count actual team games and order only dated match observations", async () => {
+test("charts count actual team games and label incomplete timestamps with deterministic match ordering", async () => {
   const ui = await dashboard(maps);
   assert.match(ui.el("distribution").innerHTML, /across 6 team games/);
   assert.match(ui.el("distribution").innerHTML, /0–1 captures: 3 team games \(50.0%\)/);
   const trend = ui.el("trend").innerHTML;
   assert.ok(trend.indexOf("Match early") < trend.indexOf("Match later"));
-  assert.doesNotMatch(trend, /Match undated/);
+  assert.match(trend, /Match undated · date unavailable/);
+  assert.match(ui.el("trend-order").textContent, /Match ID order/);
   assert.match(trend, /Map baseline: 4.00/);
+});
+
+test("sample tier boundaries, established filter and full-population KPIs respect eligibility", async () => {
+  const tiers = [player("five", 5, 1, 0), player("nine", 9, 2, 0), player("ten", 10, 3, 0), player("twentyfour", 24, 4, 0), player("twentyfive", 25, 5, 0), player("fortynine", 49, 6, 0), player("fifty", 50, 7, 0), player("ineligible", 4, 99, 99)];
+  const ui = await dashboard([{ ...maps[0], players: tiers }]);
+  for (const [id, tier] of [["five", "limited"], ["nine", "limited"], ["ten", "developing"], ["twentyfour", "developing"], ["twentyfive", "established"], ["fortynine", "established"], ["fifty", "extensive"]]) assert.match(ui.el("rows").children.find(r => r.dataset.player === id).innerHTML, new RegExp(`data-sample="${tier}"`));
+  assert.doesNotMatch(ui.el("kpis").innerHTML, /ineligible/);
+  assert.match(ui.el("kpis").innerHTML, /fifty/);
+  ui.el("established").checked = true; ui.el("established").fire("change");
+  assert.deepEqual(ui.ids(), ["fifty", "fortynine", "twentyfive"]);
+  ui.el("minimum").value = "50"; ui.el("minimum").fire("change"); assert.deepEqual(ui.ids(), ["fifty"]);
+  ui.el("minimum").value = "100"; ui.el("minimum").fire("change"); assert.deepEqual(ui.ids(), []); assert.equal(ui.el("empty").hidden, false);
+});
+
+test("row and selector inspection update spotlight and ranks independently of table sort", async () => {
+  const ui = await dashboard([{ ...maps[0], players: [player("Alpha", 10, 2, 0), player("Bravo", 25, 1, 3), player("Charlie", 50, 2, 1)] }]);
+  ui.el("rows").children.find(r => r.dataset.player === "Bravo").fire("click");
+  assert.equal(ui.el("player").value, "Bravo");
+  assert.match(ui.el("equations").innerHTML, /player.html\?id=Bravo/);
+  assert.match(ui.el("equations").innerHTML, /25/);
+  assert.match(ui.el("equations").innerHTML, /\+4.00/);
+  assert.match(ui.el("equations").innerHTML, /Rank #3 of 3/);
+  assert.match(ui.el("equations").innerHTML, /Rank #1 of 3/);
+  const spotlight = ui.el("equations").innerHTML;
+  ui.sorts.find(e => e.dataset.captureSort === "games").button.fire("click");
+  assert.deepEqual(ui.ids(), ["Charlie", "Bravo", "Alpha"]);
+  assert.equal(ui.el("equations").innerHTML, spotlight);
+  ui.el("player").value = "Alpha"; ui.el("player").fire("change");
+  assert.match(ui.el("equations").innerHTML, /player.html\?id=Alpha/);
+  assert.match(ui.el("equations").innerHTML, /Offense<\/span>.*?Rank #1 of 3/);
+  ui.el("established").checked = true; ui.el("established").fire("change");
+  assert.equal(ui.el("player").value, "Charlie");
+  assert.match(ui.el("equations").innerHTML, /Rank #1 of 2/);
+});
+
+test("rolling average uses trailing five actual match means and chart visibility toggles", async () => {
+  const observations = [1, 2, 3, 4, 5, 6].map((mean, i) => ({ matchId: String(i + 1), createdAt: 100 + i, blueCaps: mean * 2, redCaps: 0 }));
+  const ui = await dashboard([{ ...maps[0], observations: [...observations].reverse() }]);
+  const trend = ui.el("trend").innerHTML;
+  assert.match(trend, /capture-rolling-line/); assert.match(trend, /capture-trend-point/);
+  assert.match(trend, /Match 1: rolling mean 1.00 caps\/team across 1 completed matches/);
+  assert.match(trend, /Match 3: rolling mean 2.00 caps\/team across 3 completed matches/);
+  assert.match(trend, /Match 6: rolling mean 4.00 caps\/team across 5 completed matches/);
+  assert.equal(ui.el("trend-order").textContent, "Chronological match order");
+  ui.el("trend-raw").checked = false; ui.el("trend-raw").fire("change"); assert.doesNotMatch(ui.el("trend").innerHTML, /class="capture-trend-point"/); assert.match(ui.el("trend").innerHTML, /capture-rolling-line/);
+  ui.el("trend-rolling").checked = false; ui.el("trend-rolling").fire("change"); assert.doesNotMatch(ui.el("trend").innerHTML, /capture-rolling-line/);
+});
+
+test("small samples use available real observations and reject unavailable capture values", async () => {
+  const ui = await dashboard([{ ...maps[0], observations: [{ matchId: "one", createdAt: 100, blueCaps: 2, redCaps: 4 }, { matchId: "missing", createdAt: 200, blueCaps: null, redCaps: 9 }] }]);
+  assert.match(ui.el("trend").innerHTML, /Match one: rolling mean 3.00 caps\/team across 1 completed matches/);
+  assert.doesNotMatch(ui.el("trend").innerHTML, /Match missing/);
+  assert.match(ui.el("distribution").innerHTML, /across 2 team games/);
 });

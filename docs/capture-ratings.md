@@ -33,3 +33,18 @@ Focused command: `node --test api/test/capture-ratings.test.js api/test/capture-
 Browser inspection includes the desktop dashboard using the live capture response. That older server response lacks observations, so charts correctly show unavailable until the updated backend is deployed. Accurate phone emulation was blocked by environment policy; narrower-window validation is documented in the delivery report. No production deployment performed.
 
 Populated charts were visually inspected on desktop and in a 600px-wide browser capture using a clearly labeled temporary QA fixture. Fixture values are not part of the shipped dashboard. Final review found no capture-dashboard overflow at the inspected sizes; the wide leaderboard has its own horizontal scroll region.
+
+## V2 interpretation and credibility
+
+The competitive KPI row ranks every player qualifying under the current minimum and optional 25-game filter, without pagination truncation. Tied values share a competition rank; table row numbers describe the current sorted order.
+
+Sample labels describe the amount of data, not statistical confidence: 5–9 limited, 10–24 developing, 25–49 established, and 50+ extensive. The optional established filter raises the effective minimum to 25 without changing raw formulas or hiding five-game qualifiers by default.
+
+The trend’s rolling overlay uses a trailing five-match window, including the current observation. Initial points use the available smaller window. Each underlying match value is the arithmetic mean of its two team captures, not a player observation. Distribution still counts two separate team observations per eligible match. Raw observation visibility and rolling visibility are independent. When every timestamp is reliable, match order is chronological; otherwise the chart explicitly uses match-ID order rather than implying chronology.
+
+The old population number could legitimately match the map baseline (including rounding to 6.84). Its numerator was the sum of each qualifying player’s team caps/game multiplied by their eligible games; its denominator was total qualifying player-game appearances. Constant equal-size rosters and complete player participation repeat each team observation equally, so this weighting can yield exactly the baseline. Varying roster sizes can weight matches differently. Applying player filters may change that relationship. The baseline itself always divides total eligible captures by twice the number of eligible matches. V2 removes the repetitive population KPI rather than changing these authoritative formulas.
+
+Roster associations follow recorded match rosters. All roster players must have unambiguous imported capture records, extra/unmatched or duplicate records invalidate a match, and overlapping rosters are excluded. Substitutions or mid-match team changes are not reconstructed from time slices; discrepancies visible in records cause exclusion, while unrecorded changes cannot be inferred. This remains a team-outcome association, not an estimate of individual impact.
+
+V2 focused validation: 13 API/UI regression tests pass, including all sample-tier boundaries, established/minimum filter intersections, full qualifying-set leaders and tied ranks, spotlight changes, exact trailing-window averages, visibility toggles, sparse/missing observations and roster changes. The production API and database schema were unchanged after the audit found no formula defect.
+V2 visual review: inspected desktop and 600px-wide captures of the refined KPIs, spotlight, sample badges and populated raw/rolling charts using a labeled temporary QA dataset. No QA statistics ship with the page. Accurate phone-width emulation remains unverified due the previously recorded environment restriction.

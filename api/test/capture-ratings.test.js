@@ -82,3 +82,31 @@ test("capture SQL excludes unfinished/unknown maps and resolves Steam roster ide
     assert.deepEqual(result.data[0].observations, [{ matchId: "good", createdAt: 100, blueCaps: 6, redCaps: 2 }]);
   } finally { db.close(); }
 });
+
+test("roster changes use each match roster with one player-game denominator per eligible appearance", () => {
+  const first = match("first", 100); first.blue_ids = '["a","c"]';
+  const second = match("second", 200); second.blue_ids = '["b"]'; second.red_ids = '["a"]';
+  const [map] = payload([first, second], [row("first", "a", 2), row("first", "c", 4), row("first", "b", 2), row("second", "a", 1), row("second", "b", 3)]);
+  const a = map.players.find(p => p.id === "a"), c = map.players.find(p => p.id === "c");
+  assert.equal(map.average, 3);
+  assert.equal(a.games, 2); assert.equal(a.scored, 3.5); assert.equal(a.conceded, 2.5);
+  assert.equal(a.offense, 0.5); assert.equal(a.defense, 0.5); assert.equal(a.net, 1);
+  assert.equal(c.games, 1); assert.equal(c.scored, 6); assert.equal(c.conceded, 2);
+  assert.equal(map.observations.length, 2);
+  // Unequal rosters make player-game weighting differ from the team-game baseline.
+  const appearances = map.players.reduce((sum, p) => sum + p.games, 0);
+  const population = map.players.reduce((sum, p) => sum + p.scored * p.games, 0) / appearances;
+  assert.equal(population, 3.6); assert.notEqual(population, map.average);
+});
+
+test("balanced complete population equals team-game baseline without changing rating formulas", () => {
+  const [map] = payload([match("a"), match("b")], [row("a", "a", 8), row("a", "b", 2), row("b", "a", 3), row("b", "b", 7)]);
+  const appearances = map.players.reduce((sum, p) => sum + p.games, 0);
+  const population = map.players.reduce((sum, p) => sum + p.scored * p.games, 0) / appearances;
+  assert.equal(population, map.average);
+  for (const p of map.players) {
+    assert.equal(p.offense, p.scored - map.average);
+    assert.equal(p.defense, map.average - p.conceded);
+    assert.equal(p.net, p.offense + p.defense);
+  }
+});

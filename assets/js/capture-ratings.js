@@ -9,9 +9,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   const escape = value => String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const num = value => typeof value === "number" && Number.isFinite(value);
   const svg = (body, label) => `<svg viewBox="0 0 420 180" role="img" aria-label="${escape(label)}">${body}</svg>`;
+  const sample = games => games >= 50 ? {key:'extensive', label:'Extensive sample'} : games >= 25 ? {key:'established', label:'Established sample'} : games >= 10 ? {key:'developing', label:'Developing sample'} : {key:'limited', label:'Limited sample'};
+  const badge = games => { const tier = sample(games); return `<span class="capture-sample" data-sample="${tier.key}" title="Sample size only; not formal statistical confidence">${tier.label}</span>`; };
+  const profile = player => `<a href="player.html?id=${encodeURIComponent(player.id)}">${escape(player.player)}</a>`;
+  // Competition ranks share positions for exact ties, with gaps after a tie.
+  const rank = (players, player, field) => 1 + players.filter(other => other[field] > player[field]).length;
+  function comparison(value, label, scale) {
+    return `<div class="capture-bar-row" title="${label}: ${signed(value)} relative to map average"><span>${label[0]}</span><div class="capture-bar-track" aria-hidden="true"><i class="${tone(value)}" style="left:${value<0?50-Math.abs(value)/scale*50:50}%;width:${Math.abs(value)/scale*50}%"></i></div><b class="${tone(value)}">${signed(value)}</b></div>`;
+  }
   function charts(map) {
     const observations = (map.observations || []).filter(o => num(o.blueCaps) && num(o.redCaps));
+    $("trend-raw-legend").hidden = !$("trend-raw").checked;
+    $("trend-rolling-legend").hidden = !$("trend-rolling").checked;
     if (!observations.length) {
+      $("trend-order").textContent = "No match observations";
       [$("distribution"), $("trend")].forEach(el => { el.innerHTML = '<p class="capture-empty">Match observations are unavailable for this map.</p>'; });
       return;
     }
@@ -25,8 +36,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     bins.forEach((b,i) => { const h = b.count / peak * 120, x = 50 + i * width; bars += `<rect tabindex="0" x="${x}" y="${145-h}" width="${Math.max(width-10,4)}" height="${h}" class="capture-histogram"><title>${b.lo}${step > 1 ? `–${b.lo+step-1}` : ''} captures: ${b.count} team games (${(b.count/caps.length*100).toFixed(1)}%)</title></rect><text x="${x+(width-10)/2}" y="164" text-anchor="middle">${b.lo}${step>1 ? `–${b.lo+step-1}`:''}</text>`; });
     $("distribution").innerHTML = svg(bars, `Capture distribution across ${caps.length} team games; horizontal axis captures, vertical axis percentage`);
     const timestamp = o => typeof o.createdAt === 'number' && Number.isFinite(o.createdAt) ? o.createdAt * 1000 : Date.parse(o.createdAt);
-    const ordered = observations.filter(o => Number.isFinite(timestamp(o))).sort((a,b) => timestamp(a)-timestamp(b) || String(a.matchId).localeCompare(String(b.matchId),undefined,{numeric:true}));
-    if (!ordered.length) { $("trend").innerHTML = '<p class="capture-empty">Dated match observations are unavailable for this map.</p>'; return; }
+    const dated = observations.every(o => Number.isFinite(timestamp(o)));
+    const byMatch = (a,b) => String(a.matchId).localeCompare(String(b.matchId),undefined,{numeric:true});
+    const ordered = observations.slice().sort((a,b) => dated ? timestamp(a)-timestamp(b) || byMatch(a,b) : byMatch(a,b));
+    $("trend-order").textContent = dated ? 'Chronological match order' : 'Match ID order · timestamps incomplete';
     // Each point aggregates both teams in one match; no player observations are connected.
     const values = ordered.map(o => (o.blueCaps+o.redCaps)/2), top = Math.max(...values,map.average,1)*1.12;
     const x = i => ordered.length === 1 ? 225 : 45+i/(ordered.length-1)*355;
@@ -34,10 +47,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     let line = '';
     for (let i=0;i<=3;i++) {const v=top*i/3;line+=`<line x1="45" y1="${y(v)}" x2="405" y2="${y(v)}" class="capture-grid"/><text x="38" y="${y(v)+4}" text-anchor="end">${v.toFixed(1)}</text>`;}
     line += `<line x1="45" y1="${y(map.average)}" x2="405" y2="${y(map.average)}" class="capture-baseline"><title>Map baseline: ${fmt(map.average)} captures per team game</title></line>`;
-    line += `<polyline points="${values.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" class="capture-trend-line"/>`;
-    ordered.forEach((o,i) => { line += `<circle tabindex="0" cx="${x(i)}" cy="${y(values[i])}" r="3.5" class="capture-trend-point"><title>Match ${escape(o.matchId)}${o.createdAt ? ` · ${escape(new Date(timestamp(o)).toLocaleDateString())}`:''}: ${fmt(values[i])} caps/team (blue ${o.blueCaps}, red ${o.redCaps})</title></circle>`; });
+    const rolling = values.map((_,i) => { const window = values.slice(Math.max(0,i-4),i+1); return window.reduce((total,value)=>total+value,0)/window.length; });
+    if ($("trend-rolling").checked) {
+      line += `<polyline points="${rolling.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}" class="capture-rolling-line" aria-label="Trailing 5-match rolling average with partial initial windows"/>`;
+      ordered.forEach((o,i) => { const description = `Match ${o.matchId}: rolling mean ${fmt(rolling[i])} caps/team across ${Math.min(i+1,5)} completed matches`;
+        line += `<circle tabindex="0" cx="${x(i)}" cy="${y(rolling[i])}" r="3" class="capture-rolling-point" aria-label="${escape(description)}"><title>${escape(description)}</title></circle>`; });
+    }
+    if ($("trend-raw").checked) ordered.forEach((o,i) => { const description = `Match ${o.matchId} · ${Number.isFinite(timestamp(o)) ? new Date(timestamp(o)).toLocaleDateString() : 'date unavailable'}: ${fmt(values[i])} caps/team (blue ${o.blueCaps}, red ${o.redCaps})`;
+      line += `<circle tabindex="0" cx="${x(i)}" cy="${y(values[i])}" r="3.5" class="capture-trend-point" aria-label="${escape(description)}"><title>${escape(description)}</title></circle>`; });
     line += `<text x="45" y="165">Match 1</text><text x="405" y="165" text-anchor="end">Match ${ordered.length}</text>`;
-    $("trend").innerHTML = svg(line, `${ordered.length} completed matches, captures per team game. Map baseline ${fmt(map.average)}.`);
+    $("trend").innerHTML = svg(line, `${ordered.length} completed matches in ${dated ? "chronological" : "match ID"} order, captures per team game. Map baseline ${fmt(map.average)}.`);
   }
   function setView() {
     document.querySelectorAll('[data-capture-view]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.captureView === view)));
@@ -53,21 +72,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("player").value = selected || "";
     $("player").disabled = !player;
     if (!player) { $("equations").innerHTML = '<p class="capture-empty">Choose a lower minimum to inspect player ratings.</p>'; return; }
-    $("equations").innerHTML = `<div class="capture-equation"><div><strong>Offense rating</strong><small>Team scored − map baseline</small></div><span>${fmt(player.scored)} − ${fmt(map.average)} =</span><b class="${tone(player.offense)}">${signed(player.offense)}</b></div><div class="capture-equation"><div><strong>Defense rating</strong><small>Map baseline − team conceded</small></div><span>${fmt(map.average)} − ${fmt(player.conceded)} =</span><b class="${tone(player.defense)}">${signed(player.defense)}</b></div>`;
+    const scale = Math.max(...players.flatMap(p => [Math.abs(p.offense),Math.abs(p.defense)]),0.01);
+    const offenseRank = rank(players,player,'offense'), defenseRank = rank(players,player,'defense');
+    $("equations").innerHTML = `<div id="capture-spotlight"><div class="capture-spotlight-identity"><div>${profile(player)}<span>${player.games.toLocaleString()} eligible games · ${players.length} qualifying players</span></div>${badge(player.games)}</div><div class="capture-spotlight-ratings"><div><span>Offense</span><strong class="${tone(player.offense)}">${signed(player.offense)}</strong><small>Rank #${offenseRank} of ${players.length} qualifying</small></div><div><span>Defense</span><strong class="${tone(player.defense)}">${signed(player.defense)}</strong><small>Rank #${defenseRank} of ${players.length} qualifying</small></div><div><span>Net rating</span><strong class="${tone(player.net)}">${signed(player.net)}</strong><small>Team differential</small></div></div><div class="capture-spotlight-bars">${comparison(player.offense,'Offense',scale)}${comparison(player.defense,'Defense',scale)}</div><div class="capture-spotlight-baseline"><span>Scored <b>${fmt(player.scored)}</b></span><span>Baseline <b>${fmt(map.average)}</b></span><span>Conceded <b>${fmt(player.conceded)}</b></span></div><details class="capture-formulas"><summary>Calculations &amp; sample context</summary><p>Offense: ${fmt(player.scored)} scored − ${fmt(map.average)} baseline = <b class="${tone(player.offense)}">${signed(player.offense)}</b><br>Defense: ${fmt(map.average)} baseline − ${fmt(player.conceded)} conceded = <b class="${tone(player.defense)}">${signed(player.defense)}</b><br>Net: ${signed(player.offense)} + (${signed(player.defense)}) = <b class="${tone(player.net)}">${signed(player.net)}</b></p><p>Caps per game are team-result associations across this player’s ${player.games} eligible games, not individual impact. Sample labels describe size, not statistical confidence. Ranks share places for equal ratings.</p></details></div>`;
     document.querySelectorAll('#capture-rows tr').forEach(row => row.classList.toggle('is-selected',row.dataset.player === selected));
   }
   function render() {
     const map = maps.find(m => m.map === $("map").value);
     if (!map) return;
-    const players = map.players.filter(p => p.games >= Number($("minimum").value)).map(p => ({...p,net:p.offense+p.defense}));
+    const players = map.players.filter(p => p.games >= Math.max(Number($("minimum").value),$("established").checked ? 25 : 0)).map(p => ({...p,net:p.offense+p.defense}));
     const key = $("sort").value;
     players.sort((a,b) => (key === 'player' ? a.player.localeCompare(b.player) : a[key]-b[key])*(descending?-1:1) || b.games-a.games || a.player.localeCompare(b.player));
     const games = players.reduce((total,p) => total+p.games,0);
-    const weighted = field => games ? players.reduce((total,p) => total+p[field]*p.games,0)/games : NaN;
-    const offense = weighted('offense'), defense = weighted('defense');
-    $("summary").textContent = `${map.games.toLocaleString()} eligible matches · ${players.length.toLocaleString()} qualifying players · population averages weighted across ${games.toLocaleString()} player-game observations.`;
+    const leader = field => players.slice().sort((a,b) => b[field]-a[field] || b.games-a.games || a.player.localeCompare(b.player))[0];
+    const topOffense = leader('offense'), topDefense = leader('defense'), experienced = leader('games');
+    const leaderKpi = (title,player,field,kind) => `<article class="capture-kpi capture-kpi-${kind}"><h3>${title}<small>${player ? `${player.games.toLocaleString()} eligible games` : 'No qualifying players'}</small></h3><strong class="${field==='games' ? '' : tone(player?.[field])}">${player ? field==='games' ? player.games.toLocaleString() : signed(player[field]) : '—'}</strong><span class="capture-kpi-player">${player ? profile(player) : 'Adjust player filters'}</span>${player ? badge(player.games) : ''}${player && players.filter(p=>p[field]===player[field]).length>1 ? '<small class="capture-kpi-tie">Shared lead · games, then name break display ties</small>' : ''}</article>`;
+    $("summary").textContent = `${map.map} · ${map.games.toLocaleString()} eligible matches · ${players.length.toLocaleString()} qualifying players · ${games.toLocaleString()} player-game observations in this filtered player set.`;
     $("dashboard").hidden = false;
-    $("kpis").innerHTML = `<article class="capture-map-card"><img id="capture-map-image" src="assets/images/maps/NoMap.webp" alt=""/><div><strong>${escape(map.map)}</strong><span>${map.games.toLocaleString()} eligible matches</span></div></article><article class="capture-kpi"><h3>Map average <small>All teams · baseline</small></h3><strong>${fmt(map.average)}</strong><span>captures / team game</span></article><article class="capture-kpi"><h3>Player population <small>${players.length} qualifying players</small></h3><strong>${fmt(weighted('scored'))}</strong><span>team caps / player game</span></article><article class="capture-kpi"><h3>Offense rating <small>Population · game weighted</small></h3><strong class="${tone(offense)}">${signed(offense)}</strong><span>${fmt(weighted('scored'))} scored vs. ${fmt(map.average)} baseline</span></article><article class="capture-kpi"><h3>Defense rating <small>Population · game weighted</small></h3><strong class="${tone(defense)}">${signed(defense)}</strong><span>${fmt(weighted('conceded'))} conceded vs. ${fmt(map.average)}</span></article>`;
+    $("kpis").innerHTML = `<article class="capture-map-card"><img id="capture-map-image" src="assets/images/maps/NoMap.webp" alt=""/><div><strong>${escape(map.map)}</strong><span>${map.games.toLocaleString()} eligible matches · ${players.length} qualifying players</span></div></article><article class="capture-kpi capture-kpi-baseline"><h3>Map baseline <small>All eligible teams</small></h3><strong>${fmt(map.average)}</strong><span>captures / team game</span></article>${leaderKpi('Top offense',topOffense,'offense','offense')}${leaderKpi('Top defense',topDefense,'defense','defense')}${leaderKpi('Most experienced',experienced,'games','experience')}`;
     const image = $("map-image");
     if (window.setMapImageFromName) window.setMapImageFromName(image,map.map,{fallbackSrc:'assets/images/maps/NoMap.webp'});
     else { image.src=`assets/images/maps/${encodeURIComponent(map.map)}.webp`; image.onerror=()=>{image.onerror=null;image.src='assets/images/maps/NoMap.webp';}; }
@@ -76,12 +98,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("empty").hidden = !!players.length;
     $("rows").replaceChildren();
     const scale = Math.max(...players.flatMap(p => [Math.abs(p.offense),Math.abs(p.defense)]),0.01);
-    const bar = (value,label) => `<div class="capture-bar-row" title="${label}: ${signed(value)} relative to map average"><span>${label[0]}</span><div class="capture-bar-track"><i class="${tone(value)}" style="left:${value<0?50-Math.abs(value)/scale*50:50}%;width:${Math.abs(value)/scale*50}%"></i></div><b class="${tone(value)}">${signed(value)}</b></div>`;
-    players.forEach((p,i) => { const row=document.createElement('tr'); row.dataset.player=String(p.id); row.innerHTML=`<td>${i+1}</td><td><a href="player.html?id=${encodeURIComponent(p.id)}">${escape(p.player)}</a><button class="capture-inspect" type="button" aria-label="Inspect ${escape(p.player)} ratings">Inspect</button></td><td>${p.games.toLocaleString()}</td><td>${fmt(p.scored)}</td><td class="${tone(p.offense)}">${signed(p.offense)}</td><td>${fmt(p.conceded)}</td><td class="${tone(p.defense)}">${signed(p.defense)}</td><td class="${tone(p.net)}">${signed(p.net)}</td><td class="capture-bars">${bar(p.offense,'Offense')}${bar(p.defense,'Defense')}</td>`;row.addEventListener('click',event=>{if(event.target.closest('a'))return;selected=String(p.id);context(map,players);});$("rows").appendChild(row); });
+    players.forEach((p,i) => { const row=document.createElement('tr'); row.dataset.player=String(p.id); row.classList.toggle('is-top-performer', ['offense','defense','net'].includes(key) && rank(players,p,key)===1); row.innerHTML=`<td>${i+1}</td><td><a href="player.html?id=${encodeURIComponent(p.id)}">${escape(p.player)}</a><button class="capture-inspect" type="button" aria-label="Inspect ${escape(p.player)} ratings">Inspect</button></td><td>${p.games.toLocaleString()}${badge(p.games)}</td><td>${fmt(p.scored)}</td><td class="${tone(p.offense)}">${signed(p.offense)}</td><td>${fmt(p.conceded)}</td><td class="${tone(p.defense)}">${signed(p.defense)}</td><td class="${tone(p.net)}">${signed(p.net)}</td><td class="capture-bars">${comparison(p.offense,'Offense',scale)}${comparison(p.defense,'Defense',scale)}</td>`;row.addEventListener('click',event=>{if(event.target.closest('a'))return;selected=String(p.id);context(map,players);});$("rows").appendChild(row); });
     document.querySelectorAll('[data-capture-sort]').forEach(th=>th.setAttribute('aria-sort',th.dataset.captureSort===key ? descending?'descending':'ascending':'none'));
     context(map,players); charts(map); setView();
   }
-  [$("map"),$("minimum")].forEach(el=>el.addEventListener('change',render));
+  [$("map"),$("minimum"),$("established")].forEach(el=>el.addEventListener('change',render));
+  [$("trend-raw"),$("trend-rolling")].forEach(el=>el.addEventListener('change',()=>{const map=maps.find(m=>m.map===$("map").value);if(map)charts(map);}));
   $("sort").addEventListener('change',()=>{descending=$("sort").value!=='player';render();});
   $("player").addEventListener('change',()=>{selected=$("player").value;render();});
   document.querySelectorAll('[data-capture-sort]').forEach(th=>th.querySelector('button').addEventListener('click',()=>{descending=$("sort").value===th.dataset.captureSort ? !descending : th.dataset.captureSort!=='player';$("sort").value=th.dataset.captureSort;render();}));

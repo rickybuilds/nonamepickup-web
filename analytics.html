@@ -16,10 +16,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111dashboard1">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111intelligence2">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
-  <script src="assets/js/capture-ratings.js?v=20261111dashboard1" defer></script>
+  <script src="assets/js/capture-ratings.js?v=20261111intelligence2" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -262,6 +262,7 @@
               </div>
             </div>
           </div>
+          <label class="capture-established"><input id="capture-established" type="checkbox"> Established samples only (25+ games)</label>
           <p id="capture-summary" class="capture-summary" role="status" aria-live="polite">
             Loading capture ratings…
           </p>
@@ -272,11 +273,11 @@
               <section id="capture-context" class="capture-panel capture-context">
                 <div class="capture-panel-heading">
                   <h3>
-                    Rating context
+                    Player spotlight
                   </h3>
                   <label>
                     Player
-                    <select id="capture-player" aria-label="Player for rating context">
+                    <select id="capture-player" aria-label="Player for spotlight">
                     </select>
                   </label>
                 </div>
@@ -308,20 +309,22 @@
                   <h3>
                     Team capture trend
                   </h3>
-                  <span>
-                    Completed match order
-                  </span>
+                  <span id="capture-trend-order">Completed match order</span>
+                </div>
+                <div class="capture-trend-controls" role="group" aria-label="Trend series visibility">
+                  <label><input id="capture-trend-raw" type="checkbox" checked> Raw match averages</label>
+                  <label><input id="capture-trend-rolling" type="checkbox" checked> 5-match rolling average</label>
                 </div>
                 <div id="capture-trend" class="capture-chart">
                 </div>
                 <p class="capture-legend">
-                  <i>
-                  </i>
-                  Match team average
+                  <span id="capture-trend-raw-legend"><i></i> Raw match average</span>
                   <i class="baseline">
                   </i>
                   Map baseline
+                  <span id="capture-trend-rolling-legend"><i class="rolling"></i> Rolling average</span>
                 </p>
+                <p class="capture-footnote">Each raw point averages both teams in one completed match. Rolling line: trailing 5 matches; initial windows use all available matches (1–4). Lines show match order, not elapsed time.</p>
               </section>
             </div>
             <section id="capture-leaderboard" class="capture-panel">
@@ -336,7 +339,7 @@
                 </span>
               </div>
               <p class="capture-table-hint">
-                Scroll horizontally for all metrics. Bars compare offense (O) and defense (D) with zero.
+                Scroll horizontally for all metrics. O = offense; D = defense; zero = map baseline. Row numbers follow the selected sort. Sample labels describe size, not statistical confidence.
               </p>
               <div class="capture-table-wrap" tabindex="0" role="region" aria-label="Scrollable player ratings">
                 <table class="capture-table">
@@ -390,7 +393,7 @@
                 </table>
               </div>
               <p id="capture-empty" class="capture-empty" hidden>
-                No players meet this minimum. Choose a lower minimum or another map.
+                No players meet these filters. Lower the minimum, disable established samples, or choose another map.
               </p>
               <p class="capture-footnote">
                 Net = offense + defense = team captures − conceded per game. Team differential does not measure individual impact. Only completed matches with capture records for every rostered player qualify.
