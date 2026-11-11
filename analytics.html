@@ -16,12 +16,12 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111defense-style4">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111ratings-cleanup5">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
   <script src="assets/js/ratings-controls.js?v=20261111defense1" defer></script>
   <script src="assets/js/defense-ratings.js?v=20261111defense-style4" defer></script>
-  <script src="assets/js/capture-ratings.js?v=20261111defense1" defer></script>
+  <script src="assets/js/capture-ratings.js?v=20261111ratings-cleanup5" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -265,8 +265,7 @@
               </div>
             </div>
           </div>
-          <label class="capture-established"><input id="capture-established" type="checkbox"> Established samples only (25+ games)</label>
-          <p id="capture-summary" class="capture-summary" role="status" aria-live="polite">
+          <p id="capture-summary" class="sr-only" role="status" aria-live="polite">
             Loading capture ratings…
           </p>
           <div id="capture-dashboard" hidden>
@@ -400,7 +399,7 @@
                 </table>
               </div>
               <p id="capture-empty" class="capture-empty" hidden>
-                No players meet these filters. Lower the minimum, disable established samples, or choose another map.
+                No players meet these filters. Lower the minimum or choose another map.
               </p>
               <p class="capture-footnote">
                 Net = offense + defense = team captures − conceded per game. Team differential does not measure individual impact. Only completed matches with capture records for every rostered player qualify.

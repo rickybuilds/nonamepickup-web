@@ -82,7 +82,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function render() {
     const map = maps.find(m => m.map === $("map").value);
     if (!map) return;
-    const players = map.players.filter(p => p.games >= Math.max(Number($("minimum").value),$("established").checked ? 25 : 0)).map(p => ({...p,net:p.offense+p.defense}));
+    const players = map.players.filter(p => p.games >= Number($("minimum").value)).map(p => ({...p,net:p.offense+p.defense}));
     const key = $("sort").value;
     players.sort((a,b) => (key === 'player' ? a.player.localeCompare(b.player) : a[key]-b[key])*(descending?-1:1) || b.games-a.games || a.player.localeCompare(b.player));
     const games = players.reduce((total,p) => total+p.games,0);
@@ -101,14 +101,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("player-count").textContent = query ? `(${matches.length} matching / ${players.length} qualifying)` : `(${players.length})`;
     $("search-clear").disabled = !$("search").value;
     $("empty").hidden = !!matches.length;
-    $("empty").textContent = query && players.length ? 'No players match your search. Clear the search or try part of another name.' : 'No players meet these filters. Lower the minimum, disable established samples, or choose another map.';
+    $("empty").textContent = query && players.length ? 'No players match your search. Clear the search or try part of another name.' : 'No players meet these filters. Lower the minimum or choose another map.';
     $("rows").replaceChildren();
     const scale = Math.max(...players.flatMap(p => [Math.abs(p.offense),Math.abs(p.defense)]),0.01);
     players.forEach((p,i) => { if (!matches.includes(p)) return; const row=document.createElement('tr'); row.dataset.player=String(p.id); row.classList.toggle('is-top-performer', ['offense','defense','net'].includes(key) && rank(players,p,key)===1); row.innerHTML=`<td>${i+1}</td><td><a href="player.html?id=${encodeURIComponent(p.id)}">${escape(p.player)}</a><button class="capture-inspect" type="button" aria-label="Inspect ${escape(p.player)} ratings">Inspect</button></td><td>${p.games.toLocaleString()}${badge(p.games)}</td><td>${fmt(p.scored)}</td><td class="${tone(p.offense)}">${signed(p.offense)}</td><td>${fmt(p.conceded)}</td><td class="${tone(p.defense)}">${signed(p.defense)}</td><td class="${tone(p.net)}">${signed(p.net)}</td><td class="capture-bars">${comparison(p.offense,'Offense',scale)}${comparison(p.defense,'Defense',scale)}</td>`;row.addEventListener('click',event=>{if(event.target.closest('a'))return;selected=String(p.id);context(map,players);});$("rows").appendChild(row); });
     document.querySelectorAll('[data-capture-sort]').forEach(th=>th.setAttribute('aria-sort',th.dataset.captureSort===key ? descending?'descending':'ascending':'none'));
     context(map,players); charts(map); setView();
   }
-  [$("map"),$("minimum"),$("established")].forEach(el=>el.addEventListener('change',render));
+  [$("map"),$("minimum")].forEach(el=>el.addEventListener('change',render));
   $("search").addEventListener('input', render);
   $("search-clear").addEventListener('click', () => { $("search").value = ''; render(); $("search").focus(); });
   [$("trend-raw"),$("trend-rolling")].forEach(el=>el.addEventListener('change',()=>{const map=maps.find(m=>m.map===$("map").value);if(map)charts(map);}));
