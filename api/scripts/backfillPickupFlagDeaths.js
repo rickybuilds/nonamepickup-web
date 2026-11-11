@@ -100,4 +100,7 @@ async function main() {
     console.log(`Flag death backfill complete: ${completed} processed, ${skipped} unchanged.`);
   } finally { db.close(); await closePickupPool(); }
 }
-main().catch(error => { console.error("Flag death backfill failed:", error); process.exitCode = 1; });
+if (require.main === module) {
+  main().catch(error => { console.error("Flag death backfill failed:", error); process.exitCode = 1; });
+}
+module.exports = { member, readText, retrySqliteBusy };

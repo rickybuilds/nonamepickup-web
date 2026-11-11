@@ -5,6 +5,12 @@
   const count = document.getElementById("flag-death-count");
   const select = document.getElementById("flag-death-player");
   const matchSelect = document.getElementById("flag-death-match");
+  const teamSelect = document.getElementById("flag-map-team");
+  const weaponSelect = document.getElementById("flag-map-weapon");
+  const layerButtons = [...document.querySelectorAll("#flag-map-layers button")];
+  const title = document.getElementById("flag-map-title");
+  const description = document.getElementById("flag-map-description");
+  const playerLabel = document.getElementById("flag-map-player-label");
   const tooltip = document.getElementById("flag-map-tooltip");
   const viewport = document.getElementById("flag-map-viewport");
   const comingSoon = document.getElementById("flag-map-coming-soon");
@@ -19,6 +25,36 @@
   const resetView = document.getElementById("flag-map-reset");
   const zoomLevel = document.getElementById("flag-map-zoom-level");
   const name = new URLSearchParams(location.search).get("map") || "";
+  let activeLayer = "flags";
+  const layers = {
+    flags: { title: "Flag Carrier Deaths", description: "Where players died carrying the flag in recorded pickup rounds.", unit: "deaths" },
+    defense: { title: "Defensive Kills", description: "Where defenders killed enemies in recorded pickup rounds. Dots mark the victim’s location.", unit: "kills" },
+    offense: { title: "Offensive Kills", description: "Where attackers killed enemies in recorded pickup rounds. Dots mark the victim’s location.", unit: "kills" }
+  };
+  const weaponAliases = {
+    normalgrenade: "grenade", handgrenade: "grenade", grenade: "grenade",
+    mirv: "mirvgrenade", mirvgrenade: "mirvgrenade", mirvgrenadelet: "mirvbomblet", nailgrenade: "nailgrenade", nailgren: "nailgrenade",
+    supershotgun: "supershotgun", sshotgun: "supershotgun", shotgun: "shotgun", singleshotgun: "shotgun",
+    sentrygun: "sentrygun", sentry: "sentrygun", buildingsentrygun: "sentrygun", dispenser: "dispenser", buildingdispenser: "dispenser",
+    ac: "assaultcannon", assaultcannon: "assaultcannon", ic: "incendiarycannon", incendiarycannon: "incendiarycannon"
+  };
+  function weaponKey(value) {
+    const raw = String(value || "unknown").trim().toLowerCase().replace(/^(?:tf_|weapon_)+/, "");
+    const key = raw.replace(/[^a-z0-9]/g, "");
+    return weaponAliases[key] || (weaponNameKnown(key) ? key : raw.replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")) || "unknown";
+  }
+  function weaponNameKnown(key) {
+    return ({ grenade: "Grenade", mirvgrenade: "MIRV Grenade", nailgrenade: "Nail Grenade",
+      mirvbomblet: "MIRV Bomblet", assaultcannon: "Assault Cannon", incendiarycannon: "Incendiary Cannon",
+      supershotgun: "Super Shotgun", shotgun: "Single Shotgun", sentrygun: "Sentry Gun", dispenser: "Dispenser",
+      rocketlauncher: "Rocket Launcher", glgrenade: "Grenade Launcher", pipetrap: "Pipebomb",
+      nailgun: "Nailgun", supernailgun: "Super Nailgun", flames: "Flames", flamethrower: "Flamethrower",
+      empgrenade: "EMP Grenade", gasgrenade: "Gas Grenade", napalmgrenade: "Napalm Grenade",
+      infection: "Infection", medikit: "Medikit", spanner: "Spanner", autorifle: "Auto Rifle", sniperrifle: "Sniper Rifle", unknown: "Unknown weapon" })[key];
+  }
+  function weaponName(key) {
+    return weaponNameKnown(key) || key.replace(/[_-]+/g, " ").replace(/\b\w/g, letter => letter.toUpperCase());
+  }
   function hideTooltip() {
     tooltip.hidden = true;
     highlight.setAttribute("visibility", "hidden");
@@ -31,15 +67,18 @@
       const fileName = manifest[name.toLowerCase()];
       if (!fileName) throw Object.assign(new Error("No overview"), { missingOverview: true });
       const root = `/assets/tfc/overviews/${encodeURIComponent(fileName)}`;
-      const [metadata, response, image] = await Promise.all([
+      const [metadata, initialResponse, image] = await Promise.all([
         fetch(root + ".txt").then(r => {
           if (r.status === 404) throw Object.assign(new Error("No overview metadata"), { missingOverview: true });
           if (!r.ok) throw Error("Overview metadata unavailable");
           return r.text();
         }),
-        fetch(`/api/map/${encodeURIComponent(name)}/flag-deaths`).then(r => { if (!r.ok) throw Error("Death data unavailable"); return r.json(); }),
+        fetch(`/api/map/${encodeURIComponent(name)}/flag-deaths`).then(r => { if (!r.ok) throw Error("Death data unavailable"); return r.json(); }).catch(() => null),
         new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(Error("No overview image")); img.src = root + ".bmp"; })
       ]);
+      let response = initialResponse;
+      const cache = new Map(initialResponse?.ok && Array.isArray(initialResponse.deaths) ? [["flags", initialResponse]] : []);
+      let requestId = 0;
       const zoom = /^\s*zoom\s+([-+\d.]+)/im.exec(metadata);
       const origin = /^\s*origin\s+([-+\d.]+)\s+([-+\d.]+)\s+([-+\d.]+)/im.exec(metadata);
       const rotated = /^\s*rotated\s+([01])/im.exec(metadata);
@@ -132,6 +171,7 @@
         }
       }
       bg.putImageData(pixels,0,0);
+      context.drawImage(background, 0, 0);
       const playerKey = death => death.playerId ? "discord:" + death.playerId : death.steamId ? "steam:" + death.steamId : "";
       const matchDate = epoch => {
         const date = new Date(Number(epoch) * 1000);
@@ -143,19 +183,40 @@
           ? date.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })
           : "";
       };
-      for (const match of response.matches || []) {
-        const option = document.createElement("option");
-        option.value = match.matchId;
-        const date = matchDate(match.createdAt);
-        option.textContent = date ? date + " · " + match.matchId : match.matchId;
-        matchSelect.append(option);
+      function updateMatches() {
+        const previous = matchSelect.value;
+        matchSelect.replaceChildren(new Option("All games", ""));
+        for (const match of response.matches || []) {
+          const option = document.createElement("option");
+          option.value = match.matchId;
+          const date = matchDate(match.createdAt);
+          option.textContent = date ? date + " · " + match.matchId : match.matchId;
+          matchSelect.append(option);
+        }
+        matchSelect.value = (response.matches || []).some(match => match.matchId === previous) ? previous : "";
+        matchSelect.disabled = !(response.matches || []).length;
       }
-      matchSelect.disabled = !(response.matches || []).length;
+      function matchesFilters(row, includePlayer = true, includeWeapon = true) {
+        return (!matchSelect.value || row.matchId === matchSelect.value) &&
+          (!teamSelect.value || row.attackerTeam + "-" + row.victimTeam === teamSelect.value) &&
+          (!includeWeapon || !weaponSelect.value || weaponKey(row.weapon) === weaponSelect.value) &&
+          (!includePlayer || !select.value || playerKey(row) === select.value);
+      }
+      function updateWeapons() {
+        const previous = weaponSelect.value;
+        const weapons = new Set(response.deaths.filter(row => matchesFilters(row, false, false)).map(row => weaponKey(row.weapon)));
+        weaponSelect.replaceChildren(new Option("All weapons", ""));
+        for (const key of [...weapons].sort((a, b) => weaponName(a).localeCompare(weaponName(b)))) {
+          weaponSelect.append(new Option(weaponName(key), key));
+        }
+        weaponSelect.value = weapons.has(previous) ? previous : "";
+        weaponSelect.disabled = !weapons.size;
+      }
       function updatePlayers() {
         const previous = select.value;
         const players = new Map();
         for (const death of response.deaths) {
-          if (matchSelect.value && death.matchId !== matchSelect.value) continue;
+          if (!matchesFilters(death, false)) continue;
           const key = playerKey(death);
           if (key) players.set(key, death.playerName);
         }
@@ -166,7 +227,6 @@
         select.value = players.has(previous) ? previous : "";
         select.disabled = !players.size;
       }
-      updatePlayers();
       let buckets = new Map();
       const bucketSize = 16;
       function bucketKey(x, y) { return Math.floor(x / bucketSize) + ":" + Math.floor(y / bucketSize); }
@@ -195,7 +255,11 @@
         highlight.setAttribute("cy", nearest.y);
         highlight.setAttribute("visibility", "visible");
         const death = nearest.death, dateTime = matchDateTime(death.matchCreatedAt);
-        tooltip.textContent = (death.playerName || "Unknown player") + "\nRound " + death.round + " · replay " + replayTime(death.timeMs) + "\n" + (dateTime ? "Game: " + dateTime + "\n" : "Game time unavailable\n") + "Match " + death.matchId;
+        const identity = activeLayer === "flags"
+          ? (death.playerName || "Unknown player") + " (flag carrier)" + (death.attackerName ? "\nKilled by " + death.attackerName : "")
+          : (death.playerName || "Unknown killer") + " → " + (death.victimName || "Unknown victim");
+        const teams = death.attackerTeam && death.victimTeam ? " · Team " + death.attackerTeam + " → Team " + death.victimTeam : "";
+        tooltip.textContent = identity + "\n" + weaponName(weaponKey(death.weapon)) + teams + "\nRound " + death.round + " · replay " + replayTime(death.timeMs) + "\n" + (dateTime ? "Game: " + dateTime + "\n" : "Game time unavailable\n") + "Match " + death.matchId;
         tooltip.hidden = false;
         const box = tooltip.getBoundingClientRect();
         tooltip.style.left = Math.max(4, Math.min(event.clientX + 14, window.innerWidth - box.width - 4)) + "px";
@@ -209,8 +273,7 @@
       const ox = Number(origin[1]), oy = Number(origin[2]);
       function draw() {
         context.drawImage(background,0,0);
-        const rows = response.deaths.filter(d => (!select.value || playerKey(d) === select.value) &&
-          (!matchSelect.value || d.matchId === matchSelect.value));
+        const rows = response.deaths.filter(d => matchesFilters(d));
         let paths = "";
         buckets = new Map();
         hideTooltip();
@@ -225,12 +288,64 @@
           paths += `M${x-radius} ${y}a${radius} ${radius} 0 1 0 ${radius*2} 0a${radius} ${radius} 0 1 0 ${-radius*2} 0`;
         }
         points.setAttribute("d", paths);
-        count.textContent = response.rounds ? `${rows.length.toLocaleString()} deaths` : "Not indexed";
-        status.textContent = response.rounds ? `From ${response.rounds.toLocaleString()} indexed replay rounds. Positions are sampled.${response.truncated ? " Showing the first 100,000 deaths." : ""}` : "No replay rounds have been indexed for this map yet.";
+        const unit = layers[activeLayer].unit;
+        count.textContent = response.rounds ? `${rows.length.toLocaleString()} ${unit}` : "Not indexed";
+        status.textContent = response.rounds
+          ? `${rows.length ? "" : "No " + unit + " match this view. "}From ${response.rounds.toLocaleString()} indexed replay rounds. Positions are sampled.${response.unclassifiedKills ? " " + response.unclassifiedKills.toLocaleString() + " located kills have no unambiguous recorded round role and are excluded." : ""}${response.truncated ? " Showing the first 100,000 " + unit + "; filters apply to this sample." : ""}`
+          : activeLayer === "flags" ? "No replay rounds have been indexed for this map yet." : "Kill locations have not been indexed for this map yet.";
+      }
+      async function changeLayer(layer) {
+        activeLayer = layer;
+        const id = ++requestId;
+        const config = layers[layer];
+        title.textContent = config.title;
+        description.textContent = config.description;
+        playerLabel.textContent = layer === "flags" ? "Carrier" : "Killer";
+        canvas.setAttribute("aria-label", config.title + " locations on the map");
+        layerButtons.forEach(button => button.setAttribute("aria-pressed", String(button.dataset.layer === layer)));
+        hideTooltip();
+        buckets = new Map();
+        points.setAttribute("d", "");
+        [select, matchSelect, teamSelect, weaponSelect].forEach(control => { control.disabled = true; });
+        count.textContent = "Loading…";
+        status.textContent = "Loading recorded " + config.unit + "…";
+        viewport.setAttribute("aria-busy", "true");
+        try {
+          let next = cache.get(layer);
+          if (!next) {
+            const endpoint = layer === "flags" ? "flag-deaths" : "kills?role=" + layer;
+            const result = await fetch(`/api/map/${encodeURIComponent(name)}/${endpoint}`);
+            if (!result.ok) throw Error("Kill data unavailable");
+            const data = await result.json();
+            if (!data.ok || !Array.isArray(layer === "flags" ? data.deaths : data.kills)) throw Error("Kill data unavailable");
+            next = layer === "flags" ? data : { ...data, deaths: data.kills };
+            cache.set(layer, next);
+          }
+          if (id !== requestId) return;
+          response = next;
+          teamSelect.disabled = !response.deaths.some(row => row.attackerTeam && row.victimTeam);
+          if (teamSelect.disabled) teamSelect.value = "";
+          updateMatches();
+          updateWeapons();
+          updatePlayers();
+          draw();
+        } catch (error) {
+          if (id !== requestId) return;
+          count.textContent = "Unavailable";
+          status.textContent = "Could not load recorded " + config.unit + ". Select this tab again to retry.";
+        } finally {
+          if (id === requestId) viewport.setAttribute("aria-busy", "false");
+        }
       }
       select.addEventListener("change", draw);
-      matchSelect.addEventListener("change", () => { updatePlayers(); draw(); });
-      draw();
+      matchSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
+      teamSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
+      weaponSelect.addEventListener("change", () => { updatePlayers(); draw(); });
+      layerButtons.forEach(button => {
+        button.disabled = false;
+        button.addEventListener("click", () => changeLayer(button.dataset.layer));
+      });
+      await changeLayer("flags");
     } catch (error) {
       if (error.missingOverview) {
         count.textContent = "Coming soon";

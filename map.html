@@ -16,10 +16,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/map.css?v=20261109fallback1">
+  <link rel="stylesheet" href="assets/css/map.css?v=20261111combat1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/maps.js?v=20261109layout1" defer></script>
-  <script src="assets/js/map-flag-deaths.js?v=20261110shutdownoverview5" defer></script>
+  <script src="assets/js/map-flag-deaths.js?v=20261111combat1" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -169,14 +169,25 @@
 
       <section class="map-v2-top-grid">
         <article class="map-v2-panel flag-death-panel">
-          <div class="map-v2-panel-header"><h2>Flag Carrier Deaths</h2><span id="flag-death-count">Loading…</span></div>
-          <p class="flag-death-description">Where players died carrying the flag in recorded pickup rounds.</p>
+          <div class="map-v2-panel-header"><h2 id="flag-map-title">Flag Carrier Deaths</h2><span id="flag-death-count">Loading…</span></div>
+          <div id="flag-map-layers" class="flag-map-layers" role="group" aria-label="Map event layer">
+            <button type="button" data-layer="flags" aria-pressed="true" disabled>Flag Carrier Deaths</button>
+            <button type="button" data-layer="defense" aria-pressed="false" disabled>Defensive Kills</button>
+            <button type="button" data-layer="offense" aria-pressed="false" disabled>Offensive Kills</button>
+          </div>
+          <p id="flag-map-description" class="flag-death-description">Where players died carrying the flag in recorded pickup rounds.</p>
           <div id="flag-death-filters" class="flag-death-filters">
-            <label class="flag-death-filter" for="flag-death-player">Player
+            <label class="flag-death-filter" for="flag-death-player"><span id="flag-map-player-label">Carrier</span>
               <select id="flag-death-player" disabled><option value="">All players</option></select>
             </label>
             <label class="flag-death-filter" for="flag-death-match">Game
               <select id="flag-death-match" disabled><option value="">All games</option></select>
+            </label>
+            <label class="flag-death-filter" for="flag-map-team">Killer → victim
+              <select id="flag-map-team" disabled><option value="">Both directions</option><option value="1-2">Team 1 → Team 2</option><option value="2-1">Team 2 → Team 1</option></select>
+            </label>
+            <label class="flag-death-filter" for="flag-map-weapon">Weapon
+              <select id="flag-map-weapon" disabled><option value="">All weapons</option></select>
             </label>
           </div>
           <p id="flag-death-status" class="flag-death-status" role="status">Loading recorded deaths…</p>
@@ -189,7 +200,7 @@
           </div>
           <div id="flag-map-coming-soon" class="flag-map-coming-soon" hidden>
             <img src="assets/images/maps/NoMap.webp" alt="">
-            <div><strong>Map overview coming soon</strong><span>Flag-carrier locations will appear here when an overview is available.</span></div>
+            <div><strong>Map overview coming soon</strong><span>Combat locations will appear here when an overview is available.</span></div>
           </div>
           <div id="flag-map-viewport" class="flag-death-map" tabindex="0" aria-label="Map viewport. Use arrow keys to move when zoomed in."><div id="flag-map-content" class="flag-map-content"><canvas id="flag-death-canvas" role="img" aria-label="Flag carrier death locations on the map"></canvas><svg id="flag-map-dots" class="flag-map-dots" aria-hidden="true"><path id="flag-map-points"></path><circle id="flag-map-highlight" class="flag-map-highlight" r="4" visibility="hidden"></circle></svg></div><div id="flag-map-tooltip" class="flag-map-tooltip" role="tooltip" hidden></div></div>
         </article>
