@@ -410,6 +410,19 @@
 .defense-telemetry summary{cursor:pointer;width:fit-content;font-weight:700}
 .defense-telemetry ul{padding-left:20px;margin:8px 0}
 .defense-kpis{grid-template-columns:1.2fr repeat(3,minmax(0,1fr))}
+.defense-ratings .defense-table{width:100%;min-width:560px;margin-top:12px;table-layout:fixed}
+.defense-table th:first-child,.defense-table td:first-child{width:40%;color:#a5ddff;font-weight:800;text-align:left}
+.defense-table th:nth-child(2),.defense-table td:nth-child(2){text-align:right}
+.defense-table tbody tr{cursor:pointer}
+.defense-table tbody tr:focus-visible{outline:2px solid #7dd3fc;outline-offset:-2px;background:#14304a}
+#defense-leaderboard{overflow-x:auto;scrollbar-color:#416685 #0a1523;scrollbar-width:thin}
+#defense-leaderboard>.capture-footnote{margin:8px 0 14px;max-width:90ch;line-height:1.6}
+.defense-telemetry{margin-bottom:16px}
+.defense-ratings .capture-player-picker>label{color:#a9c4de;font:500 11px Inter,sans-serif}
+.defense-ratings .capture-player-input input{min-width:0}
+.defense-ratings .capture-panel-heading{flex-wrap:wrap}
+.defense-ratings #defense-spotlight{min-height:80px}
+@media(max-width:700px){.defense-ratings .defense-table{min-width:540px}.defense-ratings .capture-player-picker{width:100%}.defense-ratings .capture-player-combo{flex:1;width:auto}.defense-ratings #defense-leaderboard .capture-panel-heading{position:sticky;left:0}}
 .defense-kpis .capture-kpi>.defense-unavailable-value{font:800 clamp(18px,1.6vw,24px)/1.2 Inter,sans-serif;color:#b7c8df;margin:20px 0 12px}
 .defense-unavailable{color:#a8bfd6;font-size:12px;line-height:1.7;padding:12px 0;margin:0}
 .defense-class-context{display:flex;align-items:center;gap:14px;color:#d6e8fa}
