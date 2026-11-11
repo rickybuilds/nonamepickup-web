@@ -16,7 +16,7 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111defense-v3">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111defense-stack">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
   <script src="assets/js/ratings-controls.js?v=20261111defense1" defer></script>
@@ -425,6 +425,7 @@
           </div>
           <p id="defense-summary" class="sr-only" role="status" aria-live="polite">Checking defensive-class data coverage…</p>
           <div id="defense-dashboard" hidden>
+            <div class="defense-overview">
             <div class="defense-classes" role="group" aria-label="Defensive class">
               <button type="button" data-defense-class="soldier" aria-pressed="true"><img src="assets/images/classes/Soldierold_tfc.png" alt="" width="42" height="48"><span>Soldier</span></button>
               <button type="button" data-defense-class="demoman" aria-pressed="false"><img src="assets/images/classes/Demomanold_tfc.png" alt="" width="42" height="48"><span>Demoman</span></button>
@@ -432,6 +433,7 @@
               <button type="button" data-defense-class="engineer" aria-pressed="false"><img src="assets/images/classes/Engineerold_tfc.png" alt="" width="42" height="48"><span>Engineer</span></button>
             </div>
             <div id="defense-kpis" class="capture-kpis defense-kpis"></div>
+            </div>
             <div class="capture-analysis">
               <section id="defense-context" class="capture-panel capture-context"><div class="capture-panel-heading"><h3>Defender spotlight</h3><div class="capture-player-picker"><label for="defense-player">Player</label><span id="defense-player-combo" class="capture-player-combo"><span class="capture-player-input"><input id="defense-player" type="text" role="combobox" aria-label="Defender for spotlight" aria-autocomplete="list" aria-expanded="false" aria-controls="defense-player-options" autocomplete="off" placeholder="Search qualifying defenders…"><button id="defense-player-clear" type="button" aria-label="Clear defender search">Clear</button></span><span id="defense-player-options" class="ratings-player-options" role="listbox" aria-label="Qualifying defenders" hidden></span><span id="defense-player-status" class="capture-player-status" role="status" aria-live="polite"></span></span></div></div><div id="defense-spotlight" class="defense-unavailable"></div></section>
               <section id="defense-distribution-panel" class="capture-panel"><div class="capture-panel-heading"><h3>Captures conceded distribution</h3></div><p id="defense-distribution-count" class="capture-table-hint"></p><div id="defense-distribution" class="capture-chart"></div><p class="capture-footnote">Each eligible team-round counts once, including when multiple qualifying defenders share its result.</p></section>

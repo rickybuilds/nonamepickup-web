@@ -394,12 +394,18 @@
 @media(max-width:420px){.capture-player-picker{width:100%}.capture-player-combo{flex:1;width:auto}}
 /* Defense reuses Capture Ratings cards, controls, spotlight and view patterns. */
 .analytics-tabs{grid-template-columns:repeat(7,minmax(0,1fr))}
-.defense-classes{display:grid;grid-template-columns:repeat(4,minmax(0,180px));gap:10px;margin:16px 0 14px}
+.defense-classes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;min-width:0}
 .defense-classes button{display:flex;align-items:center;justify-content:center;gap:12px;min-width:0;padding:8px 16px;border:1px solid #365674;border-radius:10px;background:#0c1929;color:#b7cce1;font:750 13px Inter,sans-serif;cursor:pointer}
 .defense-classes img{object-fit:contain;object-position:center;filter:saturate(.7);height:48px;width:42px}
 .defense-classes button[aria-pressed=true]{border-color:#7dcaf4;background:#153550;color:#effaff}
 .defense-classes button[aria-pressed=true] img{filter:none}
 .defense-classes button:hover{background:#17324b}
+.defense-overview{display:grid;grid-template-columns:minmax(250px,1.2fr) minmax(180px,1.2fr) repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;margin:16px 0}
+.defense-overview .defense-kpis{display:contents}
+.defense-overview .defense-classes button{padding:6px 8px;gap:6px;font-size:12px}
+.defense-overview .defense-classes img{width:32px;height:40px}
+@media(max-width:1250px){.defense-overview{grid-template-columns:repeat(3,minmax(0,1fr))}.defense-overview .capture-map-card{grid-column:span 2}.defense-overview .defense-classes{min-height:132px}}
+@media(max-width:700px){.defense-overview{grid-template-columns:1fr}.defense-overview .capture-map-card{grid-column:auto}.defense-overview .defense-classes button{justify-content:center}}
 .defense-telemetry{margin:14px 0 16px;border-color:#686080;background:#161b2b}
 .defense-telemetry-heading{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
 .defense-telemetry h3{margin:0;color:#eee6ff;font:800 15px Inter,sans-serif}
