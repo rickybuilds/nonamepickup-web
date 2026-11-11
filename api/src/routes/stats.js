@@ -7,9 +7,9 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
 
   router.get("/stats/capture-ratings", (req, res) => {
     try {
-      const data = cached("capture_ratings_v1", () => {
+      const data = cached("capture_ratings_v2", () => {
         const matches = db.prepare(`
-          SELECT match_id, map_name, blue_ids, red_ids
+          SELECT match_id, created_at, map_name, blue_ids, red_ids
           FROM matches
           WHERE status='completed' AND map_name IS NOT NULL AND TRIM(map_name) != ''
             AND map_name != '(unknown)'
@@ -54,9 +54,15 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
           if (!valid || players.size !== roster.length) continue;
           const blueCaps = blue.reduce((sum, id) => sum + players.get(id), 0);
           const redCaps = red.reduce((sum, id) => sum + players.get(id), 0);
-          if (!maps.has(match.map_name)) maps.set(match.map_name, { map: match.map_name, games: 0, totalCaps: 0, players: new Map() });
+          if (!maps.has(match.map_name)) maps.set(match.map_name, { map: match.map_name, games: 0, totalCaps: 0, players: new Map(), observations: [] });
           const map = maps.get(match.map_name);
           map.games++; map.totalCaps += blueCaps + redCaps;
+          // One observation per eligible match, independent of roster size.
+          map.observations.push({
+            matchId: String(match.match_id),
+            createdAt: match.created_at == null || !Number.isFinite(Number(match.created_at)) ? null : Number(match.created_at),
+            blueCaps, redCaps
+          });
           for (const [team, scored, conceded] of [[blue, blueCaps, redCaps], [red, redCaps, blueCaps]]) {
             for (const id of team) {
               if (!map.players.has(id)) map.players.set(id, { id, player: names.get(id) || id, games: 0, scored: 0, conceded: 0 });
@@ -67,11 +73,15 @@ function createStatsRouter({ db, cached, statsSummaryStmt, sendError, logRouteEr
         }
         return [...maps.values()].map(map => {
           const average = map.totalCaps / (map.games * 2);
-          return { map: map.map, games: map.games, average, players: [...map.players.values()].map(player => ({
+          return { map: map.map, games: map.games, average,
+            observations: map.observations.sort((a, b) =>
+              (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity) || a.matchId.localeCompare(b.matchId)),
+            players: [...map.players.values()].map(player => ({
             id: player.id, player: player.player, games: player.games,
             scored: player.scored / player.games, conceded: player.conceded / player.games,
             offense: player.scored / player.games - average,
-            defense: average - player.conceded / player.games
+            defense: average - player.conceded / player.games,
+            net: (player.scored - player.conceded) / player.games
           })) };
         }).sort((a, b) => b.games - a.games || a.map.localeCompare(b.map));
       });

@@ -16,10 +16,10 @@
   <link rel="shortcut icon" href="/assets/images/favicon.ico">
   <link rel="stylesheet" href="assets/css/app.css?v=20261011universalscale1">
   <link rel="stylesheet" href="assets/css/style.css?v=20260618i">
-  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111caps2">
+  <link rel="stylesheet" href="assets/css/analytics.css?v=20261111dashboard1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/analytics.js?v=20261009streak2" defer></script>
-  <script src="assets/js/capture-ratings.js?v=20261111a" defer></script>
+  <script src="assets/js/capture-ratings.js?v=20261111dashboard1" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
@@ -172,22 +172,233 @@
 
       <div id="analytics-panel-capture-ratings" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-capture-ratings" data-analytics-panel="capture-ratings" hidden>
         <section class="analytics-section page-section capture-ratings" aria-labelledby="capture-ratings-title">
-          <div class="analytics-section-heading">
-            <div><h2 id="capture-ratings-title">Capture Ratings <span class="capture-experimental">Experimental</span></h2></div>
-          </div>
-          <p>How do a player’s teams compare with the map average? Positive ratings mean more caps scored or fewer caps conceded per game.</p>
-          <p class="capture-note">Team results, not individual contributions. Teammates, opponents, roles, and small samples all affect these numbers. Only completed matches with capture records for every rostered player are included.</p>
+          <header class="capture-header">
+            <div>
+              <h2 id="capture-ratings-title">
+                Capture Ratings
+                <span class="capture-experimental">
+                  Experimental
+                </span>
+              </h2>
+              <p>
+                How a player’s teams perform against the map average.
+              </p>
+            </div>
+            <details class="capture-help">
+              <summary>
+                How to read these ratings
+              </summary>
+              <p>
+                Higher is better: positive offense means more team captures; positive defense means fewer conceded. These are team-result associations, not individual contributions. Teammates, opponents, roles, and small samples affect every rating.
+              </p>
+            </details>
+          </header>
           <div class="capture-controls">
-            <label>Map <select id="capture-map" disabled><option>Loading maps…</option></select></label>
-            <label>Minimum games <select id="capture-minimum"><option value="5">5 games</option><option value="10">10 games</option><option value="25">25 games</option></select></label>
-            <label>Sort by <select id="capture-sort"><option value="offense">Offense</option><option value="defense">Defense</option><option value="games">Games</option></select></label>
+            <label>
+              Map
+              <select id="capture-map" disabled>
+                <option>
+                  Loading maps…
+                </option>
+              </select>
+            </label>
+            <label>
+              Minimum games
+              <select id="capture-minimum">
+                <option value="5">
+                  ≥ 5 games
+                </option>
+                <option value="10">
+                  ≥ 10 games
+                </option>
+                <option value="25">
+                  ≥ 25 games
+                </option>
+              </select>
+            </label>
+            <label>
+              Sort by
+              <select id="capture-sort">
+                <option value="offense">
+                  Offense
+                </option>
+                <option value="defense">
+                  Defense
+                </option>
+                <option value="net">
+                  Net rating
+                </option>
+                <option value="games">
+                  Games
+                </option>
+                <option value="player">
+                  Player
+                </option>
+                <option value="scored">
+                  Team caps / game
+                </option>
+                <option value="conceded">
+                  Conceded / game
+                </option>
+              </select>
+            </label>
+            <div class="capture-view-control">
+              <span>
+                View
+              </span>
+              <div class="capture-views" role="group" aria-label="Dashboard view">
+                <button type="button" data-capture-view="overview" aria-pressed="true">
+                  Overview
+                </button>
+                <button type="button" data-capture-view="players" aria-pressed="false">
+                  Players
+                </button>
+                <button type="button" data-capture-view="trends" aria-pressed="false">
+                  Trends
+                </button>
+                <button type="button" data-capture-view="distribution" aria-pressed="false">
+                  Distribution
+                </button>
+              </div>
+            </div>
           </div>
-          <p id="capture-summary" class="capture-summary" role="status" aria-live="polite">Loading capture ratings…</p>
-          <div class="capture-table-wrap"><table class="capture-table">
-            <thead><tr><th scope="col">Player</th><th scope="col">Games</th><th scope="col">Team caps / game</th><th scope="col">Offense</th><th scope="col">Conceded / game</th><th scope="col">Defense</th></tr></thead>
-            <tbody id="capture-rows"></tbody>
-          </table></div>
+          <p id="capture-summary" class="capture-summary" role="status" aria-live="polite">
+            Loading capture ratings…
+          </p>
+          <div id="capture-dashboard" hidden>
+            <div id="capture-kpis" class="capture-kpis">
+            </div>
+            <div class="capture-analysis">
+              <section id="capture-context" class="capture-panel capture-context">
+                <div class="capture-panel-heading">
+                  <h3>
+                    Rating context
+                  </h3>
+                  <label>
+                    Player
+                    <select id="capture-player" aria-label="Player for rating context">
+                    </select>
+                  </label>
+                </div>
+                <div id="capture-equations">
+                </div>
+                <p class="capture-footnote">
+                  Team averages associated with this player. Higher is better for both ratings.
+                </p>
+              </section>
+              <section id="capture-distribution-panel" class="capture-panel">
+                <div class="capture-panel-heading">
+                  <h3>
+                    Capture distribution
+                  </h3>
+                  <span>
+                    All eligible teams
+                  </span>
+                </div>
+                <div id="capture-distribution" class="capture-chart">
+                </div>
+                <p class="capture-legend">
+                  <i class="distribution">
+                  </i>
+                  Team-game observations · two per match
+                </p>
+              </section>
+              <section id="capture-trends-panel" class="capture-panel">
+                <div class="capture-panel-heading">
+                  <h3>
+                    Team capture trend
+                  </h3>
+                  <span>
+                    Completed match order
+                  </span>
+                </div>
+                <div id="capture-trend" class="capture-chart">
+                </div>
+                <p class="capture-legend">
+                  <i>
+                  </i>
+                  Match team average
+                  <i class="baseline">
+                  </i>
+                  Map baseline
+                </p>
+              </section>
+            </div>
+            <section id="capture-leaderboard" class="capture-panel">
+              <div class="capture-panel-heading">
+                <h3>
+                  Player ratings
+                  <span id="capture-player-count">
+                  </span>
+                </h3>
+                <span>
+                  Select a row to inspect its rating
+                </span>
+              </div>
+              <p class="capture-table-hint">
+                Scroll horizontally for all metrics. Bars compare offense (O) and defense (D) with zero.
+              </p>
+              <div class="capture-table-wrap" tabindex="0" role="region" aria-label="Scrollable player ratings">
+                <table class="capture-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        #
+                      </th>
+                      <th scope="col" data-capture-sort="player">
+                        <button type="button">
+                          Player
+                        </button>
+                      </th>
+                      <th scope="col" data-capture-sort="games">
+                        <button type="button">
+                          Games
+                        </button>
+                      </th>
+                      <th scope="col" data-capture-sort="scored">
+                        <button type="button">
+                          Team caps / game
+                        </button>
+                      </th>
+                      <th scope="col" data-capture-sort="offense">
+                        <button type="button">
+                          Offense
+                        </button>
+                      </th>
+                      <th scope="col" data-capture-sort="conceded">
+                        <button type="button">
+                          Conceded / game
+                        </button>
+                      </th>
+                      <th scope="col" data-capture-sort="defense">
+                        <button type="button">
+                          Defense
+                        </button>
+                      </th>
+                      <th scope="col" data-capture-sort="net">
+                        <button type="button">
+                          Net rating
+                        </button>
+                      </th>
+                      <th scope="col">
+                        vs. map average
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="capture-rows">
+                  </tbody>
+                </table>
+              </div>
+              <p id="capture-empty" class="capture-empty" hidden>
+                No players meet this minimum. Choose a lower minimum or another map.
+              </p>
+              <p class="capture-footnote">
+                Net = offense + defense = team captures − conceded per game. Team differential does not measure individual impact. Only completed matches with capture records for every rostered player qualify.
+              </p>
+            </section>
+          </div>
         </section>
+
       </div>
 
       <div id="analytics-panel-maps" class="analytics-tab-panel" role="tabpanel" aria-labelledby="analytics-tab-maps" data-analytics-panel="maps" hidden>
