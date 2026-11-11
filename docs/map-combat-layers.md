@@ -10,6 +10,14 @@ New complete schema-v6+ replay uploads populate the index automatically. After d
 node api/scripts/backfillPickupKillLocations.js
 ```
 
+The startup summary shows how many artifacts remain, and each indexed artifact reports progress against that total. To see a count without processing archives (including from a second shell while a backfill runs):
+
+```sh
+node api/scripts/backfillPickupKillLocations.js --status
+```
+
+Counts reflect the verified artifact list when the command starts. A resumed run skips previously saved rounds and reports only the remaining work.
+
 The command explicitly loads `api/.env`, including when invoked from the repository root; already-exported environment values take precedence. It requires `PICKUP_DB_USER`, `PICKUP_DB_PASSWORD`, and `PICKUP_STORAGE_PATH`, with the same database settings, `ELO_DB`, and storage access as the API. It does not require `PICKUP_UPLOAD_TOKEN`. If configuration exists only in PM2's process environment, supply those same settings to the backfill process.
 
 The command is resumable and skips unchanged archives; it does not rewrite replay archives or the existing carrier-death index. Carrier deaths gain weapon/team metadata when a matching enemy kill is indexed. Unmatched carrier deaths remain visible with All weapons and Both directions selected.

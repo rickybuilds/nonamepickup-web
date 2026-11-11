@@ -30,9 +30,15 @@ async function main() {
       WHERE a.artifact_kind='round_replay' AND a.status='verified' AND a.is_primary=1 AND r.status='complete'
       ORDER BY a.id`);
     let completed = 0, skipped = 0;
+    const pending = [];
     for (const artifact of artifacts) {
       if (Number(artifact.schema_version) < 6 || await retrySqliteBusy(`Checking artifact ${artifact.id}`, () =>
         store.hasRound(artifact.match_id, artifact.round_number, String(artifact.sha256)))) { skipped++; continue; }
+      pending.push(artifact);
+    }
+    console.log(`Kill location backfill: ${artifacts.length} verified complete artifacts, ${pending.length} remaining, ${skipped} unchanged or unsupported.`);
+    if (process.argv.includes("--status")) return;
+    for (const [index, artifact] of pending.entries()) {
       const path = storage.artifactPath(artifact.storage_key);
       const scene = parseCsv(await member(path, "scene_events.csv", readText), "scene_events");
       const kills = await member(path, "players.csv", stream => locateKills(stream, scene,
@@ -44,9 +50,14 @@ async function main() {
         sha256: String(artifact.sha256), kills,
         roster: sessions.map(session => ({ sessionIndex: session.session_id, steamId: session.steamid, playerName: session.current_name }))
       }));
-      if (!saved) { skipped++; continue; }
-      console.log(`Indexed artifact ${artifact.id}: ${kills.length} enemy kill locations`);
-      completed++;
+      const progress = `[${index + 1}/${pending.length} · ${pending.length - index - 1} remaining]`;
+      if (!saved) {
+        skipped++;
+        console.log(`${progress} Artifact ${artifact.id} already indexed; skipped.`);
+      } else {
+        completed++;
+        console.log(`${progress} Indexed artifact ${artifact.id}: ${kills.length} enemy kill locations`);
+      }
     }
     console.log(`Kill location backfill complete: ${completed} processed, ${skipped} unchanged or unsupported.`);
   } finally { db.close(); await closePickupPool(); }
