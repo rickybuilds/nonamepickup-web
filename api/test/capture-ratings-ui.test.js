@@ -17,6 +17,7 @@ class Element {
   focus() {} contains() { return false; } fire(name, extra = {}) { this.events[name]?.({ target: { closest: () => null }, preventDefault() {}, ...extra }); }
 }
 async function dashboard(data) {
+  const timers=[];
   const elements = new Map();
   const el = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
   el("capture-minimum").value = html.match(/<select id="capture-minimum">\s*<option value="(\d+)"/)[1]; el("capture-sort").value = "offense";
@@ -28,12 +29,19 @@ async function dashboard(data) {
   let ready;
   const documentEvents = {};
   const document = { addEventListener: (name, fn) => { if (name === "DOMContentLoaded") ready = fn; else documentEvents[name] = fn; }, getElementById: el, createElement: () => new Element(), querySelectorAll(selector) { if (selector === '[data-capture-sort]') return sorts; if (selector === '[data-capture-view]') return views; return el("capture-rows").children; }, querySelector(selector) { return sorts.find(e => selector.includes(`"${e.dataset.captureSort}"`)).button; } };
-  vm.runInNewContext(source, { document, window: { nnHelpers: { fetchJSON: async () => ({ ok: true, data }) } }, Option: function(text, value) { this.text = text; this.value = value; }, console });
+  vm.runInNewContext(source, { document, window: { nnHelpers: { fetchJSON: async () => ({ ok: true, data }) } }, setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length},clearTimeout(){},Option: function(text, value) { this.text = text; this.value = value; }, console });
   await ready();
-  return { outsideClick: () => documentEvents.pointerdown({target:{}}), el: id => el(`capture-${id}`), sorts, views, ids: () => el("capture-rows").children.map(row => row.dataset.player) };
+  return { outsideClick: () => documentEvents.pointerdown({target:{}}), el: id => el(`capture-${id}`), sorts, views, ids: () => el("capture-rows").children.map(row => row.dataset.player),refresh:async next=>{data=next;documentEvents['nn:analytics-updated']();const timer=timers.pop();assert.equal(timer.ms,11000);timer.fn();await new Promise(setImmediate);} };
 }
 const player = (id, games, offense, defense) => ({ id, player: id === "a/b" ? "Alpha <Ace>" : id, games, offense, defense, scored: 4 + offense, conceded: 4 - defense });
 const maps = [{ map: "well", games: 8, average: 4, players: [player("a/b", 5, 2, -1), player("Bravo", 8, -1, 4), player("short", 4, 5, 5)], observations: [{ matchId: "later", createdAt: 200, blueCaps: 6, redCaps: 2 }, { matchId: "early", createdAt: 100, blueCaps: 0, redCaps: 8 }, { matchId: "undated", createdAt: null, blueCaps: 0, redCaps: 0 }] }, { map: "empty", games: 1, average: 0, players: [], observations: [] }];
+
+test('changed analytics refreshes capture records without resetting map or minimum',async()=>{
+  const ui=await dashboard(maps);ui.el('minimum').value='8';ui.el('minimum').fire('change');
+  await ui.refresh([maps[1],{...maps[0],games:99}]);
+  assert.equal(ui.el('map').value,'well');assert.equal(ui.el('minimum').value,'8');
+  assert.deepEqual(ui.ids(),['Bravo']);assert.match(ui.el('map').children[1].text,/99 matches/);
+});
 
 test("dashboard filters minimum games, sorts both directions, computes net and escapes profile links", async () => {
   const ui = await dashboard(maps);

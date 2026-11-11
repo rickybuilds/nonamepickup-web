@@ -3,11 +3,13 @@
 const path = require("node:path");
 const { fork } = require("node:child_process");
 const { createHash } = require("node:crypto");
+const { storeFor } = require("./reportStore");
 
 // Two report kinds, one child at a time, no recurring refresh timer.
 class ReportCache {
-  constructor({ run, revision, now = Date.now, ttlMs = 45_000, cooldownMs = 60_000, retryMs = 60_000 }) {
-    Object.assign(this, { run, revision, now, ttlMs, cooldownMs, retryMs });
+  constructor({ run, revision, now = Date.now, ttlMs = 5_000, cooldownMs = 60_000, retryMs = 60_000,
+    store, warn = message => console.warn(message) }) {
+    Object.assign(this, { run, revision, now, ttlMs, cooldownMs, retryMs, store, warn });
     this.entries = new Map();
     this.pending = new Map();
     this.nextStart = 0;
@@ -24,7 +26,13 @@ class ReportCache {
     if (!entry) {
       entry = { checkedAt: -Infinity, generatedAt: 0, retryAt: 0, failures: 0 };
       this.entries.set(kind, entry);
+      if (this.store) {
+        entry.loading = this.store.load(kind).then(saved => {
+          if (saved) Object.assign(entry, { bodies: saved.bodies, generatedAt: saved.generatedAt });
+        }).catch(() => {}).finally(() => { delete entry.loading; });
+      }
     }
+    if (entry.loading) await entry.loading;
     if (entry.bodies && now - entry.checkedAt < this.ttlMs && entry.generation === this.generation) {
       return this.result(entry, variant, "HIT");
     }
@@ -55,7 +63,8 @@ class ReportCache {
 
   result(entry, variant, status) {
     return { body: entry.bodies[variant], status, age: Math.max(0, Math.floor((this.now() - entry.generatedAt) / 1000)),
-      revision: entry.revision, failed: entry.failures > 0 };
+      revision: entry.revision, validatedAt: Number.isFinite(entry.checkedAt) ? Math.floor(entry.checkedAt / 1000) : null,
+      failed: entry.failures > 0 };
   }
 
   failed(entry) {
@@ -89,7 +98,7 @@ class ReportCache {
     }
     const task = this.queue.shift();
     this.active = task;
-    const complete = (error, bodies) => {
+    const complete = async (error, bodies) => {
       const entry = task.entry;
       if (error) {
         this.failed(entry);
@@ -97,6 +106,10 @@ class ReportCache {
       } else {
         Object.assign(entry, { bodies, revision: task.revision, generation: task.generation,
           checkedAt: this.now(), generatedAt: this.now(), failures: 0, retryAt: 0 });
+        if (this.store) {
+          try { await this.store.save(task.kind, { bodies, generatedAt: entry.generatedAt }); }
+          catch { this.warn(`[report-cache] ${task.kind} snapshot could not be saved; serving memory cache`); }
+        }
         task.resolve();
       }
       this.pending.delete(task.kind);
@@ -136,7 +149,7 @@ function createRevisionReader(db, now = Date.now) {
   let checkedAt = -Infinity, cached, lastVersion, fallbackAt = now(), fallback = 0;
   return () => {
     const time = now();
-    if (time - checkedAt < 45_000) return cached;
+    if (time - checkedAt < 5_000) return cached;
     const version = `${db.prepare("PRAGMA data_version").get().data_version}:${db.prepare("SELECT total_changes() AS n").get().n}`;
     if (version !== lastVersion && time - fallbackAt >= 15 * 60_000) {
       fallback++; fallbackAt = time; lastVersion = version;
@@ -159,7 +172,7 @@ const services = new WeakMap();
 function reportsFor(db) {
   if (!services.has(db)) {
     if (!db.name || db.name === ":memory:") throw new Error("Report refresh requires a file-backed database");
-    services.set(db, new ReportCache({ revision: createRevisionReader(db), run: kind => runReport(db.name, kind) }));
+    services.set(db, new ReportCache({ revision: createRevisionReader(db), run: kind => runReport(db.name, kind), store: storeFor(db.name) }));
   }
   return services.get(db);
 }
@@ -167,6 +180,7 @@ function reportsFor(db) {
 function reportHeaders(res, report, prefix) {
   res.setHeader(`X-${prefix}-Cache`, report.status);
   res.setHeader(`X-${prefix}-Age`, String(report.age));
+  if (report.validatedAt != null) res.setHeader(`X-${prefix}-Validated-At`, String(report.validatedAt));
   res.setHeader(`X-${prefix}-Refresh`, report.failed ? "failed" : "ok");
   res.setHeader(`X-${prefix}-Revision`, createHash("sha256").update(String(report.revision)).digest("hex").slice(0, 16));
   // Public caching remains bounded; the server retains the last successful value.

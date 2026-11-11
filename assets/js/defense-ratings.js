@@ -61,5 +61,24 @@ document.addEventListener('DOMContentLoaded',async()=>{
   [$('trend-raw'),$('trend-rolling')].forEach(control=>control.addEventListener('change',render));
   document.querySelectorAll('[data-defense-class]').forEach(button=>button.addEventListener('click',()=>{selectedClass=button.dataset.defenseClass;selectedPlayer='';document.querySelectorAll('[data-defense-class]').forEach(option=>option.setAttribute('aria-pressed',String(option===button)));render();}));
   document.querySelectorAll('[data-defense-view]').forEach(button=>button.addEventListener('click',()=>{view=button.dataset.defenseView;setView();}));
-  try{const response=await window.nnHelpers.fetchJSON('/api/stats/defense-ratings');if(!response?.ok||!Array.isArray(response.data?.maps))throw Error('Unsupported defense response');data=response.data;$('map').replaceChildren(...data.maps.map(m=>new Option(`${m.map} (${m.completedMatches} completed)`,m.map)));if(!data.maps.length)$('map').add(new Option('No completed maps',''));$('map').disabled=!data.maps.length;render();}catch(error){$('map').replaceChildren(new Option('Unavailable',''));$('map').disabled=true;$('dashboard').hidden=true;$('summary').className='capture-summary';$('summary').textContent='Defense ratings could not be loaded. Refresh to try again.';}
+  async function loadDefense() {
+    try {
+      const response=await window.nnHelpers.fetchJSON('/api/stats/defense-ratings');
+      if(!response?.ok||!Array.isArray(response.data?.maps))throw Error('Unsupported defense response');
+      const currentMap=$('map').value;
+      data=response.data;
+      $('map').replaceChildren(...data.maps.map(m=>new Option(`${m.map} (${m.completedMatches} completed)`,m.map)));
+      if(data.maps.some(m=>m.map===currentMap))$('map').value=currentMap;
+      if(!data.maps.length)$('map').add(new Option('No completed maps',''));
+      $('map').disabled=!data.maps.length;
+      render();return response;
+    } catch(error) {
+      if(data)return;
+      $('map').replaceChildren(new Option('Unavailable',''));$('map').disabled=true;
+      $('dashboard').hidden=true;$('summary').className='capture-summary';
+      $('summary').textContent='Defense ratings could not be loaded. Retrying automatically.';
+    }
+  }
+  const initial=await loadDefense();
+  window.nnHelpers.watchReport?.('/api/stats/defense-ratings',loadDefense,initial);
 });

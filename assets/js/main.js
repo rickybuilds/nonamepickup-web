@@ -74,7 +74,11 @@ async function fetchJSON(url) {
     const report = /^\/api\/(?:analytics|stats\/defense-ratings)(?:\?|$)/.test(url);
     for (let attempt = 0; attempt < 4; attempt++) {
       const res = await fetch(url, { cache: "no-store" });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const payload = await res.json();
+        if (report) payload._report = reportMeta(res, url);
+        return payload;
+      }
       if (report && res.status === 503 && attempt < 3) {
         const payload = await res.json();
         if (["analytics_warming", "defense_ratings_warming"].includes(payload.error)) {
@@ -89,6 +93,42 @@ async function fetchJSON(url) {
     console.error(`Failed: ${url}`, e);
     return { ok: false, data: [] };
   }
+}
+
+function watchReport(url, reload, initial, onStatus = () => {}) {
+  let etag = initial?._report?.etag, busy = false, stopped = false, timer;
+  const schedule = () => { clearTimeout(timer); if (!stopped) timer = setTimeout(check, 15000); };
+  async function check() {
+    if (busy || stopped) return;
+    busy = true;
+    try {
+      if (document.hidden) return;
+      const response = await fetch(url, { method: "HEAD", cache: "no-store" });
+      if (!response.ok) throw new Error("Report check unavailable");
+      const status = reportMeta(response, url);
+      onStatus(status);
+      if (!etag || status.etag !== etag) {
+        const payload = await reload();
+        if (payload?._report?.etag) etag = payload._report.etag;
+      }
+    } catch { onStatus({ cache: "ERROR" }); }
+    finally { busy = false; schedule(); }
+  }
+  document.addEventListener("visibilitychange", check);
+  window.addEventListener("focus", check);
+  schedule();
+  return () => {
+    stopped = true; clearTimeout(timer);
+    document.removeEventListener("visibilitychange", check);
+    window.removeEventListener("focus", check);
+  };
+}
+
+function reportMeta(response, url) {
+  const prefix = url.startsWith("/api/analytics") ? "Analytics" : "Defense";
+  const header = name => response.headers?.get?.(name);
+  return { etag: header("ETag"), cache: header(`X-${prefix}-Cache`),
+    validatedAt: Number(header(`X-${prefix}-Validated-At`)) || null };
 }
 
 function escapeHtml(str) {
@@ -340,6 +380,7 @@ async function initRandomPageHero() {
 window.nnHelpers = {
   ...(window.nnHelpers || {}),
   fetchJSON,
+  watchReport,
   escapeHtml,
   escapeAttr,
   supporterBadge,

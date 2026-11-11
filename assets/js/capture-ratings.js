@@ -117,12 +117,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.querySelectorAll('[data-capture-view]').forEach(button=>button.addEventListener('click',()=>{view=button.dataset.captureView;setView();}));
   const descriptions={offense:'Team captures scored per game minus the map average. Higher is better.',defense:'Map average minus team captures conceded per game. Higher is better.',net:'Offense plus defense: the player’s teams’ average capture differential, not individual impact.'};
   Object.entries(descriptions).forEach(([key,description])=>{document.querySelector(`[data-capture-sort="${key}"] button`).title=description;});
-  try {
-    const response=await window.nnHelpers.fetchJSON('/api/stats/capture-ratings');
-    if(!response?.ok || !Array.isArray(response.data)) throw new Error('Invalid response');
-    maps=response.data;
-    $("map").replaceChildren(...maps.map(m=>new Option(`${m.map} (${m.games} matches)`,m.map)));
-    if(!maps.length){$("map").add(new Option('No eligible maps',''));$("summary").textContent='No matches have complete capture records yet.';return;}
-    $("map").disabled=false;render();
-  } catch(error) {$("map").replaceChildren(new Option('Unavailable',''));$("summary").textContent='Capture ratings could not be loaded. Refresh the page to try again.';}
+  let loading=false,pendingRefresh=false,refreshTimer;
+  async function loadCapture() {
+    if(loading)return;loading=true;
+    try {
+      const response=await window.nnHelpers.fetchJSON('/api/stats/capture-ratings');
+      if(!response?.ok || !Array.isArray(response.data))throw new Error('Invalid response');
+      const currentMap=$('map').value;
+      maps=response.data;
+      $('map').replaceChildren(...maps.map(m=>new Option(`${m.map} (${m.games} matches)`,m.map)));
+      if(maps.some(m=>m.map===currentMap))$('map').value=currentMap;
+      if(!maps.length){$('map').add(new Option('No eligible maps',''));$('summary').textContent='No matches have complete capture records yet.';return;}
+      $('map').disabled=false;render();
+    } catch(error) {
+      if(maps.length)return;
+      $('map').replaceChildren(new Option('Unavailable',''));$('summary').textContent='Capture ratings could not be loaded. Refresh the page to try again.';
+    } finally {loading=false;}
+  }
+  document.addEventListener('nn:analytics-updated',()=>{
+    pendingRefresh=true;clearTimeout(refreshTimer);
+    // Recheck after the capture endpoint's ten-second cache expires, once per
+    // changed report rather than on every lightweight live check.
+    refreshTimer=setTimeout(()=>{if(!document.hidden){pendingRefresh=false;loadCapture();}},11000);
+  });
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&pendingRefresh){pendingRefresh=false;loadCapture();}});
+  await loadCapture();
 });

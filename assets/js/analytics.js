@@ -11,6 +11,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const loadSupporters = helpers.loadSupporters;
   const weaponName = helpers.weaponName || (value => value);
   const formatDuration = helpers.formatSeconds || window.formatSeconds || (value => `${number.format(value)}s`);
+  let renderEvents = new AbortController(), lastGenerated = null, shamePage = 0;
+  const bindReportClick = (target, callback) => target.addEventListener("click", callback, { signal: renderEvents.signal });
 
   const sections = {
     combat: [
@@ -214,12 +216,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         toolbar
       );
     };
-    target.addEventListener("click", event => {
+    bindReportClick(target, event => {
       const button = event.target.closest("[data-mvp-view]");
       if (!button || !target.contains(button)) return;
       selected = button.dataset.mvpView;
       render();
-      target.querySelector(`[data-mvp-view="${selected}"]`)?.focus();
+      if (event.isTrusted) target.querySelector(`[data-mvp-view="${selected}"]`)?.focus();
     });
     render();
   }
@@ -239,11 +241,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const chaosConfig = sections.chaos.slice(1);
     const rows = data?.least_flag_touches || [];
     const pageSize = 5;
-    let page = 0;
+    let page = shamePage;
 
     const render = () => {
       const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
       page = Math.min(page, pageCount - 1);
+      shamePage = page;
       const pageRows = rows.slice(page * pageSize, (page + 1) * pageSize);
       const shameCard = renderCard(shameConfig[1], pageRows, shameConfig[2], shameConfig[3], shameConfig[4], false, page * pageSize);
       const chaosCards = chaosConfig.map(([key, title, type, note, recordType]) =>
@@ -258,7 +261,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       target.innerHTML = `<div class="analytics-shame-paginated">${shameCard}${pagination}</div>${chaosCards}`;
     };
 
-    target.addEventListener("click", event => {
+    bindReportClick(target, event => {
       const button = event.target.closest("[data-shame-page]");
       if (!button || button.disabled) return;
       page += button.dataset.shamePage === "next" ? 1 : -1;
@@ -455,7 +458,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         </article>`;
     };
 
-    target.addEventListener("click", event => {
+    bindReportClick(target, event => {
       const option = event.target.closest(".analytics-metric-option");
       if (!option) return;
       target.querySelectorAll(".analytics-metric-option").forEach(button => {
@@ -532,7 +535,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         </article>`;
     };
 
-    document.getElementById("analytics-weapon-totals").addEventListener("click", event => {
+    bindReportClick(document.getElementById("analytics-weapon-totals"), event => {
       const option = event.target.closest(".analytics-weapon-option");
       if (!option) return;
       document.querySelectorAll(".analytics-weapon-option").forEach(button => {
@@ -611,7 +614,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         </article>`;
     };
 
-    target.addEventListener("click", event => {
+    bindReportClick(target, event => {
       const option = event.target.closest(".analytics-map-option");
       if (!option) return;
       target.querySelectorAll(".analytics-map-option").forEach(button => {
@@ -656,12 +659,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     activate(window.location.hash.slice(1));
   }
 
+  function showFreshness(status) {
+    if (lastGenerated == null) return;
+    const generated = new Date(lastGenerated * 1000).toLocaleString();
+    const state = status?.cache === "ERROR" ? "Connection interrupted" : status?.cache === "BACKOFF" ? "Refresh delayed"
+      : status?.cache === "STALE" ? "Refreshing stats" : status?.validatedAt
+        ? `Checked ${new Date(status.validatedAt * 1000).toLocaleTimeString()}` : "Stats loaded";
+    finishAnalyticsLoading(`${state} · Stats generated ${generated}`);
+  }
+
   async function loadAnalytics() {
     const error = document.getElementById("analytics-error");
     try {
       const payload = await fetchJSON("/api/analytics?limit=5");
       if (!payload.ok || !payload.data) throw new Error(payload.error || "Invalid response");
       const data = payload.data;
+      const previousGenerated = lastGenerated;
+      const selected = ["data-mvp-view", "data-metric", "data-weapon", "data-map"].map(attribute => ({
+        attribute, value: document.querySelector(`button[${attribute}][aria-pressed="true"]`)?.getAttribute(attribute)
+      }));
+      renderEvents.abort(); renderEvents = new AbortController();
+      lastGenerated = Number(data.generated_at || 0);
+      error.hidden = true;
       const minimumGames = Number(data.qualification?.minimum_games || 0);
       const minimumMapGames = Number(data.qualification?.minimum_map_games || 0);
       const qualificationNote = `Minimum ${number.format(minimumGames)} games`;
@@ -669,7 +688,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("analytics-player-count").textContent = number.format(data.summary?.players || 0);
       document.getElementById("analytics-round-count").textContent = number.format(data.summary?.rounds || 0);
       document.getElementById("analytics-kill-count").textContent = number.format(data.summary?.total_kills || 0);
-      finishAnalyticsLoading(`Updated ${new Date(Number(data.generated_at || 0) * 1000).toLocaleString()}`);
+      showFreshness(payload._report);
       renderActivity(data.activity);
       renderSpotlight(data, qualificationNote);
       renderComparisons(data);
@@ -691,8 +710,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderSection("analytics-rounds", data.rounds, sections.rounds, qualificationNote);
       renderSection("analytics-matches", data.matches, sections.matches, qualificationNote);
       renderShame(data.chaos, qualificationNote);
+      selected.forEach(({attribute,value}) => {
+        if (value != null) [...document.querySelectorAll(`button[${attribute}]`)]
+          .find(button => button.getAttribute(attribute) === value)?.click();
+      });
+      if (previousGenerated != null) document.dispatchEvent(new CustomEvent("nn:analytics-updated"));
+      return payload;
     } catch (loadError) {
       console.error("Analytics load failed", loadError);
+      if (lastGenerated != null) { showFreshness({cache:"ERROR"}); return; }
       error.hidden = false;
       error.textContent = "The analytics data could not be loaded right now.";
       finishAnalyticsLoading("Analytics unavailable");
@@ -701,5 +727,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   setupTabs();
   if (loadSupporters) await loadSupporters();
-  loadAnalytics();
+  const initial = await loadAnalytics();
+  helpers.watchReport?.("/api/analytics?limit=5", loadAnalytics, initial, showFreshness);
 });

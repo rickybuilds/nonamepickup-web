@@ -16,6 +16,7 @@ download/
 *.bk
 
 api/node_modules/
+api/.cache/
 api/logs/
 api/.env
 api/.env.*

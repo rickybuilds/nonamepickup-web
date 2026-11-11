@@ -15,14 +15,24 @@ async function dashboard(){
   const els=new Map(),el=id=>{if(!els.has(id))els.set(id,new Element());return els.get(id);};let ready;
   el('defense-minimum').value='5';el('defense-sort').value='defense';el('defense-trend-raw').checked=true;el('defense-trend-rolling').checked=true;
   const classes=['soldier','demoman','hwguy','engineer'].map(id=>{const e=new Element();e.dataset.defenseClass=id;return e;});const views=['overview','players','trends','distribution'].map(id=>{const e=new Element();e.dataset.defenseView=id;return e;});
-  const data={status:'estimated',reason:'Estimated',methodology:{missing:[]},maps:[{map:'well',completedMatches:3,classes:Object.fromEntries(classes.map(e=>[e.dataset.defenseClass,bucket]))},{map:'empty',completedMatches:1,classes:{}}]};
+  let data={status:'estimated',reason:'Estimated',methodology:{missing:[]},maps:[{map:'well',completedMatches:3,classes:Object.fromEntries(classes.map(e=>[e.dataset.defenseClass,bucket]))},{map:'empty',completedMatches:1,classes:{}}]};
   const document={getElementById:el,createElement:()=>new Element(),addEventListener(n,f){if(n==='DOMContentLoaded')ready=f;},querySelectorAll:s=>s==='[data-defense-class]'?classes:views};
-  const window={nnHelpers:{fetchJSON:async()=>({ok:true,data})}};vm.runInNewContext(source,{window,document,Option:function(t,v){this.value=v;}});await ready();return {el:id=>el('defense-'+id),classes,views};
+  let reload;
+  const window={nnHelpers:{fetchJSON:async()=>({ok:true,data}),watchReport:(_,fn)=>{reload=fn}}};vm.runInNewContext(source,{window,document,Option:function(t,v){this.value=v;}});await ready();return {el:id=>el('defense-'+id),classes,views,refresh:async()=>{data={...data,maps:[data.maps[1],data.maps[0]]};await reload();}};
 }
 test('unique team-round aggregation respects minimum eligibility without weighting shared defenders',()=>{
   const duplicate={...bucket.observations[0]};const obs=model.observations({...bucket,observations:[...bucket.observations,duplicate]},bucket.players);
   assert.equal(obs.length,2);assert.equal(model.distribution(obs).reduce((s,b)=>s+b.count,0),2);
   assert.equal(model.observations(bucket,[]).length,0);assert.equal(model.eligible(bucket,10).length,1);
+});
+
+test('live defense reload preserves map, class, minimum and active view',async()=>{
+  const ui=await dashboard();ui.classes[2].fire('click');ui.views[2].fire('click');
+  ui.el('minimum').value='10';ui.el('minimum').fire('change');
+  await ui.refresh();
+  assert.equal(ui.el('map').value,'well');assert.equal(ui.el('minimum').value,'10');
+  assert.match(ui.el('spotlight').innerHTML,/HWGuy/);assert.equal(ui.el('trends-panel').hidden,false);
+  assert.equal(ui.el('rows').children.length,1);
 });
 test('trend ordering and trailing five actual observations use partial initial windows',()=>{
   const input=Array.from({length:6},(_,i)=>({matchId:String(i),roundNum:1,team:'B',conceded:i,createdAt:100+i})).reverse();

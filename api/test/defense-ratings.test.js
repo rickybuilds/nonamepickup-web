@@ -106,6 +106,115 @@ test('warming responses request a short retry and do not log expected startup wa
   }
 });
 
+test('a restarted report cache serves its saved success before a new build finishes', async () => {
+  const {ReportCache}=require('../src/lib/reportCache');
+  const saved=new Map();let loads=0,now=1000,finish;
+  const store={load:async kind=>{loads++;return saved.get(kind)},save:async(kind,value)=>{saved.set(kind,value)}};
+  const first=new ReportCache({store,now:()=>now,revision:()=>1,run:async()=>({default:'last success'})});
+  await first.get('defense');assert.equal(saved.get('defense').bodies.default,'last success');
+  now=2000;
+  const restarted=new ReportCache({store,now:()=>now,revision:()=>2,run:()=>new Promise(resolve=>{finish=resolve})});
+  const [a,b]=await Promise.all([restarted.get('defense'),restarted.get('defense')]);
+  assert.equal(a.body,'last success');assert.equal(a.status,'STALE');assert.equal(a.age,1);
+  assert.equal(b.body,a.body);assert.equal(loads,2);assert.equal(restarted.pending.size,1);
+  finish({default:'updated'});await restarted.pending.get('defense');
+  assert.equal(saved.get('defense').bodies.default,'updated');
+});
+
+test('snapshot storage failures never reject a successful build or discard a restored response', async () => {
+  const {ReportCache}=require('../src/lib/reportCache');
+  const store={load:async()=>{throw Error('unreadable')},save:async()=>{throw Error('disk full')}};
+  const cache=new ReportCache({store,revision:()=>1,run:async()=>({default:'computed'}),warn:()=>{}});
+  assert.equal((await cache.get('defense')).body,'computed');
+  const restored=new ReportCache({store:{load:async()=>({generatedAt:Date.now(),bodies:{default:'restored'}}),save:store.save},
+    revision:()=>{throw Error('database busy')},run:()=>assert.fail('must not calculate'),warn:()=>{}});
+  assert.equal((await restored.get('defense')).body,'restored');
+});
+
+test('report disk snapshots are atomic, private, bounded, versioned and tied to a database', async () => {
+  const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
+  const {ReportStore}=require('../src/lib/reportStore');
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'noname-snapshots-'));let now=1000;
+  try {
+    const store=new ReportStore({directory:dir,databaseKey:'a',now:()=>now,maxAgeMs:10000,maxBytes:10000});
+    const value={generatedAt:now,bodies:{default:JSON.stringify({ok:true,data:{maps:[],classes:[]}})}};
+    assert.equal(await store.load('defense'),null);
+    await store.save('defense',value);
+    assert.deepEqual(await store.load('defense'),value);
+    assert.deepEqual((await fs.readdir(dir)),['defense.json']);
+    const other=new ReportStore({directory:dir,databaseKey:'b',now:()=>now});
+    assert.equal(await other.load('defense'),null);
+    const limited=new ReportStore({directory:dir,databaseKey:'a',now:()=>now,maxBytes:2});
+    assert.equal(await limited.load('defense'),null);
+    await assert.rejects(limited.save('defense',value),/too large/);
+    assert.deepEqual(await store.load('defense'),value);
+    now=11001;assert.equal(await store.load('defense'),null);now=1000;
+    const file=path.join(dir,'defense.json');let parsed=JSON.parse(await fs.readFile(file,'utf8'));
+    await fs.writeFile(file,JSON.stringify({...parsed,version:0}));assert.equal(await store.load('defense'),null);
+    await fs.writeFile(file,JSON.stringify({...parsed,bodies:{default:'invalid json'}}));assert.equal(await store.load('defense'),null);
+    await fs.writeFile(file,'interrupted JSON');assert.equal(await store.load('defense'),null);
+    await store.save('defense',value);
+    if(process.platform!=='win32')assert.equal((await fs.stat(file)).mode&0o777,0o600);
+  } finally {await fs.rm(dir,{recursive:true,force:true});}
+});
+
+test('report revalidation exposes actual DB-check time without rebuilding unchanged statistics', async () => {
+  const {ReportCache,reportHeaders}=require('../src/lib/reportCache');
+  let now=1000,builds=0,checks=0;
+  const cache=new ReportCache({now:()=>now,revision:()=>{checks++;return 1},run:async()=>{builds++;return {default:'same'}}});
+  await cache.get('defense');now=7000;
+  const report=await cache.get('defense');
+  assert.equal(report.validatedAt,7);assert.equal(builds,1);assert.equal(checks,2);
+  const headers={};reportHeaders({setHeader:(key,value)=>{headers[key]=value},type(){}},report,'Defense');
+  assert.equal(headers['X-Defense-Validated-At'],'7');
+});
+
+test('live report watcher checks headers, reloads only changed reports and pauses while hidden', async () => {
+  const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+  const source=fs.readFileSync(path.join(__dirname,'../../assets/js/main.js'),'utf8');
+  const start=source.indexOf('function watchReport('),end=source.indexOf('function escapeHtml(');
+  const timers=[],events={},statuses=[];let etag='one',calls=0,reloads=0;
+  const context={document:{hidden:false,addEventListener:(name,fn)=>{events[name]=fn},removeEventListener(){}},
+    window:{addEventListener(){},removeEventListener(){}},setTimeout:fn=>{timers.push(fn);return timers.length},clearTimeout(){},
+    fetch:async(_,options)=>{calls++;assert.equal(options.method,'HEAD');return {ok:true,headers:{get:key=>key==='ETag'?etag:key.endsWith('Validated-At')?'7':'HIT'}}}};
+  vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+  const stop=context.watchReport('/api/analytics?limit=5',async()=>{reloads++;return {_report:{etag}}},{_report:{etag:'one'}},value=>statuses.push(value));
+  await timers.pop()();assert.equal(calls,1);assert.equal(reloads,0);assert.equal(statuses[0].validatedAt,7);
+  etag='two';await timers.pop()();assert.equal(reloads,1);
+  context.document.hidden=true;await timers.pop()();assert.equal(calls,2);
+  context.document.hidden=false;await events.visibilitychange();assert.equal(calls,3);assert.equal(reloads,1);
+  stop();
+});
+
+test('live analytics refresh retains the current Shame page and clamps a shortened list',()=>{
+  const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+  const source=fs.readFileSync(path.join(__dirname,'../../assets/js/analytics.js'),'utf8');
+  const fn=source.slice(source.indexOf('  function renderShame('),source.indexOf('  function fillActivityMonths('));
+  const target={innerHTML:''};let click;
+  const context={shamePage:0,document:{getElementById:()=>target},sections:{chaos:[['least_flag_touches','Flags','caps']]},
+    renderCard:(_,rows)=>JSON.stringify(rows),bindReportClick:(_,callback)=>{click=callback}};
+  vm.createContext(context);vm.runInContext(fn,context);
+  const data={least_flag_touches:Array.from({length:12},(_,id)=>({id}))};
+  context.renderShame(data,'');click({target:{closest:()=>({dataset:{shamePage:'next'}})}});
+  assert.match(target.innerHTML,/Page 2 of 3/);
+  context.renderShame(data,'');assert.match(target.innerHTML,/Page 2 of 3/);
+  context.renderShame({least_flag_touches:[{id:0}]},'');assert.match(target.innerHTML,/"id":0/);
+});
+
+test('live HEAD checks expose freshness and ETag without transferring the report body',async()=>{
+  const express=require('express');const {createAnalyticsRouter}=require('../src/routes/analytics');
+  const app=express();const body=JSON.stringify({ok:true,data:{generated_at:100,limit:5}});
+  app.use(createAnalyticsRouter({reports:{get:async()=>({body,status:'HIT',age:5,validatedAt:105})},positiveInt:()=>5,
+    logRouteError:(_,e)=>{throw e},sendError:()=>assert.fail('unexpected error')}));
+  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+  try {
+    const url=`http://127.0.0.1:${server.address().port}/analytics?limit=5`;
+    const head=await fetch(url,{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');
+    assert.equal(head.headers.get('X-Analytics-Validated-At'),'105');assert.ok(head.headers.get('ETag'));
+    const full=await fetch(url);assert.equal(full.headers.get('ETag'),head.headers.get('ETag'));assert.equal(await full.text(),body);
+  } finally {server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+});
+
 test('revision read failures preserve stale reports and apply retry backoff', async () => {
   const {ReportCache}=require('../src/lib/reportCache');
   let now=0,fail=false,reads=0;
