@@ -5,6 +5,7 @@
   const count = document.getElementById("flag-death-count");
   const select = document.getElementById("flag-death-player");
   const matchSelect = document.getElementById("flag-death-match");
+  const roundSelect = document.getElementById("flag-map-round");
   const sideSelect = document.getElementById("flag-map-side");
   const teamSelect = document.getElementById("flag-map-team");
   const weaponSelect = document.getElementById("flag-map-weapon");
@@ -216,17 +217,38 @@
       }
       function matchesFilters(row, includePlayer = true, includeWeapon = true, includeSide = true) {
         return (!matchSelect.value || row.matchId === matchSelect.value) &&
-          (!includeSide || !sideSelect.value || String(activeLayer === "flags" ? row.victimTeam : row.attackerTeam) === sideSelect.value) &&
+          (!roundSelect.value || String(row.round) === roundSelect.value) &&
+          (!includeSide || !sideSelect.value || String(activeLayer === "flags" ? row.victimMatchTeam : row.attackerMatchTeam) === sideSelect.value) &&
           (!teamSelect.value || row.attackerTeam + "-" + row.victimTeam === teamSelect.value) &&
           (!includeWeapon || !weaponSelect.value || weaponKey(row.weapon) === weaponSelect.value) &&
           (!includePlayer || !select.value || playerKey(row) === select.value);
+      }
+      function updateRounds() {
+        const previous = roundSelect.value;
+        const counts = new Map();
+        for (const row of response.deaths) {
+          if (matchSelect.value && row.matchId !== matchSelect.value) continue;
+          const round = String(row.round);
+          counts.set(round, (counts.get(round) || 0) + 1);
+        }
+        roundSelect.replaceChildren(new Option("All rounds", ""));
+        for (const [round, total] of [...counts].sort((a, b) => Number(a[0]) - Number(b[0]))) {
+          const teams = new Set(response.deaths.filter(row => String(row.round) === round &&
+            (!matchSelect.value || row.matchId === matchSelect.value)).map(row => row.attackerMatchTeam).filter(Boolean));
+          const roleLabel = activeLayer === "flags" || teams.size !== 1 ? "" :
+            ` · Team ${[...teams][0]} ${activeLayer === "defense" ? "defending" : "attacking"}`;
+          roundSelect.append(new Option(`Round ${round}${roleLabel} (${total})`, round));
+        }
+        roundSelect.value = counts.has(previous) ? previous : matchSelect.value ?
+          ([...counts.keys()].sort((a, b) => Number(a) - Number(b))[0] || "") : "";
+        roundSelect.disabled = !counts.size;
       }
       function updateSideOptions() {
         const previous = sideSelect.value;
         const base = response.deaths.filter(row => matchesFilters(row, false, true, false));
         const counts = new Map([["1", 0], ["2", 0]]);
         for (const row of base) {
-          const side = String(activeLayer === "flags" ? row.victimTeam || "" : row.attackerTeam || "");
+          const side = String(activeLayer === "flags" ? row.victimMatchTeam || "" : row.attackerMatchTeam || "");
           if (counts.has(side)) counts.set(side, counts.get(side) + 1);
         }
         sideSelect.replaceChildren(new Option("Both teams", ""));
@@ -237,13 +259,9 @@
         if (sideSelect.disabled) sideSelect.value = "";
       }
       function clearIncompatibleTeamFilter(changed) {
-        if (!sideSelect.value || !teamSelect.value) return;
-        const [killerTeam, victimTeam] = teamSelect.value.split("-");
-        const relevantTeam = activeLayer === "flags" ? victimTeam : killerTeam;
-        if (relevantTeam !== sideSelect.value) {
-          if (changed === sideSelect) teamSelect.value = "";
-          else sideSelect.value = "";
-        }
+        // Match roster teams and replay slots are different identities.
+        // Changing the primary comparison clears the optional slot filter.
+        if (changed === sideSelect) teamSelect.value = "";
       }
       function updateWeapons() {
         const previous = weaponSelect.value;
@@ -335,12 +353,16 @@
         }
         points.setAttribute("d", paths);
         const unit = layers[activeLayer].unit;
+        const scope = response.deaths.filter(row => (!matchSelect.value || row.matchId === matchSelect.value) &&
+          (!roundSelect.value || String(row.round) === roundSelect.value));
+        const scopeRounds = new Set(scope.map(row => row.matchId + ":" + row.round)).size;
         count.textContent = response.rounds ? `${rows.length.toLocaleString()} ${unit}` : "Not indexed";
         status.textContent = response.rounds
-          ? `${rows.length ? "" : "No " + unit + " match this view. "}From ${response.rounds.toLocaleString()} indexed replay rounds. Positions are sampled.${response.unclassifiedKills ? " " + response.unclassifiedKills.toLocaleString() + " located kills have no unambiguous recorded round role and are excluded." : ""}${response.truncated ? " Showing the first 100,000 " + unit + "; filters apply to this sample." : ""}`
+          ? `${rows.length ? "" : "No " + unit + " match this view. "}From ${scopeRounds.toLocaleString()} indexed replay rounds${matchSelect.value ? " in this game" : ""}${roundSelect.value ? " · Round " + roundSelect.value : ""}. Positions are sampled.${response.unclassifiedKills && !matchSelect.value ? " " + response.unclassifiedKills.toLocaleString() + " located kills have no unambiguous recorded round role and are excluded." : ""}${response.truncated ? " Showing the first 100,000 " + unit + "; filters apply to this sample." : ""}`
           : activeLayer === "flags" ? "No replay rounds have been indexed for this map yet." : "Kill locations have not been indexed for this map yet.";
       }
       async function changeLayer(layer) {
+        if (activeLayer !== layer) { sideSelect.value = ""; teamSelect.value = ""; }
         activeLayer = layer;
         const id = ++requestId;
         const config = layers[layer];
@@ -348,13 +370,13 @@
         description.textContent = config.description;
         playerLabel.textContent = layer === "flags" ? "Carrier" : "Killer";
         sideLabel.textContent = layer === "flags" ? "Carrier team" : "Killer team";
-        directionLabel.textContent = layer === "flags" ? "Killer → carrier" : "Killer → victim";
+        directionLabel.textContent = layer === "flags" ? "In-game killer → carrier" : "In-game killer → victim";
         canvas.setAttribute("aria-label", config.title + " locations on the map");
         layerButtons.forEach(button => button.setAttribute("aria-pressed", String(button.dataset.layer === layer)));
         hideTooltip();
         buckets = new Map();
         points.setAttribute("d", "");
-        [select, matchSelect, sideSelect, teamSelect, weaponSelect].forEach(control => { control.disabled = true; });
+        [select, matchSelect, roundSelect, sideSelect, teamSelect, weaponSelect].forEach(control => { control.disabled = true; });
         count.textContent = "Loading…";
         status.textContent = "Loading recorded " + config.unit + "…";
         viewport.setAttribute("aria-busy", "true");
@@ -371,11 +393,12 @@
           }
           if (id !== requestId) return;
           response = next;
-          updateSideOptions();
           teamSelect.disabled = !response.deaths.some(row => row.attackerTeam && row.victimTeam);
           if (teamSelect.disabled) teamSelect.value = "";
           updateMatches();
+          updateRounds();
           updateWeapons();
+          updateSideOptions();
           updatePlayers();
           draw();
         } catch (error) {
@@ -387,10 +410,11 @@
         }
       }
       select.addEventListener("change", draw);
-      matchSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
-      sideSelect.addEventListener("change", () => { clearIncompatibleTeamFilter(sideSelect); updateWeapons(); updatePlayers(); draw(); });
+      matchSelect.addEventListener("change", () => { roundSelect.value = ""; sideSelect.value = ""; teamSelect.value = ""; updateRounds(); updateWeapons(); updateSideOptions(); updatePlayers(); draw(); });
+      roundSelect.addEventListener("change", () => { sideSelect.value = ""; teamSelect.value = ""; updateWeapons(); updateSideOptions(); updatePlayers(); draw(); });
+      sideSelect.addEventListener("change", () => { clearIncompatibleTeamFilter(sideSelect); updateWeapons(); updateSideOptions(); updatePlayers(); draw(); });
       teamSelect.addEventListener("change", () => { clearIncompatibleTeamFilter(teamSelect); updateSideOptions(); updateWeapons(); updatePlayers(); draw(); });
-      weaponSelect.addEventListener("change", () => { updatePlayers(); draw(); });
+      weaponSelect.addEventListener("change", () => { updateSideOptions(); updatePlayers(); draw(); });
       layerButtons.forEach(button => {
         button.disabled = false;
         button.addEventListener("click", () => changeLayer(button.dataset.layer));

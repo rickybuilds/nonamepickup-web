@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="assets/css/map.css?v=20261111combat1">
   <script src="assets/js/main.js?v=20261004nav1" defer></script>
   <script src="assets/js/maps.js?v=20261109layout1" defer></script>
-  <script src="assets/js/map-flag-deaths.js?v=20261111hideunknownweapon" defer></script>
+  <script src="assets/js/map-flag-deaths.js?v=20261112roundteams1" defer></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -183,7 +183,10 @@
             <label class="flag-death-filter" for="flag-death-match">Game
               <select id="flag-death-match" disabled><option value="">All games</option></select>
             </label>
-            <label class="flag-death-filter" for="flag-map-side"><span id="flag-map-side-label">Killer team</span>
+            <label class="flag-death-filter" for="flag-map-round">Round
+              <select id="flag-map-round" disabled><option value="">All rounds</option></select>
+            </label>
+            <label class="flag-death-filter" for="flag-map-side"><span id="flag-map-side-label">Carrier team</span>
               <select id="flag-map-side" disabled><option value="">Both teams</option><option value="1">Team 1</option><option value="2">Team 2</option></select>
             </label>
             <label class="flag-death-filter" for="flag-map-team"><span id="flag-map-direction-label">Killer → victim</span>

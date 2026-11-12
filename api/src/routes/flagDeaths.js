@@ -2,6 +2,23 @@
 const express = require("express");
 function createFlagDeathRouter({ db }) {
   const router = express.Router();
+  // Replay color/slot numbers can follow offense/defense across rounds.
+  // Match teams come from the round roster, independently of those slots.
+  function addMatchTeams(rows, map, carriers = false) {
+    const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='match_player_round_stats'").get();
+    if (!exists) return;
+    const roster = db.prepare(`SELECT s.match_id,s.round_num,s.steam_id,MIN(LOWER(TRIM(s.team_name))) AS team
+      FROM match_player_round_stats s JOIN matches m ON m.match_id=s.match_id
+      WHERE m.map_name=? COLLATE NOCASE AND s.steam_id<>''
+      GROUP BY s.match_id,s.round_num,s.steam_id
+      HAVING MIN(LOWER(TRIM(s.team_name)))=MAX(LOWER(TRIM(s.team_name)))`).all(map);
+    const teams = new Map(roster.map(row => [JSON.stringify([row.match_id, row.round_num, row.steam_id]),
+      ({ 'team a': 1, 'team b': 2, 'team 1': 1, 'team 2': 2 })[row.team] || null]));
+    for (const row of rows) {
+      row.attackerMatchTeam = teams.get(JSON.stringify([row.matchId, row.round, carriers ? row.attackerSteamId : row.steamId])) || null;
+      row.victimMatchTeam = teams.get(JSON.stringify([row.matchId, row.round, row.victimSteamId || row.steamId])) || null;
+    }
+  }
   router.get("/map/:map/flag-deaths", (req, res) => {
     const map = String(req.params.map || "");
     if (!/^[a-z0-9_-]{1,64}$/i.test(map)) return res.status(400).json({ ok: false, error: "invalid_map" });
@@ -38,6 +55,7 @@ function createFlagDeathRouter({ db }) {
         WHERE r.map = ? COLLATE NOCASE ORDER BY COALESCE(m.created_at, 0) DESC, d.match_id, d.round_number, d.time_ms LIMIT 100001`).all(map);
       const truncated = rows.length > 100000;
       if (truncated) rows.pop();
+      addMatchTeams(rows, map, true);
       return res.json({ ok: true, rounds, matches, truncated, deaths: rows });
     } catch (error) {
       console.error("[flag deaths] query failed", error);
@@ -91,6 +109,7 @@ function createFlagDeathRouter({ db }) {
         ORDER BY COALESCE(m.created_at,0) DESC,k.match_id,k.round_number,k.time_ms LIMIT 100001`).all(map, map, role);
       const truncated = rows.length > 100000;
       if (truncated) rows.pop();
+      addMatchTeams(rows, map);
       return res.json({ ok: true, rounds, matches, truncated, ...coverage, kills: rows });
     } catch (error) {
       console.error("[map kills] query failed", error);
