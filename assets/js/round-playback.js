@@ -26,6 +26,56 @@
   }
   let data = null, background = null, project = null, selected = "", time = 0, playing = false, dirty = true;
   let lastTick = performance.now(), lastUI = 0, loadVersion = 0, eventsSignature = "";
+  const viewport = $("viewport");
+  let viewScale = 1, drag = null;
+  function setZoom(next, clientX, clientY) {
+    if (!data || $("viewer").hidden) return;
+    const rect = viewport.getBoundingClientRect(), before = canvas.getBoundingClientRect();
+    const anchorX = clientX ?? rect.left + viewport.clientWidth / 2;
+    const anchorY = clientY ?? rect.top + viewport.clientHeight / 2;
+    const fractionX = (anchorX - before.left) / before.width;
+    const fractionY = (anchorY - before.top) / before.height;
+    viewScale = Math.max(1, Math.min(8, next));
+    const fitWidth = Math.min(viewport.clientWidth, viewport.clientHeight * canvas.width / canvas.height);
+    canvas.style.width = fitWidth * viewScale + "px";
+    const after = canvas.getBoundingClientRect();
+    viewport.scrollLeft += after.left + fractionX * after.width - anchorX;
+    viewport.scrollTop += after.top + fractionY * after.height - anchorY;
+    $("zoom-level").textContent = Math.round(viewScale * 100) + "%";
+    dirty = true;
+  }
+  function fitViewport(reset = false) {
+    if (!data || $("viewer").hidden) return;
+    viewport.style.height = Math.min(viewport.clientWidth * canvas.height / canvas.width, innerHeight * .72) + "px";
+    setZoom(reset ? 1 : viewScale);
+    if (reset) { viewport.scrollLeft = 0; viewport.scrollTop = 0; }
+  }
+  viewport.addEventListener("wheel", event => {
+    if (!data || event.ctrlKey) return;
+    event.preventDefault();
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1);
+    setZoom(viewScale * Math.exp(-delta * .0015), event.clientX, event.clientY);
+  }, { passive: false });
+  viewport.addEventListener("pointerdown", event => {
+    if (event.pointerType !== "mouse" || event.button !== 0 || viewScale <= 1) return;
+    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
+    viewport.setPointerCapture(event.pointerId); viewport.classList.add("is-dragging"); event.preventDefault(); viewport.focus({ preventScroll: true });
+  });
+  viewport.addEventListener("pointermove", event => {
+    if (!drag || drag.id !== event.pointerId) return;
+    viewport.scrollLeft = drag.left - (event.clientX - drag.x); viewport.scrollTop = drag.top - (event.clientY - drag.y);
+  });
+  function endDrag(event) {
+    if (!drag || drag.id !== event.pointerId) return;
+    drag = null; viewport.classList.remove("is-dragging");
+  }
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) viewport.addEventListener(type, endDrag);
+  viewport.addEventListener("keydown", event => {
+    if (["+", "=", "-", "0"].includes(event.key)) {
+      event.preventDefault();
+      if (event.key === "0") fitViewport(true); else setZoom(viewScale * (event.key === "-" ? 1 / 1.35 : 1.35));
+    }
+  });
   const byId = new Map(), rosterStates = new Map();
   const clock = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0"); };
   const playerName = id => byId.get(id)?.name || "World";
@@ -296,8 +346,9 @@
       }
       $("map-name").textContent = data.map; $("round-meta").textContent = `${data.players.length} players · ${clock(data.durationMs)} recorded · Round ${round}`;
       $("map-link").href = "map.html?map=" + encodeURIComponent(data.map);
-      $("timeline").max = String(data.durationMs); $("zoom").value = "1"; canvas.style.width = "100%";
+      $("timeline").max = String(data.durationMs); canvas.style.width = "100%";
       $("viewer").hidden = false;
+      fitViewport(true);
       const url = new URL(location.href); url.searchParams.set("match", match); url.searchParams.set("round", String(round)); history.replaceState(null, "", url);
       time = 0; selectPlayer(""); seek(0);
       say(`Ready · ${match}, round ${round}. Select a player, choose a life, and press Play.`);
@@ -309,9 +360,9 @@
   $("back").onclick = () => seek(time - 5000); $("forward").onclick = () => seek(time + 5000);
   $("timeline").oninput = () => { pause(); seek(Number($("timeline").value)); };
   $("life").onchange = lifeChange; $("previous-life").onclick = () => stepLife(-1); $("next-life").onclick = () => stepLife(1);
-  $("zoom").onchange = () => { canvas.style.width = Number($("zoom").value) * 100 + "%"; dirty = true; };
+  $("reset-view").onclick = () => fitViewport(true);
   $("effects").onchange = $("trail").onchange = $("flags").onchange = () => { dirty = true; };
-  window.addEventListener("resize", () => { dirty = true; });
+  window.addEventListener("resize", () => { fitViewport(); dirty = true; });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   function tick(now) {
     const elapsed = Math.min(250, now - lastTick); lastTick = now;

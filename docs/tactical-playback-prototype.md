@@ -28,7 +28,7 @@ The API's `GET /api/pickup-replays/viewer/:matchId/:round/tactical` route select
 - Health bars, names, class portraits, facing arrows, and selected-player health/armor values.
 - Flag markers at recorded base/drop coordinates; carried flags follow the recorded carrier's living position with a small icon offset. A status line names the carrier. Missing/removed/hidden objective states are not shown as flags at base. A Show flags toggle controls the overlay. Flag numbers are objective identifiers in display order, not inferred team ownership.
 - Blue/red flag markers use the existing `assets/images/icons/webp/blueflag.webp` and `redflag.webp` artwork, clipped into badges because those images contain backgrounds. Explicit recorded flag team/name is preferred; otherwise objective IDs 1 and 2 follow the existing replay viewer's blue/red fallback convention. Flag color does not change with the carrier's team. This artwork-only update requires no data regeneration.
-- Play/pause, ±5 seconds, timeline scrubber, speed, and map zoom.
+- Play/pause, ±5 seconds, timeline scrubber, and speed. Mouse-wheel zoom is centered on the cursor (1–8×), with left-button drag panning, a grab cursor, and Reset view. The map viewport remains a stable size while zooming. Keyboard +/− zoom, 0 resets, and arrow keys pan; native touch scrolling remains available. Ctrl-wheel is reserved for browser zoom. Zoom and pan do not change playback time.
 - Recent deaths are clickable and show repaired weapons where available. Suicides and team kills are labelled; the life kill counter excludes them.
 - Conc rings animate at recorded concussion projectile removal positions. Removal does not prove detonation; handheld concs with no projectile track are not invented.
 
