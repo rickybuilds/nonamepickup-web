@@ -236,6 +236,15 @@
         sideSelect.disabled = !counts.get("1") && !counts.get("2");
         if (sideSelect.disabled) sideSelect.value = "";
       }
+      function clearIncompatibleTeamFilter(changed) {
+        if (!sideSelect.value || !teamSelect.value) return;
+        const [killerTeam, victimTeam] = teamSelect.value.split("-");
+        const relevantTeam = activeLayer === "flags" ? victimTeam : killerTeam;
+        if (relevantTeam !== sideSelect.value) {
+          if (changed === sideSelect) teamSelect.value = "";
+          else sideSelect.value = "";
+        }
+      }
       function updateWeapons() {
         const previous = weaponSelect.value;
         const weapons = new Set(response.deaths.filter(row => matchesFilters(row, false, false))
@@ -379,8 +388,8 @@
       }
       select.addEventListener("change", draw);
       matchSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
-      sideSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
-      teamSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
+      sideSelect.addEventListener("change", () => { clearIncompatibleTeamFilter(sideSelect); updateWeapons(); updatePlayers(); draw(); });
+      teamSelect.addEventListener("change", () => { clearIncompatibleTeamFilter(teamSelect); updateSideOptions(); updateWeapons(); updatePlayers(); draw(); });
       weaponSelect.addEventListener("change", () => { updatePlayers(); draw(); });
       layerButtons.forEach(button => {
         button.disabled = false;
