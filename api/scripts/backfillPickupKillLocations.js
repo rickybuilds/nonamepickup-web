@@ -53,12 +53,13 @@ async function main() {
         roster: sessions.map(session => ({ sessionIndex: session.session_id, steamId: session.steamid, playerName: session.current_name }))
       }));
       const progress = `[${index + 1}/${pending.length} · ${pending.length - index - 1} remaining]`;
+      const replay = `${artifact.match_id} · ${artifact.map} · round ${artifact.round_number}`;
       if (!saved) {
         skipped++;
-        console.log(`${progress} Artifact ${artifact.id} already indexed; skipped.`);
+        console.log(`${progress} Artifact ${artifact.id} (${replay}) already indexed; skipped.`);
       } else {
         completed++;
-        console.log(`${progress} Indexed artifact ${artifact.id}: ${kills.length} enemy kill locations`);
+        console.log(`${progress} Indexed artifact ${artifact.id} (${replay}): ${kills.length} enemy kill locations`);
       }
     }
     console.log(`Kill location backfill complete: ${completed} processed, ${skipped} unchanged or unsupported.`);
