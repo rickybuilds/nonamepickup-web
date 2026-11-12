@@ -39,13 +39,26 @@
     ac: "assaultcannon", assaultcannon: "assaultcannon", ic: "incendiarycannon", incendiarycannon: "incendiarycannon",
     rpgrocket: "rocketlauncher", rocket: "rocketlauncher", pipebomb: "pipetrap"
   };
+  const canonicalWeaponNames = {
+    "weapon-1": "Grenade", "weapon-2": "Nailgren", "weapon-3": "MIRV", "weapon-4": "EMP",
+    "weapon-5": "Super Nailgun", "weapon-6": "Nails", "weapon-7": "Crowbar", "weapon-8": "Spanner",
+    "weapon-9": "Medkit", "weapon-10": "Single Shotgun", "weapon-11": "Super Shotgun",
+    "weapon-12": "Rocket Launcher", "weapon-13": "Assault Cannon", "weapon-14": "Railgun",
+    "weapon-15": "Sentry Gun", "weapon-16": "Dispenser", "weapon-18": "Yellow Gren Launcher",
+    "weapon-19": "Blue Gren Launcher", "weapon-20": "DetPack", "weapon-21": "Flamethrower",
+    "weapon-22": "Napalm Grenade", "weapon-24": "Hallucination Grenade", "weapon-25": "Knife",
+    "weapon-26": "Headshot Sniper Rifle", "weapon-27": "Sniper Rifle", "weapon-28": "Auto Sniper Rifle",
+    "weapon-29": "Infection"
+  };
   function weaponKey(value) {
     const raw = String(value || "unknown").trim().toLowerCase().replace(/^(?:tf_|weapon_)+/, "");
     const key = raw.replace(/[^a-z0-9]/g, "");
     if (/^\d+$/.test(key)) return "unknown";
+    if (/^weapon\d+$/.test(key)) return "weapon-" + key.slice(6);
     return weaponAliases[key] || (weaponNameKnown(key) ? key : raw.replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")) || "unknown";
   }
   function weaponNameKnown(key) {
+    if (canonicalWeaponNames[key]) return canonicalWeaponNames[key];
     return ({ grenade: "Grenade", mirvgrenade: "MIRV Grenade", nailgrenade: "Nail Grenade",
       mirvbomblet: "MIRV Bomblet", assaultcannon: "Assault Cannon", incendiarycannon: "Incendiary Cannon",
       supershotgun: "Super Shotgun", shotgun: "Single Shotgun", sentrygun: "Sentry Gun", dispenser: "Dispenser",
