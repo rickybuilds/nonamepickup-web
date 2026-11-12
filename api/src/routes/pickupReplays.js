@@ -3,6 +3,10 @@
 const express = require("express");
 const { PickupError } = require("../pickup/errors");
 const { parseViewerIdentity } = require("../pickup/viewer");
+const fs = require("node:fs");
+const { createGunzip } = require("node:zlib");
+const { pipeline } = require("node:stream/promises");
+const { playbackPath, VERSION } = require("../pickup/tacticalPlayback");
 
 function closeAfterResponse(req, res) {
   res.set("Connection", "close");
@@ -81,6 +85,28 @@ function createPickupReplaysRouter({ ingestion, logger = console }) {
 
 function createPickupReplayViewerRouter({ viewer, logger = console }) {
   const router = express.Router();
+
+  router.get("/pickup-replays/viewer/:matchId/:round/tactical", async (req, res) => {
+    try {
+      const identity = parseViewerIdentity(req.params.matchId, req.params.round);
+      const artifact = await viewer.artifact(identity.matchId, identity.round);
+      const file = playbackPath(viewer.storage.root, artifact.sha256);
+      await fs.promises.access(file, fs.constants.R_OK);
+      res.type("application/json");
+      res.set("Cache-Control", "private, no-cache");
+      res.set("ETag", `"tactical-v${VERSION}-${artifact.sha256}"`);
+      res.vary("Accept-Encoding");
+      if (req.acceptsEncodings("gzip")) {
+        res.set("Content-Encoding", "gzip");
+        await pipeline(fs.createReadStream(file), res);
+      } else await pipeline(fs.createReadStream(file), createGunzip(), res);
+    } catch (error) {
+      if (res.headersSent || res.destroyed) return res.destroy();
+      const missing = error.code === "ENOENT";
+      res.status(missing ? 404 : error instanceof PickupError ? error.status : 500)
+        .json({ ok: false, error: missing ? "tactical_not_prepared" : "tactical_load_failed" });
+    }
+  });
 
   router.get("/pickup-replays/viewer/:matchId/:round", async (req, res) => {
     try {

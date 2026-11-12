@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Round Playback Prototype | NoName TFC</title>
+  <link rel="icon" href="/assets/images/favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/round-playback.css?v=1">
+  <script src="assets/js/round-playback.js?v=1" defer></script>
+</head>
+<body>
+  <main>
+    <header class="heading"><div><a href="map.html" id="map-link">NoName TFC / Map Intel</a><h1>Round playback</h1><p>One round. Every life. Follow the movement, health, and fights.</p></div><span class="prototype">Prototype</span></header>
+    <form id="load-form" class="toolbar">
+      <label>Game<input id="match" value="HDPVET" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" required autocomplete="off"></label>
+      <label>Round<select id="round"><option value="1">Round 1</option><option value="2">Round 2</option></select></label>
+      <button id="load" type="submit">Load round</button>
+      <span id="round-meta"></span>
+    </form>
+    <p id="status" role="status">Loading prepared round…</p>
+    <section id="viewer" hidden aria-label="Tactical round playback">
+      <div class="playback-layout">
+        <div class="stage">
+          <div class="stage-tools"><strong id="map-name"></strong><label>Zoom<select id="zoom"><option value="1">Fit</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label><label><input id="effects" type="checkbox" checked> Conc endpoints</label><label><input id="trail" type="checkbox" checked> Life trail</label></div>
+          <div id="viewport" tabindex="0" aria-label="Map. Scroll to move when zoomed in."><canvas id="map" role="img" aria-label="Recorded player positions, health, and movement trails"></canvas></div>
+          <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
+          <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
+          <div class="legend"><span><i class="blue"></i>In-game blue</span><span><i class="red"></i>In-game red</span><span>× Death</span><span><i class="conc"></i>Conc endpoint effect</span></div>
+        </div>
+        <aside>
+          <section><h2>Follow a player</h2><div id="roster" class="roster"></div></section>
+          <section><h2>Spawn → death</h2><label class="life-label">Recorded life<select id="life"><option value="">Full round</option></select></label><p id="life-detail">Choose a player to inspect their lives.</p><div class="life-nav"><button id="previous-life">Previous life</button><button id="next-life">Next life</button></div></section>
+          <section><h2>Recent events</h2><div id="events" aria-label="Recent kill and death events"></div></section>
+        </aside>
+      </div>
+      <p class="note">Movement and health are sampled. Names and colors follow the recorded in-game teams. Conc rings mark recorded projectile endpoints; they do not prove detonation, and handheld concs without a projectile are not inferred. Life starts are first observed alive samples.</p>
+    </section>
+  </main>
+</body>
+</html>
