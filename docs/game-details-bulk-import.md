@@ -10,7 +10,7 @@ git pull origin main
 node api/scripts/importGameDetails.js --root C:/Projects/pickup-replays --elo C:/Projects/pickup-replays/elo.db --workers 4
 ```
 
-The output defaults to `C:/Projects/pickup-replays/game-details.db`. The selected number of child processes perform conversion while one parent writes to SQLite. The CLI defaults to four workers and accepts 1–10 via `--workers`; the local desktop launcher uses ten at the user's request. Observe CPU, memory and disk usage when increasing concurrency. Do not run multiple independent writers/import commands against the same output database simultaneously.
+The output defaults to `C:/Projects/pickup-replays/game-details.db`. The selected number of child processes perform conversion while one parent writes to SQLite. The CLI defaults to four workers and accepts 1–10 via `--workers`. Observe CPU, memory and disk usage when increasing concurrency. Do not run multiple independent writers/import commands against the same output database simultaneously.
 
 Discovery handles `2026/<month>/<match>/round-<number>-<sha256>.tar.zst` recursively, skips hidden folders/symlinks, and deduplicates identical match/round/hash copies. A conflicting pair of different hashes for one match/round is reported for review; it is not silently selected. An unrecognized filename is outside the recording naming contract and is not selected. Discovery is a snapshot at command start; rerun to pick up files copied in later.
 
@@ -58,6 +58,8 @@ The report is append-only history, so an older failure remains in the file even 
 ## Server copy
 
 After the import exits and all writers are closed, upload the completed database to a temporary filename beside `/root/tfcbot/game-details.db`. Rename that completed upload into place on the same filesystem, rather than copying bytes over a database being read. The new file must be readable by the API process. The current reader opens fresh read-only handles, so it sees the replacement without a cache purge. This remains an offline replacement workflow; future live writes need proper batch merge/import rather than replacing a live writer's database.
+
+Install [server import automation](game-details-server-automation.md) only after that initial transfer. Once server maintenance is writing new rounds, replacing its database with an older desktop copy can discard them; stop the writer and preserve/merge newer data before a later cutover.
 
 Use the existing header check for any newly imported round:
 

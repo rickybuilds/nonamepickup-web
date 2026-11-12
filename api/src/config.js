@@ -12,6 +12,11 @@ const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(ROOT_DIR, "public");
 const DATA_DIR = process.env.TFCBOT_DATA_DIR || "/root/tfcbot";
 const ELO_DB = process.env.ELO_DB || path.join(DATA_DIR, "elo.db");
 const GAME_DETAILS_DB = process.env.GAME_DETAILS_DB || path.join(path.dirname(ELO_DB), "game-details.db");
+const GAME_DETAILS_QUEUE_DB = process.env.GAME_DETAILS_QUEUE_DB || path.join(path.dirname(GAME_DETAILS_DB), "game-details-queue.db");
+const GAME_DETAILS_RETENTION_DAYS = positiveInt(process.env.GAME_DETAILS_RETENTION_DAYS, 14, 14, 3650);
+const GAME_DETAILS_CATCHUP_DAYS = positiveInt(process.env.GAME_DETAILS_CATCHUP_DAYS, 14, 1, 3650);
+const GAME_DETAILS_ARCHIVE_DELETE = process.env.GAME_DETAILS_ARCHIVE_DELETE === "true";
+const PICKUP_LEGACY_REPLAY_ENABLED = process.env.PICKUP_LEGACY_REPLAY_ENABLED !== "false";
 const SUPPORTERS_FILE = process.env.SUPPORTERS_FILE || path.join(DATA_DIR, "supporters.json");
 const QUEUE_FILE = process.env.QUEUE_FILE || path.join(DATA_DIR, "queue.json");
 const KICKED_FILE = process.env.KICKED_FILE || path.join(DATA_DIR, "kicked.json");
@@ -79,6 +84,11 @@ const config = {
   DATA_DIR,
   ELO_DB,
   GAME_DETAILS_DB,
+  GAME_DETAILS_QUEUE_DB,
+  GAME_DETAILS_RETENTION_DAYS,
+  GAME_DETAILS_CATCHUP_DAYS,
+  GAME_DETAILS_ARCHIVE_DELETE,
+  PICKUP_LEGACY_REPLAY_ENABLED,
   SUPPORTERS_FILE,
   QUEUE_FILE,
   KICKED_FILE,

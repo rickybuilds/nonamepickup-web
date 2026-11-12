@@ -326,4 +326,4 @@ async function convertRound(options) {
   return prepared.skipped ? prepared : finishRound(options.destination, prepared);
 }
 
-module.exports = { convertRound, prepareRound, finishRound, CONVERTER };
+module.exports = { convertRound, prepareRound, finishRound, hashFile, CONVERTER };

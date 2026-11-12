@@ -85,7 +85,7 @@ function createPickupReplaysRouter({ ingestion, logger = console }) {
   return router;
 }
 
-function createPickupReplayViewerRouter({ viewer, gameDetailsDb, logger = console }) {
+function createPickupReplayViewerRouter({ viewer, gameDetailsDb, legacyFilesEnabled = true, logger = console }) {
   const router = express.Router();
   const details = createGameDetailsReader(gameDetailsDb);
 
@@ -149,6 +149,7 @@ function createPickupReplayViewerRouter({ viewer, gameDetailsDb, logger = consol
   });
 
   router.get("/pickup-replays/viewer/:matchId/:round/files/:fileName", async (req, res) => {
+    if (!legacyFilesEnabled) return res.status(410).json({ ok: false, error: "legacy_replay_retired", playbackUrl: "/round-playback.html" });
     try {
       const identity = parseViewerIdentity(req.params.matchId, req.params.round);
       await viewer.streamFile(identity.matchId, identity.round, req.params.fileName, res);

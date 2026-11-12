@@ -107,7 +107,8 @@ function createApp({
   app.use("/api/pickup-replays/viewer", compression({ threshold: 1024 }));
   app.use("/api", createPickupReplayViewerRouter({
     viewer: pickupReplayViewer,
-    gameDetailsDb: config.GAME_DETAILS_DB
+    gameDetailsDb: config.GAME_DETAILS_DB,
+    legacyFilesEnabled: config.PICKUP_LEGACY_REPLAY_ENABLED
   }));
   app.use("/api", createPickupFlagCarryRouter({ db }));
   app.use("/api", createFlagDeathRouter({ db }));
