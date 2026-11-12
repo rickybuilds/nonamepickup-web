@@ -27,18 +27,30 @@
   let data = null, background = null, project = null, selected = "", time = 0, playing = false, dirty = true;
   let lastTick = performance.now(), lastUI = 0, loadVersion = 0, eventsSignature = "";
   const viewport = $("viewport");
+  const mapSpace = $("map-space");
   let viewScale = 1, drag = null;
+  function sizeSurface() {
+    const width = Math.min(viewport.clientWidth, mapSpace.clientWidth);
+    const height = Math.min(viewport.clientHeight, mapSpace.clientHeight);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.width = width + "px"; canvas.style.height = height + "px";
+    const backingWidth = Math.max(1, Math.round(width * dpr)), backingHeight = Math.max(1, Math.round(height * dpr));
+    if (canvas.width !== backingWidth) canvas.width = backingWidth;
+    if (canvas.height !== backingHeight) canvas.height = backingHeight;
+  }
   function setZoom(next, clientX, clientY) {
     if (!data || $("viewer").hidden) return;
-    const rect = viewport.getBoundingClientRect(), before = canvas.getBoundingClientRect();
+    const rect = viewport.getBoundingClientRect(), before = mapSpace.getBoundingClientRect();
     const anchorX = clientX ?? rect.left + viewport.clientWidth / 2;
     const anchorY = clientY ?? rect.top + viewport.clientHeight / 2;
     const fractionX = (anchorX - before.left) / before.width;
     const fractionY = (anchorY - before.top) / before.height;
     viewScale = Math.max(1, Math.min(8, next));
-    const fitWidth = Math.min(viewport.clientWidth, viewport.clientHeight * canvas.width / canvas.height);
-    canvas.style.width = fitWidth * viewScale + "px";
-    const after = canvas.getBoundingClientRect();
+    const fitWidth = Math.min(viewport.clientWidth, viewport.clientHeight * background.width / background.height);
+    mapSpace.style.width = fitWidth * viewScale + "px";
+    mapSpace.style.height = fitWidth * viewScale * background.height / background.width + "px";
+    sizeSurface();
+    const after = mapSpace.getBoundingClientRect();
     viewport.scrollLeft += after.left + fractionX * after.width - anchorX;
     viewport.scrollTop += after.top + fractionY * after.height - anchorY;
     $("zoom-level").textContent = Math.round(viewScale * 100) + "%";
@@ -46,7 +58,7 @@
   }
   function fitViewport(reset = false) {
     if (!data || $("viewer").hidden) return;
-    viewport.style.height = Math.min(viewport.clientWidth * canvas.height / canvas.width, innerHeight * .72) + "px";
+    viewport.style.height = Math.min(viewport.clientWidth * background.height / background.width, innerHeight * .72) + "px";
     setZoom(reset ? 1 : viewScale);
     if (reset) { viewport.scrollLeft = 0; viewport.scrollTop = 0; }
   }
@@ -65,6 +77,7 @@
     if (!drag || drag.id !== event.pointerId) return;
     viewport.scrollLeft = drag.left - (event.clientX - drag.x); viewport.scrollTop = drag.top - (event.clientY - drag.y);
   });
+  viewport.addEventListener("scroll", () => { dirty = true; }, { passive: true });
   function endDrag(event) {
     if (!drag || drag.id !== event.pointerId) return;
     drag = null; viewport.classList.remove("is-dragging");
@@ -228,8 +241,17 @@
   }
   function draw() {
     if (!data || !background || !project) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(background, 0, 0);
-    const unit = canvas.width / Math.max(1, canvas.clientWidth), size = 25 * unit;
+    sizeSurface();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const scale = mapSpace.clientWidth / background.width, dpr = window.devicePixelRatio || 1;
+    const sceneRect = mapSpace.getBoundingClientRect(), surfaceRect = canvas.getBoundingClientRect();
+    // Draw only the visible map at native screen resolution. Enlarging the
+    // scrollable scene must never enlarge an already-rasterized text overlay.
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale,
+      dpr * (sceneRect.left - surfaceRect.left), dpr * (sceneRect.top - surfaceRect.top));
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(background, 0, 0);
+    const unit = 1 / scale, size = 25 * unit;
     const focused = byId.get(Number(selected));
     if ($("trail").checked) for (const player of focused ? [focused] : data.players) {
       const life = (focused && currentLife()) || player.lives.findLast(item => time >= item.startMs);
@@ -244,7 +266,7 @@
           const frames = player.frames, t = frames[index];
           if (t < start || t > Math.min(time, life.endMs) || frames[index + 5] !== 1) continue;
           const point = project(frames[index + 1], frames[index + 2]);
-          if (!previous || t - previous.time > 2000 || Math.hypot(point[0] - previous.x, point[1] - previous.y) > canvas.width / 4) ctx.moveTo(...point);
+          if (!previous || t - previous.time > 2000 || Math.hypot(point[0] - previous.x, point[1] - previous.y) > background.width / 4) ctx.moveTo(...point);
           else ctx.lineTo(...point);
           previous = { time: t, x: point[0], y: point[1] };
         }
@@ -331,7 +353,7 @@
       if (next.version !== 2 || next.stride !== 10 || !Array.isArray(next.players) || !next.players.length) throw new Error("Prepared playback is empty or incompatible. Prepare the round again.");
       const view = await overview(next.map, controller.signal);
       if (version !== loadVersion) return;
-      data = next; background = view.background; project = view.project; canvas.width = background.width; canvas.height = background.height;
+      data = next; background = view.background; project = view.project;
       byId.clear(); rosterStates.clear(); $("roster").replaceChildren();
       const all = document.createElement("button"); all.textContent = "Everyone"; all.onclick = () => selectPlayer(""); $("roster").append(all);
       for (const player of data.players) {
@@ -346,7 +368,7 @@
       }
       $("map-name").textContent = data.map; $("round-meta").textContent = `${data.players.length} players · ${clock(data.durationMs)} recorded · Round ${round}`;
       $("map-link").href = "map.html?map=" + encodeURIComponent(data.map);
-      $("timeline").max = String(data.durationMs); canvas.style.width = "100%";
+      $("timeline").max = String(data.durationMs); mapSpace.style.width = "100%"; mapSpace.style.height = "1px";
       $("viewer").hidden = false;
       fitViewport(true);
       const url = new URL(location.href); url.searchParams.set("match", match); url.searchParams.set("round", String(round)); history.replaceState(null, "", url);
