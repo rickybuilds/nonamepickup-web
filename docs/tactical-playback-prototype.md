@@ -23,7 +23,7 @@ The API's `GET /api/pickup-replays/viewer/:matchId/:round/tactical` route select
 
 ## Controls and evidence
 
-- Everyone or a selected player: selected portraits and trails are highlighted, other players remain visible.
+- Everyone shows team-colored trails for the last five seconds. Selecting a player shows their full life path so far in gold, retained after death until the next life starts. A selected recorded life remains inspectable after its endpoint. Other players remain visible. The trail toggle controls both modes; the caption explains which mode is active.
 - Life selection and previous/next controls: seek to the first observed alive sample and stop at the selected life endpoint.
 - Health bars, names, class portraits, facing arrows, and selected-player health/armor values.
 - Play/pause, ±5 seconds, timeline scrubber, speed, and map zoom.

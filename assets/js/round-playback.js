@@ -110,6 +110,8 @@
     $("timeline").value = String(time); $("timeline").setAttribute("aria-valuetext", clock(time));
     $("clock").textContent = clock(time) + " / " + clock(data.durationMs);
     const life = currentLife(), player = byId.get(Number(selected));
+    $("trail-info").textContent = selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
+      : "Trails: everyone’s last 5 seconds. Select a player for their full life path.";
     $("life-detail").textContent = life ? `${clock(life.startMs)}–${clock(life.endMs)} · ${clock(life.endMs - life.startMs)} alive · ${life.kills} kills · ${life.endReason}`
       : player ? `${player.lives.length} recorded lives. Select one to follow its full path.` : "All recorded players. Select a player to inspect their lives.";
     $("previous-life").disabled = !player?.lives.length || $("life").value === "0";
@@ -140,14 +142,18 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(background, 0, 0);
     const unit = canvas.width / Math.max(1, canvas.clientWidth), size = 25 * unit;
     const focused = byId.get(Number(selected));
-    if (focused && $("trail").checked) {
-      const life = currentLife() || focused.lives.find(item => time >= item.startMs && time <= item.endMs);
-      if (life) {
-        ctx.beginPath(); ctx.strokeStyle = "#f9d076"; ctx.lineWidth = 2 * unit;
+    if ($("trail").checked) for (const player of focused ? [focused] : data.players) {
+      const life = (focused && currentLife()) || player.lives.findLast(item => time >= item.startMs);
+      if (life && (focused || time - life.endMs <= 5000)) {
+        const start = focused ? life.startMs : Math.max(life.startMs, time - 5000);
+        const frame = frameAt(player, Math.min(time, life.endMs));
+        ctx.beginPath(); ctx.strokeStyle = focused ? "#f9d076" : frame?.[9] === 1 ? "#60a5ff" : "#ff7886";
+        ctx.lineWidth = (focused ? 3 : 2) * unit;
+        ctx.lineCap = "round"; ctx.lineJoin = "round";
         let previous = null;
-        for (let index = 0; index < focused.frames.length; index += data.stride) {
-          const frames = focused.frames, t = frames[index];
-          if (t < life.startMs || t > Math.min(time, life.endMs) || frames[index + 5] !== 1) continue;
+        for (let index = 0; index < player.frames.length; index += data.stride) {
+          const frames = player.frames, t = frames[index];
+          if (t < start || t > Math.min(time, life.endMs) || frames[index + 5] !== 1) continue;
           const point = project(frames[index + 1], frames[index + 2]);
           if (!previous || t - previous.time > 2000 || Math.hypot(point[0] - previous.x, point[1] - previous.y) > canvas.width / 4) ctx.moveTo(...point);
           else ctx.lineTo(...point);
