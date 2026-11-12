@@ -2,7 +2,8 @@
 function createKillLocationStore(db) {
   const seen = db.prepare("SELECT artifact_sha256 FROM pickup_kill_rounds WHERE match_id=? AND round_number=?");
   const invalidWeapon = db.prepare(`SELECT 1 FROM pickup_kill_locations WHERE match_id=? AND round_number=?
-    AND TRIM(weapon)<>'' AND TRIM(weapon) NOT GLOB '*[^0-9]*' LIMIT 1`);
+    AND (LOWER(TRIM(weapon)) IN ('unknown','unknown weapon')
+      OR (TRIM(weapon)<>'' AND TRIM(weapon) NOT GLOB '*[^0-9]*')) LIMIT 1`);
   const hasRound = (match, round, hash) => seen.get(match, round)?.artifact_sha256 === hash && !invalidWeapon.get(match, round);
   const remove = db.prepare("DELETE FROM pickup_kill_locations WHERE match_id=? AND round_number=?");
   const putRound = db.prepare(`INSERT INTO pickup_kill_rounds(match_id,round_number,map,artifact_sha256,processed_at)
