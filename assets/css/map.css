@@ -673,6 +673,9 @@
     drop-shadow(0 0 14px rgba(103,232,249,.75))!important;
 }
 .flag-death-description,.flag-death-status{color:#b9c9dc;font-size:.88rem;line-height:1.5;margin:8px 0 12px}
+.recent-table tr[data-map-match]{cursor:pointer}
+.recent-table tr[data-map-match]:focus-visible{outline:2px solid #60a5fa;outline-offset:-2px}
+.recent-table tbody tr.is-map-selected{background:rgba(59,130,246,.22)}
 .flag-map-layers{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
 .flag-map-layers button{flex:1 1 130px;min-height:40px;padding:8px 10px;border:1px solid #53677f;border-radius:7px;background:#101b2c;color:#c6d5e4;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer}
 .flag-map-layers button:hover:not(:disabled){border-color:#60a5fa;color:#f1f6fc}

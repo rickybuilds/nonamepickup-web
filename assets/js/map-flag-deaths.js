@@ -26,6 +26,12 @@
   const zoomLevel = document.getElementById("flag-map-zoom-level");
   const name = new URLSearchParams(location.search).get("map") || "";
   let activeLayer = "flags";
+  let selectedMatchId = "";
+  let applySelectedMatch = null;
+  document.addEventListener("map-match-selected", event => {
+    selectedMatchId = String(event.detail.matchId || "");
+    if (applySelectedMatch) applySelectedMatch();
+  });
   const layers = {
     flags: { title: "Flag Carrier Deaths", description: "Where players died carrying the flag in recorded pickup rounds.", unit: "deaths" },
     defense: { title: "Defensive Kills", description: "Where defenders killed enemies in recorded pickup rounds. Dots mark the victim’s location.", unit: "kills" },
@@ -199,7 +205,7 @@
           : "";
       };
       function updateMatches() {
-        const previous = matchSelect.value;
+        const previous = selectedMatchId;
         matchSelect.replaceChildren(new Option("All games", ""));
         for (const match of response.matches || []) {
           const option = document.createElement("option");
@@ -208,8 +214,11 @@
           option.textContent = date ? date + " · " + match.matchId : match.matchId;
           matchSelect.append(option);
         }
-        matchSelect.value = (response.matches || []).some(match => match.matchId === previous) ? previous : "";
-        matchSelect.disabled = !(response.matches || []).length;
+        if (previous && !(response.matches || []).some(match => match.matchId === previous)) {
+          matchSelect.append(new Option(previous + " · No indexed events in this layer", previous));
+        }
+        matchSelect.value = previous;
+        matchSelect.disabled = !previous && !(response.matches || []).length;
       }
       function matchesFilters(row, includePlayer = true, includeWeapon = true) {
         return (!matchSelect.value || row.matchId === matchSelect.value) &&
@@ -310,6 +319,7 @@
       const scale = canvas.width * Number(zoom[1]) / 8192;
       const ox = Number(origin[1]), oy = Number(origin[2]);
       function draw() {
+        document.dispatchEvent(new CustomEvent("map-match-filter", { detail: { matchId: matchSelect.value } }));
         context.drawImage(background,0,0);
         const rows = response.deaths.filter(d => matchesFilters(d));
         let paths = "";
@@ -378,7 +388,15 @@
         }
       }
       select.addEventListener("change", draw);
-      matchSelect.addEventListener("change", () => { roundSelect.value = ""; updateRounds(); updateWeapons(); updatePlayers(); draw(); });
+      applySelectedMatch = () => {
+        if (viewport.getAttribute("aria-busy") === "true") return;
+        select.value = "";
+        weaponSelect.value = "";
+        updateMatches();
+        roundSelect.value = "";
+        updateRounds(); updateWeapons(); updatePlayers(); draw();
+      };
+      matchSelect.addEventListener("change", () => { selectedMatchId = matchSelect.value; applySelectedMatch(); });
       roundSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
       weaponSelect.addEventListener("change", () => { updatePlayers(); draw(); });
       layerButtons.forEach(button => {

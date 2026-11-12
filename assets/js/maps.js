@@ -7,6 +7,21 @@
   let allPlayers = [];
   let allMatches = [];
   let currentSort = "games";
+  let selectedMapMatch = "";
+  document.addEventListener("map-match-filter", event => {
+    selectedMapMatch = event.detail.matchId;
+    document.querySelectorAll("#map-v2-matches-body tr[data-map-match]").forEach(row => {
+      row.classList.toggle("is-map-selected", row.dataset.mapMatch === selectedMapMatch);
+    });
+  });
+  function filterMatchRow(event) {
+    if (event.target.closest("a,button,input,select")) return;
+    const row = event.target.closest("tr[data-map-match]");
+    if (!row || (event.type === "keydown" && !["Enter", " "].includes(event.key))) return;
+    event.preventDefault();
+    document.dispatchEvent(new CustomEvent("map-match-selected", { detail: { matchId: row.dataset.mapMatch } }));
+    document.querySelector(".flag-death-panel")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
 
   const $ = id => document.getElementById(id);
   const fetchJSON = window.nnHelpers?.fetchJSON;
@@ -143,6 +158,8 @@ function playerLink(p,cls=""){
   function renderMatches() {
     const body = $("map-v2-matches-body");
     if (!body) return;
+    body.onclick = filterMatchRow;
+    body.onkeydown = filterMatchRow;
 
     const rows = allMatches;
     body.innerHTML = rows.map(m => {
@@ -153,7 +170,7 @@ function playerLink(p,cls=""){
         : `<span class="match-link">${matchId}</span>`;
 
       return `
-        <tr class="${winnerRowClass(winner)}">
+        <tr class="${winnerRowClass(winner)}${String(m.id) === selectedMapMatch ? ' is-map-selected' : ''}" data-map-match="${escapeAttr(String(m.id))}" tabindex="0" aria-label="Filter map to match ${escapeAttr(String(m.id))}">
           <td>${fmtDate(m.created_at)}</td>
           <td class="score-cell">${m.score_blue ?? "?"} - ${m.score_red ?? "?"}</td>
           <td class="${winnerTextClass(winner)}">${winner || "—"}</td>
