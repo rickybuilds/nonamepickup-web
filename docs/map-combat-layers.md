@@ -1,5 +1,17 @@
 # Map combat layers
 
+## Repair weapon attribution without replay extraction
+
+Replay clocks can include pre-round time that analytics clocks exclude. Weapon matching now calibrates each round's offset from repeated exact attacker/victim Steam ID pairs. It requires at least 10 unique matches covering 60% of stored kills, a dominant offset peak, and a unique one-to-one event match within 1.25 seconds after alignment. It does not match by killer alone. Matched analytics weapons also correct earlier assignments made against unaligned clocks.
+
+To preview one game's repair using only SQLite:
+
+```sh
+node api/scripts/repairPickupKillWeapons.js --match HDPVET --dry-run
+```
+
+Apply that repair by removing `--dry-run`. Omit `--match HDPVET` to process all indexed rounds. The command prints the database path, inferred round offset, matched/total kills, and changed weapon counts. Stop older archive backfills before repairing so they cannot overwrite the corrected assignments. No MariaDB credentials or replay archives are needed. Restart the API after deploying to use clock alignment for future ingestion; if analytics arrives after replay ingestion, rerun this SQLite repair after import. Rounds without strong alignment evidence are left unchanged.
+
 Use the Round selector to compare Round 1 defense against Round 2 defense (or offense) within a game. Round options show the recorded match team when available. The controls are Player (Killer or Carrier), Game, Round, and Weapon. The separate team and in-game direction filters have been removed; the round selection provides the comparison without overlapping filters. Removing these frontend controls requires a browser refresh only, with no API restart or backfill.
 
 The map panel defaults to flag-carrier deaths. Defensive Kills and Offensive Kills show enemy deaths caused by a player with that recorded round role. The player selector refers to the carrier in the death layer and the killer in kill layers. Team direction is the recorded in-game killer team → victim team. Weapon names use the same canonical mapping as the player page (`weapon-10` is Single Shotgun, `weapon-11` is Super Shotgun, and so on). Replay scene death notices are preferred, including numeric notices mapped to canonical `weapon-N` values, falling back to an unambiguous death event for the same attacker and victim within 100 ms, then `match_kill_events` by match, round, killer name, and nearby event time. The scene death's raw `text` contains an entity edict, not a weapon ID; only death notices and death-event weapon fields may map numeric values. Missing names display as Unknown weapon and stay selectable.
