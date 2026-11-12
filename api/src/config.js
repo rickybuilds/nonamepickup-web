@@ -11,6 +11,7 @@ const ROOT_DIR = path.resolve(__dirname, "..");
 const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(ROOT_DIR, "public");
 const DATA_DIR = process.env.TFCBOT_DATA_DIR || "/root/tfcbot";
 const ELO_DB = process.env.ELO_DB || path.join(DATA_DIR, "elo.db");
+const GAME_DETAILS_DB = process.env.GAME_DETAILS_DB || path.join(path.dirname(ELO_DB), "game-details.db");
 const SUPPORTERS_FILE = process.env.SUPPORTERS_FILE || path.join(DATA_DIR, "supporters.json");
 const QUEUE_FILE = process.env.QUEUE_FILE || path.join(DATA_DIR, "queue.json");
 const KICKED_FILE = process.env.KICKED_FILE || path.join(DATA_DIR, "kicked.json");
@@ -77,6 +78,7 @@ const config = {
   PUBLIC_DIR,
   DATA_DIR,
   ELO_DB,
+  GAME_DETAILS_DB,
   SUPPORTERS_FILE,
   QUEUE_FILE,
   KICKED_FILE,

@@ -106,7 +106,8 @@ function createApp({
   }));
   app.use("/api/pickup-replays/viewer", compression({ threshold: 1024 }));
   app.use("/api", createPickupReplayViewerRouter({
-    viewer: pickupReplayViewer
+    viewer: pickupReplayViewer,
+    gameDetailsDb: config.GAME_DETAILS_DB
   }));
   app.use("/api", createPickupFlagCarryRouter({ db }));
   app.use("/api", createFlagDeathRouter({ db }));

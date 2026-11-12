@@ -6,7 +6,9 @@ const { parseViewerIdentity } = require("../pickup/viewer");
 const fs = require("node:fs");
 const { createGunzip } = require("node:zlib");
 const { pipeline } = require("node:stream/promises");
+const { Readable } = require("node:stream");
 const { playbackPath, VERSION } = require("../pickup/tacticalPlayback");
+const { createGameDetailsReader } = require("../pickup/gameDetailsReader");
 
 function closeAfterResponse(req, res) {
   res.set("Connection", "close");
@@ -83,19 +85,43 @@ function createPickupReplaysRouter({ ingestion, logger = console }) {
   return router;
 }
 
-function createPickupReplayViewerRouter({ viewer, logger = console }) {
+function createPickupReplayViewerRouter({ viewer, gameDetailsDb, logger = console }) {
   const router = express.Router();
+  const details = createGameDetailsReader(gameDetailsDb);
 
   router.get("/pickup-replays/viewer/:matchId/:round/tactical", async (req, res) => {
     try {
       const identity = parseViewerIdentity(req.params.matchId, req.params.round);
+      let imported;
+      try {
+        imported = await details.read(identity.matchId, identity.round);
+      } catch (error) {
+        logger.warn?.("[pickup replay viewer] game_details_read_failed; using prepared-file fallback", {
+          matchId: identity.matchId, round: identity.round, code: error.code || "invalid_package"
+        });
+      }
+      if (imported) {
+        res.type("application/json");
+        res.set("Cache-Control", "private, no-cache");
+        res.set("ETag", imported.etag);
+        res.set("X-Tactical-Source", "game-details-db");
+        res.vary("Accept-Encoding");
+        if (req.fresh) return res.status(304).end();
+        if (req.acceptsEncodings("gzip")) {
+          res.set("Content-Encoding", "gzip");
+          await pipeline(Readable.from([imported.gzip]), res);
+        } else await pipeline(Readable.from([imported.gzip]), createGunzip(), res);
+        return;
+      }
       const artifact = await viewer.artifact(identity.matchId, identity.round);
       const file = playbackPath(viewer.storage.root, artifact.sha256);
       await fs.promises.access(file, fs.constants.R_OK);
       res.type("application/json");
       res.set("Cache-Control", "private, no-cache");
       res.set("ETag", `"tactical-v${VERSION}-${artifact.sha256}"`);
+      res.set("X-Tactical-Source", "prepared-file");
       res.vary("Accept-Encoding");
+      if (req.fresh) return res.status(304).end();
       if (req.acceptsEncodings("gzip")) {
         res.set("Content-Encoding", "gzip");
         await pipeline(fs.createReadStream(file), res);
