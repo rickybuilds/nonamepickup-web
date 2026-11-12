@@ -9,16 +9,40 @@
   const maxHealth = [100, 75, 90, 100, 90, 90, 100, 100, 90, 80, 50];
   const icons = new Map();
   const flagIcons = new Map();
+  const flagTeams = new Map();
   for (const [id, color] of [[1, "blue"], [2, "red"]]) {
     const image = new Image(); image.src = `/assets/images/icons/webp/${color}flag.webp`;
     image.onload = () => { dirty = true; }; flagIcons.set(id, image);
   }
   function flagTeam(flag) {
-    if (flag.team === 1 || flag.team === 2) return flag.team;
-    if (/blue/i.test(flag.name)) return 1;
-    if (/red/i.test(flag.name)) return 2;
-    // Same fallback as the existing replay viewer when objective color is absent.
-    return flag.id === 1 || flag.id === 2 ? flag.id : null;
+    return flagTeams.get(flag.id) ?? null;
+  }
+  function resolveFlagTeams() {
+    flagTeams.clear();
+    const flags = data.flags || [], evidence = new Map();
+    for (const flag of flags) {
+      const explicit = flag.team === 1 || flag.team === 2 ? flag.team : /blue/i.test(flag.name) ? 1 : /red/i.test(flag.name) ? 2 : null;
+      if (explicit) flagTeams.set(flag.id, explicit);
+      // Objective IDs identify entities, not teams. In a two-flag CTF round,
+      // an enemy carrying a flag supplies ownership evidence for that flag.
+      const owners = new Set(); evidence.set(flag.id, owners);
+      if (explicit || flags.length !== 2) continue;
+      for (let i = 0; i < flag.frames.length; i += 6) {
+        if (flag.frames[i + 4] !== 1 || flag.frames[i + 5] <= 0) continue;
+        const player = byId.get(flag.frames[i + 5]), frame = player && frameAt(player, flag.frames[i]);
+        if (frame?.[5] === 1 && (frame[9] === 1 || frame[9] === 2)) owners.add(3 - frame[9]);
+      }
+      if (owners.size === 1) flagTeams.set(flag.id, owners.values().next().value);
+    }
+    if (flags.length === 2 && flagTeams.size === 1) {
+      const unknown = flags.find(flag => !flagTeams.has(flag.id));
+      // Only pair a genuinely unobserved flag; conflicting evidence stays unknown.
+      if (evidence.get(unknown.id).size === 0) flagTeams.set(unknown.id, 3 - flagTeams.values().next().value);
+    }
+  }
+  function flagLabel(flag) {
+    const team = flagTeam(flag);
+    return team ? (team === 1 ? "Blue flag" : "Red flag") : `${flag.name} (color unknown)`;
   }
   for (let id = 1; id <= 9; id++) {
     const image = new Image(); image.src = `/assets/images/classes/${classNames[id]}old_tfc.png`;
@@ -209,7 +233,7 @@
     $("clock").textContent = clock(time) + " / " + clock(data.durationMs);
     $("flag-status").textContent = data.flags?.length ? data.flags.map(flag => {
       const frame = flagAt(flag);
-      return flag.name + ": " + (!frame ? "not visible in this sample" : frame.carrier ? "carried by " + playerName(frame.carrier) : frame.state === 2 ? "dropped" : "at base");
+      return flagLabel(flag) + ": " + (!frame ? "not visible in this sample" : frame.carrier ? "carried by " + playerName(frame.carrier) : frame.state === 2 ? "dropped" : "at base");
     }).join(" · ") : "No identified flag tracks in this recording.";
     const life = currentLife(), player = byId.get(Number(selected));
     $("trail-info").textContent = selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
@@ -319,24 +343,26 @@
       const point = project(frame.x, frame.y);
       const x = point[0] + (frame.carrier ? size * .7 : 0), y = point[1] - (frame.carrier ? size * .4 : 0);
       const height = 24 * unit, width = 16 * unit;
-      const team = flagTeam(flag), icon = flagIcons.get(team), radius = 16 * unit;
+      const team = flagTeam(flag), icon = flagIcons.get(team || 1), radius = 16 * unit;
+      const flagColor = team === 1 ? "#60a5ff" : team === 2 ? "#ff7886" : "#b8c6d4";
       ctx.globalAlpha = 1;
       if (icon?.complete && icon.naturalWidth) {
         // The supplied art has a background; crop it into a flag badge so the
         // square image does not obscure the overview around the marker.
         ctx.save(); ctx.beginPath(); ctx.arc(x, y - radius, radius, 0, Math.PI * 2); ctx.clip();
+        if (!team) ctx.filter = "grayscale(1)";
         ctx.drawImage(icon, x - radius, y - radius * 2, radius * 2, radius * 2); ctx.restore();
-        ctx.strokeStyle = team === 1 ? "#60a5ff" : "#ff7886"; ctx.lineWidth = 2 * unit;
+        ctx.strokeStyle = flagColor; ctx.lineWidth = 2 * unit;
         ctx.beginPath(); ctx.arc(x, y - radius, radius, 0, Math.PI * 2); ctx.stroke();
       } else {
         ctx.lineWidth = 2 * unit; ctx.strokeStyle = "#fff3ce";
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - height); ctx.stroke();
-        ctx.fillStyle = "#ffd16b";
+        ctx.fillStyle = flagColor;
         ctx.beginPath(); ctx.moveTo(x, y - height); ctx.lineTo(x + width, y - height + 6 * unit); ctx.lineTo(x, y - height + 12 * unit); ctx.closePath(); ctx.fill();
       }
       if (!frame.carrier) {
         ctx.textAlign = "center"; ctx.font = `600 ${11 * unit}px Inter, sans-serif`; ctx.lineWidth = 3 * unit; ctx.fillStyle = "#fff3ce"; ctx.strokeStyle = "#10151c";
-        const label = flag.name + (frame.state === 2 ? " · dropped" : " · base");
+        const label = flagLabel(flag) + (frame.state === 2 ? " · dropped" : " · base");
         ctx.strokeText(label, x, y + 13 * unit); ctx.fillText(label, x, y + 13 * unit);
       }
     }
@@ -366,6 +392,7 @@
         const label = document.createElement("span"); label.className = "player-state";
         button.append(name, label); button.onclick = () => selectPlayer(player.id); $("roster").append(button); rosterStates.set(player.id, { button, label });
       }
+      resolveFlagTeams();
       $("map-name").textContent = data.map; $("round-meta").textContent = `${data.players.length} players · ${clock(data.durationMs)} recorded · Round ${round}`;
       $("map-link").href = "map.html?map=" + encodeURIComponent(data.map);
       $("timeline").max = String(data.durationMs); mapSpace.style.width = "100%"; mapSpace.style.height = "1px";
