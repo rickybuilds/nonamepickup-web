@@ -18,6 +18,11 @@ function createKillLocationStore(db) {
            (attacker_name=? AND victim_name=?))
       AND TRIM(COALESCE(weapon,''))<>''
     ORDER BY ABS(event_time_seconds-?) LIMIT 1`);
+  const knownWeaponByAttacker = db.prepare(`SELECT weapon FROM match_kill_events
+    WHERE match_id=? AND round_num=? AND event_time_seconds BETWEEN ? AND ?
+      AND LOWER(TRIM(attacker_name))=LOWER(TRIM(?))
+      AND TRIM(COALESCE(weapon,''))<>''
+    ORDER BY ABS(event_time_seconds-?) LIMIT 1`);
   const unknownWeapon = value => {
     const text = String(value || '').trim();
     return !text || /^unknown(?: weapon)?$/i.test(text) || /^\d+$/.test(text);
@@ -37,6 +42,11 @@ function createKillLocationStore(db) {
           String(attacker.steamId || ''), String(victim.steamId || ''), String(attacker.playerName || ''),
           String(victim.playerName || ''), second);
         if (matchKill?.weapon) weapon = matchKill.weapon;
+        else {
+          const attackerKill = knownWeaponByAttacker.get(input.matchId, input.round,
+            Math.max(0, second - 3), second + 3, String(attacker.playerName || ''), second);
+          if (attackerKill?.weapon) weapon = attackerKill.weapon;
+        }
       }
       putKill.run(input.matchId, input.round, kill.sessionId, kill.timeMs,
         String(victim.steamId || ""), String(victim.playerName || "Unknown player"),
