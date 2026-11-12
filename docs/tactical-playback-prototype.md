@@ -1,5 +1,13 @@
 # Tactical playback prototype
 
+## Single-round SQLite storage comparison
+
+`node api/scripts/pilotTacticalDatabase.js HDPVET 1` opens the configured live `ELO_DB` read-only and uses SQLite's backup API to create a consistent private copy beside it: `elo.tactical-pilot-HDPVET-r1.db`. It refuses to overwrite an existing copy and checks available disk space when supported. This requires space for a full second database, not just a single round's package.
+
+The command inserts one prepared compressed playback into a `tactical_playback_packages` BLOB table in the copy, verifies the stored bytes, and reports gzip/JSON sizes, trial DB size before/after, file growth, and free-page counts. It does not copy the 3D archive into SQL. Live `elo.db`, archives, and the website's current playback storage are unchanged. The copy contains the full database and must remain private.
+
+Package bytes are the useful per-round storage estimate; DB file growth may be smaller because SQLite reuses free pages. Storing the same gzip package in SQL relocates its storage and adds database overhead; it does not compress it further or shrink the original replay archive. Reducing future recorder archives requires a separate AMX telemetry/schema change after choosing which information to retain.
+
 The standalone `/round-playback.html?match=HDPVET&round=1` page previews one actual pickup game before integration into Map Intel. It uses existing overview images, sampled player positions/health/armor/class/team, explicit scene deaths, and projectile removal endpoints. The existing replay viewer and `map.html` are unchanged.
 
 ## Prepare the pilot game
