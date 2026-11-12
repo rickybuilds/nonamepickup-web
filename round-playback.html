@@ -8,7 +8,7 @@
   <link rel="icon" href="/assets/images/favicon.ico">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/round-playback.css?v=1">
-  <script src="assets/js/round-playback.js?v=2trails" defer></script>
+  <script src="assets/js/round-playback.js?v=3flags" defer></script>
 </head>
 <body>
   <main>
@@ -24,7 +24,9 @@
       <div class="playback-layout">
         <div class="stage">
           <div class="stage-tools"><strong id="map-name"></strong><label>Zoom<select id="zoom"><option value="1">Fit</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select></label><label><input id="effects" type="checkbox" checked> Conc endpoints</label><label><input id="trail" type="checkbox" checked> Life trail</label></div>
-          <div id="viewport" tabindex="0" aria-label="Map. Scroll to move when zoomed in."><canvas id="map" role="img" aria-label="Recorded player positions, health, and movement trails"></canvas></div>
+          <label><input id="flags" type="checkbox" checked> Show flags</label>
+          <p id="flag-status" class="note" aria-label="Recorded flag states"></p>
+          <div id="viewport" tabindex="0" aria-label="Map. Scroll to move when zoomed in."><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, and flags"></canvas></div>
           <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
           <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
           <p id="trail-info" class="note">Trails: everyone’s last 5 seconds. Select a player for their full life path.</p>

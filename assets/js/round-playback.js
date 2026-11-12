@@ -76,6 +76,29 @@
     return frame;
   }
   function currentLife() { const player = byId.get(Number(selected)); return $("life").value === "" ? null : player?.lives[Number($("life").value)]; }
+  function flagAt(flag) {
+    const frames = flag.frames;
+    let low = 0, high = frames.length / 6;
+    while (low < high) { const middle = Math.floor((low + high) / 2); if (frames[middle * 6] <= time) low = middle + 1; else high = middle; }
+    if (!low) return null;
+    const index = (low - 1) * 6;
+    if (time - frames[index] > Math.max(2000, data.sampleIntervalMs * 4) || frames[index + 4] < 0) return null;
+    const state = frames[index + 4], carrier = frames[index + 5];
+    if (carrier > 0) {
+      const player = byId.get(carrier), frame = player && frameAt(player, time);
+      return frame?.[5] === 1 ? { x: frame[1], y: frame[2], state, carrier } : null;
+    }
+    // State 1 without a carrier can be a hidden objective, not a flag at base.
+    if (state === 1) return null;
+    let x = frames[index + 1], y = frames[index + 2];
+    const next = index + 6;
+    if (next < frames.length && frames[next + 4] === state && frames[next + 5] === 0 &&
+        frames[next] > frames[index] && frames[next] - frames[index] <= 2000) {
+      const fraction = (time - frames[index]) / (frames[next] - frames[index]);
+      x += (frames[next + 1] - x) * fraction; y += (frames[next + 2] - y) * fraction;
+    }
+    return { x, y, state, carrier: 0 };
+  }
   function pause() { playing = false; $("play").textContent = "Play"; $("play").setAttribute("aria-label", "Play round"); }
   function seek(next) {
     if (!data) return;
@@ -109,6 +132,10 @@
     if (!data) return;
     $("timeline").value = String(time); $("timeline").setAttribute("aria-valuetext", clock(time));
     $("clock").textContent = clock(time) + " / " + clock(data.durationMs);
+    $("flag-status").textContent = data.flags?.length ? data.flags.map(flag => {
+      const frame = flagAt(flag);
+      return flag.name + ": " + (!frame ? "not visible in this sample" : frame.carrier ? "carried by " + playerName(frame.carrier) : frame.state === 2 ? "dropped" : "at base");
+    }).join(" · ") : "No identified flag tracks in this recording.";
     const life = currentLife(), player = byId.get(Number(selected));
     $("trail-info").textContent = selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
       : "Trails: everyone’s last 5 seconds. Select a player for their full life path.";
@@ -202,6 +229,23 @@
       if (player.id === Number(selected)) { ctx.font = `${10 * unit}px Inter, sans-serif`; ctx.strokeText(`${hp} HP · ${Math.max(0, frame[7])} armor`, x, y + size * 1.5); ctx.fillText(`${hp} HP · ${Math.max(0, frame[7])} armor`, x, y + size * 1.5); }
       ctx.globalAlpha = 1;
     }
+    if ($("flags").checked) for (const flag of data.flags || []) {
+      const frame = flagAt(flag);
+      if (!frame) continue;
+      const point = project(frame.x, frame.y);
+      const x = point[0] + (frame.carrier ? size * .7 : 0), y = point[1] - (frame.carrier ? size * .4 : 0);
+      const height = 24 * unit, width = 16 * unit;
+      ctx.globalAlpha = 1; ctx.lineWidth = 3 * unit; ctx.strokeStyle = "#10151c";
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - height); ctx.stroke();
+      ctx.strokeStyle = "#fff3ce"; ctx.lineWidth = 1.5 * unit; ctx.stroke();
+      ctx.fillStyle = "#ffd16b"; ctx.strokeStyle = "#10151c"; ctx.lineWidth = 2 * unit;
+      ctx.beginPath(); ctx.moveTo(x, y - height); ctx.lineTo(x + width, y - height + 6 * unit); ctx.lineTo(x, y - height + 12 * unit); ctx.closePath(); ctx.fill(); ctx.stroke();
+      if (!frame.carrier) {
+        ctx.textAlign = "center"; ctx.font = `600 ${11 * unit}px Inter, sans-serif`; ctx.lineWidth = 3 * unit;
+        const label = flag.name + (frame.state === 2 ? " · dropped" : " · base");
+        ctx.strokeText(label, x, y + 13 * unit); ctx.fillText(label, x, y + 13 * unit);
+      }
+    }
   }
   let controller;
   async function load(event) {
@@ -212,7 +256,7 @@
     pause(); $("viewer").hidden = true; $("load").disabled = true; say("Loading compact round playback…");
     try {
       const next = await json(`/api/pickup-replays/viewer/${encodeURIComponent(match)}/${round}/tactical`, controller.signal);
-      if (next.version !== 1 || next.stride !== 10 || !Array.isArray(next.players) || !next.players.length) throw new Error("Prepared playback is empty or incompatible. Prepare the round again.");
+      if (next.version !== 2 || next.stride !== 10 || !Array.isArray(next.players) || !next.players.length) throw new Error("Prepared playback is empty or incompatible. Prepare the round again.");
       const view = await overview(next.map, controller.signal);
       if (version !== loadVersion) return;
       data = next; background = view.background; project = view.project; canvas.width = background.width; canvas.height = background.height;
@@ -244,7 +288,7 @@
   $("timeline").oninput = () => { pause(); seek(Number($("timeline").value)); };
   $("life").onchange = lifeChange; $("previous-life").onclick = () => stepLife(-1); $("next-life").onclick = () => stepLife(1);
   $("zoom").onchange = () => { canvas.style.width = Number($("zoom").value) * 100 + "%"; dirty = true; };
-  $("effects").onchange = $("trail").onchange = () => { dirty = true; };
+  $("effects").onchange = $("trail").onchange = $("flags").onchange = () => { dirty = true; };
   window.addEventListener("resize", () => { dirty = true; });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
   function tick(now) {

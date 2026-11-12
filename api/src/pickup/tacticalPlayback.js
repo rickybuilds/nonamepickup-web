@@ -2,7 +2,7 @@
 const path = require("node:path");
 const readline = require("node:readline");
 const { parseCsv, normalizeRoster } = require("./csv");
-const VERSION = 1;
+const VERSION = 2;
 const STRIDE = 10; // time,x,y,z,yaw,alive,health,armor,class,team
 function playbackPath(root, sha) {
   if (!/^[a-f0-9]{64}$/i.test(sha)) throw new Error("Invalid replay hash");
@@ -98,11 +98,28 @@ async function buildPlayback({ metadata, text, stream, indexedKills = [] }) {
     if ([endpoint.time, endpoint.x, endpoint.y, endpoint.z].every(Number.isFinite) && get("state") === 0) endpoints.set(id, endpoint);
   }));
   events.push(...endpoints.values());
+  const models = metadata.files.renderModels ? parseCsv(await text("render_models.csv"), "models") : [];
+  const modelPaths = new Map(models.map(row => [Number(row.model_id), row.path]));
+  const objectives = parseCsv(await text("objective_defs.csv"), "objectives");
+  const flags = objectives.filter(row => /flag/i.test([row.classname, row.targetname,
+    row.model || modelPaths.get(Number(row.model_id)) || ""].join(" "))).map((row, index) => ({
+    id: Number(row.objective_id), name: `Flag ${index + 1}`, frames: []
+  }));
+  const flagsById = new Map(flags.map(flag => [flag.id, flag]));
+  if (flags.length) await stream("objectives.csv", input => numericRows(input, get => {
+    const flag = flagsById.get(get("objective_id"));
+    if (!flag) return;
+    const frame = ["time_ms", "x", "y", "z", "state", "carrier_session"].map(get);
+    if (!frame.every(Number.isFinite)) return;
+    const last = flag.frames.length - 6;
+    if (last >= 0 && frame[0] < flag.frames[last]) return;
+    if (last < 0 || frame[0] - flag.frames[last] >= 100 || frame[4] !== flag.frames[last + 4] || frame[5] !== flag.frames[last + 5]) flag.frames.push(...frame);
+  }));
   events.sort((a, b) => a.time - b.time);
   return { version: VERSION, matchId: metadata.matchId, round: metadata.round, map: metadata.map,
     sha256: metadata.sha256, durationMs, sampleIntervalMs: Math.max(100, metadata.sampleIntervalMs), sourceSampleIntervalMs: metadata.sampleIntervalMs, stride: STRIDE,
     frameFields: ["time", "x", "y", "z", "yaw", "alive", "health", "armor", "class", "team"],
-    players: players.filter(player => player.frames.length), events,
+    players: players.filter(player => player.frames.length), events, flags,
     notes: ["Movement and health are sampled. Gaps and respawns are not interpolated.",
       "Conc rings mark recorded projectile removal endpoints, not verified detonations. Handheld concs without a projectile are not inferred."] };
 }
