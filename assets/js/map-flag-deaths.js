@@ -5,12 +5,15 @@
   const count = document.getElementById("flag-death-count");
   const select = document.getElementById("flag-death-player");
   const matchSelect = document.getElementById("flag-death-match");
+  const sideSelect = document.getElementById("flag-map-side");
   const teamSelect = document.getElementById("flag-map-team");
   const weaponSelect = document.getElementById("flag-map-weapon");
   const layerButtons = [...document.querySelectorAll("#flag-map-layers button")];
   const title = document.getElementById("flag-map-title");
   const description = document.getElementById("flag-map-description");
   const playerLabel = document.getElementById("flag-map-player-label");
+  const sideLabel = document.getElementById("flag-map-side-label");
+  const directionLabel = document.getElementById("flag-map-direction-label");
   const tooltip = document.getElementById("flag-map-tooltip");
   const viewport = document.getElementById("flag-map-viewport");
   const comingSoon = document.getElementById("flag-map-coming-soon");
@@ -211,11 +214,27 @@
         matchSelect.value = (response.matches || []).some(match => match.matchId === previous) ? previous : "";
         matchSelect.disabled = !(response.matches || []).length;
       }
-      function matchesFilters(row, includePlayer = true, includeWeapon = true) {
+      function matchesFilters(row, includePlayer = true, includeWeapon = true, includeSide = true) {
         return (!matchSelect.value || row.matchId === matchSelect.value) &&
+          (!includeSide || !sideSelect.value || String(activeLayer === "flags" ? row.victimTeam : row.attackerTeam) === sideSelect.value) &&
           (!teamSelect.value || row.attackerTeam + "-" + row.victimTeam === teamSelect.value) &&
           (!includeWeapon || !weaponSelect.value || weaponKey(row.weapon) === weaponSelect.value) &&
           (!includePlayer || !select.value || playerKey(row) === select.value);
+      }
+      function updateSideOptions() {
+        const previous = sideSelect.value;
+        const base = response.deaths.filter(row => matchesFilters(row, false, true, false));
+        const counts = new Map([["1", 0], ["2", 0]]);
+        for (const row of base) {
+          const side = String(activeLayer === "flags" ? row.victimTeam || "" : row.attackerTeam || "");
+          if (counts.has(side)) counts.set(side, counts.get(side) + 1);
+        }
+        sideSelect.replaceChildren(new Option("Both teams", ""));
+        sideSelect.append(new Option(`Team 1 (${counts.get("1")})`, "1"));
+        sideSelect.append(new Option(`Team 2 (${counts.get("2")})`, "2"));
+        sideSelect.value = previous;
+        sideSelect.disabled = !counts.get("1") && !counts.get("2");
+        if (sideSelect.disabled) sideSelect.value = "";
       }
       function updateWeapons() {
         const previous = weaponSelect.value;
@@ -319,12 +338,14 @@
         title.textContent = config.title;
         description.textContent = config.description;
         playerLabel.textContent = layer === "flags" ? "Carrier" : "Killer";
+        sideLabel.textContent = layer === "flags" ? "Carrier team" : "Killer team";
+        directionLabel.textContent = layer === "flags" ? "Killer → carrier" : "Killer → victim";
         canvas.setAttribute("aria-label", config.title + " locations on the map");
         layerButtons.forEach(button => button.setAttribute("aria-pressed", String(button.dataset.layer === layer)));
         hideTooltip();
         buckets = new Map();
         points.setAttribute("d", "");
-        [select, matchSelect, teamSelect, weaponSelect].forEach(control => { control.disabled = true; });
+        [select, matchSelect, sideSelect, teamSelect, weaponSelect].forEach(control => { control.disabled = true; });
         count.textContent = "Loading…";
         status.textContent = "Loading recorded " + config.unit + "…";
         viewport.setAttribute("aria-busy", "true");
@@ -341,6 +362,7 @@
           }
           if (id !== requestId) return;
           response = next;
+          updateSideOptions();
           teamSelect.disabled = !response.deaths.some(row => row.attackerTeam && row.victimTeam);
           if (teamSelect.disabled) teamSelect.value = "";
           updateMatches();
@@ -357,6 +379,7 @@
       }
       select.addEventListener("change", draw);
       matchSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
+      sideSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
       teamSelect.addEventListener("change", () => { updateWeapons(); updatePlayers(); draw(); });
       weaponSelect.addEventListener("change", () => { updatePlayers(); draw(); });
       layerButtons.forEach(button => {
