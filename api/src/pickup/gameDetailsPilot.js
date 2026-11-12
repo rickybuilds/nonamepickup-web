@@ -1,6 +1,6 @@
 "use strict";
 
-// Offline schema-7 pilot. This format is deliberately separate from the deployed
+// Offline schema-2–7 conversion. This format is deliberately separate from the deployed
 // tactical API format; the embedded playback retains that API's current shape.
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
@@ -14,7 +14,7 @@ const { validateManifest } = require("./manifest");
 const { buildPlayback } = require("./tacticalPlayback");
 const { alignKillWeapons } = require("./killWeaponAlignment");
 
-const CONVERTER = "game-details-pilot-2";
+const CONVERTER = "game-details-3";
 const SMALL = ["roster.csv", "events.csv", "scene_events.csv", "entity_meta.csv",
   "projectile_defs.csv", "objective_defs.csv", "buildable_defs.csv", "render_models.csv",
   "entity_defs.csv", "brush_defs.csv"];
@@ -30,6 +30,12 @@ const FIELDS = {
 };
 const digest = value => createHash("sha256").update(value).digest("hex");
 const number = value => value == null || value === "" ? null : Number.isFinite(Number(value)) ? Number(value) : null;
+const activeArchives = new Set();
+function stopArchive(child) {
+  if (process.platform === "win32" || !child.pid) { child.kill(); return; }
+  try { process.kill(-child.pid, "SIGTERM"); } catch (error) { if (error.code !== "ESRCH") child.kill(); }
+}
+process.once("exit", () => { for (const child of activeArchives) stopArchive(child); });
 
 async function hashFile(file) {
   const hash = createHash("sha256");
@@ -40,7 +46,11 @@ async function hashFile(file) {
 async function member(archive, name, consume) {
   // Windows bsdtar autodetects zstd; GNU tar uses the explicit switch.
   const args = process.platform === "win32" ? ["-xOf", archive, name] : ["--zstd", "-xOf", archive, name];
-  const child = spawn("tar", args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+  // Own process group keeps terminal Ctrl+C from interrupting an archive while
+  // the parent drains active rounds. Pipes/exit remain awaited, not unref'ed.
+  const child = spawn("tar", args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, detached: true });
+  activeArchives.add(child);
+  child.once("close", () => activeArchives.delete(child));
   let errors = "";
   child.stderr.on("data", chunk => { errors = (errors + chunk).slice(-4000); });
   const done = new Promise((resolve, reject) => {
@@ -50,7 +60,7 @@ async function member(archive, name, consume) {
   // Attach a rejection handler before starting the consumer to cover spawn errors.
   done.catch(() => {});
   try { const result = await consume(child.stdout); await done; return result; }
-  catch (error) { child.kill(); await done.catch(() => {}); throw error; }
+  catch (error) { stopArchive(child); await done.catch(() => {}); throw error; }
 }
 
 async function textMember(archive, name, expectedBytes) {
@@ -122,7 +132,53 @@ async function sampledTrack(archive, manifest, file, idField, wanted, transition
   });
   if (bytes !== manifest.bytes[file] || rows !== expectedRows) throw new Error(`${file}: manifest count mismatch`);
   if (!fields) throw new Error(`${file}: missing header`);
-  return { fields, stride: fields.length, intervalMs: 100, tracks, weaponNames, sourceRows: rows, keptRows: kept, unknown };
+  return { fields, missingFields: wanted.filter(field => !fields.includes(field)),
+    stride: fields.length, intervalMs: 100, tracks, weaponNames, sourceRows: rows, keptRows: kept, unknown };
+}
+
+function hasRevision(destination, revision) {
+  if (!destination || !fs.existsSync(destination)) return false;
+  const db = new Database(destination, { readonly: true, fileMustExist: true });
+  try {
+    if (db.pragma("application_id", { simple: true }) !== 1195656268 || db.pragma("user_version", { simple: true }) !== 1) {
+      throw new Error("Output is not a game-details database");
+    }
+    return !!db.prepare(`SELECT 1 FROM detail_rounds r JOIN detail_packages p ON p.round_id=r.id
+      WHERE r.revision=? AND p.format='game-details-pilot-v1' AND p.encoding='json+gzip'`).get(revision);
+  } finally { db.close(); }
+}
+
+function historicalDeaths(playback, rows, analytics) {
+  const players = new Map(playback.players.map(player => [player.id, player]));
+  function teamAt(id, time) {
+    const frames = players.get(id)?.frames || [], stride = playback.stride;
+    let low = 0, high = frames.length / stride;
+    while (low < high) { const middle = Math.floor((low + high) / 2); if (frames[middle * stride] <= time) low = middle + 1; else high = middle; }
+    return low ? frames[(low - 1) * stride + 9] : 0;
+  }
+  const deaths = rows.filter(row => row.event === "death").map(row => {
+    const victim = number(row.target_session), attacker = number(row.actor_session), time = number(row.time_ms);
+    const attackerTeam = teamAt(attacker, time), victimTeam = teamAt(victim, time);
+    return { row, victim, attacker, time, enemy: attacker !== victim && attackerTeam > 0 && victimTeam > 0 && attackerTeam !== victimTeam,
+      teamKill: attacker !== victim && attackerTeam > 0 && attackerTeam === victimTeam };
+  }).filter(death => players.has(death.victim) && death.time != null);
+  const candidates = deaths.filter(death => death.enemy).map(death => ({
+    session_id: death.victim, time_ms: death.time, steam_id: players.get(death.victim).steamId,
+    attacker_steam_id: players.get(death.attacker)?.steamId, weapon: death.row.text || "" }));
+  const alignment = alignKillWeapons(candidates, analytics);
+  const weapons = new Map([...alignment.weapons].map(([kill, weapon]) => [`${kill.session_id}:${kill.time_ms}`, weapon]));
+  for (const player of players.values()) for (const life of player.lives) life.kills = 0;
+  playback.events = playback.events.filter(event => event.type !== "death");
+  for (const death of deaths) {
+    playback.events.push({ time: death.time, type: "death", victim: death.victim, attacker: death.attacker,
+      teamKill: death.teamKill, weapon: weapons.get(`${death.victim}:${death.time}`) || death.row.text || "" });
+    if (death.enemy) {
+      const life = players.get(death.attacker)?.lives.find(life => death.time >= life.startMs && death.time <= life.endMs);
+      if (life) life.kills++;
+    }
+  }
+  playback.events.sort((a, b) => a.time - b.time);
+  return alignment;
 }
 
 function storeDatabase(destination, data) {
@@ -192,28 +248,36 @@ function storeDatabase(destination, data) {
   } finally { db.close(); }
 }
 
-async function convertRound({ archive, destination, match, round, elo, log = console.log }) {
+async function prepareRound({ archive, destination, match, round, elo, skipExisting = false, log = console.log }) {
   const before = await fsp.stat(archive);
   const sha = await hashFile(archive);
   const filenameHash = /round-\d+-([a-f0-9]{64})\.tar\.zst$/i.exec(archive)?.[1];
   if (!filenameHash || filenameHash.toLowerCase() !== sha) throw new Error("Archive checksum mismatch; transfer may be incomplete");
-  const manifest = JSON.parse(await textMember(archive, "manifest.json"));
-  validateManifest(manifest, { matchId: match, round, complete: true });
-  if (manifest.schema_version !== 7 || !manifest.complete || manifest.write_error) throw new Error("Pilot requires a complete schema-7 recording without write errors");
-  const raw = {};
-  for (const file of SMALL) if (Object.hasOwn(manifest.bytes, file)) raw[file] = await textMember(archive, file, manifest.bytes[file]);
   const references = loadReferences(elo, match, round);
   if (references.killRounds.some(row => row.artifact_sha256 && row.artifact_sha256 !== sha)) {
     throw new Error("ELO kill index refers to a different source archive; reconcile source identity before enriching");
   }
+  const revision = digest(JSON.stringify({ sha, converter: CONVERTER, references }));
+  if (skipExisting && hasRevision(destination, revision)) return { skipped: true, match, round, archive, revision };
+  const manifest = JSON.parse(await textMember(archive, "manifest.json"));
+  validateManifest(manifest, { matchId: match, round, complete: true });
+  if (!manifest.complete || manifest.write_error) throw new Error("Requires a complete recording without write errors");
+  const raw = {};
+  for (const file of SMALL) if (Object.hasOwn(manifest.bytes, file)) raw[file] = await textMember(archive, file, manifest.bytes[file]);
   const kills = references.kills.map(kill => ({ ...kill }));
-  const alignment = alignKillWeapons(kills, references.analytics.filter(event => event.is_enemy_kill === 1 && !event.is_team_kill));
+  const analytics = references.analytics.filter(event => event.is_enemy_kill === 1 && !event.is_team_kill);
+  let alignment = alignKillWeapons(kills, analytics);
   for (const [kill, weapon] of alignment.weapons) kill.weapon = weapon;
   log(`Preparing ${match} round ${round} · ${manifest.map}; original ${(before.size / 1048576).toFixed(2)} MiB`);
   const playback = await buildPlayback({ metadata: { matchId: match, round, map: manifest.map,
     durationMs: manifest.duration_ms, sampleIntervalMs: Math.ceil(manifest.sample_interval_seconds * 1000), sha256: sha,
     files: { sceneEvents: !!raw["scene_events.csv"], renderModels: !!raw["render_models.csv"] } },
     indexedKills: kills, text: async file => raw[file], stream: (file, consume) => member(archive, file, consume) });
+  if (!playback.players.length) throw new Error("No valid player movement; cannot produce usable tactical playback");
+  const events = Object.fromEntries(["events.csv", "scene_events.csv"].filter(file => raw[file]).map(file => [file, parseCsv(raw[file], file)]));
+  if (!(events["scene_events.csv"] || []).some(row => row.event === "death")) {
+    alignment = historicalDeaths(playback, events["events.csv"] || [], analytics);
+  }
   const tracks = {};
   tracks.players = await sampledTrack(archive, manifest, "players.csv", "session_id", FIELDS.players,
     FIELDS.players.slice(10), manifest.rows.players);
@@ -222,30 +286,44 @@ async function convertRound({ archive, destination, match, round, elo, log = con
     ["buildables", "buildable_id", "buildables", ["active", "owner_session", "team", "health"]],
     ["projectiles", "projectile_id", "projectiles", ["state", "owner_session"]],
     ["objectives", "objective_id", "objectives", ["state", "carrier_session"]],
-  ]) tracks[kind] = await sampledTrack(archive, manifest, `${kind}.csv`, id, FIELDS[kind], changes, manifest.rows[count]);
-  const events = Object.fromEntries(["events.csv", "scene_events.csv"].filter(file => raw[file]).map(file => [file, parseCsv(raw[file], file)]));
+  ]) if (Object.hasOwn(manifest.bytes, `${kind}.csv`)) {
+    tracks[kind] = await sampledTrack(archive, manifest, `${kind}.csv`, id, FIELDS[kind], changes, manifest.rows[count]);
+  }
   const deathRows = (events["events.csv"] || []).filter(row => row.event === "death");
-  const quality = { sourceSchema: 7, originalBytes: before.size, referencesSupplied: references.supplied,
+  const quality = { sourceSchema: manifest.schema_version, originalBytes: before.size, referencesSupplied: references.supplied,
     weaponAlignment: { ...alignment, weapons: undefined },
     indexedWeapons: kills.filter(kill => kill.weapon && !/^unknown$/i.test(kill.weapon)).length,
     rawDeaths: deathRows.length, rawDeathsWithoutWeapon: deathRows.filter(row => !row.text?.trim()).length,
     playerSourceRows: tracks.players.sourceRows, playerKeptRows: tracks.players.keptRows,
     unknownPlayerValues: tracks.players.unknown,
-    warnings: ["Pilot format; website still reads its existing tactical cache.",
+    missingPlayerFields: tracks.players.missingFields, retainedStreams: Object.keys(raw),
+    warnings: ["Experimental details package with embedded tactical playback.",
       "View pitch/yaw are preserved as recorded; correctness as true view angles is not established.",
       "Stable team roles require companion analytics; engine colors are not stable match teams.",
       "Conc endpoints are not confirmed detonations; historical missing values remain unknown.",
       ...(!elo ? ["No ELO snapshot: repaired weapon and round-role references are unavailable."] : [])] };
-  const revision = digest(JSON.stringify({ sha, converter: CONVERTER, references }));
   const payload = { format: "game-details-pilot-v1", converter: CONVERTER,
     source: { sha256: sha, manifest }, quality, playback, tracks, rawCsv: raw, references };
   const compressed = gzipSync(JSON.stringify(payload));
   const after = await fsp.stat(archive);
   if (after.size !== before.size || after.mtimeMs !== before.mtimeMs || await hashFile(archive) !== sha) throw new Error("Archive changed during conversion; retry after transfer completes");
-  const stats = storeDatabase(destination, { match, round, sha, revision, map: manifest.map,
-    quality, compressed, playback, events, durationMs: manifest.duration_ms });
-  return { match, round, archive, destination, revision, originalBytes: before.size,
-    compressedBytes: compressed.length, databaseBytes: (await fsp.stat(destination)).size, ...stats, quality };
+  // Frames are already compressed inside the payload. Persistence needs only
+  // identities and lives; avoid transferring large duplicate arrays over IPC.
+  return { match, round, archive, sha, revision, map: manifest.map, quality, compressed, events,
+    originalBytes: before.size, durationMs: manifest.duration_ms,
+    playback: { players: playback.players.map(({ id, steamId, name, lives }) => ({ id, steamId, name, lives })) } };
 }
 
-module.exports = { convertRound };
+function finishRound(destination, prepared) {
+  const stats = storeDatabase(destination, prepared);
+  return { match: prepared.match, round: prepared.round, archive: prepared.archive, destination,
+    revision: prepared.revision, originalBytes: prepared.originalBytes,
+    compressedBytes: prepared.compressed.length, databaseBytes: fs.statSync(destination).size, ...stats, quality: prepared.quality };
+}
+
+async function convertRound(options) {
+  const prepared = await prepareRound(options);
+  return prepared.skipped ? prepared : finishRound(options.destination, prepared);
+}
+
+module.exports = { convertRound, prepareRound, finishRound, CONVERTER };

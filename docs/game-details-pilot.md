@@ -1,5 +1,7 @@
 # Offline game-details pilot
 
+For the full archive tree, use the [bulk import instructions](game-details-bulk-import.md). The shared converter now accepts schemas 2–7, retaining only fields/streams actually present; the HDPVET pilot measurements below describe the original schema-7 experiment.
+
 This is a schema-7, one-round archival conversion pilot. The importer does not write to ELO or change the API configuration. The tactical API can read its output as described below. The output format is experimental, not the final AMXX recording contract. It retains the original manifest, small semantic CSV streams, companion analytics when supplied, sampled player inventory/view/movement, projectile/objective/building tracks, and an embedded existing-format tactical playback.
 
 It indexes raw events (scene and event streams separately), players and sampled life summaries in SQLite. A death can appear in both raw streams; do not add them together as a unique kill count. The indexed events remain lossless raw source events; repaired weapons are applied to embedded playback and retained with their reference/provenance data, not silently rewritten into raw evidence. Looking angles and ownership are preserved as recorded, not claimed correct merely because a field exists. This is not a lossless archive replacement: detailed rendering and full-rate geometry/animation are omitted.

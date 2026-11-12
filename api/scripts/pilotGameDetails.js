@@ -25,7 +25,7 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log("Usage: node api/scripts/pilotGameDetails.js --root PATH [--match HDPVET] [--round 1] [--db PATH] [--elo SNAPSHOT] [--archive PATH]");
-    console.log("Offline schema-7 pilot. Originals and optional ELO snapshot are read only. No MariaDB or .env required.");
+    console.log("Offline schema-2–7 import. Originals and optional ELO snapshot are read only. No MariaDB or .env required.");
     console.log("Without --elo, historical weapons and round-role references remain unavailable. Output defaults to ROOT/game-details.db.");
     return;
   }
