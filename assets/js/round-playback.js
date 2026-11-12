@@ -8,6 +8,18 @@
   const classNames = ["Unknown", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer", "Civilian"];
   const maxHealth = [100, 75, 90, 100, 90, 90, 100, 100, 90, 80, 50];
   const icons = new Map();
+  const flagIcons = new Map();
+  for (const [id, color] of [[1, "blue"], [2, "red"]]) {
+    const image = new Image(); image.src = `/assets/images/icons/webp/${color}flag.webp`;
+    image.onload = () => { dirty = true; }; flagIcons.set(id, image);
+  }
+  function flagTeam(flag) {
+    if (flag.team === 1 || flag.team === 2) return flag.team;
+    if (/blue/i.test(flag.name)) return 1;
+    if (/red/i.test(flag.name)) return 2;
+    // Same fallback as the existing replay viewer when objective color is absent.
+    return flag.id === 1 || flag.id === 2 ? flag.id : null;
+  }
   for (let id = 1; id <= 9; id++) {
     const image = new Image(); image.src = `/assets/images/classes/${classNames[id]}old_tfc.png`;
     image.onload = () => { dirty = true; }; icons.set(id, image);
@@ -235,13 +247,23 @@
       const point = project(frame.x, frame.y);
       const x = point[0] + (frame.carrier ? size * .7 : 0), y = point[1] - (frame.carrier ? size * .4 : 0);
       const height = 24 * unit, width = 16 * unit;
-      ctx.globalAlpha = 1; ctx.lineWidth = 3 * unit; ctx.strokeStyle = "#10151c";
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - height); ctx.stroke();
-      ctx.strokeStyle = "#fff3ce"; ctx.lineWidth = 1.5 * unit; ctx.stroke();
-      ctx.fillStyle = "#ffd16b"; ctx.strokeStyle = "#10151c"; ctx.lineWidth = 2 * unit;
-      ctx.beginPath(); ctx.moveTo(x, y - height); ctx.lineTo(x + width, y - height + 6 * unit); ctx.lineTo(x, y - height + 12 * unit); ctx.closePath(); ctx.fill(); ctx.stroke();
+      const team = flagTeam(flag), icon = flagIcons.get(team), radius = 16 * unit;
+      ctx.globalAlpha = 1;
+      if (icon?.complete && icon.naturalWidth) {
+        // The supplied art has a background; crop it into a flag badge so the
+        // square image does not obscure the overview around the marker.
+        ctx.save(); ctx.beginPath(); ctx.arc(x, y - radius, radius, 0, Math.PI * 2); ctx.clip();
+        ctx.drawImage(icon, x - radius, y - radius * 2, radius * 2, radius * 2); ctx.restore();
+        ctx.strokeStyle = team === 1 ? "#60a5ff" : "#ff7886"; ctx.lineWidth = 2 * unit;
+        ctx.beginPath(); ctx.arc(x, y - radius, radius, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        ctx.lineWidth = 2 * unit; ctx.strokeStyle = "#fff3ce";
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - height); ctx.stroke();
+        ctx.fillStyle = "#ffd16b";
+        ctx.beginPath(); ctx.moveTo(x, y - height); ctx.lineTo(x + width, y - height + 6 * unit); ctx.lineTo(x, y - height + 12 * unit); ctx.closePath(); ctx.fill();
+      }
       if (!frame.carrier) {
-        ctx.textAlign = "center"; ctx.font = `600 ${11 * unit}px Inter, sans-serif`; ctx.lineWidth = 3 * unit;
+        ctx.textAlign = "center"; ctx.font = `600 ${11 * unit}px Inter, sans-serif`; ctx.lineWidth = 3 * unit; ctx.fillStyle = "#fff3ce"; ctx.strokeStyle = "#10151c";
         const label = flag.name + (frame.state === 2 ? " · dropped" : " · base");
         ctx.strokeText(label, x, y + 13 * unit); ctx.fillText(label, x, y + 13 * unit);
       }
