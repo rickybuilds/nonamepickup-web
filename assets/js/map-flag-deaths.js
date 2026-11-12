@@ -219,7 +219,8 @@
       }
       function updateWeapons() {
         const previous = weaponSelect.value;
-        const weapons = new Set(response.deaths.filter(row => matchesFilters(row, false, false)).map(row => weaponKey(row.weapon)));
+        const weapons = new Set(response.deaths.filter(row => matchesFilters(row, false, false))
+          .map(row => weaponKey(row.weapon)).filter(key => key !== "unknown"));
         weaponSelect.replaceChildren(new Option("All weapons", ""));
         for (const key of [...weapons].sort((a, b) => weaponName(a).localeCompare(weaponName(b)))) {
           weaponSelect.append(new Option(weaponName(key), key));
@@ -274,7 +275,9 @@
           ? (death.playerName || "Unknown player") + " (flag carrier)" + (death.attackerName ? "\nKilled by " + death.attackerName : "")
           : (death.playerName || "Unknown killer") + " → " + (death.victimName || "Unknown victim");
         const teams = death.attackerTeam && death.victimTeam ? " · Team " + death.attackerTeam + " → Team " + death.victimTeam : "";
-        tooltip.textContent = identity + "\n" + weaponName(weaponKey(death.weapon)) + teams + "\nRound " + death.round + " · replay " + replayTime(death.timeMs) + "\n" + (dateTime ? "Game: " + dateTime + "\n" : "Game time unavailable\n") + "Match " + death.matchId;
+        const weapon = weaponKey(death.weapon);
+        const weaponLine = weapon === "unknown" ? "" : weaponName(weapon) + "\n";
+        tooltip.textContent = identity + "\n" + weaponLine + (teams ? teams.trim() + "\n" : "") + "Round " + death.round + " · replay " + replayTime(death.timeMs) + "\n" + (dateTime ? "Game: " + dateTime + "\n" : "Game time unavailable\n") + "Match " + death.matchId;
         tooltip.hidden = false;
         const box = tooltip.getBoundingClientRect();
         tooltip.style.left = Math.max(4, Math.min(event.clientX + 14, window.innerWidth - box.width - 4)) + "px";
