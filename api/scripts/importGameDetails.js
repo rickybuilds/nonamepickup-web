@@ -74,7 +74,7 @@ async function main() {
   if (!options["--root"] || (!options["--elo"] && !options["--status"])) throw new Error("--root and --elo are required for import; use --help");
   const root = await fsp.realpath(options["--root"]), elo = options["--elo"] ? await fsp.realpath(options["--elo"]) : null;
   const workersText = options["--workers"] || "4", limitText = options["--limit"] || "1000000";
-  if (!/^[1-8]$/.test(workersText) || !/^[1-9]\d{0,6}$/.test(limitText)) throw new Error("Workers must be 1–8 and limit a positive integer");
+  if (!/^(?:[1-9]|10)$/.test(workersText) || !/^[1-9]\d{0,6}$/.test(limitText)) throw new Error("Workers must be 1–10 and limit a positive integer");
   if (options["--match"] && !/^[a-z0-9_-]{1,64}$/i.test(options["--match"])) throw new Error("Invalid match ID");
   const destination = await canonicalOutput(options["--db"] || path.join(root, "game-details.db"));
   if (elo && path.relative(elo, destination) === "") throw new Error("Output must differ from ELO snapshot");
