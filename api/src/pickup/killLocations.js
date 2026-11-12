@@ -8,13 +8,19 @@ function weaponText(value) {
   return /[a-z]/i.test(text) && !/^(?:unknown|player|worldspawn)$/i.test(text) ? text : "";
 }
 
+function weaponNoticeText(value) {
+  const text = String(value || '').trim();
+  if (/^[1-9]\d?$/.test(text) && Number(text) <= 29) return `weapon-${Number(text)}`;
+  return weaponText(text);
+}
+
 function weaponResolver(scene, events, entities) {
   const eventDeaths = new Map();
   for (const event of events) {
-    if (event.event !== "death" || !weaponText(event.text)) continue;
+    if (event.event !== "death" || !weaponNoticeText(event.text)) continue;
     const key = Number(event.actor_session) + ":" + Number(event.target_session);
     if (!eventDeaths.has(key)) eventDeaths.set(key, []);
-    eventDeaths.get(key).push(event);
+    eventDeaths.get(key).push({ ...event, weapon: weaponNoticeText(event.text) });
   }
   const removed = new Map(scene.filter(row => row.event === "entity_remove" && row.object_stream === "entity")
     .map(row => [Number(row.object_id), Number(row.time_ms)]));
@@ -28,7 +34,7 @@ function weaponResolver(scene, events, entities) {
     const time = Number(row.time_ms);
     const matches = (eventDeaths.get(Number(row.actor_session) + ":" + Number(row.target_session)) || [])
       .filter(event => Math.abs(Number(event.time_ms) - time) <= 100);
-    const names = new Set(matches.map(event => weaponText(event.text)));
+    const names = new Set(matches.map(event => event.weapon).filter(Boolean));
     if (names.size === 1) return [...names][0];
     // death.text is an edict, NOT a weapon ID. Resolve only an unambiguous,
     // living entity generation owned by this attacker; never map edict 10
@@ -44,7 +50,7 @@ function weaponResolver(scene, events, entities) {
 
 async function locateKills(stream, scene, maxAgeMs, { events = [], entities = [] } = {}) {
   const notices = new Map(scene.filter(row => row.event === "death_notice")
-    .map(row => [Number(row.object_id), weaponText(row.text)]));
+    .map(row => [Number(row.object_id), weaponNoticeText(row.text)]));
   const resolveWeapon = weaponResolver(scene, events, entities);
   const bySession = new Map();
   const seen = new Set();
