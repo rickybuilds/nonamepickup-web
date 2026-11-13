@@ -82,7 +82,24 @@ function createGameDetailsReader(filename) {
     finally { pending.delete(key); }
   }
 
-  return { read };
+  function available(matchId, round) {
+    if (!filename) return null;
+    let db;
+    try {
+      db = new Database(filename, { readonly: true, fileMustExist: true });
+      if (db.pragma("application_id", { simple: true }) !== 1195656268 ||
+          db.pragma("user_version", { simple: true }) !== 1) return null;
+      return db.prepare(`SELECT r.map FROM detail_rounds r JOIN detail_packages p ON p.round_id=r.id
+        WHERE r.match_id=? AND r.round_number=? AND p.format='game-details-pilot-v1'
+        AND p.encoding='json+gzip' AND length(p.payload)>0 AND length(p.payload)<=?
+        ORDER BY r.id DESC LIMIT 1`).get(matchId, round, MAX_STORED_BYTES) || null;
+    } catch (error) {
+      if (error.code === "SQLITE_CANTOPEN" || error.code === "ENOENT") return null;
+      throw error;
+    } finally { db?.close(); }
+  }
+
+  return { read, available };
 }
 
 module.exports = { createGameDetailsReader };

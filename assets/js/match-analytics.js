@@ -238,18 +238,39 @@ window.matchDashboard = (() => {
   }
 
   function mount(root,match) {
+    root.mapVisionCleanup?.();
+    const lifecycle=new AbortController();let playback=null;
+    root.mapVisionCleanup=()=>{playback?.destroy();lifecycle.abort();};
+    const matchId=String(match.id||match.match_id);
     const data=model(match);let active="overview",filter="both",roundFilter="all",replays=[],replaysLoaded=false;
     const timelineState={blue:{player:null,metric:"damage"},red:{player:null,metric:"damage"}};
     const tabs=[["overview","Player Overview"],["comparison","Team Comparison"],["timeline","Round Timeline"],["pace","Flag Pace"],["weapons","Weapon Usage"],["damage","Damage"],["vision","Map Vision"],["downloads","Downloads"]];
     const enabled=id=>(id!=="vision"||replays.length>0)&&(id!=="timeline"||data.roundIds.length>0)&&(id!=="weapons"||data.teams.some(t=>t.players.some(p=>p.weapons.length||p.roundWeapons.length)));
-    root.innerHTML=`<div class="analytics-nav"><div class="analytics-navigation-links"><div class="analytics-tabs" role="tablist" aria-label="Match analytics">${tabs.map(([id,label])=>`<button type="button" id="analytics-tab-${id}" data-analytics-tab="${id}" role="tab" aria-controls="analytics-content" aria-selected="${id===active}" tabindex="${id===active?0:-1}" ${enabled(id)?"":`disabled title="${id==="vision"?"Match statistics contain no positions. Checking recorded replays.":"No recorded data for this view."}"`}>${label}</button>`).join("")}</div><a class="analytics-back-link" href="matches.html">Back to Matches</a></div><div class="analytics-filter" role="group" aria-label="Team view"><span>View:</span>${[["both","Both"],["blue","Team 1"],["red","Team 2"]].map(([id,label])=>`<button type="button" data-team-filter="${id}" aria-pressed="${id===filter}">${label}</button>`).join("")}</div><div class="analytics-filter" role="group" aria-label="Round view"><span>Round:</span>${[["all","All rounds"],...data.roundIds.map(id=>[String(id),`Round ${id}`])].map(([id,label])=>`<button type="button" data-round-filter="${id}" aria-pressed="${id===roundFilter}">${label}</button>`).join("")}</div></div><div class="analytics-summaries">${data.teams.map(summary).join("")}</div><div id="analytics-content" role="tabpanel" aria-labelledby="analytics-tab-overview" tabindex="0"></div>`;
+    root.innerHTML=`<div class="analytics-nav"><div class="analytics-navigation-links"><div class="analytics-tabs" role="tablist" aria-label="Match analytics">${tabs.map(([id,label])=>`<button type="button" id="analytics-tab-${id}" data-analytics-tab="${id}" role="tab" ${id==="vision"?"hidden":""} aria-controls="analytics-content" aria-selected="${id===active}" tabindex="${id===active?0:-1}" ${enabled(id)?"":`disabled title="${id==="vision"?"Match statistics contain no positions. Checking recorded replays.":"No recorded data for this view."}"`}>${label}</button>`).join("")}</div><a class="analytics-back-link" href="matches.html">Back to Matches</a></div><div class="analytics-filter" role="group" aria-label="Team view"><span>View:</span>${[["both","Both"],["blue","Team 1"],["red","Team 2"]].map(([id,label])=>`<button type="button" data-team-filter="${id}" aria-pressed="${id===filter}">${label}</button>`).join("")}</div><div class="analytics-filter" role="group" aria-label="Round view"><span>Round:</span>${[["all","All rounds"],...[...new Set([...data.roundIds,1,2])].sort((a,b)=>a-b).map(id=>[String(id),`Round ${id}`])].map(([id,label])=>`<button type="button" data-round-filter="${id}" aria-pressed="${id===roundFilter}">${label}</button>`).join("")}</div></div><div class="analytics-summaries">${data.teams.map(summary).join("")}</div><div id="analytics-content" role="tabpanel" aria-labelledby="analytics-tab-overview" tabindex="0"></div>`;
     const content=root.querySelector("#analytics-content");
     function renderReplays() {
       const holder=content.querySelector("[data-replay-links]");if(!holder)return;
       const selected=replays.filter(r=>roundFilter==="all"||r.round===Number(roundFilter));
-      holder.innerHTML=selected.length?`<h3>Recorded replays & map exploration</h3><div class="analytics-download-links">${selected.map(r=>`<a href="pickup-replay.html?matchId=${encodeURIComponent(match.id||match.match_id)}&round=${r.round}">Round ${r.round} replay ↗</a>`).join("")}</div>`:empty(replaysLoaded?"No available replay was returned for this selection.":"Checking recorded replay availability…");
+      holder.innerHTML=selected.length?`<h3>Match overview replay</h3><div class="analytics-download-links">${selected.map(r=>`<a href="match.html?id=${encodeURIComponent(matchId)}&round=${r.round}#map-vision">Round ${r.round} overview replay</a>`).join("")}</div>`:empty(replaysLoaded?"No available replay was returned for this selection.":"Checking recorded replay availability…");
+    }
+    function syncUrl() {
+      const url=new URL(location.href);
+      if(active==="vision"){url.hash="map-vision";url.searchParams.set("round",roundFilter);}
+      else if(url.hash==="#map-vision"){url.hash="";url.searchParams.delete("round");}
+      history.replaceState(null,"",url);
+    }
+    function selectVisionRound() {
+      if(active==="vision"&&!replays.some(r=>String(r.round)===roundFilter))roundFilter=String(replays[0]?.round||1);
+      if(active!=="vision"&&roundFilter!=="all"&&!data.roundIds.includes(Number(roundFilter)))roundFilter="all";
     }
     function render() {
+      playback?.destroy();playback=null;selectVisionRound();
+      root.querySelector('[aria-label="Team view"]').hidden=active==="vision";
+      root.querySelector('.analytics-summaries').hidden=active==="vision";
+      root.querySelectorAll('[data-round-filter]').forEach(button=>{
+        const id=button.dataset.roundFilter;
+        button.hidden=active==="vision"?!replays.some(r=>String(r.round)===id):id!=="all"&&!data.roundIds.includes(Number(id));
+      });
       const viewData=roundView(data,roundFilter);
       root.querySelectorAll("[data-round-filter]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.roundFilter===roundFilter)));
       root.querySelector(".analytics-summaries").innerHTML=viewData.teams.map(summary).join("");
@@ -265,7 +286,12 @@ window.matchDashboard = (() => {
       if(active==="weapons")content.innerHTML=breakdown(viewData,"weapon",filter,true);
       if(active==="damage")content.innerHTML=damage(viewData,filter);
       if(active==="downloads"){content.innerHTML=downloads(viewData);renderReplays();}
-      if(active==="vision"){content.innerHTML=panel("Map Vision",'<div data-replay-links></div>',"Explore recorded positions, objectives and player perspectives in the existing 3D replay viewer.",true);renderReplays();}
+      if(active==="vision"){
+        content.innerHTML=`<section class="analytics-panel analytics-wide map-vision-panel"><header><h2>Map Vision</h2><a href="round-playback.html?match=${encodeURIComponent(matchId)}&round=${roundFilter}" target="_blank" rel="noopener">Open standalone ↗</a></header><div data-map-vision-player></div></section>`;
+        const host=content.querySelector('[data-map-vision-player]');
+        host.innerHTML=window.nnRoundPlayback.markup();
+        playback=window.nnRoundPlayback.mount(host,{matchId,round:Number(roundFilter),updateUrl:false});
+      }
     }
     root.addEventListener("click",event=>{
       const timelineButton=event.target.closest("[data-timeline-team]")||event.target.closest(".analytics-timeline-row")?.querySelector("[data-timeline-player]");
@@ -284,9 +310,9 @@ window.matchDashboard = (() => {
         if(details)details.open=!details.open;
       }
       const tab=event.target.closest("[data-analytics-tab]"),view=event.target.closest("[data-team-filter]"),round=event.target.closest("[data-round-filter]"),exportButton=event.target.closest("[data-export]");
-      if(tab&&!tab.disabled){active=tab.dataset.analyticsTab;render();}
+      if(tab&&!tab.disabled&&!tab.hidden){active=tab.dataset.analyticsTab;selectVisionRound();syncUrl();render();}
       if(view){filter=view.dataset.teamFilter;render();}
-      if(round){roundFilter=round.dataset.roundFilter;render();}
+      if(round&&!round.hidden){roundFilter=round.dataset.roundFilter;syncUrl();render();}
       if(exportButton){
         const kind=exportButton.dataset.export,cell=v=>{const s=String(v??"");return `"${(typeof v==="string"&&/^[=+\-@\t\r]/.test(s)?"'"+s:s).replace(/"/g,'""')}"`;};
         const rows=roundView(data,roundFilter).teams.filter(t=>filter==="both"||filter===t.color).flatMap(t=>t.players.map(p=>[t.label,p.player.name||p.player.display_name,p.stats.player_key,...fields.map(([key])=>p.metrics[key])]));
@@ -294,19 +320,40 @@ window.matchDashboard = (() => {
         const url=URL.createObjectURL(new Blob([body],{type:kind==="json"?"application/json":"text/csv;charset=utf-8"}));
         const link=document.createElement("a");link.href=url;link.download=`${match.id||match.match_id}-${kind==="csv"?`${roundFilter==="all"?"all-rounds":`round-${roundFilter}`}-${filter}`:"match"}.${kind}`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
       }
-    });
+    },{signal:lifecycle.signal});
     root.querySelector(".analytics-tabs").addEventListener("keydown",event=>{
       if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
-      const buttons=[...root.querySelectorAll("[data-analytics-tab]:not(:disabled)")],index=buttons.indexOf(document.activeElement);
+      const buttons=[...root.querySelectorAll("[data-analytics-tab]:not(:disabled)")].filter(button=>!button.hidden),index=buttons.indexOf(document.activeElement);
       const next=event.key==="Home"?0:event.key==="End"?buttons.length-1:(index+(event.key==="ArrowRight"?1:-1)+buttons.length)%buttons.length;
-      event.preventDefault();buttons[next].focus();active=buttons[next].dataset.analyticsTab;render();
-    });
+      event.preventDefault();buttons[next].focus();active=buttons[next].dataset.analyticsTab;selectVisionRound();syncUrl();render();
+    },{signal:lifecycle.signal});
     const describe=event=>{const point=event.target.closest("[data-capture]");if(point){const detail=point.closest(".analytics-panel").querySelector(".analytics-chart-detail");if(detail)detail.textContent=point.dataset.capture;}};
-    root.addEventListener("mouseover",describe);root.addEventListener("focusin",describe);
+    root.addEventListener("mouseover",describe,{signal:lifecycle.signal});root.addEventListener("focusin",describe,{signal:lifecycle.signal});
     render();
-    Promise.all(data.roundIds.map(async round=>{
-      try{const response=await fetch(`api/pickup-replays/viewer/${encodeURIComponent(match.id||match.match_id)}/${round}`);if(!response.ok)return null;const metadata=await response.json();return metadata.files?{round,metadata}:null;}catch{return null;}
-    })).then(results=>{replays=results.filter(Boolean);replaysLoaded=true;const tab=root.querySelector('[data-analytics-tab="vision"]');tab.disabled=!replays.length;tab.title=replays.length?"Explore recorded replays":"No recorded replay positions available for this match.";renderReplays();});
+    function followLocation() {
+      if(location.hash==="#map-vision"&&replays.length){
+        active="vision";roundFilter=new URLSearchParams(location.search).get("round")||"1";
+        selectVisionRound();syncUrl();render();root.scrollIntoView({block:"start"});
+      } else if(active==="vision"&&location.hash!=="#map-vision"){active="overview";render();}
+    }
+    window.addEventListener("hashchange",followLocation,{signal:lifecycle.signal});
+    window.addEventListener("popstate",followLocation,{signal:lifecycle.signal});
+    Promise.all([
+      fetch("/assets/tfc/overviews/manifest.json",{signal:lifecycle.signal}).then(r=>r.ok?r.json():{}).catch(()=>({})),
+      Promise.all([1,2].map(async round=>{
+        try{
+          const response=await fetch(`api/pickup-replays/viewer/${encodeURIComponent(matchId)}/${round}/availability`,{signal:lifecycle.signal,cache:"no-cache"});
+          if(!response.ok)return null;const result=await response.json();
+          return result.available?{round,map:result.map}:null;
+        }catch{return null;}
+      }))
+    ]).then(([overviews,results])=>{
+      if(lifecycle.signal.aborted||!root.isConnected)return;
+      replays=results.filter(r=>r&&overviews[String(r.map).toLowerCase()]);replaysLoaded=true;
+      const tab=root.querySelector('[data-analytics-tab="vision"]');
+      tab.hidden=!replays.length;tab.disabled=!replays.length;tab.title=replays.length?"Watch recorded round playback":"";
+      if(location.hash==="#map-vision"&&replays.length)followLocation();else renderReplays();
+    });
   }
   return {mount};
 })();

@@ -89,6 +89,24 @@ function createPickupReplayViewerRouter({ viewer, gameDetailsDb, legacyFilesEnab
   const router = express.Router();
   const details = createGameDetailsReader(gameDetailsDb);
 
+  router.get("/pickup-replays/viewer/:matchId/:round/availability", async (req, res) => {
+    res.set("Cache-Control", "private, no-cache");
+    try {
+      const identity = parseViewerIdentity(req.params.matchId, req.params.round);
+      let stored;
+      try { stored = details.available(identity.matchId, identity.round); }
+      catch { /* Prepared playback remains a supported fallback. */ }
+      if (stored) return res.json({ available: true, map: stored.map, round: identity.round });
+      const artifact = await viewer.artifact(identity.matchId, identity.round);
+      if (artifact.status !== "complete") return res.json({ available: false });
+      await fs.promises.access(playbackPath(viewer.storage.root, artifact.sha256), fs.constants.R_OK);
+      res.json({ available: true, map: artifact.map, round: identity.round });
+    } catch (error) {
+      if (error.code === "ENOENT" || error instanceof PickupError && error.status === 404) return res.json({ available: false });
+      res.status(error instanceof PickupError ? error.status : 500).json({ available: false });
+    }
+  });
+
   router.get("/pickup-replays/viewer/:matchId/:round/tactical", async (req, res) => {
     try {
       const identity = parseViewerIdentity(req.params.matchId, req.params.round);

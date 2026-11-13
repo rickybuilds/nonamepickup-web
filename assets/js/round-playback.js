@@ -1,10 +1,13 @@
 (() => {
   "use strict";
-  const $ = id => document.getElementById(id);
+  function mount(root, options = {}) {
+  const lifecycle = new AbortController();
+  let destroyed = false, animationFrame = 0;
+  const $ = id => root.querySelector(`[id="${id}"]`);
   const canvas = $("map"), ctx = canvas.getContext("2d");
   const params = new URLSearchParams(location.search);
-  $("match").value = params.get("match") || "HDPVET";
-  $("round").value = params.get("round") === "2" ? "2" : "1";
+  $("match").value = options.matchId || params.get("match") || "HDPVET";
+  $("round").value = String(options.round || params.get("round")) === "2" ? "2" : "1";
   const classNames = ["Unknown", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer", "Civilian"];
   const maxHealth = [100, 75, 90, 100, 90, 90, 100, 100, 90, 80, 50];
   const icons = new Map();
@@ -121,7 +124,7 @@
     const response = await fetch(url, { signal, cache: "no-cache" });
     if (!response.ok) {
       let code = ""; try { code = (await response.json()).error; } catch {}
-      if (code === "tactical_not_prepared") throw new Error("This round has not been prepared yet. Prepare this match on the server, then select Load round again.");
+      if (code === "tactical_not_prepared") throw new Error("This round has not been prepared yet. The recording is still being processed. Try reloading this round shortly.");
       throw new Error(`Could not load round data (${response.status}). Check the match and round, then try again.`);
     }
     return response.json();
@@ -373,12 +376,12 @@
     const match = $("match").value.trim(), round = Number($("round").value);
     if (!/^[a-z0-9_-]{1,64}$/i.test(match)) return say("Enter a valid match ID.", true);
     controller?.abort(); controller = new AbortController(); const version = ++loadVersion;
-    pause(); $("viewer").hidden = true; $("load").disabled = true; say("Loading compact round playback…");
+    pause(); $("viewer").hidden = true; $("load").disabled = true; say("Loading round playback…");
     try {
       const next = await json(`/api/pickup-replays/viewer/${encodeURIComponent(match)}/${round}/tactical`, controller.signal);
-      if (next.version !== 2 || next.stride !== 10 || !Array.isArray(next.players) || !next.players.length) throw new Error("Prepared playback is empty or incompatible. Prepare the round again.");
+      if (next.version !== 2 || next.stride !== 10 || !Array.isArray(next.players) || !next.players.length) throw new Error("Playback is unavailable for this recording. Try reloading the round later.");
       const view = await overview(next.map, controller.signal);
-      if (version !== loadVersion) return;
+      if (destroyed || version !== loadVersion) return;
       data = next; background = view.background; project = view.project;
       byId.clear(); rosterStates.clear(); $("roster").replaceChildren();
       const all = document.createElement("button"); all.textContent = "Everyone"; all.onclick = () => selectPlayer(""); $("roster").append(all);
@@ -394,11 +397,13 @@
       }
       resolveFlagTeams();
       $("map-name").textContent = data.map; $("round-meta").textContent = `${data.players.length} players · ${clock(data.durationMs)} recorded · Round ${round}`;
-      $("map-link").href = "map.html?map=" + encodeURIComponent(data.map);
+      if ($("map-link")) $("map-link").href = "map.html?map=" + encodeURIComponent(data.map);
       $("timeline").max = String(data.durationMs); mapSpace.style.width = "100%"; mapSpace.style.height = "1px";
       $("viewer").hidden = false;
       fitViewport(true);
-      const url = new URL(location.href); url.searchParams.set("match", match); url.searchParams.set("round", String(round)); history.replaceState(null, "", url);
+      if (options.updateUrl !== false) {
+        const url = new URL(location.href); url.searchParams.set("match", match); url.searchParams.set("round", String(round)); history.replaceState(null, "", url);
+      }
       time = 0; selectPlayer(""); seek(0);
       say(`Ready · ${match}, round ${round}. Select a player, choose a life, and press Play.`);
     } catch (error) { if (version === loadVersion && error.name !== "AbortError") say(error.message, true); }
@@ -411,9 +416,12 @@
   $("life").onchange = lifeChange; $("previous-life").onclick = () => stepLife(-1); $("next-life").onclick = () => stepLife(1);
   $("reset-view").onclick = () => fitViewport(true);
   $("effects").onchange = $("trail").onchange = $("flags").onchange = () => { dirty = true; };
-  window.addEventListener("resize", () => { fitViewport(); dirty = true; });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+  window.addEventListener("resize", () => { fitViewport(); dirty = true; }, { signal: lifecycle.signal });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); }, { signal: lifecycle.signal });
+  const resizeObserver = new ResizeObserver(() => { fitViewport(); dirty = true; });
+  resizeObserver.observe(root === document ? document.body : root);
   function tick(now) {
+    if (destroyed) return;
     const elapsed = Math.min(250, now - lastTick); lastTick = now;
     if (playing && data) {
       time = Math.min(currentLife()?.endMs ?? data.durationMs, time + elapsed * Number($("speed").value));
@@ -421,7 +429,41 @@
       dirty = true;
     }
     if (dirty) { draw(); dirty = false; if (now - lastUI >= 200 || !playing) { updateUI(); lastUI = now; } }
-    requestAnimationFrame(tick);
+    animationFrame = requestAnimationFrame(tick);
   }
-  requestAnimationFrame(tick); void load();
+  animationFrame = requestAnimationFrame(tick); void load();
+  return { destroy() {
+    destroyed = true; loadVersion++; playing = false;
+    controller?.abort(); lifecycle.abort(); resizeObserver.disconnect();
+    cancelAnimationFrame(animationFrame); data = null; background = null;
+    byId.clear(); rosterStates.clear();
+  }};
+  }
+  window.nnRoundPlayback = { mount, markup: () => `
+<div class="map-vision-player"><form id="load-form" class="playback-reload"><input id="match" type="hidden"><input id="round" type="hidden"><span id="round-meta"></span><button id="load" type="submit">Reload round</button></form>
+    <p id="status" role="status">Loading round playback…</p>
+    <section id="viewer" hidden aria-label="Tactical round playback">
+      <div class="playback-layout">
+        <div class="stage">
+          <div class="stage-tools"><strong id="map-name"></strong><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label><input id="effects" type="checkbox" checked> Conc endpoints</label><label><input id="trail" type="checkbox" checked> Life trail</label></div>
+          <label><input id="flags" type="checkbox" checked> Show flags</label>
+          <p id="flag-status" class="note" aria-label="Recorded flag states" title="Colors use recorded flag metadata or carrier evidence in two-flag CTF rounds. Unknown colors stay neutral."></p>
+          <p class="map-hint">Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset</p>
+          <div id="viewport" tabindex="0" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, and flags"></canvas></div></div>
+          <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
+          <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
+          <p id="trail-info" class="note">Trails: everyone’s last 5 seconds. Select a player for their full life path.</p>
+          <div class="legend"><span><i class="blue"></i>In-game blue</span><span><i class="red"></i>In-game red</span><span>× Death</span><span><i class="conc"></i>Conc endpoint effect</span></div>
+        </div>
+        <aside>
+          <section><h2>Follow a player</h2><div id="roster" class="roster"></div></section>
+          <section><h2>Spawn → death</h2><label class="life-label">Recorded life<select id="life"><option value="">Full round</option></select></label><p id="life-detail">Choose a player to inspect their lives.</p><div class="life-nav"><button id="previous-life">Previous life</button><button id="next-life">Next life</button></div></section>
+          <section><h2>Recent events</h2><div id="events" aria-label="Recent kill and death events"></div></section>
+        </aside>
+      </div>
+      <details class="playback-notes"><summary>About recorded data</summary><p class="note">Movement and health are sampled. Colors follow in-game teams. Conc rings show recorded projectile endpoints, not confirmed detonations. Life starts are first observed alive samples.</p></details>
+    </section>
+</div>
+` };
+  if (document.querySelector("#load-form")) mount(document);
 })();
