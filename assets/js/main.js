@@ -348,6 +348,7 @@ async function initRandomPageHero() {
     "matches-page",
     "leaderboard-page",
     "analytics-page",
+    "speedruns-page",
     "kicked-page",
     "compare-page",
     "live2-page",

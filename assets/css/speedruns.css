@@ -3158,7 +3158,9 @@
 }
 
 .speedrun-hub-hero-image {
-  object-fit: cover;
+  background-image: var(--page-hero-image, url("/assets/images/headers/header-blue-01.webp"));
+  background-position: center;
+  background-size: cover;
   filter: saturate(.78) brightness(.68);
 }
 
