@@ -89,3 +89,5 @@ elo.db-wal
 docs/superpowers/plans/2026-10-22-analytics-layout-challenge.md
 docs/superpowers/specs/2026-10-22-analytics-layout-challenge-design.md
 PRODUCT.md
+*.tga
+*.zip
