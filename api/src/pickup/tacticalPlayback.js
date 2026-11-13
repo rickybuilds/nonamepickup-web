@@ -88,7 +88,7 @@ async function buildPlayback({ metadata, text, stream, indexedKills = [] }) {
     }
   }
   const definitions = parseCsv(await text("projectile_defs.csv"), "projectiles");
-  const concs = createConcEndpointCollector(definitions, metadata.sampleIntervalMs);
+  const concs = createConcEndpointCollector(definitions, metadata.sampleIntervalMs, players);
   if (definitions.some(row => /conc/i.test(`${row.classname || ""} ${row.model || ""}`))) {
     await stream("projectiles.csv", input => numericRows(input, get => concs.consume({
       id: get("projectile_id"), time: get("time_ms"), state: get("state"), x: get("x"), y: get("y"), z: get("z")
@@ -113,11 +113,11 @@ async function buildPlayback({ metadata, text, stream, indexedKills = [] }) {
     if (last < 0 || frame[0] - flag.frames[last] >= 100 || frame[4] !== flag.frames[last + 4] || frame[5] !== flag.frames[last + 5]) flag.frames.push(...frame);
   }));
   events.sort((a, b) => a.time - b.time);
-  return { version: VERSION, matchId: metadata.matchId, round: metadata.round, map: metadata.map,
+  return { version: VERSION, concPositionVersion: 2, matchId: metadata.matchId, round: metadata.round, map: metadata.map,
     sha256: metadata.sha256, durationMs, sampleIntervalMs: Math.max(100, metadata.sampleIntervalMs), sourceSampleIntervalMs: metadata.sampleIntervalMs, stride: STRIDE,
     frameFields: ["time", "x", "y", "z", "yaw", "alive", "health", "armor", "class", "team"],
     players: players.filter(player => player.frames.length), events, flags,
     notes: ["Movement and health are sampled. Gaps and respawns are not interpolated.",
-      "Conc rings mark recorded projectile removal endpoints, not verified detonations. Handheld concs without a projectile are not inferred."] };
+      "Conc rings use recorded projectile endpoints, or owner-position estimates when projectile coordinates are unavailable; removal is not verified detonation."] };
 }
 module.exports = { VERSION, playbackPath, buildPlayback };

@@ -8,7 +8,7 @@
   <link rel="icon" href="/assets/images/favicon.ico">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/round-playback.css?v=3sharpzoom">
-  <script src="assets/js/round-playback.js?v=20261113conc2" defer></script>
+  <script src="assets/js/round-playback.js?v=20261113conc3" defer></script>
 </head>
 <body>
   <main>
@@ -23,7 +23,7 @@
     <section id="viewer" hidden aria-label="Tactical round playback">
       <div class="playback-layout">
         <div class="stage">
-          <div class="stage-tools"><strong id="map-name"></strong><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label><input id="effects" type="checkbox" checked> Conc endpoints</label><label><input id="trail" type="checkbox" checked> Life trail</label></div>
+          <div class="stage-tools"><strong id="map-name"></strong><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label></div>
           <label><input id="flags" type="checkbox" checked> Show flags</label>
           <p id="flag-status" class="note" aria-label="Recorded flag states" title="Colors use recorded flag metadata or carrier evidence in two-flag CTF rounds. Unknown colors stay neutral."></p>
           <p class="map-hint">Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset</p>
@@ -39,7 +39,7 @@
           <section><h2>Recent events</h2><div id="events" aria-label="Recent kill and death events"></div></section>
         </aside>
       </div>
-      <p class="note">Movement and health are sampled. Names and colors follow the recorded in-game teams. Conc rings mark recorded projectile endpoints; they do not prove detonation, and handheld concs without a projectile are not inferred. Life starts are first observed alive samples.</p>
+      <p class="note">Movement and health are sampled. Names and colors follow the recorded in-game teams. Conc effects use recorded projectile positions or owner-position estimates when grenade coordinates are unavailable. Life starts are first observed alive samples.</p>
     </section>
   </main>
 </body>
