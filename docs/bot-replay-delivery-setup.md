@@ -52,6 +52,10 @@ from="BOT_OUTBOUND_IP",restrict,command="/usr/local/sbin/tfc-replay-maintenance-
 
 If bot and API share a host, a loopback SSH connection is supported; authorize its actual loopback source address instead. For IPv4 loopback use `from="127.0.0.1"` and `PICKUP_DELIVERY_WEB_HOST=127.0.0.1`. This key can only request `maintain MATCH_ID`. The helper uses the existing maintenance lock, imports up to 99 due rounds and confirms both requested rounds are ready. It uses `api/.env` for queue configuration; the checkout and lock paths match the existing production deployment.
 
+The helper returns 73 with a diagnostic when another worker holds the lock, and 75 with the requested rounds' states when maintenance succeeds but those rounds are not ready. The bot retries these expected waits after 30 seconds without increasing failure backoff. If the bulk worker fails on another match, the helper still checks the requested match and succeeds when both requested rounds are ready. If they are not ready, worker failures retain their original exit status and output. Bot failure diagnostics include the exit code, signal, killed flag and bounded stdout/stderr tails.
+
+When updating this behavior, rerun the `install` command above after pulling: the SSH forced command runs the installed copy in `/usr/local/sbin`, so pulling the repository alone does not update it. Pull/restart the bot as described below to enable the matching retry handling.
+
 ## Trust destination host keys
 
 Populate the bot account's `/root/.ssh/known_hosts` with each game server and the web server. Compare host-key fingerprints against a trusted console before trusting them. `ssh-keyscan` can collect candidate keys but does not authenticate them. The integration requires `StrictHostKeyChecking=yes`; unknown or changed keys fail and retain the job for retry.
