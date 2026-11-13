@@ -1109,7 +1109,10 @@ function hydrateRecentMapImages(){
     const mapName=img.dataset.mapName||"";
     if(!mapName||img.dataset.loadedMap===mapName)return;
     img.dataset.loadedMap=mapName;
-    window.setMapImageFromName?.(img,mapName,{containerSelector:".recent-map-thumb"});
+    window.setMapImageFromName?.(img,mapName,{
+      containerSelector:".recent-map-thumb",
+      fallbackSrc:"assets/images/maps/NoMap.webp"
+    });
   });
 }
 
