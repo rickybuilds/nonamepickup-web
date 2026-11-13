@@ -2,6 +2,7 @@
 const path = require("node:path");
 const readline = require("node:readline");
 const { parseCsv, normalizeRoster } = require("./csv");
+const { createConcEndpointCollector } = require("./concEndpoints");
 const VERSION = 2;
 const STRIDE = 10; // time,x,y,z,yaw,alive,health,armor,class,team
 function playbackPath(root, sha) {
@@ -87,17 +88,13 @@ async function buildPlayback({ metadata, text, stream, indexedKills = [] }) {
     }
   }
   const definitions = parseCsv(await text("projectile_defs.csv"), "projectiles");
-  const concIds = new Map(definitions.filter(row => /conc/i.test(row.classname + " " + (row.model || "")))
-    .map(row => [Number(row.projectile_id), Number(row.owner_session)]));
-  const endpoints = new Map();
-  if (concIds.size) await stream("projectiles.csv", input => numericRows(input, get => {
-    const id = get("projectile_id");
-    if (!concIds.has(id)) return;
-    const endpoint = { time: get("time_ms"), type: "conc-endpoint", owner: concIds.get(id),
-      x: get("x"), y: get("y"), z: get("z") };
-    if ([endpoint.time, endpoint.x, endpoint.y, endpoint.z].every(Number.isFinite) && get("state") === 0) endpoints.set(id, endpoint);
-  }));
-  events.push(...endpoints.values());
+  const concs = createConcEndpointCollector(definitions, metadata.sampleIntervalMs);
+  if (definitions.some(row => /conc/i.test(`${row.classname || ""} ${row.model || ""}`))) {
+    await stream("projectiles.csv", input => numericRows(input, get => concs.consume({
+      id: get("projectile_id"), time: get("time_ms"), state: get("state"), x: get("x"), y: get("y"), z: get("z")
+    })));
+  }
+  events.push(...concs.events());
   const models = metadata.files.renderModels ? parseCsv(await text("render_models.csv"), "models") : [];
   const modelPaths = new Map(models.map(row => [Number(row.model_id), row.path]));
   const objectives = parseCsv(await text("objective_defs.csv"), "objectives");

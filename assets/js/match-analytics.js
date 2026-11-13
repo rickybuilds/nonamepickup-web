@@ -287,7 +287,7 @@ window.matchDashboard = (() => {
       if(active==="damage")content.innerHTML=damage(viewData,filter);
       if(active==="downloads"){content.innerHTML=downloads(viewData);renderReplays();}
       if(active==="vision"){
-        content.innerHTML=`<section class="analytics-panel analytics-wide map-vision-panel"><header><h2>Map Vision</h2><a href="round-playback.html?match=${encodeURIComponent(matchId)}&round=${roundFilter}" target="_blank" rel="noopener">Open standalone ↗</a></header><div data-map-vision-player></div></section>`;
+        content.innerHTML='<section class="analytics-panel analytics-wide map-vision-panel"><div data-map-vision-player></div></section>';
         const host=content.querySelector('[data-map-vision-player]');
         host.innerHTML=window.nnRoundPlayback.markup();
         playback=window.nnRoundPlayback.mount(host,{matchId,round:Number(roundFilter),updateUrl:false});

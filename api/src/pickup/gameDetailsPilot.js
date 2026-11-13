@@ -14,7 +14,7 @@ const { validateManifest } = require("./manifest");
 const { buildPlayback } = require("./tacticalPlayback");
 const { alignKillWeapons } = require("./killWeaponAlignment");
 
-const CONVERTER = "game-details-3";
+const CONVERTER = "game-details-4";
 const SMALL = ["roster.csv", "events.csv", "scene_events.csv", "entity_meta.csv",
   "projectile_defs.csv", "objective_defs.csv", "buildable_defs.csv", "render_models.csv",
   "entity_defs.csv", "brush_defs.csv"];

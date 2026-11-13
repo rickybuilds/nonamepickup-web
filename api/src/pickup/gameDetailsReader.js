@@ -5,6 +5,8 @@ const { createHash } = require("node:crypto");
 const { gunzip, gzip } = require("node:zlib");
 const { promisify } = require("node:util");
 const { VERSION } = require("./tacticalPlayback");
+const { parseCsv } = require("./csv");
+const { concEndpointsFromTracks } = require("./concEndpoints");
 
 const decode = promisify(gunzip), encode = promisify(gzip);
 const MAX_STORED_BYTES = 64 * 1024 * 1024;
@@ -66,8 +68,15 @@ function createGameDetailsReader(filename) {
       }
       // The package also contains private companion analytics, raw CSVs and
       // conversion metadata. Only the embedded public playback leaves this reader.
+      if (playback.events.some(event => event.type === "conc-endpoint" && event.positionSource !== "last-active-projectile") &&
+          typeof source.rawCsv?.["projectile_defs.csv"] === "string") {
+        const corrected = concEndpointsFromTracks(parseCsv(source.rawCsv["projectile_defs.csv"], "projectiles"),
+          source.tracks?.projectiles, Math.max(100, playback.sampleIntervalMs || 100));
+        if (corrected) playback.events = playback.events.filter(event => event.type !== "conc-endpoint")
+          .concat(corrected).sort((a, b) => a.time - b.time);
+      }
       const result = { gzip: await encode(JSON.stringify(playback)),
-        etag: `"tactical-db-v${VERSION}-${row.revision}-${row.payload_sha256}"` };
+        etag: `"tactical-db-v${VERSION}-conc2-${row.revision}-${row.payload_sha256}"` };
       if (result.gzip.length <= MAX_CACHE_BYTES) {
         while (cache.size >= MAX_CACHE_ENTRIES || cacheBytes + result.gzip.length > MAX_CACHE_BYTES) {
           const first = cache.keys().next().value;

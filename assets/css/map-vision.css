@@ -1,6 +1,5 @@
 /* Native match playback: keep every player rule scoped to its own surface. */
 .analytics-tabs [hidden],.analytics-filter[hidden],.analytics-summaries[hidden],.analytics-filter [hidden]{display:none!important}
-.map-vision-panel>header a{font-size:13px;color:#8dc7ff;text-underline-offset:4px}
 .map-vision-player{font-family:Inter,Arial,sans-serif;color:#e6edf7;min-width:0}
 .map-vision-player *{box-sizing:border-box;scrollbar-color:#49637e #10151c;scrollbar-width:thin}
 .map-vision-player [hidden]{display:none!important}
@@ -20,7 +19,8 @@
 .map-vision-player [id=status].error{color:#ffc19f}
 .map-vision-player .playback-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px}
 .map-vision-player .stage{min-width:0}
-.map-vision-player .stage-tools{margin-bottom:12px;min-height:40px}
+.map-vision-player .stage-tools{margin-bottom:12px;min-height:40px;flex-wrap:nowrap;overflow-x:auto;padding:3px}
+.map-vision-player .stage-tools>*{flex-shrink:0;white-space:nowrap}
 .map-vision-player .stage-tools strong{margin-right:auto;font-size:15px}
 .map-vision-player [id=viewport]{max-height:72vh;overflow:auto;background:#10151c;border:1px solid #293c52;border-radius:8px;overscroll-behavior:contain;cursor:grab;touch-action:pan-x pan-y}
 .map-vision-player [id=viewport].is-dragging{cursor:grabbing;user-select:none}
@@ -53,8 +53,6 @@
 .map-vision-player :is(.note,.map-hint,[id=zoom-level]){color:#b6c5d9;font-size:12px;line-height:1.6}
 .map-vision-player .map-hint{margin:8px 0}
 .map-vision-player .note{max-width:100ch}
-.map-vision-player .playback-notes{margin-top:18px;color:#b6c5d9;font-size:13px}
-.map-vision-player .playback-notes summary{cursor:pointer}
 @media(max-width:1000px){
   .map-vision-player .playback-layout{grid-template-columns:1fr}
   .map-vision-player aside{display:grid;grid-template-columns:1fr 1fr;gap:20px}
@@ -63,7 +61,6 @@
 @media(max-width:560px){
   .map-vision-player aside{grid-template-columns:1fr;gap:0}
   .map-vision-player .stage-tools{gap:10px}
-  .map-vision-player .stage-tools strong{width:100%}
   .map-vision-player .transport{gap:6px}
   .map-vision-player .transport button{padding:8px;min-width:40px}
   .map-vision-player .transport label{margin-left:auto}

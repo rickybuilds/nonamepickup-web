@@ -304,6 +304,10 @@
       const age = time - event.time;
       if (age < 0 || age > 1800) continue;
       if (event.type === "conc-endpoint" && $("effects").checked) {
+        // Older prepared files can contain cleared removal coordinates. Do not
+        // draw an origin effect when no valid recorded position is available.
+        if (![event.x, event.y, event.z].every(Number.isFinite) ||
+            (event.x === 0 && event.y === 0 && event.z === 0)) continue;
         const [x, y] = project(event.x, event.y);
         ctx.globalAlpha = Math.max(0, 1 - age / 1800); ctx.strokeStyle = "#7fe5a7"; ctx.lineWidth = 2 * unit;
         ctx.beginPath(); ctx.arc(x, y, (8 + age / 35) * unit, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
@@ -445,8 +449,7 @@
     <section id="viewer" hidden aria-label="Tactical round playback">
       <div class="playback-layout">
         <div class="stage">
-          <div class="stage-tools"><strong id="map-name"></strong><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label><input id="effects" type="checkbox" checked> Conc endpoints</label><label><input id="trail" type="checkbox" checked> Life trail</label></div>
-          <label><input id="flags" type="checkbox" checked> Show flags</label>
+          <div class="stage-tools"><strong id="map-name"></strong><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label><input id="effects" type="checkbox" checked> Conc endpoints</label><label><input id="trail" type="checkbox" checked> Life trail</label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
           <p id="flag-status" class="note" aria-label="Recorded flag states" title="Colors use recorded flag metadata or carrier evidence in two-flag CTF rounds. Unknown colors stay neutral."></p>
           <p class="map-hint">Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset</p>
           <div id="viewport" tabindex="0" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, and flags"></canvas></div></div>
@@ -461,7 +464,6 @@
           <section><h2>Recent events</h2><div id="events" aria-label="Recent kill and death events"></div></section>
         </aside>
       </div>
-      <details class="playback-notes"><summary>About recorded data</summary><p class="note">Movement and health are sampled. Colors follow in-game teams. Conc rings show recorded projectile endpoints, not confirmed detonations. Life starts are first observed alive samples.</p></details>
     </section>
 </div>
 ` };
