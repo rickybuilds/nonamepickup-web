@@ -46,7 +46,7 @@ async function main() {
   }
   if (options["--help"]) {
     console.log("Usage: node api/scripts/maintainGameDetails.js [--limit 4] [--prune] | --status | --dry-run");
-    console.log("Server cron worker: discover recent complete uploads, import/refresh due rounds, retry failures. Run under the same flock lock for every invocation.");
+    console.log("Server cron worker: discover recent complete uploads, import missing rounds, retry failures. Verified rounds are complete and never scheduled again. Run under the same flock lock for every invocation.");
     console.log("--dry-run only verifies/lists expired cleanup candidates; it does not import or delete. --status only reads queue state.");
     console.log("Actual --prune requires GAME_DETAILS_ARCHIVE_DELETE=true and PICKUP_LEGACY_REPLAY_ENABLED=false. Defaults to retaining archives.");
     return;

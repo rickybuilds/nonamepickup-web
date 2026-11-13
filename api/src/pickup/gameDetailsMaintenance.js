@@ -40,6 +40,17 @@ async function runQueuedImports({ queue, storage, destination, elo, limit = 4, l
     if (shouldStop()) break;
     queue.attempting(job.artifact_id);
     try {
+      // Historical imports may already contain this exact source. Verify the
+      // package first so those jobs never need to open or hash the archive.
+      let existing;
+      try { existing = verifyImportedRound(destination, job); }
+      catch { /* Missing or invalid packages must be imported/repaired below. */ }
+      if (existing) {
+        queue.success(job, existing.revision);
+        result.unchanged++;
+        logger.log(`[game-details] ${job.match_id}/${job.round_number}: already stored/verified; archive skipped`);
+        continue;
+      }
       const converted = await convertRound({ archive: storage.artifactPath(job.storage_key), destination,
         match: job.match_id, round: job.round_number, elo, skipExisting: true, log: text => logger.log(text) });
       const verified = verifyImportedRound(destination, job, converted.revision);

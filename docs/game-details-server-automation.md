@@ -2,7 +2,7 @@
 
 New completed recordings are imported automatically by a five-minute cron worker. Conversion happens outside the API process. Each run reconciles the last 14 days of verified complete primary artifacts in MariaDB into `/root/tfcbot/game-details-queue.db`, then processes at most four due rounds sequentially into `/root/tfcbot/game-details.db`. `flock` prevents overlapping maintenance runs; this is one server conversion worker, not four parallel workers.
 
-The queue is separate from ELO and details. Failed jobs retry after 15 minutes and retain their error. Successful jobs are refreshed at roughly 2 minutes, 15 minutes, 2 hours and 24 hours after first import to pick up late analytics/weapons/role information. Actual execution follows the five-minute cron cadence and available capacity. Unchanged revisions are skipped and their stored payload is verified. Aborted/unverified uploads are never queued. A recording must be at least 30 seconds past upload verification before conversion, so a just-arrived round may wait until the next cron pass. Recent new uploads are prioritized over historical catch-up.
+The queue is separate from ELO and details. Failed jobs retry after 15 minutes and retain their error. Successful jobs are complete and are never scheduled again. The first writable run of the updated worker clears existing ready-job refresh schedules automatically. Pending/retry jobs first verify a matching package in the details database; valid packages are marked ready without opening or hashing their archives. Missing or invalid packages proceed to conversion. Late analytics/weapons/role updates require a deliberate import. Aborted/unverified uploads are never queued. A recording must be at least 30 seconds past upload verification before conversion, so a just-arrived round may wait until the next cron pass. Recent new uploads are prioritized over historical catch-up.
 
 ## Install after the desktop import
 
@@ -35,9 +35,9 @@ node /var/www/tfcbot/api/scripts/maintainGameDetails.js --status
 tail -n 60 /root/tfcbot/game-details-maintenance.log
 ```
 
-Status is read only and reports pending/ready/retry counts, deleted archive counts and the latest job errors. Missing files or unavailable analytics/indexes are retained for inspection rather than classified as successful deletion. An analytics refresh can create a new package revision; the API reads the newest compatible revision.
+Status is read only and reports pending/ready/retry counts, deleted archive counts and the latest job errors. Missing files or unavailable analytics/indexes are retained for inspection rather than classified as successful deletion. A deliberate import can create a new package revision; the API reads the newest compatible revision.
 
-`GAME_DETAILS_CATCHUP_DAYS` defaults to 14. This discovery window seeds missed uploads; already queued retry/refresh jobs remain in the queue after they age beyond it. After an outage longer than that window, temporarily increase it to cover the outage, run/re-enable maintenance, then restore it. The worker scans verified metadata, not the entire archive directory. Existing recordings imported on the desktop are still checked against the server's current ELO references when encountered.
+`GAME_DETAILS_CATCHUP_DAYS` defaults to 14. This discovery window seeds missed uploads; already queued pending/retry jobs remain in the queue after they age beyond it. After an outage longer than that window, temporarily increase it to cover the outage, run/re-enable maintenance, then restore it. The worker scans verified metadata, not the entire archive directory. Existing recordings imported on the desktop are verified from their database packages without reading their source archives.
 
 ## Fourteen-day archive retention
 
@@ -47,7 +47,7 @@ Archive deletion is OFF by default. Import automation works independently of cle
 node /var/www/tfcbot/api/scripts/maintainGameDetails.js --dry-run
 ```
 
-A round becomes eligible 14 days after its first verified server maintenance import, after all four delayed refresh checks are complete. This is intentionally measured from verified import, not file modification time. The script re-verifies the newest matching database package hash, decompression, source identity and public playback format, and requires matching ELO flag-carry markers plus kill/flag-death markers for schemas that support those indexes. It hashes the archive again, checks for changed files/database and limits removal to the exact matching regular archive beneath the canonical artifact storage root. Missing, corrupt, mismatched or changing records are retained and reported. No recursive folder deletion or age-only `find -delete` is used. Only the original `.tar.zst` is eligible; prepared tactical files, ELO, queue and details DB are not deleted.
+A round becomes eligible 14 days after its first verified server maintenance import, once the job is ready with no scheduled import. This is intentionally measured from verified import, not file modification time. The script re-verifies the newest matching database package hash, decompression, source identity and public playback format, and requires matching ELO flag-carry markers plus kill/flag-death markers for schemas that support those indexes. It hashes the archive again, checks for changed files/database and limits removal to the exact matching regular archive beneath the canonical artifact storage root. Missing, corrupt, mismatched or changing records are retained and reported. No recursive folder deletion or age-only `find -delete` is used. Only the original `.tar.zst` is eligible; prepared tactical files, ELO, queue and details DB are not deleted.
 
 Once legacy 3D replay has been retired, first set only the legacy switch in `/var/www/tfcbot/api/.env`:
 

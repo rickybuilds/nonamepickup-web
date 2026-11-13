@@ -4,7 +4,6 @@ const Database = require("better-sqlite3");
 const fs = require("node:fs");
 const path = require("node:path");
 const APPLICATION_ID = 0x47445131;
-const REFRESH_SECONDS = [120, 900, 7200, 86400];
 
 function openGameDetailsQueue(filename, { readonly = false } = {}) {
   if (!readonly) fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -30,6 +29,8 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
         db.exec("ALTER TABLE game_detail_jobs ADD COLUMN cleanup_retry_after INTEGER NOT NULL DEFAULT 0");
       }
       db.pragma("user_version = 2");
+      // Retire refreshes scheduled by older workers; verified jobs are complete.
+      db.exec("UPDATE game_detail_jobs SET next_attempt=0 WHERE state='ready' AND next_attempt<>0");
     })();
     if (![1, 2].includes(db.pragma("user_version", { simple: true }))) throw new Error("Unsupported game-details queue version");
     const hasCleanupRetry = db.prepare("PRAGMA table_info(game_detail_jobs)").all().some(column => column.name === "cleanup_retry_after");
@@ -55,17 +56,15 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
       },
       due(limit, now = Math.floor(Date.now() / 1000)) {
         return db.prepare(`SELECT * FROM game_detail_jobs WHERE archive_deleted_at IS NULL
-          AND state IN ('pending','retry','ready') AND next_attempt>0 AND next_attempt<=?
+          AND state IN ('pending','retry') AND next_attempt>0 AND next_attempt<=?
           ORDER BY CASE WHEN uploaded_at>=? AND first_imported_at IS NULL THEN 0
             WHEN first_imported_at IS NOT NULL THEN 1 ELSE 2 END, next_attempt,artifact_id DESC LIMIT ?`).all(now, now - 86400, limit);
       },
       attempting(id) { db.prepare("UPDATE game_detail_jobs SET attempts=attempts+1 WHERE artifact_id=?").run(id); },
       success(job, revision, now = Math.floor(Date.now() / 1000)) {
-        const first = job.first_imported_at || now;
-        const next = job.refresh_stage < REFRESH_SECONDS.length ? first + REFRESH_SECONDS[job.refresh_stage] : 0;
         db.prepare(`UPDATE game_detail_jobs SET state='ready',first_imported_at=COALESCE(first_imported_at,?),
-          last_verified_at=?,revision=?,refresh_stage=refresh_stage+1,next_attempt=?,last_error=NULL
-          WHERE artifact_id=?`).run(now, now, revision, next, job.artifact_id);
+          last_verified_at=?,revision=?,next_attempt=0,last_error=NULL
+          WHERE artifact_id=?`).run(now, now, revision, job.artifact_id);
       },
       failure(job, error, now = Math.floor(Date.now() / 1000)) {
         db.prepare("UPDATE game_detail_jobs SET state='retry',next_attempt=?,last_error=? WHERE artifact_id=?")
@@ -74,7 +73,7 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
       expired(days, now = Math.floor(Date.now() / 1000)) {
         if (!Number.isInteger(days) || days < 14) throw new Error("Archive retention must be at least 14 days");
         return db.prepare(`SELECT * FROM game_detail_jobs WHERE state='ready' AND archive_deleted_at IS NULL
-          AND first_imported_at<=? AND refresh_stage>=5 AND ${hasCleanupRetry ? "cleanup_retry_after" : "0"}<=?
+          AND first_imported_at<=? AND next_attempt=0 AND ${hasCleanupRetry ? "cleanup_retry_after" : "0"}<=?
           ORDER BY first_imported_at LIMIT 100`).all(now - days * 86400, now);
       },
       deleted(id, now = Math.floor(Date.now() / 1000)) { db.prepare("UPDATE game_detail_jobs SET archive_deleted_at=?,last_error=NULL WHERE artifact_id=?").run(now, id); },
