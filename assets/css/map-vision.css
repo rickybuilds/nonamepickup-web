@@ -12,14 +12,19 @@
 .map-vision-player input[type=range]{width:100%;min-height:28px;cursor:pointer}
 .map-vision-player input[type=checkbox]{width:16px;height:16px}
 .map-vision-player :is(.playback-reload,.stage-tools,.transport,.legend,.life-nav){display:flex;align-items:center;flex-wrap:wrap;gap:12px}
-.map-vision-player .playback-reload{justify-content:space-between;margin-bottom:12px}
+.map-vision-player .playback-toolbar{position:relative;display:flex;align-items:center;flex-wrap:nowrap;gap:16px;overflow-x:auto;margin-bottom:12px;padding:3px}
+.map-vision-player .playback-toolbar>*{flex-shrink:0;white-space:nowrap}
+.map-vision-player .playback-toolbar>[id=map-name]{font-size:14px}
+.map-vision-player .playback-reload{margin:0}
 .map-vision-player label{display:flex;gap:8px;align-items:center;color:#b6c5d9;font-size:13px}
 .map-vision-player [id=round-meta]{color:#b6c5d9;font-size:13px}
-.map-vision-player [id=status]{font-size:14px;color:#c3d4e9;line-height:1.6;margin:12px 0}
+.map-vision-player [id=status]{font-size:13px;color:#c3d4e9;line-height:1.6;margin:0}
+.map-vision-player [id=status].is-ready{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.map-vision-player [id=flag-status]{margin:0;font-size:12px;color:#b6c5d9}
 .map-vision-player [id=status].error{color:#ffc19f}
 .map-vision-player .playback-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px}
 .map-vision-player .stage{min-width:0}
-.map-vision-player .stage-tools{margin-bottom:12px;min-height:40px;flex-wrap:nowrap;overflow-x:auto;padding:3px}
+.map-vision-player .stage-tools{margin:0 0 0 auto;min-height:40px;flex-wrap:nowrap;gap:10px}
 .map-vision-player .stage-tools>*{flex-shrink:0;white-space:nowrap}
 .map-vision-player .stage-tools strong{margin-right:auto;font-size:15px}
 .map-vision-player [id=viewport]{max-height:72vh;overflow:auto;background:#10151c;border:1px solid #293c52;border-radius:8px;overscroll-behavior:contain;cursor:grab;touch-action:pan-x pan-y}
@@ -54,6 +59,9 @@
 .map-vision-player .map-hint{margin:8px 0}
 .map-vision-player .note{max-width:100ch}
 @media(max-width:1000px){
+  .map-vision-player .playback-toolbar{flex-wrap:wrap;gap:10px}
+  .map-vision-player .playback-toolbar>*{white-space:normal}
+  .map-vision-player .stage-tools{margin-left:0;flex-wrap:wrap}
   .map-vision-player .playback-layout{grid-template-columns:1fr}
   .map-vision-player aside{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   .map-vision-player aside section:last-child{grid-column:1/-1}

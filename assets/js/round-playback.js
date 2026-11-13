@@ -119,7 +119,11 @@
   const byId = new Map(), rosterStates = new Map();
   const clock = ms => { const seconds = Math.max(0, Math.floor(ms / 1000)); return Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0"); };
   const playerName = id => byId.get(id)?.name || "World";
-  function say(message, error = false) { $("status").textContent = message; $("status").classList.toggle("error", error); }
+  function say(message, error = false) {
+    $("status").textContent = message;
+    $("status").classList.toggle("error", error);
+    $("status").classList.toggle("is-ready", !error && !!data && !$("viewer").hidden);
+  }
   async function json(url, signal) {
     const response = await fetch(url, { signal, cache: "no-cache" });
     if (!response.ok) {
@@ -449,15 +453,19 @@
   }};
   }
   window.nnRoundPlayback = { mount, markup: () => `
-<div class="map-vision-player"><form id="load-form" class="playback-reload"><input id="match" type="hidden"><input id="round" type="hidden"><span id="round-meta"></span><button id="load" type="submit">Reload round</button></form>
-    <p id="status" role="status">Loading round playback…</p>
+<div class="map-vision-player">
+    <div class="playback-toolbar">
+      <strong id="map-name"></strong>
+      <span id="round-meta"></span>
+      <p id="status" role="status">Loading round playback…</p>
+      <p id="flag-status" aria-label="Recorded flag states"></p>
+      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
+      <form id="load-form" class="playback-reload"><input id="match" type="hidden"><input id="round" type="hidden"><button id="load" type="submit">Reload</button></form>
+    </div>
     <section id="viewer" hidden aria-label="Tactical round playback">
       <div class="playback-layout">
         <div class="stage">
-          <div class="stage-tools"><strong id="map-name"></strong><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
-          <p id="flag-status" class="note" aria-label="Recorded flag states" title="Colors use recorded flag metadata or carrier evidence in two-flag CTF rounds. Unknown colors stay neutral."></p>
-          <p class="map-hint">Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset</p>
-          <div id="viewport" tabindex="0" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, and flags"></canvas></div></div>
+          <div id="viewport" tabindex="0" title="Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, and flags"></canvas></div></div>
           <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
           <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
           <p id="trail-info" class="note">Trails: everyone’s last 5 seconds. Select a player for their full life path.</p>
