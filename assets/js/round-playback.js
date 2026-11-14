@@ -52,6 +52,7 @@
     image.onload = () => { dirty = true; }; icons.set(id, image);
   }
   let data = null, background = null, project = null, selected = "", time = 0, playing = false, dirty = true;
+  let heatmapCache = null;
   let lastTick = performance.now(), lastUI = 0, loadVersion = 0, eventsSignature = "";
   const viewport = $("viewport");
   const mapSpace = $("map-space");
@@ -217,6 +218,9 @@
       $("life").append(new Option(`Life ${life.number} · ${clock(life.endMs - life.startMs)} · ${life.kills} kills`, String(index)));
     }
     $("life").disabled = !player?.lives.length;
+    $("heatmap").disabled = !player;
+    if (!player) $("heatmap").checked = false;
+    heatmapCache = null;
     rosterStates.forEach((state, key) => state.button.setAttribute("aria-pressed", String(key === Number(selected))));
     dirty = true; eventsSignature = ""; updateUI();
   }
@@ -243,6 +247,10 @@
       return flagLabel(flag) + ": " + (!frame ? "not visible in this sample" : frame.carrier ? "carried by " + playerName(frame.carrier) : frame.state === 2 ? "dropped" : "at base");
     }).join(" · ") : "No identified flag tracks in this recording.";
     const life = currentLife(), player = byId.get(Number(selected));
+    const showHeatmap = !!player && $("heatmap").checked;
+    $("heatmap-legend").hidden = !showHeatmap;
+    $("heatmap-info").textContent = showHeatmap
+      ? `${player.name} · ${life ? `Life ${life.number}` : "Full round"} · time spent alive. Includes the entire selection, regardless of playback time. Overlapping floors are combined.` : "";
     $("trail-info").textContent = selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
       : "Trails: everyone’s last 5 seconds. Select a player for their full life path.";
     $("life-detail").textContent = life ? `${clock(life.startMs)}–${clock(life.endMs)} · ${clock(life.endMs - life.startMs)} alive · ${life.kills} kills · ${life.endReason}`
@@ -270,6 +278,53 @@
       }
     }
   }
+  function heatmapFor(player) {
+    const life = currentLife();
+    if (heatmapCache?.player === player && heatmapCache.life === life) return heatmapCache.canvas;
+    // Accumulate seconds in map coordinates once per selection, never per playback tick.
+    const layer = document.createElement("canvas");
+    const ratio = Math.min(1, 384 / Math.max(background.width, background.height));
+    layer.width = Math.max(1, Math.round(background.width * ratio));
+    layer.height = Math.max(1, Math.round(background.height * ratio));
+    const density = new Float32Array(layer.width * layer.height);
+    const radius = 6, kernel = [];
+    for (let y = -radius; y <= radius; y++) for (let x = -radius; x <= radius; x++) {
+      if (x * x + y * y <= radius * radius) kernel.push([x, y, Math.exp(-(x * x + y * y) / 12)]);
+    }
+    const start = life?.startMs ?? 0, end = life?.endMs ?? data.durationMs;
+    const interval = data.sampleIntervalMs > 0 ? data.sampleIntervalMs : 100;
+    const frames = player.frames;
+    for (let i = 0; i < frames.length; i += data.stride) {
+      if (frames[i + 5] !== 1) continue;
+      // Missing samples must not turn into long stays, and dead samples never add heat.
+      const next = i + data.stride < frames.length ? frames[i + data.stride] : frames[i] + interval;
+      const seconds = (Math.min(end, next, frames[i] + interval) - Math.max(start, frames[i])) / 1000;
+      if (!(seconds > 0)) continue;
+      const [px, py] = project(frames[i + 1], frames[i + 2]);
+      if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
+      const cx = Math.round(px * layer.width / background.width), cy = Math.round(py * layer.height / background.height);
+      for (const [dx, dy, weight] of kernel) {
+        const x = cx + dx, y = cy + dy;
+        if (x >= 0 && x < layer.width && y >= 0 && y < layer.height) density[y * layer.width + x] += seconds * weight;
+      }
+    }
+    let peak = 0;
+    for (const value of density) peak = Math.max(peak, value);
+    const context = layer.getContext("2d"), pixels = context.createImageData(layer.width, layer.height);
+    const stops = [[55, 160, 230], [52, 211, 153], [250, 210, 70], [245, 90, 55]];
+    if (peak > 0) for (let i = 0; i < density.length; i++) {
+      if (!density[i]) continue;
+      const intensity = Math.sqrt(density[i] / peak), color = intensity * (stops.length - 1);
+      const index = Math.min(stops.length - 2, Math.floor(color)), blend = color - index;
+      for (let c = 0; c < 3; c++) pixels.data[i * 4 + c] = stops[index][c] + (stops[index + 1][c] - stops[index][c]) * blend;
+      pixels.data[i * 4 + 3] = Math.round(180 * Math.min(1, intensity * 2));
+    }
+    context.putImageData(pixels, 0, 0);
+    $("heatmap-scale").hidden = peak === 0;
+    $("heatmap-empty").hidden = peak > 0;
+    heatmapCache = { player, life, canvas: layer };
+    return layer;
+  }
   function draw() {
     if (!data || !background || !project) return;
     sizeSurface();
@@ -284,6 +339,7 @@
     ctx.drawImage(background, 0, 0);
     const unit = 1 / scale, size = 25 * unit;
     const focused = byId.get(Number(selected));
+    if (focused && $("heatmap").checked) ctx.drawImage(heatmapFor(focused), 0, 0, background.width, background.height);
     if ($("trail").checked) for (const player of focused ? [focused] : data.players) {
       const life = (focused && currentLife()) || player.lives.findLast(item => time >= item.startMs);
       if (life && (focused || time - life.endMs <= 5000)) {
@@ -429,6 +485,7 @@
   $("life").onchange = lifeChange; $("previous-life").onclick = () => stepLife(-1); $("next-life").onclick = () => stepLife(1);
   $("reset-view").onclick = () => fitViewport(true);
   $("effects").onchange = $("trail").onchange = $("flags").onchange = () => { dirty = true; };
+  $("heatmap").onchange = () => { dirty = true; updateUI(); };
   window.addEventListener("resize", () => { fitViewport(); dirty = true; }, { signal: lifecycle.signal });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); }, { signal: lifecycle.signal });
   const resizeObserver = new ResizeObserver(() => { fitViewport(); dirty = true; });
@@ -448,7 +505,7 @@
   return { destroy() {
     destroyed = true; loadVersion++; playing = false;
     controller?.abort(); lifecycle.abort(); resizeObserver.disconnect();
-    cancelAnimationFrame(animationFrame); data = null; background = null;
+    cancelAnimationFrame(animationFrame); data = null; background = null; heatmapCache = null;
     byId.clear(); rosterStates.clear();
   }};
   }
@@ -459,16 +516,17 @@
       <span id="round-meta"></span>
       <p id="status" role="status">Loading round playback…</p>
       <p id="flag-status" aria-label="Recorded flag states"></p>
-      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
+      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player to show where they spent time alive."><input id="heatmap" type="checkbox" disabled aria-describedby="heatmap-info"> Heatmap</label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
       <form id="load-form" class="playback-reload"><input id="match" type="hidden"><input id="round" type="hidden"><button id="load" type="submit">Reload</button></form>
     </div>
     <section id="viewer" hidden aria-label="Tactical round playback">
       <div class="playback-layout">
         <div class="stage">
-          <div id="viewport" tabindex="0" title="Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, and flags"></canvas></div></div>
+          <div id="viewport" tabindex="0" title="Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, heatmap, and flags"></canvas></div></div>
           <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
           <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
           <p id="trail-info" class="note">Trails: everyone’s last 5 seconds. Select a player for their full life path.</p>
+          <div id="heatmap-legend" class="heatmap-legend" hidden><div id="heatmap-scale" class="heatmap-scale"><span>Less time</span><i class="heatmap-ramp" aria-hidden="true"></i><span>More time</span></div><span id="heatmap-empty" hidden>No recorded alive positions for this selection.</span><p id="heatmap-info" class="note"></p></div>
           <div class="legend"><span><i class="blue"></i>In-game blue</span><span><i class="red"></i>In-game red</span><span>× Death</span><span><i class="conc"></i>Conc endpoint effect</span></div>
         </div>
         <aside>
