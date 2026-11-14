@@ -267,10 +267,7 @@
       return flagLabel(flag) + ": " + (!frame ? "not visible in this sample" : frame.carrier ? "carried by " + playerName(frame.carrier) : frame.state === 2 ? "dropped" : "at base");
     }).join(" · ") : "No identified flag tracks in this recording.";
     const life = currentLife(), player = byId.get(Number(selected));
-    const showHeatmap = (!!player || !!selectedTeam) && $("heatmap").checked;
-    $("heatmap-legend").hidden = !showHeatmap;
-    $("heatmap-info").textContent = showHeatmap
-      ? `${selectedTeam ? teamLabel(selectedTeam) : player.name} · ${life ? `Life ${life.number}` : "Full round"} · ${selectedTeam ? "combined time" : "time"} spent alive. Includes the entire selection, regardless of playback time. Overlapping floors are combined.` : "";
+    $("trail-info").hidden = $("heatmap").checked;
     $("trail-info").textContent = selectedTeam ? "Trails: selected team’s last 5 seconds. Select a player for their full life path."
       : selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
       : "Trails: everyone’s last 5 seconds. Select a player for their full life path.";
@@ -344,8 +341,6 @@
       pixels.data[i * 4 + 3] = Math.round(180 * Math.min(1, intensity * 2));
     }
     context.putImageData(pixels, 0, 0);
-    $("heatmap-scale").hidden = peak === 0;
-    $("heatmap-empty").hidden = peak > 0;
     heatmapCache = { selection, life, canvas: layer };
     return layer;
   }
@@ -574,7 +569,7 @@
       <span id="round-meta"></span>
       <p id="status" role="status">Loading round playback…</p>
       <p id="flag-status" aria-label="Recorded flag states"></p>
-      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player or team to show where they spent time alive."><input id="heatmap" type="checkbox" disabled aria-describedby="heatmap-info"> Heatmap</label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
+      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player or team to show where they spent time alive."><input id="heatmap" type="checkbox" disabled> Heatmap</label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
       <form id="load-form" class="playback-reload"><input id="match" type="hidden"><input id="round" type="hidden"><button id="load" type="submit">Reload</button></form>
     </div>
     <section id="viewer" hidden aria-label="Tactical round playback">
@@ -584,7 +579,6 @@
           <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
           <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
           <p id="trail-info" class="note">Trails: everyone’s last 5 seconds. Select a player for their full life path.</p>
-          <div id="heatmap-legend" class="heatmap-legend" hidden><div id="heatmap-scale" class="heatmap-scale"><span>Less time</span><i class="heatmap-ramp" aria-hidden="true"></i><span>More time</span></div><span id="heatmap-empty" hidden>No recorded alive positions for this selection.</span><p id="heatmap-info" class="note"></p></div>
           <div class="legend"><span><i class="blue"></i>In-game blue</span><span><i class="red"></i>In-game red</span><span>× Death</span><span><i class="conc"></i>Conc endpoint effect</span></div>
         </div>
         <aside>

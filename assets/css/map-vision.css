@@ -63,10 +63,6 @@
 .map-vision-player .map-hint{margin:8px 0}
 .map-vision-player .note{max-width:100ch}
 .map-vision-player .stage-tools label:has(input:disabled){opacity:.6;cursor:not-allowed}
-.map-vision-player .heatmap-legend{margin:12px 0;color:#b6c5d9;font-size:12px;line-height:1.6}
-.map-vision-player .heatmap-scale{display:flex;align-items:center;gap:8px}
-.map-vision-player .heatmap-ramp{display:block;width:110px;height:8px;border-radius:3px;background:linear-gradient(90deg,#37a0e6,#34d399,#fad246,#f55a37)}
-.map-vision-player .heatmap-legend .note{margin:6px 0 0}
 @media(max-width:1000px){
   .map-vision-player .playback-toolbar{flex-wrap:wrap;gap:10px}
   .map-vision-player .playback-toolbar>*{white-space:normal}
