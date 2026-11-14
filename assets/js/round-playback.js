@@ -86,7 +86,7 @@
   }
   function fitViewport(reset = false) {
     if (!data || $("viewer").hidden) return;
-    viewport.style.height = Math.min(viewport.clientWidth * background.height / background.width, innerHeight * .72) + "px";
+    viewport.style.height = Math.min(viewport.clientWidth * background.height / background.width, innerHeight * .72) * .85 + "px";
     setZoom(reset ? 1 : viewScale);
     if (reset) { viewport.scrollLeft = 0; viewport.scrollTop = 0; }
   }
