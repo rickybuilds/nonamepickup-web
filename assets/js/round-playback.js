@@ -454,7 +454,26 @@
       data = next; background = view.background; project = view.project;
       byId.clear(); rosterStates.clear(); $("roster").replaceChildren();
       const all = document.createElement("button"); all.textContent = "Everyone"; all.onclick = () => selectPlayer(""); $("roster").append(all);
-      for (const player of data.players) {
+      // Group by the first recorded alive team, so scrubbing and missing current
+      // samples never shuffle the roster. Fall back to a recorded team when dead.
+      const rosterTeam = player => {
+        let fallback = 0;
+        for (let i = 0; i < player.frames.length; i += data.stride) {
+          const team = player.frames[i + 9];
+          if (team !== 1 && team !== 2) continue;
+          if (!fallback) fallback = team;
+          if (player.frames[i + 5] === 1) return team;
+        }
+        return fallback;
+      };
+      const roster = data.players.map(player => ({ player, team: rosterTeam(player) })).sort((a, b) => (a.team || 3) - (b.team || 3));
+      let previousTeam = null;
+      for (const { player, team } of roster) {
+        if (team !== previousTeam) {
+          const heading = document.createElement("h3"); heading.className = "roster-team";
+          heading.textContent = team === 1 ? "Team 1 · Blue" : team === 2 ? "Team 2 · Red" : "Team unavailable";
+          $("roster").append(heading); previousTeam = team;
+        }
         byId.set(player.id, player);
         const button = document.createElement("button"); button.type = "button"; button.setAttribute("aria-pressed", "false");
         const firstAlive = player.frames.findIndex((value, index) => index % data.stride === 5 && value === 1);

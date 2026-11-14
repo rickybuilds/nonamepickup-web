@@ -43,6 +43,7 @@
 .map-vision-player aside section{border-top:1px solid #293c52;padding-top:16px;margin-bottom:24px}
 .map-vision-player h2{font-size:15px;margin:0 0 14px}
 .map-vision-player .roster{display:grid;gap:5px}
+.map-vision-player .roster-team{margin:12px 0 3px;padding-top:12px;border-top:1px solid #293c52;color:#b6c5d9;font-size:12px;font-weight:600}
 .map-vision-player .roster button{display:flex;text-align:left;align-items:center;gap:9px;background:transparent;border-color:transparent;padding:6px 8px;font-size:13px}
 .map-vision-player .roster button img{width:25px;height:27px;object-fit:contain}
 .map-vision-player .roster button[aria-pressed=true]{background:#173754;border-color:#65b6ff}
