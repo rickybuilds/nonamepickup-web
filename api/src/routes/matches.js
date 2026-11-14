@@ -10,6 +10,7 @@ const {
 const { canonicalMvpSource } = require("../lib/canonicalMvp");
 const { readMatchServers } = require("../lib/matchServers");
 const { readMatchBuildings } = require("../lib/matchBuildings");
+const { alignKillWeapons } = require("../pickup/killWeaponAlignment");
 
 function createMatchesRouter({
   db,
@@ -26,6 +27,28 @@ function createMatchesRouter({
   logRouteError
 }) {
   const router = express.Router();
+
+  // Replay and gameplay clocks have different origins. Reuse the existing
+  // identity-based calibration rather than estimating from recording length.
+  router.get("/match/:matchId/round/:round/replay-clock", (req, res) => {
+    const { matchId, round } = req.params;
+    if (!/^[a-z0-9_-]{1,64}$/i.test(matchId) || !/^[12]$/.test(round)) {
+      return res.status(400).json({ offsetSeconds: null });
+    }
+    res.set("Cache-Control", "private, no-cache");
+    try {
+      const kills = db.prepare(`SELECT session_id,time_ms,steam_id,attacker_steam_id,weapon
+        FROM pickup_kill_locations WHERE match_id=? AND round_number=?`).all(matchId, Number(round));
+      const events = db.prepare(`SELECT attacker_steam_id,victim_steam_id,event_time_seconds,weapon
+        FROM match_kill_events WHERE match_id=? AND round_num=? AND is_enemy_kill=1
+          AND COALESCE(is_team_kill,0)=0`).all(matchId, Number(round));
+      const alignment = alignKillWeapons(kills, events);
+      return res.json({ offsetSeconds: alignment.offsetSeconds });
+    } catch (error) {
+      logRouteError("[/api/match replay-clock]", error);
+      return res.json({ offsetSeconds: null });
+    }
+  });
 
   // FIXED: default limit of 100 instead of unbounded
   router.get("/matches", (req, res) => {

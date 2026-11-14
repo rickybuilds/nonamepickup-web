@@ -24,6 +24,19 @@
 .map-vision-player [id=status].error{color:#ffc19f}
 .map-vision-player .playback-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px}
 .map-vision-player .stage{min-width:0}
+.map-vision-player .map-frame{position:relative}
+.map-vision-player .map-scoreboard{position:absolute;top:14px;left:14px;z-index:1;width:220px;max-width:calc(100% - 28px);padding:12px 14px;background:rgba(5,15,28,.96);border:1px solid #49637e;border-radius:8px;pointer-events:none}
+.map-vision-player .map-scoreboard h2{font-size:12px;line-height:1.4;margin:0 0 10px;font-weight:600;color:#c3d4e9}
+.map-vision-player .scoreboard-teams{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.map-vision-player .scoreboard-team{display:grid;gap:3px;min-width:0}
+.map-vision-player .scoreboard-team span{font-size:12px;font-weight:600}
+.map-vision-player .scoreboard-team strong{font-size:30px;line-height:1.1;font-weight:800;font-variant-numeric:tabular-nums}
+.map-vision-player .scoreboard-team-blue{color:#8dc7ff}
+.map-vision-player .scoreboard-team-red{color:#ff9ca6;text-align:right}
+.map-vision-player .scoreboard-divider{color:#b6c5d9;font-size:20px}
+.map-vision-player .scoreboard-timer{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #293c52;margin-top:10px;padding-top:8px;font-size:11px;color:#b6c5d9}
+.map-vision-player .scoreboard-timer time{margin-left:4px;color:#e6edf7;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.map-vision-player [id=scoreboard-note]{margin:5px 0 0;color:#b6c5d9;font-size:10px;line-height:1.4}
 .map-vision-player .stage-tools{margin:0 0 0 auto;min-height:40px;flex-wrap:nowrap;gap:10px}
 .map-vision-player .stage-tools>*{flex-shrink:0;white-space:nowrap}
 .map-vision-player .stage-tools strong{margin-right:auto;font-size:15px}
@@ -72,6 +85,10 @@
   .map-vision-player aside section:last-child{grid-column:1/-1}
 }
 @media(max-width:560px){
+  .map-vision-player .map-scoreboard{top:8px;left:8px;width:190px;max-width:calc(100% - 16px);padding:8px 10px}
+  .map-vision-player .scoreboard-team strong{font-size:24px}
+  .map-vision-player .map-scoreboard h2{margin-bottom:6px}
+  .map-vision-player .scoreboard-timer{margin-top:6px;padding-top:6px}
   .map-vision-player aside{grid-template-columns:1fr;gap:0}
   .map-vision-player .stage-tools{gap:10px}
   .map-vision-player .transport{gap:6px}

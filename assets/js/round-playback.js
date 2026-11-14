@@ -53,6 +53,25 @@
   }
   let data = null, background = null, project = null, selected = "", time = 0, playing = false, dirty = true;
   let heatmapCache = null;
+  let roundClockOffset = null;
+  const scoreboard = options.scoreboard;
+  const scoreTracks = ["blue", "red"].map((team, index) => {
+    const events = (scoreboard?.events || []).filter(event => event.team === team);
+    const final = scoreboard?.finalScores[index], previous = scoreboard?.previousScores[index];
+    const number = value => value == null || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
+    const last = number(events.at(-1)?.score_after);
+    // Sources can expose round scores or cumulative match scores. Accept only
+    // a complete, monotonic series that reconciles with the recorded round.
+    const baseline = last === final ? 0 : previous != null && last === previous + final ? previous : null;
+    let prior = 0;
+    const points = events.length ? baseline !== null && events.every(event => {
+      const value = number(event.score_after);
+      if (value === null || value - baseline <= prior) return false;
+      prior = value - baseline; return true;
+    }) : final === 0;
+    return { events, baseline, points };
+  });
+  const scoreUsesPoints = scoreTracks.every(track => track.points);
   let selectedTeam = 0;
   const playerTeams = new Map(), teamButtons = new Map();
   const teamLabel = team => team === 1 ? "Team 1 · Blue" : "Team 2 · Red";
@@ -99,7 +118,7 @@
     // Budget for the entire stage below the map (transport, scrubber, notes,
     // and legends), as well as the header and toolbar already above it.
     let controlsBottom = rect.bottom;
-    for (let sibling = viewport.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
+    for (let sibling = (viewport.closest(".map-frame") || viewport).nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
       if (sibling.getClientRects().length) controlsBottom = Math.max(controlsBottom, sibling.getBoundingClientRect().bottom);
     }
     const controlsHeight = controlsBottom - rect.bottom;
@@ -268,6 +287,20 @@
     if (!data) return;
     $("timeline").value = String(time); $("timeline").setAttribute("aria-valuetext", clock(time));
     $("clock").textContent = clock(time) + " / " + clock(data.durationMs);
+    if ($("scoreboard")) {
+      const aligned = Number.isFinite(roundClockOffset) && !!scoreboard;
+      const elapsed = aligned ? Math.max(0, Math.min(scoreboard.duration * 1000, time + roundClockOffset * 1000)) : time;
+      $("scoreboard-round").textContent = `Round ${$("round").value}`;
+      $("scoreboard-clock-label").textContent = aligned ? "Elapsed" : "Replay";
+      $("scoreboard-clock").textContent = clock(elapsed);
+      $("scoreboard-note").textContent = !aligned ? "Score timing unavailable" : scoreUsesPoints ? "Round score" : "Recorded captures";
+      for (const [index, team] of ["blue", "red"].entries()) {
+        const track = scoreTracks[index];
+        const events = track.events.filter(event => event.round_time_seconds * 1000 <= elapsed && time + roundClockOffset * 1000 >= 0);
+        const value = !aligned ? "—" : scoreUsesPoints ? events.length ? Number(events.at(-1).score_after) - track.baseline : 0 : events.length;
+        $("scoreboard-" + team).textContent = String(value);
+      }
+    }
     $("flag-status").textContent = data.flags?.length ? data.flags.map(flag => {
       const frame = flagAt(flag);
       return flagLabel(flag) + ": " + (!frame ? "not visible in this sample" : frame.carrier ? "carried by " + playerName(frame.carrier) : frame.state === 2 ? "dropped" : "at base");
@@ -473,6 +506,16 @@
     if (!/^[a-z0-9_-]{1,64}$/i.test(match)) return say("Enter a valid match ID.", true);
     controller?.abort(); controller = new AbortController(); const version = ++loadVersion;
     pause(); $("viewer").hidden = true; $("load").disabled = true; say("Loading round playback…");
+    roundClockOffset = null;
+    // A failed calibration must not prevent the map itself from loading.
+    const calibration = $("scoreboard") && scoreboard
+      ? json(`/api/match/${encodeURIComponent(match)}/round/${round}/replay-clock`, controller.signal).catch(() => null)
+      : Promise.resolve(null);
+    void calibration.then(result => {
+      if (destroyed || version !== loadVersion) return;
+      roundClockOffset = Number.isFinite(result?.offsetSeconds) ? result.offsetSeconds : null;
+      dirty = true;
+    });
     try {
       const next = await json(`/api/pickup-replays/viewer/${encodeURIComponent(match)}/${round}/tactical`, controller.signal);
       if (next.version !== 2 || next.stride !== 10 || !Array.isArray(next.players) || !next.players.length) throw new Error("Playback is unavailable for this recording. Try reloading the round later.");
@@ -582,7 +625,19 @@
     <section id="viewer" hidden aria-label="Tactical round playback">
       <div class="playback-layout">
         <div class="stage">
-          <div id="viewport" tabindex="0" title="Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, heatmap, and flags"></canvas></div></div>
+          <div class="map-frame">
+            <div id="viewport" tabindex="0" title="Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, heatmap, and flags"></canvas></div></div>
+            <section id="scoreboard" class="map-scoreboard" aria-label="Team Scoreboard">
+              <h2>Team Scoreboard</h2>
+              <div class="scoreboard-teams">
+                <div class="scoreboard-team scoreboard-team-blue"><span>Team 1</span><strong id="scoreboard-blue">—</strong></div>
+                <span class="scoreboard-divider" aria-hidden="true">:</span>
+                <div class="scoreboard-team scoreboard-team-red"><span>Team 2</span><strong id="scoreboard-red">—</strong></div>
+              </div>
+              <div class="scoreboard-timer"><span id="scoreboard-round">Round</span><span><span id="scoreboard-clock-label">Replay</span> <time id="scoreboard-clock">0:00</time></span></div>
+              <p id="scoreboard-note">Score timing unavailable</p>
+            </section>
+          </div>
           <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
           <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
           <p id="trail-info" class="note">Trails: everyone’s last 5 seconds. Select a player for their full life path.</p>

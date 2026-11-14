@@ -290,7 +290,17 @@ window.matchDashboard = (() => {
         content.innerHTML='<section class="analytics-panel analytics-wide map-vision-panel"><div data-map-vision-player></div></section>';
         const host=content.querySelector('[data-map-vision-player]');
         host.innerHTML=window.nnRoundPlayback.markup();
-        playback=window.nnRoundPlayback.mount(host,{matchId,round:Number(roundFilter),updateUrl:false});
+        const pace=flagPaceRounds(viewData),round=pace.rounds.find(r=>r.id===Number(roundFilter));
+        const scoreboard=round?{
+          duration:round.duration,
+          events:round.events.map(e=>({...e,team:capTeamClass(e.team)})),
+          previousScores:["blue","red"].map(color=>{
+            const earlier=data.rounds.filter(r=>Number(r.round_num)<round.id);
+            return earlier.length?sum(earlier,color==="blue"?"team1_score":"team2_score"):0;
+          }),
+          finalScores:viewData.teams.map(t=>t.score)
+        }:null;
+        playback=window.nnRoundPlayback.mount(host,{matchId,round:Number(roundFilter),updateUrl:false,scoreboard});
       }
     }
     root.addEventListener("click",event=>{
