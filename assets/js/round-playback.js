@@ -358,7 +358,7 @@
     $("trail-info").textContent = selectedTeam ? "Trails: selected team’s last 5 seconds. Select a player for their full life path."
       : selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
       : "Trails: everyone’s last 5 seconds. Select a player for their full life path.";
-    if (flagHeat) $("trail-info").textContent = "Flag heatmap: full round · carried, dropped, and at base · warmer colors = more time. Player and life selections do not filter flags.";
+    if (flagHeat) $("trail-info").textContent = "Flag heatmap: full round · carried and dropped only · base time excluded · warmer colors = more time. Player and life selections do not filter flags.";
     $("life-detail").textContent = life ? `${clock(life.startMs)}–${clock(life.endMs)} · ${clock(life.endMs - life.startMs)} alive · ${life.kills} kills · ${life.endReason}`
       : player ? `${player.lives.length} recorded lives. Select one to follow its full path.` : selectedTeam ? `${teamLabel(selectedTeam)} selected. Select a player to inspect their lives.` : "All recorded players. Select a player to inspect their lives.";
     $("previous-life").disabled = !player?.lives.length || $("life").value === "0";
@@ -421,7 +421,9 @@
         // Carried objective coordinates can be hidden/zeroed. Use the carrier's
         // recorded position, while excluding missing, dead, and hidden samples.
         const frame = flagAt(flag, at);
-        if (!frame) continue;
+        // Base time includes the untouched opening and every return/reset.
+        // Count only observed carries and drops so idle bases cannot dominate.
+        if (!frame || (!frame.carrier && frame.state !== 2)) continue;
         if (frame.carrier) {
           const carrier = frameAt(byId.get(frame.carrier), at);
           if (at - carrier[0] > interval) continue;
@@ -705,7 +707,7 @@
       <span id="round-meta"></span>
       <p id="status" role="status">Loading round playback…</p>
       <p id="flag-status" aria-label="Recorded flag states"></p>
-      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player or team to show where they spent time alive."><input id="heatmap" type="checkbox" disabled> Player heatmap</label><label title="Time spent at each flag location over the full recorded round, including carried, dropped, and at base. Independent of player and life selections.">Flag heatmap<select id="flag-heatmap" disabled><option value="off">Off</option><option value="all">All flags</option><option value="1">Blue flag</option><option value="2">Red flag</option></select></label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
+      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player or team to show where they spent time alive."><input id="heatmap" type="checkbox" disabled> Player heatmap</label><label title="Time spent at each flag location over the full recorded round, carried and dropped only; time at base is excluded. Independent of player and life selections.">Flag heatmap<select id="flag-heatmap" disabled><option value="off">Off</option><option value="all">All flags</option><option value="1">Blue flag</option><option value="2">Red flag</option></select></label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
       <form id="load-form" class="playback-reload"><input id="match" type="hidden"><input id="round" type="hidden"><button id="load" type="submit">Reload</button></form>
     </div>
     <section id="viewer" hidden aria-label="Tactical round playback">
