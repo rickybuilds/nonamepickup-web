@@ -8,7 +8,7 @@
   <link rel="icon" href="/assets/images/favicon.ico">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/round-playback.css?v=9nolegend">
-  <script src="assets/js/round-playback.js?v=20261113stablezoom1" defer></script>
+  <script src="assets/js/round-playback.js?v=20261113draggablehud1" defer></script>
 </head>
 <body>
   <main>
@@ -31,7 +31,7 @@
           <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
           <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
           <p id="trail-info" class="note">Trails: everyone’s last 5 seconds. Select a player for their full life path.</p>
-          <div class="legend"><span><i class="blue"></i>In-game blue</span><span><i class="red"></i>In-game red</span><span>× Death</span><span><i class="conc"></i>Conc endpoint effect</span></div>
+          <div class="legend"><span><i class="blue"></i>In-game blue</span><span><i class="red"></i>In-game red</span><span><img src="/assets/images/icons/death-skull.svg" width="16" height="16" alt="">Death · outline = victim’s team</span><span><i class="conc"></i>Conc endpoint effect</span></div>
         </div>
         <aside>
           <section><h2>Follow a player</h2><div id="roster" class="roster"></div></section>

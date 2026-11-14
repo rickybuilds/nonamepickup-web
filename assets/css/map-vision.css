@@ -27,6 +27,9 @@
 .map-vision-player .map-frame{position:relative}
 .map-vision-player .map-scoreboard{position:absolute;top:14px;left:14px;z-index:1;width:220px;max-width:calc(100% - 28px);padding:12px 14px;background:rgba(5,15,28,.96);border:1px solid #49637e;border-radius:8px;pointer-events:none}
 .map-vision-player .map-scoreboard h2{font-size:12px;line-height:1.4;margin:0 0 10px;font-weight:600;color:#c3d4e9}
+.map-vision-player [id=scoreboard-handle]{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:32px;margin:-4px 0;padding:4px 0;border:0;border-radius:3px;background:transparent;color:#c3d4e9;font-size:12px;line-height:1.4;cursor:grab;touch-action:none;user-select:none;pointer-events:auto}
+.map-vision-player [id=scoreboard-handle]:hover{background:#182b40;color:#e6edf7}
+.map-vision-player [id=scoreboard-handle].is-dragging{cursor:grabbing}
 .map-vision-player .scoreboard-teams{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .map-vision-player .scoreboard-team{display:grid;gap:3px;min-width:0}
 .map-vision-player .scoreboard-team span{font-size:12px;font-weight:600}

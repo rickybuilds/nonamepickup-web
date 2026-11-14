@@ -13,6 +13,9 @@
   const icons = new Map();
   const flagIcons = new Map();
   const flagTeams = new Map();
+  const deathIcon = new Image();
+  deathIcon.src = "/assets/images/icons/death-skull.svg";
+  deathIcon.onload = () => { dirty = true; };
   for (const [id, color] of [[1, "blue"], [2, "red"]]) {
     const image = new Image(); image.src = `/assets/images/icons/webp/${color}flag.webp`;
     image.onload = () => { dirty = true; }; flagIcons.set(id, image);
@@ -79,6 +82,43 @@
   let lastTick = performance.now(), lastUI = 0, loadVersion = 0, eventsSignature = "";
   const viewport = $("viewport");
   const mapSpace = $("map-space");
+  const scoreboardPanel = $("scoreboard"), scoreboardHandle = $("scoreboard-handle");
+  let scoreboardPosition = null, scoreboardDrag = null;
+  function positionScoreboard(left, top) {
+    if (!scoreboardPanel || $("viewer").hidden) return;
+    const frame = scoreboardPanel.parentElement;
+    const maxLeft = Math.max(0, frame.clientWidth - scoreboardPanel.offsetWidth);
+    const maxTop = Math.max(0, frame.clientHeight - scoreboardPanel.offsetHeight);
+    left = Math.max(0, Math.min(maxLeft, left ?? (scoreboardPosition ? scoreboardPosition.x * maxLeft : scoreboardPanel.offsetLeft)));
+    top = Math.max(0, Math.min(maxTop, top ?? (scoreboardPosition ? scoreboardPosition.y * maxTop : scoreboardPanel.offsetTop)));
+    scoreboardPanel.style.left = left + "px"; scoreboardPanel.style.top = top + "px";
+    scoreboardPosition = { x: maxLeft ? left / maxLeft : 0, y: maxTop ? top / maxTop : 0 };
+  }
+  if (scoreboardHandle) {
+    scoreboardHandle.addEventListener("pointerdown", event => {
+      if (!event.isPrimary || event.button !== 0) return;
+      scoreboardDrag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: scoreboardPanel.offsetLeft, top: scoreboardPanel.offsetTop };
+      scoreboardHandle.setPointerCapture(event.pointerId);
+      scoreboardHandle.classList.add("is-dragging"); event.preventDefault();
+      scoreboardHandle.focus({ preventScroll: true });
+    }, { signal: lifecycle.signal });
+    scoreboardHandle.addEventListener("pointermove", event => {
+      if (!scoreboardDrag || scoreboardDrag.id !== event.pointerId) return;
+      positionScoreboard(scoreboardDrag.left + event.clientX - scoreboardDrag.x, scoreboardDrag.top + event.clientY - scoreboardDrag.y);
+    }, { signal: lifecycle.signal });
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) scoreboardHandle.addEventListener(type, event => {
+      if (!scoreboardDrag || scoreboardDrag.id !== event.pointerId) return;
+      scoreboardDrag = null; scoreboardHandle.classList.remove("is-dragging");
+      if (scoreboardHandle.hasPointerCapture(event.pointerId)) scoreboardHandle.releasePointerCapture(event.pointerId);
+    }, { signal: lifecycle.signal });
+    scoreboardHandle.addEventListener("keydown", event => {
+      const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+      if (!direction) return;
+      event.preventDefault();
+      const step = event.shiftKey ? 40 : 10;
+      positionScoreboard(scoreboardPanel.offsetLeft + direction[0] * step, scoreboardPanel.offsetTop + direction[1] * step);
+    }, { signal: lifecycle.signal });
+  }
   let viewScale = 1, drag = null;
   let fittedWidth = 0, fittedWindowHeight = 0;
   function sizeSurface() {
@@ -125,6 +165,7 @@
     const availableHeight = Math.max(180, innerHeight - Math.max(0, rect.top) - controlsHeight - 24);
     const height = Math.min(viewport.clientWidth * background.height / background.width, innerHeight * .72, availableHeight);
     viewport.style.height = height + "px";
+    positionScoreboard();
     const sidebar = $("viewer").querySelector("aside");
     const sideBySide = getComputedStyle($("viewer").querySelector(".playback-layout")).gridTemplateColumns.split(" ").length > 1;
     sidebar.style.maxHeight = sideBySide ? height + controlsHeight + "px" : "";
@@ -440,9 +481,13 @@
       if (event.type === "death") {
         const victim = byId.get(event.victim), frame = victim && frameAt(victim, event.time - 1);
         if (!frame) continue;
-        const [x, y] = project(frame[1], frame[2]), r = 6 * unit;
-        ctx.strokeStyle = selected && event.attacker === Number(selected) ? "#f9d076" : "#ff8a94";
-        ctx.lineWidth = 3 * unit; ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
+        const [x, y] = project(frame[1], frame[2]), r = 13 * unit;
+        const color = frame[9] === 1 ? "#60a5ff" : frame[9] === 2 ? "#ff7886" : "#b8c6d4";
+        ctx.save(); ctx.globalAlpha = 1;
+        ctx.fillStyle = "#060c15"; ctx.strokeStyle = color; ctx.lineWidth = 2 * unit;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        if (deathIcon.complete && deathIcon.naturalWidth) ctx.drawImage(deathIcon, x - 11 * unit, y - 11 * unit, 22 * unit, 22 * unit);
+        ctx.restore();
       }
     }
     const sorted = [...data.players].sort((a, b) => Number(a.id === Number(selected)) - Number(b.id === Number(selected)));
@@ -628,7 +673,7 @@
           <div class="map-frame">
             <div id="viewport" tabindex="0" title="Scroll to zoom · drag to move · keyboard + / − to zoom, 0 to reset" aria-label="Map. Scroll to zoom, drag to move. Keyboard plus and minus zoom; zero resets; arrows pan."><div id="map-space"><canvas id="map" role="img" aria-label="Recorded player positions, health, movement trails, heatmap, and flags"></canvas></div></div>
             <section id="scoreboard" class="map-scoreboard" aria-label="Team Scoreboard">
-              <h2>Team Scoreboard</h2>
+              <h2><button id="scoreboard-handle" type="button" aria-label="Move Team Scoreboard. Drag or use arrow keys; hold Shift for larger steps." title="Drag to move · arrow keys move when focused"><span>Team Scoreboard</span><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><circle cx="5" cy="3" r="1"/><circle cx="9" cy="3" r="1"/><circle cx="5" cy="7" r="1"/><circle cx="9" cy="7" r="1"/><circle cx="5" cy="11" r="1"/><circle cx="9" cy="11" r="1"/></svg></button></h2>
               <div class="scoreboard-teams">
                 <div class="scoreboard-team scoreboard-team-blue"><span>Team 1</span><strong id="scoreboard-blue">—</strong></div>
                 <span class="scoreboard-divider" aria-hidden="true">:</span>
@@ -641,7 +686,7 @@
           <div class="transport"><button id="back" aria-label="Back five seconds">−5s</button><button id="play" aria-label="Play round">Play</button><button id="forward" aria-label="Forward five seconds">+5s</button><output id="clock">0:00 / 0:00</output><label>Speed<select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></div>
           <input id="timeline" aria-label="Round playback position" type="range" min="0" max="1" step="50" value="0">
           <p id="trail-info" class="note">Trails: everyone’s last 5 seconds. Select a player for their full life path.</p>
-          <div class="legend"><span><i class="blue"></i>In-game blue</span><span><i class="red"></i>In-game red</span><span>× Death</span><span><i class="conc"></i>Conc endpoint effect</span></div>
+          <div class="legend"><span><i class="blue"></i>In-game blue</span><span><i class="red"></i>In-game red</span><span><img src="/assets/images/icons/death-skull.svg" width="16" height="16" alt="">Death · outline = victim’s team</span><span><i class="conc"></i>Conc endpoint effect</span></div>
         </div>
         <aside>
           <section><h2>Follow a player</h2><div id="roster" class="roster"></div></section>
