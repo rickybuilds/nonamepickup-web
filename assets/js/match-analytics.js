@@ -290,15 +290,26 @@ window.matchDashboard = (() => {
         content.innerHTML='<section class="analytics-panel analytics-wide map-vision-panel"><div data-map-vision-player></div></section>';
         const host=content.querySelector('[data-map-vision-player]');
         host.innerHTML=window.nnRoundPlayback.markup();
-        const pace=flagPaceRounds(viewData),round=pace.rounds.find(r=>r.id===Number(roundFilter));
+        const pace=flagPaceRounds(data),round=pace.rounds.find(r=>r.id===Number(roundFilter));
         const scoreboard=round?{
           duration:round.duration,
-          events:round.events.map(e=>({...e,team:capTeamClass(e.team)})),
-          previousScores:["blue","red"].map(color=>{
-            const earlier=data.rounds.filter(r=>Number(r.round_num)<round.id);
-            return earlier.length?sum(earlier,color==="blue"?"team1_score":"team2_score"):0;
-          }),
-          finalScores:viewData.teams.map(t=>t.score)
+          tracks:data.teams.map(team=>{
+            const scoreKey=team.color==="blue"?"team1_score":"team2_score";
+            const attacking=data.rounds.filter(r=>capTeamClass(r.offense_team)===team.color);
+            // Older records may lack side metadata. Use a unique scoring round
+            // as evidence, never assume Team 1 attacks first or is in-game blue.
+            const scoring=data.rounds.filter(r=>num(r[scoreKey])>0||pace.rounds.some(p=>p.id===Number(r.round_num)&&p.events.some(e=>capTeamClass(e.team)===team.color)));
+            const source=attacking.length===1?attacking[0]:attacking.length===0&&scoring.length===1?scoring[0]:null;
+            const timeline=source&&pace.rounds.find(r=>r.id===Number(source.round_num));
+            const earlier=source?data.rounds.filter(r=>Number(r.round_num)<Number(source.round_num)):[];
+            return {
+              label:team.label,round:timeline?.id??null,
+              events:timeline?timeline.events.filter(e=>capTeamClass(e.team)===team.color):[],
+              finalScore:source?num(source[scoreKey]):null,
+              previousScore:earlier.length?sum(earlier,scoreKey):0,
+              playerIds:team.players.flatMap(p=>playerKeys(p.player,p.stats))
+            };
+          })
         }:null;
         playback=window.nnRoundPlayback.mount(host,{matchId,round:Number(roundFilter),updateUrl:false,scoreboard});
       }

@@ -59,8 +59,9 @@
   let roundClockOffset = null;
   const scoreboard = options.scoreboard;
   const scoreTracks = ["blue", "red"].map((team, index) => {
-    const events = (scoreboard?.events || []).filter(event => event.team === team);
-    const final = scoreboard?.finalScores[index], previous = scoreboard?.previousScores[index];
+    const source = scoreboard?.tracks[index];
+    const events = source?.events || [];
+    const final = source?.finalScore, previous = source?.previousScore;
     const number = value => value == null || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
     const last = number(events.at(-1)?.score_after);
     // Sources can expose round scores or cumulative match scores. Accept only
@@ -72,7 +73,7 @@
       if (value === null || value - baseline <= prior) return false;
       prior = value - baseline; return true;
     }) : final === 0;
-    return { events, baseline, points };
+    return { ...source, events, baseline, points };
   });
   const scoreUsesPoints = scoreTracks.every(track => track.points);
   let selectedTeam = 0;
@@ -334,12 +335,15 @@
       $("scoreboard-round").textContent = `Round ${$("round").value}`;
       $("scoreboard-clock-label").textContent = aligned ? "Elapsed" : "Replay";
       $("scoreboard-clock").textContent = clock(elapsed);
-      $("scoreboard-note").textContent = !aligned ? "Score timing unavailable" : scoreUsesPoints ? "Round score" : "Recorded captures";
+      $("scoreboard-note").textContent = !aligned ? "Score timing unavailable" : scoreUsesPoints ? "Both attacking rounds · same elapsed time" : "Recorded caps · same elapsed time";
       for (const [index, team] of ["blue", "red"].entries()) {
         const track = scoreTracks[index];
         const events = track.events.filter(event => event.round_time_seconds * 1000 <= elapsed && time + roundClockOffset * 1000 >= 0);
-        const value = !aligned ? "—" : scoreUsesPoints ? events.length ? Number(events.at(-1).score_after) - track.baseline : 0 : events.length;
+        const value = !aligned || !track.round ? "—" : scoreUsesPoints ? events.length ? Number(events.at(-1).score_after) - track.baseline : 0 : events.length;
         $("scoreboard-" + team).textContent = String(value);
+        $("scoreboard-label-" + team).textContent = `${track.label || `Team ${index + 1}`} · ${track.round ? `R${track.round}` : "round unavailable"}`;
+        const colors = new Set(data.players.filter(player => track.playerIds?.includes(String(player.steamId))).map(player => playerTeams.get(player.id)).filter(id => id === 1 || id === 2));
+        $("scoreboard-" + team).parentElement.style.color = colors.size === 1 ? colors.has(1) ? "#8dc7ff" : "#ff9ca6" : "#c3d4e9";
       }
     }
     $("flag-status").textContent = data.flags?.length ? data.flags.map(flag => {
@@ -675,9 +679,9 @@
             <section id="scoreboard" class="map-scoreboard" aria-label="Team Scoreboard">
               <h2><button id="scoreboard-handle" type="button" aria-label="Move Team Scoreboard. Drag or use arrow keys; hold Shift for larger steps." title="Drag to move · arrow keys move when focused"><span>Team Scoreboard</span><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><circle cx="5" cy="3" r="1"/><circle cx="9" cy="3" r="1"/><circle cx="5" cy="7" r="1"/><circle cx="9" cy="7" r="1"/><circle cx="5" cy="11" r="1"/><circle cx="9" cy="11" r="1"/></svg></button></h2>
               <div class="scoreboard-teams">
-                <div class="scoreboard-team scoreboard-team-blue"><span>Team 1</span><strong id="scoreboard-blue">—</strong></div>
+                <div class="scoreboard-team scoreboard-team-blue"><span id="scoreboard-label-blue">Team 1</span><strong id="scoreboard-blue">—</strong></div>
                 <span class="scoreboard-divider" aria-hidden="true">:</span>
-                <div class="scoreboard-team scoreboard-team-red"><span>Team 2</span><strong id="scoreboard-red">—</strong></div>
+                <div class="scoreboard-team scoreboard-team-red"><span id="scoreboard-label-red">Team 2</span><strong id="scoreboard-red">—</strong></div>
               </div>
               <div class="scoreboard-timer"><span id="scoreboard-round">Round</span><span><span id="scoreboard-clock-label">Replay</span> <time id="scoreboard-clock">0:00</time></span></div>
               <p id="scoreboard-note">Score timing unavailable</p>
