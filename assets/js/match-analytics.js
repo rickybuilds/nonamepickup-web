@@ -290,6 +290,11 @@ window.matchDashboard = (() => {
         content.innerHTML='<section class="analytics-panel analytics-wide map-vision-panel"><div data-map-vision-player></div></section>';
         const host=content.querySelector('[data-map-vision-player]');
         host.innerHTML=window.nnRoundPlayback.markup();
+        const compareLink=document.createElement("a");
+        compareLink.className="map-vision-compare-link";
+        compareLink.href="map-vision-compare.html?a="+encodeURIComponent(matchId);
+        compareLink.textContent="Compare matches (prototype)";
+        host.before(compareLink);
         const pace=flagPaceRounds(data),round=pace.rounds.find(r=>r.id===Number(roundFilter));
         const scoreboard=round?{
           duration:round.duration,

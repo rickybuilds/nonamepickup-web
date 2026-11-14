@@ -1,4 +1,6 @@
 /* Native match playback: keep every player rule scoped to its own surface. */
+.map-vision-panel .map-vision-compare-link{display:inline-block;margin-bottom:14px;color:#8dc7ff;font-size:13px;text-underline-offset:4px}
+.map-vision-panel .map-vision-compare-link:focus-visible{outline:2px solid #f8b55b;outline-offset:3px}
 .analytics-tabs [hidden],.analytics-filter[hidden],.analytics-summaries[hidden],.analytics-filter [hidden]{display:none!important}
 .map-vision-player{font-family:Inter,Arial,sans-serif;color:#e6edf7;min-width:0}
 .map-vision-player *{box-sizing:border-box;scrollbar-color:#49637e #10151c;scrollbar-width:thin}

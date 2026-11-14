@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Compare Match Heatmaps | NoName TFC</title>
+  <link rel="icon" href="/assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/map-vision-compare.css?v=20261114compare1">
+  <script src="assets/js/map-vision-data.js?v=20261114compare1" defer></script>
+  <script src="assets/js/map-vision-compare.js?v=20261114compare1" defer></script>
+</head>
+<body>
+  <main>
+    <header class="heading">
+      <a href="matches.html">NoName TFC / Matches</a>
+      <h1>Compare match heatmaps</h1>
+      <p>Two games. Both rounds. One shared heat scale.</p>
+      <p class="prototype-note">Prototype · compare recordings on the same map.</p>
+    </header>
+    <form id="compare-form" class="match-inputs">
+      <label>Match A<input id="match-a" name="a" required maxlength="512" placeholder="Match ID or match link" autocomplete="off" spellcheck="false"></label>
+      <label>Match B<input id="match-b" name="b" required maxlength="512" placeholder="Match ID or match link" autocomplete="off" spellcheck="false"></label>
+      <button type="submit">Compare matches</button>
+    </form>
+    <fieldset id="heat-controls" disabled>
+      <legend>Heatmap settings</legend>
+      <div class="filters">
+        <label>Locations<select id="heat-source"><option value="flags">Flags</option><option value="players">Players</option></select></label>
+        <label id="flag-filter">Flag<select id="flag-side"><option value="all">All flags</option><option value="1">Blue flag</option><option value="2">Red flag</option></select></label>
+        <label id="activity-filter">Flag activity<select id="flag-activity"><option value="carried">Carried</option><option value="dropped">Dropped</option><option value="both">Both</option></select></label>
+        <label id="player-filter" hidden>Players<select id="player-side"><option value="all">Everyone</option><option value="1">In-game blue</option><option value="2">In-game red</option></select></label>
+      </div>
+    </fieldset>
+    <p id="compare-status" role="status">Enter two match IDs or links. Both rounds must be available for each game.</p>
+    <section id="comparison" hidden aria-label="Full-match heatmap comparison" aria-busy="false">
+      <div class="shared-scale">
+        <div><strong>Shared scale</strong><span id="scale-copy">Warmer = more recorded time</span></div>
+        <div class="heat-ramp" aria-hidden="true"></div>
+        <div class="scale-labels"><span>Less time</span><span id="peak-label">More time</span></div>
+      </div>
+      <p id="comparison-note" class="note"></p>
+      <div class="comparison-grid">
+        <article class="match-panel" aria-labelledby="title-a">
+          <header><h2 id="title-a">Match A</h2><a id="link-a" href="matches.html">Open match</a></header>
+          <p id="meta-a" class="meta"></p>
+          <canvas id="map-a" role="img" aria-label="Match A heatmap"></canvas>
+          <p id="totals-a" class="totals"></p>
+          <p id="activity-a" class="note"></p>
+        </article>
+        <article class="match-panel" aria-labelledby="title-b">
+          <header><h2 id="title-b">Match B</h2><a id="link-b" href="matches.html">Open match</a></header>
+          <p id="meta-b" class="meta"></p>
+          <canvas id="map-b" role="img" aria-label="Match B heatmap"></canvas>
+          <p id="totals-b" class="totals"></p>
+          <p id="activity-b" class="note"></p>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
