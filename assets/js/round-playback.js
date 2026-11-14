@@ -57,6 +57,7 @@
   let data = null, background = null, project = null, selected = "", time = 0, playing = false, dirty = true;
   let heatmapCache = null;
   const flagHeatmapCache = new Map();
+  const flagHeatmapKey = () => $("flag-heatmap").value + ":" + $("flag-activity").value;
   let roundClockOffset = null;
   const scoreboard = options.scoreboard;
   const scoreTracks = ["blue", "red"].map((team, index) => {
@@ -354,11 +355,18 @@
     const life = currentLife(), player = byId.get(Number(selected));
     // Hide the help without changing the space reserved below the map.
     const flagHeat = $("flag-heatmap").value !== "off";
+    $("flag-activity").disabled = !flagHeat || $("flag-heatmap").disabled;
     $("trail-info").style.visibility = !flagHeat && $("heatmap").checked ? "hidden" : "";
     $("trail-info").textContent = selectedTeam ? "Trails: selected team’s last 5 seconds. Select a player for their full life path."
       : selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
       : "Trails: everyone’s last 5 seconds. Select a player for their full life path.";
-    if (flagHeat) $("trail-info").textContent = "Flag heatmap: full round · carried and dropped only · base time excluded · warmer colors = more time. Player and life selections do not filter flags.";
+    if (flagHeat) {
+      const activity = $("flag-activity").value;
+      const heat = flagHeatmapCache.get(flagHeatmapKey());
+      const totals = heat ? ` · Carried ${clock(Math.round(heat.carriedMs))} · Dropped ${clock(Math.round(heat.droppedMs))}` : "";
+      $("trail-info").textContent = `Flag heatmap: ${activity === "both" ? "carried + dropped" : activity} · full round · base excluded${totals}. Warmer = longer; each view scaled separately.`;
+      if (heat && !heat.carriedMs && !heat.droppedMs) $("trail-info").textContent += " No recorded time for this selection.";
+    }
     $("life-detail").textContent = life ? `${clock(life.startMs)}–${clock(life.endMs)} · ${clock(life.endMs - life.startMs)} alive · ${life.kills} kills · ${life.endReason}`
       : player ? `${player.lives.length} recorded lives. Select one to follow its full path.` : selectedTeam ? `${teamLabel(selectedTeam)} selected. Select a player to inspect their lives.` : "All recorded players. Select a player to inspect their lives.";
     $("previous-life").disabled = !player?.lives.length || $("life").value === "0";
@@ -387,7 +395,8 @@
   function heatmapFor(players, flagMode = false) {
     const life = flagMode ? null : currentLife();
     const selection = flagMode ? $("flag-heatmap").value : selectedTeam + ":" + selected;
-    if (flagMode && flagHeatmapCache.has(selection)) return flagHeatmapCache.get(selection);
+    const activity = $("flag-activity").value, flagKey = flagHeatmapKey();
+    if (flagMode && flagHeatmapCache.has(flagKey)) return flagHeatmapCache.get(flagKey).canvas;
     if (!flagMode && heatmapCache?.selection === selection && heatmapCache.life === life) return heatmapCache.canvas;
     // Accumulate seconds in map coordinates once per selection, never per playback tick.
     const layer = document.createElement("canvas");
@@ -401,6 +410,7 @@
     }
     const start = life?.startMs ?? 0, end = life?.endMs ?? data.durationMs;
     const interval = data.sampleIntervalMs > 0 ? data.sampleIntervalMs : 100;
+    let carriedMs = 0, droppedMs = 0;
     function addHeat(x, y, seconds) {
       if (!(seconds > 0)) return;
       const [px, py] = project(x, y);
@@ -424,11 +434,14 @@
         // Base time includes the untouched opening and every return/reset.
         // Count only observed carries and drops so idle bases cannot dominate.
         if (!frame || (!frame.carrier && frame.state !== 2)) continue;
+        if ((activity === "carried" && !frame.carrier) || (activity === "dropped" && frame.carrier)) continue;
         if (frame.carrier) {
           const carrier = frameAt(byId.get(frame.carrier), at);
           if (at - carrier[0] > interval) continue;
         }
         addHeat(frame.x, frame.y, seconds);
+        if (frame.carrier) carriedMs += seconds * 1000;
+        else droppedMs += seconds * 1000;
       }
     }
     else for (const player of players) {
@@ -447,13 +460,16 @@
     const stops = [[55, 160, 230], [52, 211, 153], [250, 210, 70], [245, 90, 55]];
     if (peak > 0) for (let i = 0; i < density.length; i++) {
       if (!density[i]) continue;
-      const intensity = Math.sqrt(density[i] / peak), color = intensity * (stops.length - 1);
+      // Compress the flag time range so long drops do not hide shorter carries.
+      // This changes visibility, never the accumulated seconds or their ordering.
+      const intensity = Math.sqrt(flagMode ? Math.log1p(density[i]) / Math.log1p(peak) : density[i] / peak);
+      const color = intensity * (stops.length - 1);
       const index = Math.min(stops.length - 2, Math.floor(color)), blend = color - index;
       for (let c = 0; c < 3; c++) pixels.data[i * 4 + c] = stops[index][c] + (stops[index + 1][c] - stops[index][c]) * blend;
       pixels.data[i * 4 + 3] = Math.round(180 * Math.min(1, intensity * 2));
     }
     context.putImageData(pixels, 0, 0);
-    if (flagMode) flagHeatmapCache.set(selection, layer);
+    if (flagMode) flagHeatmapCache.set(flagKey, { canvas: layer, carriedMs, droppedMs });
     else heatmapCache = { selection, life, canvas: layer };
     return layer;
   }
@@ -676,6 +692,7 @@
   $("effects").onchange = $("trail").onchange = $("flags").onchange = () => { dirty = true; };
   $("heatmap").onchange = () => { dirty = true; updateUI(); };
   $("flag-heatmap").onchange = () => { dirty = true; updateUI(); };
+  $("flag-activity").onchange = () => { dirty = true; updateUI(); };
   window.addEventListener("resize", () => { fitViewport(); dirty = true; }, { signal: lifecycle.signal });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); }, { signal: lifecycle.signal });
   const resizeObserver = new ResizeObserver(() => { fitViewport(); dirty = true; });
@@ -707,7 +724,7 @@
       <span id="round-meta"></span>
       <p id="status" role="status">Loading round playback…</p>
       <p id="flag-status" aria-label="Recorded flag states"></p>
-      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player or team to show where they spent time alive."><input id="heatmap" type="checkbox" disabled> Player heatmap</label><label title="Time spent at each flag location over the full recorded round, carried and dropped only; time at base is excluded. Independent of player and life selections.">Flag heatmap<select id="flag-heatmap" disabled><option value="off">Off</option><option value="all">All flags</option><option value="1">Blue flag</option><option value="2">Red flag</option></select></label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
+      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player or team to show where they spent time alive."><input id="heatmap" type="checkbox" disabled> Player heatmap</label><label title="Time spent at each flag location over the full recorded round, carried and dropped only; time at base is excluded. Independent of player and life selections.">Flag heatmap<select id="flag-heatmap" disabled><option value="off">Off</option><option value="all">All flags</option><option value="1">Blue flag</option><option value="2">Red flag</option></select></label><label title="Filter flag time to reveal carry routes or dropped-flag hotspots. Each view has its own heat scale.">Flag activity<select id="flag-activity" disabled><option value="both">Both</option><option value="carried">Carried</option><option value="dropped">Dropped</option></select></label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
       <form id="load-form" class="playback-reload"><input id="match" type="hidden"><input id="round" type="hidden"><button id="load" type="submit">Reload</button></form>
     </div>
     <section id="viewer" hidden aria-label="Tactical round playback">
