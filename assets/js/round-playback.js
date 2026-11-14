@@ -61,6 +61,7 @@
   const viewport = $("viewport");
   const mapSpace = $("map-space");
   let viewScale = 1, drag = null;
+  let fittedWidth = 0, fittedWindowHeight = 0;
   function sizeSurface() {
     const width = Math.min(viewport.clientWidth, mapSpace.clientWidth);
     const height = Math.min(viewport.clientHeight, mapSpace.clientHeight);
@@ -90,6 +91,10 @@
   }
   function fitViewport(reset = false) {
     if (!data || $("viewer").hidden) return;
+    // Selection/help changes can resize the panel without changing the screen.
+    // Keep the same map geometry and pan until the available width or window
+    // height actually changes, or the user explicitly resets the view.
+    if (!reset && fittedWidth === viewport.clientWidth && fittedWindowHeight === innerHeight) return;
     const rect = viewport.getBoundingClientRect();
     // Budget for the entire stage below the map (transport, scrubber, notes,
     // and legends), as well as the header and toolbar already above it.
@@ -105,6 +110,7 @@
     const sideBySide = getComputedStyle($("viewer").querySelector(".playback-layout")).gridTemplateColumns.split(" ").length > 1;
     sidebar.style.maxHeight = sideBySide ? height + controlsHeight + "px" : "";
     sidebar.style.overflowY = sideBySide ? "auto" : "";
+    fittedWidth = viewport.clientWidth; fittedWindowHeight = innerHeight;
     setZoom(reset ? 1 : viewScale);
     if (reset) { viewport.scrollLeft = 0; viewport.scrollTop = 0; }
   }
@@ -242,7 +248,7 @@
     heatmapCache = null;
     rosterStates.forEach((state, key) => state.button.setAttribute("aria-pressed", String(key === Number(selected))));
     teamButtons.forEach((button, key) => button.setAttribute("aria-pressed", String(key === selectedTeam)));
-    dirty = true; eventsSignature = ""; updateUI(); fitViewport();
+    dirty = true; eventsSignature = ""; updateUI();
   }
   function lifeChange() { pause(); const life = currentLife(); if (life) seek(life.startMs); else { dirty = true; updateUI(); } }
   function stepLife(direction) {
@@ -267,7 +273,8 @@
       return flagLabel(flag) + ": " + (!frame ? "not visible in this sample" : frame.carrier ? "carried by " + playerName(frame.carrier) : frame.state === 2 ? "dropped" : "at base");
     }).join(" · ") : "No identified flag tracks in this recording.";
     const life = currentLife(), player = byId.get(Number(selected));
-    $("trail-info").hidden = $("heatmap").checked;
+    // Hide the help without changing the space reserved below the map.
+    $("trail-info").style.visibility = $("heatmap").checked ? "hidden" : "";
     $("trail-info").textContent = selectedTeam ? "Trails: selected team’s last 5 seconds. Select a player for their full life path."
       : selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
       : "Trails: everyone’s last 5 seconds. Select a player for their full life path.";
@@ -538,7 +545,7 @@
   $("life").onchange = lifeChange; $("previous-life").onclick = () => stepLife(-1); $("next-life").onclick = () => stepLife(1);
   $("reset-view").onclick = () => fitViewport(true);
   $("effects").onchange = $("trail").onchange = $("flags").onchange = () => { dirty = true; };
-  $("heatmap").onchange = () => { dirty = true; updateUI(); fitViewport(); };
+  $("heatmap").onchange = () => { dirty = true; updateUI(); };
   window.addEventListener("resize", () => { fitViewport(); dirty = true; }, { signal: lifecycle.signal });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); }, { signal: lifecycle.signal });
   const resizeObserver = new ResizeObserver(() => { fitViewport(); dirty = true; });
