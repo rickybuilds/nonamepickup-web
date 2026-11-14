@@ -86,7 +86,21 @@
   }
   function fitViewport(reset = false) {
     if (!data || $("viewer").hidden) return;
-    viewport.style.height = Math.min(viewport.clientWidth * background.height / background.width, innerHeight * .72) * .85 + "px";
+    const rect = viewport.getBoundingClientRect();
+    // Budget for the entire stage below the map (transport, scrubber, notes,
+    // and legends), as well as the header and toolbar already above it.
+    let controlsBottom = rect.bottom;
+    for (let sibling = viewport.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
+      if (sibling.getClientRects().length) controlsBottom = Math.max(controlsBottom, sibling.getBoundingClientRect().bottom);
+    }
+    const controlsHeight = controlsBottom - rect.bottom;
+    const availableHeight = Math.max(180, innerHeight - Math.max(0, rect.top) - controlsHeight - 24);
+    const height = Math.min(viewport.clientWidth * background.height / background.width, innerHeight * .72, availableHeight);
+    viewport.style.height = height + "px";
+    const sidebar = $("viewer").querySelector("aside");
+    const sideBySide = getComputedStyle($("viewer").querySelector(".playback-layout")).gridTemplateColumns.split(" ").length > 1;
+    sidebar.style.maxHeight = sideBySide ? height + controlsHeight + "px" : "";
+    sidebar.style.overflowY = sideBySide ? "auto" : "";
     setZoom(reset ? 1 : viewScale);
     if (reset) { viewport.scrollLeft = 0; viewport.scrollTop = 0; }
   }
@@ -510,7 +524,7 @@
   $("life").onchange = lifeChange; $("previous-life").onclick = () => stepLife(-1); $("next-life").onclick = () => stepLife(1);
   $("reset-view").onclick = () => fitViewport(true);
   $("effects").onchange = $("trail").onchange = $("flags").onchange = () => { dirty = true; };
-  $("heatmap").onchange = () => { dirty = true; updateUI(); };
+  $("heatmap").onchange = () => { dirty = true; updateUI(); fitViewport(); };
   window.addEventListener("resize", () => { fitViewport(); dirty = true; }, { signal: lifecycle.signal });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); }, { signal: lifecycle.signal });
   const resizeObserver = new ResizeObserver(() => { fitViewport(); dirty = true; });
