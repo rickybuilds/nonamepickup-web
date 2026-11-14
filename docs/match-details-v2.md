@@ -127,6 +127,8 @@ Missing, invalid, duplicated, or nonconsecutive round durations stop boundary ca
 
 ### Map Vision and downloads
 
+Map Vision includes independent player and flag heatmaps. Select **Flag heatmap → All flags, Blue flag, or Red flag** to see time spent at recorded flag locations across the full selected round, including carried, dropped, and at-base samples. Turn off **Player heatmap** to isolate flag density. Player/life selections and the playback cursor do not limit the flag heatmap. Warmer colors indicate more recorded time, scaled within the current heatmap; colors are not a shared scale for comparing games. Unknown flag ownership is included in All flags; unavailable color choices are disabled. Missing samples are capped to the recording interval, and carried flags use their living carrier's recorded position. Games cannot yet be compared side by side or combined across rounds.
+
 Map Vision checks `api/pickup-replays/viewer/{matchId}/{round}` for each known round and enables itself only when metadata with replay files is returned. It links to the existing `pickup-replay.html?matchId={matchId}&round={round}` viewer. Both rounds were verified for D9M3FT. An unavailable replay leaves Map Vision disabled and shows an availability message in Downloads.
 
 JSON exports the full match API response regardless of team selection. CSV exports player metrics for the selected team(s), with quoted cells and spreadsheet-formula escaping for string values. Exports use Blob URLs and revoke them after initiating a download. Available Hampalyzer and TFCStats links remain accessible as match sources.

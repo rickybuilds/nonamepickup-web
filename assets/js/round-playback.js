@@ -56,6 +56,7 @@
   }
   let data = null, background = null, project = null, selected = "", time = 0, playing = false, dirty = true;
   let heatmapCache = null;
+  const flagHeatmapCache = new Map();
   let roundClockOffset = null;
   const scoreboard = options.scoreboard;
   const scoreTracks = ["blue", "red"].map((team, index) => {
@@ -268,16 +269,16 @@
     return frame;
   }
   function currentLife() { const player = byId.get(Number(selected)); return $("life").value === "" ? null : player?.lives[Number($("life").value)]; }
-  function flagAt(flag) {
+  function flagAt(flag, at = time) {
     const frames = flag.frames;
     let low = 0, high = frames.length / 6;
-    while (low < high) { const middle = Math.floor((low + high) / 2); if (frames[middle * 6] <= time) low = middle + 1; else high = middle; }
+    while (low < high) { const middle = Math.floor((low + high) / 2); if (frames[middle * 6] <= at) low = middle + 1; else high = middle; }
     if (!low) return null;
     const index = (low - 1) * 6;
-    if (time - frames[index] > Math.max(2000, data.sampleIntervalMs * 4) || frames[index + 4] < 0) return null;
+    if (at - frames[index] > Math.max(2000, data.sampleIntervalMs * 4) || frames[index + 4] < 0) return null;
     const state = frames[index + 4], carrier = frames[index + 5];
     if (carrier > 0) {
-      const player = byId.get(carrier), frame = player && frameAt(player, time);
+      const player = byId.get(carrier), frame = player && frameAt(player, at);
       return frame?.[5] === 1 ? { x: frame[1], y: frame[2], state, carrier } : null;
     }
     // State 1 without a carrier can be a hidden objective, not a flag at base.
@@ -286,7 +287,7 @@
     const next = index + 6;
     if (next < frames.length && frames[next + 4] === state && frames[next + 5] === 0 &&
         frames[next] > frames[index] && frames[next] - frames[index] <= 2000) {
-      const fraction = (time - frames[index]) / (frames[next] - frames[index]);
+      const fraction = (at - frames[index]) / (frames[next] - frames[index]);
       x += (frames[next + 1] - x) * fraction; y += (frames[next + 2] - y) * fraction;
     }
     return { x, y, state, carrier: 0 };
@@ -352,10 +353,12 @@
     }).join(" · ") : "No identified flag tracks in this recording.";
     const life = currentLife(), player = byId.get(Number(selected));
     // Hide the help without changing the space reserved below the map.
-    $("trail-info").style.visibility = $("heatmap").checked ? "hidden" : "";
+    const flagHeat = $("flag-heatmap").value !== "off";
+    $("trail-info").style.visibility = !flagHeat && $("heatmap").checked ? "hidden" : "";
     $("trail-info").textContent = selectedTeam ? "Trails: selected team’s last 5 seconds. Select a player for their full life path."
       : selected ? "Trail: selected player’s life so far; retained after death until the next life. Play or scrub forward to reveal it."
       : "Trails: everyone’s last 5 seconds. Select a player for their full life path.";
+    if (flagHeat) $("trail-info").textContent = "Flag heatmap: full round · carried, dropped, and at base · warmer colors = more time. Player and life selections do not filter flags.";
     $("life-detail").textContent = life ? `${clock(life.startMs)}–${clock(life.endMs)} · ${clock(life.endMs - life.startMs)} alive · ${life.kills} kills · ${life.endReason}`
       : player ? `${player.lives.length} recorded lives. Select one to follow its full path.` : selectedTeam ? `${teamLabel(selectedTeam)} selected. Select a player to inspect their lives.` : "All recorded players. Select a player to inspect their lives.";
     $("previous-life").disabled = !player?.lives.length || $("life").value === "0";
@@ -381,10 +384,11 @@
       }
     }
   }
-  function heatmapFor(players) {
-    const life = currentLife();
-    const selection = selectedTeam + ":" + selected;
-    if (heatmapCache?.selection === selection && heatmapCache.life === life) return heatmapCache.canvas;
+  function heatmapFor(players, flagMode = false) {
+    const life = flagMode ? null : currentLife();
+    const selection = flagMode ? $("flag-heatmap").value : selectedTeam + ":" + selected;
+    if (flagMode && flagHeatmapCache.has(selection)) return flagHeatmapCache.get(selection);
+    if (!flagMode && heatmapCache?.selection === selection && heatmapCache.life === life) return heatmapCache.canvas;
     // Accumulate seconds in map coordinates once per selection, never per playback tick.
     const layer = document.createElement("canvas");
     const ratio = Math.min(1, 384 / Math.max(background.width, background.height));
@@ -397,21 +401,42 @@
     }
     const start = life?.startMs ?? 0, end = life?.endMs ?? data.durationMs;
     const interval = data.sampleIntervalMs > 0 ? data.sampleIntervalMs : 100;
-    for (const player of players) {
+    function addHeat(x, y, seconds) {
+      if (!(seconds > 0)) return;
+      const [px, py] = project(x, y);
+      if (!Number.isFinite(px) || !Number.isFinite(py)) return;
+      const cx = Math.round(px * layer.width / background.width), cy = Math.round(py * layer.height / background.height);
+      for (const [dx, dy, weight] of kernel) {
+        const x = cx + dx, y = cy + dy;
+        if (x >= 0 && x < layer.width && y >= 0 && y < layer.height) density[y * layer.width + x] += seconds * weight;
+      }
+    }
+    if (flagMode) for (const flag of data.flags || []) {
+      if (selection !== "all" && flagTeam(flag) !== Number(selection)) continue;
+      const frames = flag.frames;
+      for (let i = 0; i < frames.length; i += 6) {
+        const at = frames[i], next = i + 6 < frames.length ? frames[i + 6] : at + interval;
+        const seconds = (Math.min(end, next, at + interval) - Math.max(start, at)) / 1000;
+        if (!(seconds > 0)) continue;
+        // Carried objective coordinates can be hidden/zeroed. Use the carrier's
+        // recorded position, while excluding missing, dead, and hidden samples.
+        const frame = flagAt(flag, at);
+        if (!frame) continue;
+        if (frame.carrier) {
+          const carrier = frameAt(byId.get(frame.carrier), at);
+          if (at - carrier[0] > interval) continue;
+        }
+        addHeat(frame.x, frame.y, seconds);
+      }
+    }
+    else for (const player of players) {
       const frames = player.frames;
       for (let i = 0; i < frames.length; i += data.stride) {
         if (frames[i + 5] !== 1) continue;
         // Missing samples must not turn into long stays, and dead samples never add heat.
         const next = i + data.stride < frames.length ? frames[i + data.stride] : frames[i] + interval;
         const seconds = (Math.min(end, next, frames[i] + interval) - Math.max(start, frames[i])) / 1000;
-        if (!(seconds > 0)) continue;
-        const [px, py] = project(frames[i + 1], frames[i + 2]);
-        if (!Number.isFinite(px) || !Number.isFinite(py)) continue;
-        const cx = Math.round(px * layer.width / background.width), cy = Math.round(py * layer.height / background.height);
-        for (const [dx, dy, weight] of kernel) {
-          const x = cx + dx, y = cy + dy;
-          if (x >= 0 && x < layer.width && y >= 0 && y < layer.height) density[y * layer.width + x] += seconds * weight;
-        }
+        addHeat(frames[i + 1], frames[i + 2], seconds);
       }
     }
     let peak = 0;
@@ -426,7 +451,8 @@
       pixels.data[i * 4 + 3] = Math.round(180 * Math.min(1, intensity * 2));
     }
     context.putImageData(pixels, 0, 0);
-    heatmapCache = { selection, life, canvas: layer };
+    if (flagMode) flagHeatmapCache.set(selection, layer);
+    else heatmapCache = { selection, life, canvas: layer };
     return layer;
   }
   function draw() {
@@ -445,6 +471,7 @@
     const focused = byId.get(Number(selected));
     const selectedPlayers = focused ? [focused] : selectedTeam ? data.players.filter(player => inSelection(player.id)) : data.players;
     if ((focused || selectedTeam) && $("heatmap").checked) ctx.drawImage(heatmapFor(selectedPlayers), 0, 0, background.width, background.height);
+    if ($("flag-heatmap").value !== "off") ctx.drawImage(heatmapFor([], true), 0, 0, background.width, background.height);
     if ($("trail").checked) for (const player of selectedPlayers) {
       const life = (focused && currentLife()) || player.lives.findLast(item => time >= item.startMs);
       if (life && (focused || time - life.endMs <= 5000)) {
@@ -617,6 +644,14 @@
         button.append(name, label); button.onclick = () => selectPlayer(player.id); $("roster").append(button); rosterStates.set(player.id, { button, label });
       }
       resolveFlagTeams();
+      flagHeatmapCache.clear();
+      const flagHeatmap = $("flag-heatmap");
+      for (const option of flagHeatmap.options) {
+        option.disabled = option.value === "off" ? false : !(data.flags || []).some(flag =>
+          flag.frames.length && (option.value === "all" || flagTeam(flag) === Number(option.value)));
+      }
+      flagHeatmap.disabled = !(data.flags || []).some(flag => flag.frames.length);
+      if (flagHeatmap.selectedOptions[0].disabled) flagHeatmap.value = "off";
       $("map-name").textContent = data.map; $("round-meta").textContent = `${data.players.length} players · ${clock(data.durationMs)} recorded · Round ${round}`;
       if ($("map-link")) $("map-link").href = "map.html?map=" + encodeURIComponent(data.map);
       $("timeline").max = String(data.durationMs); mapSpace.style.width = "100%"; mapSpace.style.height = "1px";
@@ -638,6 +673,7 @@
   $("reset-view").onclick = () => fitViewport(true);
   $("effects").onchange = $("trail").onchange = $("flags").onchange = () => { dirty = true; };
   $("heatmap").onchange = () => { dirty = true; updateUI(); };
+  $("flag-heatmap").onchange = () => { dirty = true; updateUI(); };
   window.addEventListener("resize", () => { fitViewport(); dirty = true; }, { signal: lifecycle.signal });
   document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); }, { signal: lifecycle.signal });
   const resizeObserver = new ResizeObserver(() => { fitViewport(); dirty = true; });
@@ -658,6 +694,7 @@
     destroyed = true; loadVersion++; playing = false;
     controller?.abort(); lifecycle.abort(); resizeObserver.disconnect();
     cancelAnimationFrame(animationFrame); data = null; background = null; heatmapCache = null;
+    flagHeatmapCache.clear();
     byId.clear(); rosterStates.clear(); playerTeams.clear(); teamButtons.clear();
   }};
   }
@@ -668,7 +705,7 @@
       <span id="round-meta"></span>
       <p id="status" role="status">Loading round playback…</p>
       <p id="flag-status" aria-label="Recorded flag states"></p>
-      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player or team to show where they spent time alive."><input id="heatmap" type="checkbox" disabled> Heatmap</label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
+      <div class="stage-tools"><button id="reset-view" type="button">Reset view</button><span id="zoom-level">100%</span><label title="Recorded projectile positions, or owner-position estimates when grenade coordinates are unavailable."><input id="effects" type="checkbox" checked> Conc effects</label><label><input id="trail" type="checkbox" checked> Life trail</label><label title="Select a player or team to show where they spent time alive."><input id="heatmap" type="checkbox" disabled> Player heatmap</label><label title="Time spent at each flag location over the full recorded round, including carried, dropped, and at base. Independent of player and life selections.">Flag heatmap<select id="flag-heatmap" disabled><option value="off">Off</option><option value="all">All flags</option><option value="1">Blue flag</option><option value="2">Red flag</option></select></label><label><input id="flags" type="checkbox" checked> Show flags</label></div>
       <form id="load-form" class="playback-reload"><input id="match" type="hidden"><input id="round" type="hidden"><button id="load" type="submit">Reload</button></form>
     </div>
     <section id="viewer" hidden aria-label="Tactical round playback">
