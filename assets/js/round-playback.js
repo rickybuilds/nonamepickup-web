@@ -454,17 +454,23 @@
       data = next; background = view.background; project = view.project;
       byId.clear(); rosterStates.clear(); $("roster").replaceChildren();
       const all = document.createElement("button"); all.textContent = "Everyone"; all.onclick = () => selectPlayer(""); $("roster").append(all);
-      // Group by the first recorded alive team, so scrubbing and missing current
-      // samples never shuffle the roster. Fall back to a recorded team when dead.
+      // Round openings can contain a few samples from before players switch sides.
+      // Use the predominant alive team, weighted by time rather than event-heavy
+      // sample counts. Keep the resulting roster stable while scrubbing.
       const rosterTeam = player => {
         let fallback = 0;
+        const aliveMs = [0, 0, 0];
+        const interval = data.sampleIntervalMs > 0 ? data.sampleIntervalMs : 100;
         for (let i = 0; i < player.frames.length; i += data.stride) {
           const team = player.frames[i + 9];
           if (team !== 1 && team !== 2) continue;
           if (!fallback) fallback = team;
-          if (player.frames[i + 5] === 1) return team;
+          if (player.frames[i + 5] !== 1) continue;
+          const at = player.frames[i];
+          const next = i + data.stride < player.frames.length ? player.frames[i + data.stride] : at + interval;
+          aliveMs[team] += Math.max(0, Math.min(next, at + interval, data.durationMs) - at);
         }
-        return fallback;
+        return aliveMs[1] === aliveMs[2] ? fallback : aliveMs[1] > aliveMs[2] ? 1 : 2;
       };
       const roster = data.players.map(player => ({ player, team: rosterTeam(player) })).sort((a, b) => (a.team || 3) - (b.team || 3));
       let previousTeam = null;
