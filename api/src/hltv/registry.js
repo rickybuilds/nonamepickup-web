@@ -10,8 +10,9 @@ function text(value, max = 2000) {
   return value.trim();
 }
 class Registry {
-  constructor({ root, database, publicRoot, maxBytes, minFreeBytes = 10737418240 }) {
+  constructor({ root, database, publicRoot, maxBytes, minFreeBytes = 10737418240, manualRetentionEnabled = false }) {
     this.storage = new Storage(root, { publicRoot, maxBytes }); this.minFreeBytes = minFreeBytes;
+    this.manualRetentionEnabled = manualRetentionEnabled === true;
     if (!database || !path.isAbsolute(database)) throw new Error("Absolute HLTV database path required");
     if (publicRoot && (database === path.resolve(publicRoot) || require("./storage").inside(path.resolve(publicRoot), path.resolve(database)))) throw new Error("HLTV database cannot be public");
     this.db = new Database(database, { timeout: 10000 });
@@ -141,19 +142,26 @@ class Registry {
     }).immediate();
   }
   eligible(d, now) {
+    const manualRoutine = this.manualRetentionEnabled && d.analysis_status === "unsupported" &&
+      d.retention_class === "normal" && d.review_status === "unreviewed" && d.last_error == null &&
+      !this.db.prepare("SELECT 1 FROM hltv_analysis_runs WHERE demo_id=?").get(d.id);
     return ["available", "deleting"].includes(d.file_status) && d.expires_at <= now &&
-      (d.analysis_status === "complete" || Boolean(d.analysis_waiver)) && d.retention_class !== "evidence" &&
+      (d.analysis_status === "complete" || Boolean(d.analysis_waiver) || manualRoutine) && d.retention_class !== "evidence" &&
       !this.db.prepare("SELECT 1 FROM hltv_holds WHERE demo_id=? AND released_at IS NULL").get(d.id) &&
       !this.db.prepare("SELECT 1 FROM hltv_cases WHERE demo_id=? AND status IN ('queued','in_review','escalated')").get(d.id);
   }
   cleanup({ enabled = false, dryRun = true, now = Date.now(), actor = "cleanup", verifyFiles = true } = {}) {
     if (!verifyFiles && enabled && !dryRun) throw new Error("File verification required for deletion");
-    const result = { dry_run: dryRun || !enabled, files_verified: verifyFiles, eligible: 0, deleted: 0, errors: [], ids: [] };
+    const retentionMode = this.manualRetentionEnabled ? "manual_review" : "require_analysis";
+    const result = { dry_run: dryRun || !enabled, files_verified: verifyFiles, retention_mode: retentionMode, eligible: 0, deleted: 0, errors: [], ids: [] };
     const candidates = this.db.prepare(`SELECT d.id FROM hltv_demos d WHERE file_status IN ('available','deleting') AND expires_at<=?
-      AND (analysis_status='complete' OR analysis_waiver IS NOT NULL) AND retention_class!='evidence'
+      AND (analysis_status='complete' OR analysis_waiver IS NOT NULL OR
+        (?=1 AND analysis_status='unsupported' AND retention_class='normal' AND review_status='unreviewed'
+          AND last_error IS NULL AND NOT EXISTS(SELECT 1 FROM hltv_analysis_runs r WHERE r.demo_id=d.id)))
+      AND retention_class!='evidence'
       AND NOT EXISTS(SELECT 1 FROM hltv_holds h WHERE h.demo_id=d.id AND h.released_at IS NULL)
       AND NOT EXISTS(SELECT 1 FROM hltv_cases c WHERE c.demo_id=d.id AND c.status IN ('queued','in_review','escalated'))
-      ORDER BY expires_at,id LIMIT 100`).all(now);
+      ORDER BY expires_at,id LIMIT 100`).all(now, this.manualRetentionEnabled ? 1 : 0);
     for (const candidate of candidates) {
       if (enabled && !dryRun) this.db.transaction(() => {
         const d = this.get(candidate.id);
@@ -163,7 +171,7 @@ class Registry {
           // must never be reconciled as successful retention deletions.
           this.storage.resolve(d.storage_key);
           this.db.prepare("UPDATE hltv_demos SET file_status='deleting' WHERE id=?").run(d.id);
-          this.audit(d.id, actor, "deletion_claimed", { sha256: d.sha256 });
+          this.audit(d.id, actor, "deletion_claimed", { sha256: d.sha256, retention_mode: retentionMode });
         } catch (error) {
           this.db.prepare("UPDATE hltv_demos SET last_error=? WHERE id=?").run(error.message, d.id);
         }
@@ -206,7 +214,7 @@ class Registry {
         this.db.prepare("UPDATE hltv_copies SET deleted_at=? WHERE demo_id=? AND deleted_at IS NULL").run(now, d.id);
         fs.unlinkSync(file.path);
         this.db.prepare("UPDATE hltv_demos SET file_status='deleted',deleted_at=?,last_error=NULL WHERE id=?").run(now, d.id);
-        this.audit(d.id, actor, "deleted", { sha256: d.sha256 }); result.deleted++;
+        this.audit(d.id, actor, "deleted", { sha256: d.sha256, retention_mode: retentionMode }); result.deleted++;
       } catch (error) {
         this.db.prepare("UPDATE hltv_demos SET last_error=? WHERE id=?").run(error.message, d.id);
         result.errors.push({ id: d.id, error: error.message });
@@ -217,8 +225,11 @@ class Registry {
   }
   summary() {
     const totals = this.db.prepare(`SELECT COUNT(*) AS demos,COALESCE(SUM(CASE WHEN file_status='available' THEN size_bytes ELSE 0 END),0) AS available_bytes,
-      SUM(CASE WHEN analysis_status!='complete' AND analysis_waiver IS NULL THEN 1 ELSE 0 END) AS analysis_blocked,
-      SUM(CASE WHEN review_status IN ('queued','in_review','escalated') THEN 1 ELSE 0 END) AS open_reviews FROM hltv_demos`).get();
+      SUM(CASE WHEN analysis_status!='complete' AND analysis_waiver IS NULL AND NOT
+        (?=1 AND analysis_status='unsupported' AND retention_class='normal' AND review_status='unreviewed'
+          AND last_error IS NULL AND NOT EXISTS(SELECT 1 FROM hltv_analysis_runs r WHERE r.demo_id=d.id))
+        THEN 1 ELSE 0 END) AS analysis_blocked,
+      SUM(CASE WHEN review_status IN ('queued','in_review','escalated') THEN 1 ELSE 0 END) AS open_reviews FROM hltv_demos d`).get(this.manualRetentionEnabled ? 1 : 0);
     const free = this.storage.freeBytes();
     const copyBytes = this.db.prepare("SELECT COALESCE(SUM(size_bytes),0) AS n FROM hltv_copies WHERE deleted_at IS NULL").get().n;
     return { ...totals, available_bytes: totals.available_bytes + copyBytes, duplicate_bytes: copyBytes, free_bytes: free, low_disk: free < this.minFreeBytes,
@@ -226,7 +237,9 @@ class Registry {
       failed_manifests: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_manifests WHERE status='failed'").get().n,
       stalled_alerts: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE sent_at IS NULL AND attempts>=12").get().n,
       pending_alerts: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE sent_at IS NULL").get().n,
-      policy: this.db.prepare("SELECT * FROM hltv_policy").all(), analyzer: "not_integrated", viewer: "not_integrated" };
+      policy: this.db.prepare("SELECT * FROM hltv_policy").all(),
+      retention_mode: this.manualRetentionEnabled ? "manual_review" : "require_analysis",
+      analyzer: "not_integrated", viewer: "not_integrated" };
   }
 }
 module.exports = { Registry, DAY, text };

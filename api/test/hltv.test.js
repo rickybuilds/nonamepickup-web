@@ -9,6 +9,7 @@ const { validateResult, UnavailableAnalyzer } = require("../src/hltv/analyzer");
 test("feature and cleanup default off; cleanup preview defaults on",()=>{
   const c=require("../src/hltv/config").config({});
   assert.equal(c.enabled,false);assert.equal(c.cleanupEnabled,false);assert.equal(c.dryRun,true);
+  assert.equal(c.manualRetentionEnabled,false);
 });
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "hltv-test-"));
@@ -28,6 +29,39 @@ test("duplicate handoff is idempotent; unavailable analyzer blocks deletion", t 
   assert.equal(r.list({}).length, 1);
   assert.equal(demo.analysis_status, "unsupported");
   assert.equal(r.cleanup({ enabled: true, dryRun: false }).deleted, 0);
+});
+test("opt-in manual mode expires only overdue unflagged demos without pretending analysis completed", t => {
+  const {registry:r,demo,root}=fixture(t);
+  r.manualRetentionEnabled=true;
+  assert.equal(r.summary().analysis_blocked,0);
+  r.db.prepare("UPDATE hltv_demos SET expires_at=? WHERE id=?").run(Date.now()+86400000,demo.id);
+  assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
+  r.db.prepare("UPDATE hltv_demos SET expires_at=1 WHERE id=?").run(demo.id);
+  assert.equal(r.cleanup({enabled:true,dryRun:true}).eligible,1);
+  assert.ok(fs.existsSync(path.join(root,demo.storage_key)));
+  assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,1);
+  assert.equal(r.get(demo.id).analysis_status,"unsupported");
+  assert.ok(r.detail(demo.id).audit.some(a=>a.action==="deletion_claimed" && JSON.parse(a.details).retention_mode==="manual_review"));
+});
+test("manual routine expiry does not bypass failures, analysis runs, holds or flagged review", t => {
+  const {registry:r,demo}=fixture(t);r.manualRetentionEnabled=true;
+  for(const status of ["pending","processing","failed"]){
+    r.db.prepare("UPDATE hltv_demos SET analysis_status=? WHERE id=?").run(status,demo.id);
+    assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
+  }
+  r.db.prepare("UPDATE hltv_demos SET analysis_status='unsupported',last_error='incomplete source' WHERE id=?").run(demo.id);
+  assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
+  r.db.prepare("UPDATE hltv_demos SET last_error=NULL WHERE id=?").run(demo.id);
+  r.db.prepare("INSERT INTO hltv_analysis_runs(id,demo_id,status,started_at) VALUES('run',?,'unsupported',1)").run(demo.id);
+  assert.equal(r.summary().analysis_blocked,1);
+  assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
+  r.db.prepare("DELETE FROM hltv_analysis_runs WHERE id='run'").run();
+  r.action(demo.id,"flag",{reason:"keep for review"},"123");
+  r.db.prepare("UPDATE hltv_demos SET expires_at=1 WHERE id=?").run(demo.id);
+  assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
+  r.action(demo.id,"status",{status:"dismissed",reason:"review closed"},"123");
+  assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
+  assert.equal(r.get(demo.id).file_status,"available");
 });
 test("report holds survive closure, evidence preservation and policy changes", t => {
   const { registry: r, demo } = fixture(t);

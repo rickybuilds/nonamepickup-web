@@ -1,5 +1,5 @@
 "use strict";
-require("dotenv").config();
+require("dotenv").config({ path: require("path").resolve(__dirname, "../.env"), quiet: true });
 const fs = require("fs");
 const { config } = require("../src/hltv/config");
 const { Registry } = require("../src/hltv/registry");

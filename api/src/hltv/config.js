@@ -9,6 +9,7 @@ function config(env = process.env) {
   return { enabled: env.HLTV_REGISTRY_ENABLED === "true", root: env.HLTV_STORAGE_ROOT,
     database: env.HLTV_REGISTRY_DB, publicRoot: path.resolve(env.PUBLIC_DIR || path.join(__dirname, "../../..")),
     maxBytes: number("HLTV_MAX_DEMO_BYTES", 268435456), minFreeBytes: number("HLTV_MIN_DISK_FREE_BYTES", 10737418240),
-    cleanupEnabled: env.HLTV_CLEANUP_ENABLED === "true", dryRun: env.HLTV_CLEANUP_DRY_RUN !== "false" };
+    cleanupEnabled: env.HLTV_CLEANUP_ENABLED === "true", dryRun: env.HLTV_CLEANUP_DRY_RUN !== "false",
+    manualRetentionEnabled: env.HLTV_MANUAL_RETENTION_ENABLED === "true" };
 }
 module.exports = { config };
