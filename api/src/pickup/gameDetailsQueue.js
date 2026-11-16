@@ -95,11 +95,13 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
         db.prepare("UPDATE game_detail_jobs SET state='retry',next_attempt=?,last_error=? WHERE artifact_id=?")
           .run(now + 900, String(error.message || error).slice(0, 2000), job.artifact_id);
       },
-      expired(days, now = Math.floor(Date.now() / 1000)) {
+      expired(days, now = Math.floor(Date.now() / 1000), after = null) {
         if (!Number.isInteger(days) || days < 14) throw new Error("Archive retention must be at least 14 days");
-        return db.prepare(`SELECT * FROM game_detail_jobs WHERE state='ready' AND archive_deleted_at IS NULL
+        return db.prepare(`SELECT *,${retentionEpoch} AS retention_epoch FROM game_detail_jobs WHERE state='ready' AND archive_deleted_at IS NULL
           AND ${retentionEpoch}>0 AND ${retentionEpoch}<=? AND next_attempt=0 AND ${hasCleanupRetry ? "cleanup_retry_after" : "0"}<=?
-          ORDER BY ${retentionEpoch},artifact_id LIMIT 100`).all(now - days * 86400, now);
+          AND (${retentionEpoch}>? OR (${retentionEpoch}=? AND artifact_id>?))
+          ORDER BY ${retentionEpoch},artifact_id LIMIT 100`).all(now - days * 86400, now,
+            after?.epoch ?? 0, after?.epoch ?? 0, after?.id ?? 0);
       },
       deleted(id, now = Math.floor(Date.now() / 1000)) { db.prepare("UPDATE game_detail_jobs SET archive_deleted_at=?,last_error=NULL WHERE artifact_id=?").run(now, id); },
       cleanupBlocked(id, error) {

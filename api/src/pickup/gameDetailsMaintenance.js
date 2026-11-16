@@ -107,46 +107,62 @@ function verifyMapIndexes(elo, job) {
 
 async function pruneArchives({ queue, storage, destination, elo, retentionDays = 14, dryRun = true, logger = console, shouldStop = () => false }) {
   if (!Number.isInteger(retentionDays) || retentionDays < 14) throw new Error("Archive retention must be at least 14 days");
-  const result = { eligible: 0, deleted: 0, blocked: 0 };
+  const result = { eligible: 0, deleted: 0, blocked: 0, already_missing: 0, scanned: 0, eligible_bytes: 0, more_candidates: false };
   const root = await fs.realpath(storage.artifacts);
-  for (const job of queue.expired(retentionDays)) {
-    if (shouldStop()) break;
-    try {
-      const databaseBefore = await fs.stat(destination);
-      const verified = verifyImportedRound(destination, job);
-      // Recheck age from the verified retained package, not just discovery
-      // metadata. Missing/invalid recording dates conservatively use upload age.
-      const retainedSince = verified.recordedAt ?? job.uploaded_at;
-      if (!Number.isSafeInteger(retainedSince) || retainedSince < 1 || retainedSince > Math.floor(Date.now() / 1000) - retentionDays * 86400) {
-        throw new Error("Recording/upload is still inside the retention window");
+  const now = Math.floor(Date.now() / 1000);
+  let cursor = null;
+  while (!shouldStop()) {
+    const jobs = queue.expired(retentionDays, now, cursor);
+    if (!jobs.length) break;
+    for (const job of jobs) {
+      if (shouldStop()) break;
+      cursor = { epoch: job.retention_epoch, id: job.artifact_id };
+      result.scanned++;
+      try {
+        const databaseBefore = await fs.stat(destination);
+        const verified = verifyImportedRound(destination, job);
+        // Recheck age from the verified retained package, not just discovery
+        // metadata. Missing/invalid recording dates conservatively use upload age.
+        const retainedSince = verified.recordedAt ?? job.uploaded_at;
+        if (!Number.isSafeInteger(retainedSince) || retainedSince < 1 || retainedSince > Math.floor(Date.now() / 1000) - retentionDays * 86400) {
+          throw new Error("Recording/upload is still inside the retention window");
+        }
+        if (job.recorded_at != null && verified.recordedAt !== job.recorded_at) throw new Error("Recording date does not match verified package; reconcile before cleanup");
+        verifyMapIndexes(elo, job);
+        const archive = storage.artifactPath(job.storage_key);
+        if (path.basename(path.dirname(archive)) !== job.match_id ||
+            !new RegExp(`^round-0*${job.round_number}-${job.source_sha256}\\.tar\\.zst$`).test(path.basename(archive))) throw new Error("Archive path identity mismatch");
+        let info;
+        try { info = await fs.lstat(archive); }
+        catch (error) {
+          if (error.code !== "ENOENT") throw error;
+          logger.log(`[game-details cleanup] ${job.match_id}/${job.round_number}: already missing; database verified`);
+          result.already_missing++;
+          if (!dryRun) queue.deleted(job.artifact_id);
+          continue;
+        }
+        if (!info.isFile() || info.isSymbolicLink()) throw new Error("Archive is not a regular file");
+        const realFile = await fs.realpath(archive);
+        if (!realFile.startsWith(root + path.sep)) throw new Error("Archive resolves outside artifact storage");
+        if (await hashFile(realFile) !== job.source_sha256) throw new Error("Archive checksum mismatch; retained for review");
+        const databaseAfter = await fs.stat(destination), finalFile = await fs.lstat(realFile);
+        if (databaseBefore.ino !== databaseAfter.ino || databaseBefore.size !== databaseAfter.size || databaseBefore.mtimeMs !== databaseAfter.mtimeMs ||
+            finalFile.ino !== info.ino || finalFile.size !== info.size || finalFile.mtimeMs !== info.mtimeMs || !finalFile.isFile()) throw new Error("Database/archive changed during verification");
+        result.eligible++;
+        result.eligible_bytes += info.size;
+        logger.log(`[game-details cleanup] ${dryRun ? "would delete" : "deleting"}: ${realFile}`);
+        if (!dryRun) { await fs.unlink(realFile); queue.deleted(job.artifact_id); result.deleted++; }
+      } catch (error) {
+        result.blocked++;
+        if (!dryRun) queue.cleanupBlocked(job.artifact_id, error);
+        logger.error(`[game-details cleanup] ${job.match_id}/${job.round_number}: retained: ${error.message}`);
       }
-      if (job.recorded_at != null && verified.recordedAt !== job.recorded_at) throw new Error("Recording date does not match verified package; reconcile before cleanup");
-      verifyMapIndexes(elo, job);
-      const archive = storage.artifactPath(job.storage_key);
-      if (path.basename(path.dirname(archive)) !== job.match_id ||
-          !new RegExp(`^round-0*${job.round_number}-${job.source_sha256}\\.tar\\.zst$`).test(path.basename(archive))) throw new Error("Archive path identity mismatch");
-      let info;
-      try { info = await fs.lstat(archive); }
-      catch (error) {
-        if (error.code !== "ENOENT") throw error;
-        logger.log(`[game-details cleanup] ${job.match_id}/${job.round_number}: already missing; database verified`);
-        if (!dryRun) queue.deleted(job.artifact_id);
-        continue;
+      // Missing/blocked records must not consume the removal batch. Advance with
+      // a stable keyset cursor even in a read-only preview, without tombstoning.
+      if (result.eligible >= 100) {
+        result.more_candidates = queue.expired(retentionDays, now, cursor).length > 0;
+        return result;
       }
-      if (!info.isFile() || info.isSymbolicLink()) throw new Error("Archive is not a regular file");
-      const realFile = await fs.realpath(archive);
-      if (!realFile.startsWith(root + path.sep)) throw new Error("Archive resolves outside artifact storage");
-      if (await hashFile(realFile) !== job.source_sha256) throw new Error("Archive checksum mismatch; retained for review");
-      const databaseAfter = await fs.stat(destination), finalFile = await fs.lstat(realFile);
-      if (databaseBefore.ino !== databaseAfter.ino || databaseBefore.size !== databaseAfter.size || databaseBefore.mtimeMs !== databaseAfter.mtimeMs ||
-          finalFile.ino !== info.ino || finalFile.size !== info.size || finalFile.mtimeMs !== info.mtimeMs || !finalFile.isFile()) throw new Error("Database/archive changed during verification");
-      result.eligible++;
-      logger.log(`[game-details cleanup] ${dryRun ? "would delete" : "deleting"}: ${realFile}`);
-      if (!dryRun) { await fs.unlink(realFile); queue.deleted(job.artifact_id); result.deleted++; }
-    } catch (error) {
-      result.blocked++;
-      if (!dryRun) queue.cleanupBlocked(job.artifact_id, error);
-      logger.error(`[game-details cleanup] ${job.match_id}/${job.round_number}: retained: ${error.message}`);
     }
   }
   return result;
