@@ -1,6 +1,6 @@
 # Match heatmap comparison prototype
 
-Status: Proposed design; implementation has not started.
+Status: Approved and implemented as a standalone prototype in commit `1094a7c`.
 
 ## Intent
 
