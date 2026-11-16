@@ -1,5 +1,6 @@
 .env
 .env.*
+!.env.example
 node_modules/
 
 # Local browser-engine toolchain and upstream source checkouts
@@ -24,6 +25,7 @@ api/.env.*
 
 # HLTV development
 hltv/
+!/api/src/hltv/
 
 # Private Speedrun Viewer
 /assets/maps/

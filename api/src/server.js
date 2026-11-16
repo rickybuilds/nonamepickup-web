@@ -193,6 +193,7 @@ function shutdown(signal) {
     try {
       liveRelay.close();
       app.locals.closePredictions?.();
+      app.locals.closeHltv?.();
       pickupLive.close();
       db.close();
       await closePickupPool();

@@ -85,6 +85,26 @@ function createApp({
   // CORS
   app.use(createCorsMiddleware(CORS_ORIGIN));
 
+  // Private HLTV subsystem is entirely opt-in and independent of pickup replay.
+  if (process.env.HLTV_REGISTRY_ENABLED === "true") {
+    const { config: hltvConfig } = require("./hltv/config");
+    const { Registry } = require("./hltv/registry");
+    const { createRouter } = require("./hltv/router");
+    const registry = new Registry({ ...hltvConfig(), publicRoot: PUBLIC_DIR });
+    app.use("/api/admin/hltv", createRouter({ registry }));
+    app.get("/admin/hltv-review", (req, res) => {
+      const html = require("fs").readFileSync(require("path").join(__dirname, "hltv/review.html"), "utf8");
+      const script = /<script>([\s\S]*?)<\/script>/.exec(html)[1];
+      const hash = require("crypto").createHash("sha256").update(script).digest("base64");
+      res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow, noarchive",
+        "X-Frame-Options": "DENY", "Content-Security-Policy": `default-src 'none'; script-src 'sha256-${hash}'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'` });
+      res.sendFile(require("path").join(__dirname, "hltv/review.html"));
+    });
+    app.locals.closeHltv = () => registry.close();
+  } else {
+    app.use(["/api/admin/hltv", "/admin/hltv-review"], (req, res) => res.sendStatus(404));
+  }
+
   // Live prediction standings read the existing configured ELO database.
   // Keep existing rate limits and omit prediction API traffic from analytics.
   if (process.env.PREDICTIONS_WEB_MODE !== "off") {
