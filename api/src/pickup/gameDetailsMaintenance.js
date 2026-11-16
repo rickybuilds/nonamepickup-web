@@ -31,7 +31,10 @@ function verifyImportedRound(destination, job, revision = null) {
       !Array.isArray(data.playback.players) || !data.playback.players.length || !Array.isArray(data.playback.events)) {
     throw new Error("Details package identity/format mismatch");
   }
-  return { revision: row.revision, schema: data.source.manifest.schema_version };
+  const started = data.source.manifest.started_at_epoch, ended = data.source.manifest.ended_at_epoch;
+  const recordedAt = Number.isSafeInteger(started) && started > 0 && Number.isSafeInteger(ended) &&
+    ended >= started && ended <= Math.floor(Date.now() / 1000) ? ended : null;
+  return { revision: row.revision, schema: data.source.manifest.schema_version, recordedAt };
 }
 
 async function runQueuedImports({ queue, storage, destination, elo, limit = 4, logger = console, shouldStop = () => false }) {
@@ -46,7 +49,7 @@ async function runQueuedImports({ queue, storage, destination, elo, limit = 4, l
       try { existing = verifyImportedRound(destination, job); }
       catch { /* Missing or invalid packages must be imported/repaired below. */ }
       if (existing) {
-        queue.success(job, existing.revision);
+        queue.success(job, existing.revision, undefined, existing.recordedAt);
         result.unchanged++;
         logger.log(`[game-details] ${job.match_id}/${job.round_number}: already stored/verified; archive skipped`);
         continue;
@@ -54,7 +57,7 @@ async function runQueuedImports({ queue, storage, destination, elo, limit = 4, l
       const converted = await convertRound({ archive: storage.artifactPath(job.storage_key), destination,
         match: job.match_id, round: job.round_number, elo, skipExisting: true, log: text => logger.log(text) });
       const verified = verifyImportedRound(destination, job, converted.revision);
-      queue.success(job, verified.revision);
+      queue.success(job, verified.revision, undefined, verified.recordedAt);
       result[converted.skipped ? "unchanged" : "imported"]++;
       logger.log(`[game-details] ${job.match_id}/${job.round_number}: ${converted.skipped ? "unchanged/verified" : "imported/verified"}`);
     } catch (error) {
@@ -62,6 +65,31 @@ async function runQueuedImports({ queue, storage, destination, elo, limit = 4, l
       logger.error(`[game-details] ${job.match_id}/${job.round_number}: retry in 15 minutes: ${error.message}`);
     }
   }
+  return result;
+}
+
+// One-time historical reconciliation verifies existing DB packages only. It
+// never converts a missing package, reads source archives, or deletes bytes.
+async function reconcileImportedRounds({ queue, destination, limit = 10000, logger = console, shouldStop = () => false }) {
+  const result = { verified: 0, failed: 0, remaining: false };
+  let afterId = 0, count = 0;
+  while (count < limit && !shouldStop()) {
+    const jobs = queue.reconcilable(afterId, Math.min(100, limit - count));
+    if (!jobs.length) break;
+    for (const job of jobs) {
+      if (shouldStop()) break;
+      afterId = job.artifact_id; count++;
+      try {
+        const verified = verifyImportedRound(destination, job);
+        queue.success(job, verified.revision, undefined, verified.recordedAt);
+        result.verified++;
+      } catch (error) {
+        queue.failure(job, error); result.failed++;
+        logger.error(`[game-details reconcile] ${job.match_id}/${job.round_number}: retained: ${error.message}`);
+      }
+    }
+  }
+  result.remaining = queue.reconcilable(afterId, 1).length > 0;
   return result;
 }
 
@@ -85,7 +113,14 @@ async function pruneArchives({ queue, storage, destination, elo, retentionDays =
     if (shouldStop()) break;
     try {
       const databaseBefore = await fs.stat(destination);
-      verifyImportedRound(destination, job);
+      const verified = verifyImportedRound(destination, job);
+      // Recheck age from the verified retained package, not just discovery
+      // metadata. Missing/invalid recording dates conservatively use upload age.
+      const retainedSince = verified.recordedAt ?? job.uploaded_at;
+      if (!Number.isSafeInteger(retainedSince) || retainedSince < 1 || retainedSince > Math.floor(Date.now() / 1000) - retentionDays * 86400) {
+        throw new Error("Recording/upload is still inside the retention window");
+      }
+      if (job.recorded_at != null && verified.recordedAt !== job.recorded_at) throw new Error("Recording date does not match verified package; reconcile before cleanup");
       verifyMapIndexes(elo, job);
       const archive = storage.artifactPath(job.storage_key);
       if (path.basename(path.dirname(archive)) !== job.match_id ||
@@ -117,4 +152,4 @@ async function pruneArchives({ queue, storage, destination, elo, retentionDays =
   return result;
 }
 
-module.exports = { verifyImportedRound, runQueuedImports, pruneArchives };
+module.exports = { verifyImportedRound, runQueuedImports, reconcileImportedRounds, pruneArchives };

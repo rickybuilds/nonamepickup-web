@@ -11,7 +11,7 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
   try {
     db.pragma("busy_timeout = 5000");
     const id = db.pragma("application_id", { simple: true });
-    if (id === APPLICATION_ID && ![1, 2].includes(db.pragma("user_version", { simple: true }))) throw new Error("Unsupported game-details queue version");
+    if (id === APPLICATION_ID && ![1, 2, 3].includes(db.pragma("user_version", { simple: true }))) throw new Error("Unsupported game-details queue version");
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
     if (id !== APPLICATION_ID && (readonly || id !== 0 || tables.length)) throw new Error("Not a game-details queue database");
     if (!readonly) db.transaction(() => {
@@ -22,21 +22,38 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
       first_imported_at INTEGER, last_verified_at INTEGER, revision TEXT,
       refresh_stage INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL,
       attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT, archive_deleted_at INTEGER,
-      cleanup_retry_after INTEGER NOT NULL DEFAULT 0);
+      cleanup_retry_after INTEGER NOT NULL DEFAULT 0, recorded_at INTEGER,
+      recorded_at_verified INTEGER NOT NULL DEFAULT 0);
       CREATE INDEX IF NOT EXISTS game_detail_jobs_due ON game_detail_jobs(next_attempt,state);
       PRAGMA application_id=${APPLICATION_ID};`);
       if (!db.prepare("PRAGMA table_info(game_detail_jobs)").all().some(column => column.name === "cleanup_retry_after")) {
         db.exec("ALTER TABLE game_detail_jobs ADD COLUMN cleanup_retry_after INTEGER NOT NULL DEFAULT 0");
       }
-      db.pragma("user_version = 2");
+      if (!db.prepare("PRAGMA table_info(game_detail_jobs)").all().some(column => column.name === "recorded_at")) {
+        db.exec("ALTER TABLE game_detail_jobs ADD COLUMN recorded_at INTEGER");
+      }
+      if (!db.prepare("PRAGMA table_info(game_detail_jobs)").all().some(column => column.name === "recorded_at_verified")) {
+        db.exec("ALTER TABLE game_detail_jobs ADD COLUMN recorded_at_verified INTEGER NOT NULL DEFAULT 0");
+      }
+      db.exec("CREATE INDEX IF NOT EXISTS game_detail_jobs_recorded ON game_detail_jobs(recorded_at,uploaded_at)");
+      db.pragma("user_version = 3");
       // Retire refreshes scheduled by older workers; verified jobs are complete.
       db.exec("UPDATE game_detail_jobs SET next_attempt=0 WHERE state='ready' AND next_attempt<>0");
     })();
-    if (![1, 2].includes(db.pragma("user_version", { simple: true }))) throw new Error("Unsupported game-details queue version");
+    if (![1, 2, 3].includes(db.pragma("user_version", { simple: true }))) throw new Error("Unsupported game-details queue version");
     const hasCleanupRetry = db.prepare("PRAGMA table_info(game_detail_jobs)").all().some(column => column.name === "cleanup_retry_after");
-    const enqueue = db.prepare(`INSERT INTO game_detail_jobs
-      (artifact_id,match_id,round_number,source_sha256,storage_key,schema_version,first_seen,uploaded_at,next_attempt)
-      VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(artifact_id) DO NOTHING`);
+    const hasRecordedAt = db.prepare("PRAGMA table_info(game_detail_jobs)").all().some(column => column.name === "recorded_at");
+    const retentionEpoch = hasRecordedAt ? "COALESCE(recorded_at,uploaded_at)" : "uploaded_at";
+    // Read-only status/dry-run remains compatible with pre-migration queues.
+    const enqueue = readonly ? null : db.prepare(`INSERT INTO game_detail_jobs
+      (artifact_id,match_id,round_number,source_sha256,storage_key,schema_version,first_seen,uploaded_at,next_attempt,recorded_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(artifact_id) DO UPDATE SET
+      recorded_at=CASE WHEN game_detail_jobs.recorded_at_verified=1 THEN game_detail_jobs.recorded_at
+        ELSE COALESCE(excluded.recorded_at,game_detail_jobs.recorded_at) END,
+      uploaded_at=MIN(game_detail_jobs.uploaded_at,excluded.uploaded_at)
+      WHERE (game_detail_jobs.recorded_at_verified=0 AND excluded.recorded_at IS NOT NULL
+        AND excluded.recorded_at IS NOT game_detail_jobs.recorded_at)
+        OR excluded.uploaded_at<game_detail_jobs.uploaded_at`);
     const summary = () => db.prepare(`SELECT state,COUNT(*) AS rounds,
       SUM(archive_deleted_at IS NOT NULL) AS archives_deleted, MIN(next_attempt) AS next_attempt
       FROM game_detail_jobs GROUP BY state`).all();
@@ -51,8 +68,11 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
         if (existing && (existing.source_sha256 !== sha || existing.match_id !== match || existing.round_number !== round)) throw new Error("Artifact ID changed identity");
         const uploaded = Number(artifact.verified_epoch);
         const uploadedAt = Number.isFinite(uploaded) && uploaded > 0 ? Math.floor(uploaded) : now;
-        return enqueue.run(id, match, round, sha, key, schema, now,
-          uploadedAt, Math.max(now, uploadedAt + 30)).changes;
+        const recorded = Number(artifact.recorded_epoch);
+        const recordedAt = Number.isSafeInteger(recorded) && recorded > 0 && recorded <= now ? recorded : null;
+        enqueue.run(id, match, round, sha, key, schema, now,
+          uploadedAt, Math.max(now, uploadedAt + 30), recordedAt);
+        return existing ? 0 : 1;
       },
       due(limit, now = Math.floor(Date.now() / 1000)) {
         return db.prepare(`SELECT * FROM game_detail_jobs WHERE archive_deleted_at IS NULL
@@ -61,10 +81,15 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
             WHEN first_imported_at IS NOT NULL THEN 1 ELSE 2 END, next_attempt,artifact_id DESC LIMIT ?`).all(now, now - 86400, limit);
       },
       attempting(id) { db.prepare("UPDATE game_detail_jobs SET attempts=attempts+1 WHERE artifact_id=?").run(id); },
-      success(job, revision, now = Math.floor(Date.now() / 1000)) {
+      reconcilable(afterId, limit, now = Math.floor(Date.now() / 1000)) {
+        return db.prepare(`SELECT * FROM game_detail_jobs WHERE artifact_id>? AND archive_deleted_at IS NULL
+          AND ((state='ready' AND recorded_at_verified=0) OR (state IN ('pending','retry') AND next_attempt<=?))
+          ORDER BY artifact_id LIMIT ?`).all(afterId, now, limit);
+      },
+      success(job, revision, now = Math.floor(Date.now() / 1000), recordedAt = null) {
         db.prepare(`UPDATE game_detail_jobs SET state='ready',first_imported_at=COALESCE(first_imported_at,?),
-          last_verified_at=?,revision=?,next_attempt=0,last_error=NULL
-          WHERE artifact_id=?`).run(now, now, revision, job.artifact_id);
+          last_verified_at=?,revision=?,next_attempt=0,last_error=NULL,cleanup_retry_after=0,recorded_at=?,recorded_at_verified=1
+          WHERE artifact_id=?`).run(now, now, revision, recordedAt, job.artifact_id);
       },
       failure(job, error, now = Math.floor(Date.now() / 1000)) {
         db.prepare("UPDATE game_detail_jobs SET state='retry',next_attempt=?,last_error=? WHERE artifact_id=?")
@@ -73,8 +98,8 @@ function openGameDetailsQueue(filename, { readonly = false } = {}) {
       expired(days, now = Math.floor(Date.now() / 1000)) {
         if (!Number.isInteger(days) || days < 14) throw new Error("Archive retention must be at least 14 days");
         return db.prepare(`SELECT * FROM game_detail_jobs WHERE state='ready' AND archive_deleted_at IS NULL
-          AND first_imported_at<=? AND next_attempt=0 AND ${hasCleanupRetry ? "cleanup_retry_after" : "0"}<=?
-          ORDER BY first_imported_at LIMIT 100`).all(now - days * 86400, now);
+          AND ${retentionEpoch}>0 AND ${retentionEpoch}<=? AND next_attempt=0 AND ${hasCleanupRetry ? "cleanup_retry_after" : "0"}<=?
+          ORDER BY ${retentionEpoch},artifact_id LIMIT 100`).all(now - days * 86400, now);
       },
       deleted(id, now = Math.floor(Date.now() / 1000)) { db.prepare("UPDATE game_detail_jobs SET archive_deleted_at=?,last_error=NULL WHERE artifact_id=?").run(now, id); },
       cleanupBlocked(id, error) {

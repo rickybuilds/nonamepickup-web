@@ -9,7 +9,7 @@ const config = require("../src/config");
 const { getPickupPool, closePickupPool } = require("../src/db/pickupMariadb");
 const { PickupStorage } = require("../src/pickup/storage");
 const { openGameDetailsQueue } = require("../src/pickup/gameDetailsQueue");
-const { runQueuedImports, pruneArchives } = require("../src/pickup/gameDetailsMaintenance");
+const { runQueuedImports, reconcileImportedRounds, pruneArchives } = require("../src/pickup/gameDetailsMaintenance");
 
 function verifyLegacyViewerRetired(port) {
   return new Promise((resolve, reject) => {
@@ -38,21 +38,23 @@ async function main() {
   const args = process.argv.slice(2), options = {};
   for (let i = 0; i < args.length; i++) {
     const key = args[i];
-    if (!["--help", "--status", "--dry-run", "--prune", "--limit"].includes(key) || Object.hasOwn(options, key)) throw new Error("Invalid/duplicate arguments; use --help");
+    if (!["--help", "--status", "--dry-run", "--reconcile", "--prune", "--limit"].includes(key) || Object.hasOwn(options, key)) throw new Error("Invalid/duplicate arguments; use --help");
     if (key === "--limit") {
       if (!/^[1-9]\d?$/.test(args[i + 1] || "")) throw new Error("--limit requires 1–99");
       options[key] = Number(args[++i]);
     } else options[key] = true;
   }
   if (options["--help"]) {
-    console.log("Usage: node api/scripts/maintainGameDetails.js [--limit 4] [--prune] | --status | --dry-run");
-    console.log("Server cron worker: discover recent complete uploads, import missing rounds, retry failures. Verified rounds are complete and never scheduled again. Run under the same flock lock for every invocation.");
+    console.log("Usage: node api/scripts/maintainGameDetails.js [--limit 4] [--prune] | --reconcile [--limit 99] | --status | --dry-run");
+    console.log("Server cron worker: discover all verified complete uploads, import missing rounds, retry failures. Verified rounds are complete and never scheduled again. Run under the same flock lock for every invocation.");
+    console.log("--reconcile verifies existing database packages across historical uploads; it does not convert missing packages or delete archives. Default cap: 10000 rounds.");
     console.log("--dry-run only verifies/lists expired cleanup candidates; it does not import or delete. --status only reads queue state.");
     console.log("Actual --prune requires GAME_DETAILS_ARCHIVE_DELETE=true and PICKUP_LEGACY_REPLAY_ENABLED=false. Defaults to retaining archives.");
     return;
   }
   const readonly = !!(options["--status"] || options["--dry-run"]);
-  if (readonly && (options["--prune"] || options["--limit"] || (options["--status"] && options["--dry-run"]))) throw new Error("Use status/dry-run separately from importing/pruning");
+  if (readonly && (options["--reconcile"] || options["--prune"] || options["--limit"] || (options["--status"] && options["--dry-run"]))) throw new Error("Use status/dry-run separately from importing/pruning");
+  if (options["--reconcile"] && options["--prune"]) throw new Error("Reconciliation cannot delete archives; run preview separately");
   const dbPaths = [config.ELO_DB, config.GAME_DETAILS_DB, config.GAME_DETAILS_QUEUE_DB].map(file => {
     const resolved = path.resolve(file);
     return fs.existsSync(resolved) ? fs.realpathSync(resolved) : resolved;
@@ -70,6 +72,8 @@ async function main() {
     if (options["--status"]) {
       console.log(JSON.stringify({ queue: config.GAME_DETAILS_QUEUE_DB, details: config.GAME_DETAILS_DB,
         retentionDays: config.GAME_DETAILS_RETENTION_DAYS, deletionEnabled: config.GAME_DETAILS_ARCHIVE_DELETE,
+        retentionBasis: "recording_end_then_verified_upload", discovery: "all_verified_complete_primary_artifacts",
+        queueVersion: queue.db.pragma("user_version", { simple: true }),
         legacyViewerEnabled: config.PICKUP_LEGACY_REPLAY_ENABLED, summary: queue.summary(),
         recentErrors: queue.db.prepare(`SELECT match_id,round_number,state,attempts,last_error
           FROM game_detail_jobs WHERE last_error IS NOT NULL ORDER BY artifact_id DESC LIMIT 20`).all() }, null, 2));
@@ -82,20 +86,27 @@ async function main() {
     if (options["--dry-run"]) { console.log(JSON.stringify(await cleanup(true))); return; }
     if (!config.PICKUP_DB_USER || !config.PICKUP_DB_PASSWORD) throw new Error("Missing pickup MariaDB credentials in api/.env");
     await storage.ensureReady();
-    const cutoff = Math.floor(Date.now() / 1000) - config.GAME_DETAILS_CATCHUP_DAYS * 86400;
     const [artifacts] = await getPickupPool(config).execute(`SELECT a.id,a.storage_key,a.sha256,
-      UNIX_TIMESTAMP(a.verified_at) AS verified_epoch,r.round_number,r.schema_version,m.match_id
+      UNIX_TIMESTAMP(a.verified_at) AS verified_epoch,UNIX_TIMESTAMP(r.ended_at) AS recorded_epoch,
+      r.round_number,r.schema_version,m.match_id
       FROM pickup_artifacts a JOIN pickup_rounds r ON r.id=a.round_pk
       JOIN pickup_matches m ON m.id=r.match_pk WHERE a.artifact_kind='round_replay'
-      AND a.status='verified' AND a.is_primary=1 AND r.status='complete'
-      AND a.verified_at>=FROM_UNIXTIME(?) ORDER BY a.id`, [cutoff]);
+      AND a.status='verified' AND a.is_primary=1 AND r.status='complete' ORDER BY a.id`);
     let enqueued = 0, rejected = 0;
     for (const artifact of artifacts) {
       if (stopping) break;
       try { enqueued += queue.enqueue(artifact); }
       catch (error) { rejected++; console.error(`[game-details] artifact ${artifact.id} not queued: ${error.message}`); }
     }
-    console.log(`[game-details] ${enqueued} new rounds queued, ${rejected} rejected; catch-up ${config.GAME_DETAILS_CATCHUP_DAYS} days`);
+    console.log(`[game-details] ${enqueued} new rounds queued, ${rejected} rejected; ${artifacts.length} historical/current artifacts discovered`);
+    if (options["--reconcile"]) {
+      const reconciled = await reconcileImportedRounds({ queue, destination: config.GAME_DETAILS_DB,
+        limit: options["--limit"] || 10000, shouldStop: () => stopping });
+      console.log("[game-details] reconciliation (no archive deletion):", JSON.stringify(reconciled));
+      if (reconciled.failed || rejected) process.exitCode = 1;
+      if (stopping) process.exitCode = 130;
+      return;
+    }
     const result = await runQueuedImports({ queue, storage, destination: config.GAME_DETAILS_DB,
       elo: config.ELO_DB, limit: options["--limit"] || 4, shouldStop: () => stopping });
     console.log("[game-details] imports:", JSON.stringify(result));
