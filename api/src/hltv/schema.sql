@@ -67,3 +67,9 @@ CREATE TABLE IF NOT EXISTS hltv_manifests(
  digest TEXT PRIMARY KEY, storage_key TEXT NOT NULL, status TEXT NOT NULL,
  attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL DEFAULT 0, error TEXT
 );
+CREATE TABLE IF NOT EXISTS hltv_upstream_runs(
+ id TEXT PRIMARY KEY, demo_id TEXT NOT NULL REFERENCES hltv_demos(id), hold_id TEXT NOT NULL REFERENCES hltv_holds(id),
+ status TEXT NOT NULL, requested_by TEXT NOT NULL, created_at INTEGER NOT NULL, started_at INTEGER, finished_at INTEGER,
+ upstream_sha TEXT, result_json TEXT, error_code TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS hltv_one_active_upstream_run ON hltv_upstream_runs(demo_id) WHERE status IN ('queued','processing');

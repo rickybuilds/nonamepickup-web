@@ -1,6 +1,6 @@
 # External HLTV analyzer adapter contract v1
 
-`api/src/hltv/analyzer.js` defines `analyze(input)` and `validateResult(input, output)`. `UnavailableAnalyzer` returns `unsupported` with **no findings**. Registry imports use `unsupported` until the real integration is enabled. There is no module auto-loader, parser executable, detector algorithm, fake confidence, or production analysis scheduler in this release. The schema reserves analysis runs/anomalies for the future worker. Do not flip a setting and assume analysis is running.
+`api/src/hltv/analyzer.js` defines the future anomaly contract `analyze(input)` and `validateResult(input, output)`. `UnavailableAnalyzer` remains the default for automated anomaly detection and returns `unsupported` with **no findings**. A separate optional [Ghosty upstream adapter](HLTV-UPSTREAM.md) now performs real decoding, verified log pairing and upstream concussion estimates through `hltv_upstream_runs`. Its outputs are ordinary gameplay observations, not anomalies; it does not mark the generic detector complete or fabricate confidence/alerts. Hosted playback and weapon comparisons remain unintegrated. Enable the optional adapter only after installation and real-source validation.
 
 The future isolated worker must pass the existing local immutable demo to an adapter, never download it again. It must validate SHA-256 first, enforce CPU/RAM/timeout/output bounds and an abort/kill mechanism for its subprocess, and persist results transactionally. A JS timeout alone does not stop a parser process. The web process and Discord delivery must not execute that parser.
 
@@ -70,4 +70,4 @@ Optional scores are heuristic measurements and must be explicitly named/describe
 5. Failures/timeouts/unsupported retain bytes and expose errors for admins; never set complete from an exception path. Reanalysis must clear any prior manual waiver before starting so incomplete new analysis cannot be cleaned under an old waiver.
 6. Test with real TFC HLTV samples, known false positives, parser crashes, corrupt recordings and incomplete capabilities. Validate the parser's own license/endpoints and asset rights before a separate authenticated browser viewer integration.
 
-Automated detector implementation, worker execution integration, result ingestion and playback are **pending the external parser**. Manual review, storage, holds, cleanup and alert infrastructure operate without it.
+Automated detector implementation and hosted playback remain pending. The optional upstream worker now ingests real matched-log concussion estimates separately; those estimates are not anomaly findings. Manual review, storage, holds, cleanup and alert infrastructure remain independent.

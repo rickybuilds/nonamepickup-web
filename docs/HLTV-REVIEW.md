@@ -1,6 +1,6 @@
 # NoName HLTV registry and private review
 
-This release implements retention/review infrastructure. The updated GoldSrc parser and viewer are external and unavailable. There are **no detectors, automatic cheating decisions, fabricated findings, playback service, game asset redistribution, or simulated production alerts** in this release. Existing pickup replay is independent and unchanged.
+This release implements retention/review infrastructure. Ghosty's GoldSrc source is now optionally connected through an untouched, revision-pinned upstream checkout for decoding, log pairing and concussion estimates. See [upstream setup and updates](HLTV-UPSTREAM.md). There are **no automatic cheating decisions, fabricated findings, hosted playback service, game asset redistribution, or simulated production alerts** in this release. Existing pickup replay is independent and unchanged.
 
 ## Existing workflow and integration
 

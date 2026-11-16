@@ -10,6 +10,7 @@ test("feature and cleanup default off; cleanup preview defaults on",()=>{
   const c=require("../src/hltv/config").config({});
   assert.equal(c.enabled,false);assert.equal(c.cleanupEnabled,false);assert.equal(c.dryRun,true);
   assert.equal(c.manualRetentionEnabled,false);
+  assert.equal(require("../src/hltv/upstream").upstreamConfig({}).enabled,false);
 });
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "hltv-test-"));
@@ -62,6 +63,46 @@ test("manual routine expiry does not bypass failures, analysis runs, holds or fl
   r.action(demo.id,"status",{status:"dismissed",reason:"review closed"},"123");
   assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
   assert.equal(r.get(demo.id).file_status,"available");
+});
+test("upstream queue is idempotent and protects a running job even if its hold is released", t => {
+  const {registry:r,demo}=fixture(t), {queueRun}=require("../src/hltv/upstream");
+  r.manualRetentionEnabled=true;
+  const first=queueRun(r,demo.id,"123"), second=queueRun(r,demo.id,"123");
+  assert.equal(first.id,second.id);
+  assert.equal(r.detail(demo.id).holds.length,1);
+  const hold=r.detail(demo.id).holds[0];
+  r.action(demo.id,"release-hold",{reason:"administrator action",hold_id:hold.id},"123");
+  assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
+});
+test("disabled upstream worker never starts a queued job",async t=>{
+  const {registry:r,demo}=fixture(t), {queueRun,runPending}=require("../src/hltv/upstream");
+  queueRun(r,demo.id,"123");
+  assert.equal((await runPending(r,{enabled:false})).processed,0);
+  assert.equal(r.db.prepare("SELECT status FROM hltv_upstream_runs").get().status,"queued");
+});
+test("bounded upstream process rejects timeouts and oversized output",async()=>{
+  const {child}=require("../src/hltv/upstream");
+  await assert.rejects(child(process.execPath,["-e","setTimeout(()=>{},10000)"],null,30),/resource_limit/);
+  await assert.rejects(child(process.execPath,["-e","process.stdout.write('x'.repeat(3*1024*1024))"],null,3000),/resource_limit/);
+});
+test("missing upstream release fails safely and keeps its review hold",async t=>{
+  const {registry:r,demo,root}=fixture(t), {queueRun,runPending}=require("../src/hltv/upstream");
+  const queued=queueRun(r,demo.id,"123");
+  const result=await runPending(r,{enabled:true,root:path.join(root,"not-installed"),python:process.execPath});
+  assert.equal(result.status,"failed");
+  assert.equal(r.db.prepare("SELECT status FROM hltv_upstream_runs WHERE id=?").get(queued.id).status,"failed");
+  assert.equal(r.detail(demo.id).holds.length,1);
+  assert.equal(r.get(demo.id).analysis_status,"unsupported");
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts").get().n,0);
+});
+test("interrupted upstream cache is reaped without touching original demos or holds",t=>{
+  const {registry:r,demo,root}=fixture(t), {queueRun,reapScratch}=require("../src/hltv/upstream");
+  const queued=queueRun(r,demo.id,"123"), scratch=path.join(root,"cache","ghosty-"+queued.id);
+  fs.mkdirSync(scratch,{recursive:true});fs.writeFileSync(path.join(scratch,"meta.json.gz"),"partial decoded cache");
+  reapScratch(r);assert.ok(fs.existsSync(scratch),"active scratch stays available to its worker");
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='failed' WHERE id=?").run(queued.id);
+  reapScratch(r);assert.equal(fs.existsSync(scratch),false);
+  assert.ok(fs.existsSync(path.join(root,demo.storage_key)));assert.equal(r.detail(demo.id).holds.length,1);
 });
 test("report holds survive closure, evidence preservation and policy changes", t => {
   const { registry: r, demo } = fixture(t);
@@ -142,6 +183,8 @@ test("review API denies unknown credentials and keeps paths private",async t=>{
     assert.equal((await fetch(url+endpoint,{headers:{Authorization:"Bearer "+"b".repeat(48)}})).status,403);
   }
   assert.equal((await fetch(url+`/demos/${demo.id}/actions/hold`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reason:"unauthorized"})})).status,401);
+  assert.equal((await fetch(url+`/demos/${demo.id}/upstream`,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"})).status,401);
+  assert.equal((await fetch(url+`/demos/${demo.id}/upstream`,{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}"})).status,404);
   const res=await fetch(url+"/demos/"+demo.id,{headers:{Authorization:"Bearer "+token}});
   assert.equal(res.status,200);assert.equal((await res.json()).storage_key,undefined);
   assert.equal(r.detail(demo.id).holds.length,0);

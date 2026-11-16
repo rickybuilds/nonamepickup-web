@@ -1,6 +1,7 @@
 "use strict";
 const express = require("express"), fs = require("fs");
 const { createAuth } = require("./auth");
+const { upstreamConfig, queueRun } = require("./upstream");
 function publicData(value) {
   // Raw local paths never cross the HTTP boundary, even to a reviewer.
   if (Array.isArray(value)) return value.map(publicData);
@@ -12,10 +13,14 @@ function createRouter({ registry, env = process.env }) {
   router.use(createAuth(env));
   router.use(express.json({ limit: "16kb", strict: true }));
   const route = fn => (req, res, next) => { try { fn(req, res); } catch (error) { next(error); } };
-  router.get("/session", (req, res) => res.json({ user_id: req.hltvActor }));
+  router.get("/session", (req, res) => res.json({ user_id: req.hltvActor, upstream_enabled: upstreamConfig(env).enabled }));
   router.get("/storage-summary", route((req, res) => res.json(registry.summary())));
   router.get("/demos", route((req, res) => res.json(publicData(registry.list(req.query)))));
   router.get("/demos/:id", route((req, res) => res.json(publicData(registry.detail(req.params.id)))));
+  router.post("/demos/:id/upstream", route((req, res) => {
+    if (!upstreamConfig(env).enabled) return res.status(404).json({ ok: false, error: "upstream_disabled" });
+    res.status(202).json(queueRun(registry, req.params.id, req.hltvActor));
+  }));
   router.post("/demos/:id/actions/:action", route((req, res) => {
     if (!req.body || Array.isArray(req.body)) throw new Error("Object body required");
     res.json(publicData(registry.action(req.params.id, req.params.action, req.body, req.hltvActor)));

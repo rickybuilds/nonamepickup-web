@@ -60,6 +60,7 @@ class Registry {
   list({ status, search, offset = 0, limit = 50 } = {}) {
     return this.db.prepare(`SELECT d.*,c.priority,c.assigned_to,c.source,
       (SELECT COUNT(*) FROM hltv_holds h WHERE h.demo_id=d.id AND h.released_at IS NULL) AS active_holds,
+      (SELECT status FROM hltv_upstream_runs u WHERE u.demo_id=d.id ORDER BY created_at DESC,id DESC LIMIT 1) AS upstream_status,
       (SELECT COUNT(*) FROM hltv_anomalies a WHERE a.demo_id=d.id) AS anomaly_count
       FROM hltv_demos d LEFT JOIN hltv_cases c ON c.demo_id=d.id
       WHERE (? IS NULL OR d.review_status=?) AND (? IS NULL OR d.match_id LIKE ? OR d.map LIKE ?)
@@ -72,6 +73,7 @@ class Registry {
       notes: this.db.prepare("SELECT * FROM hltv_notes WHERE demo_id=? ORDER BY created_at").all(demoId),
       anomalies: this.db.prepare("SELECT * FROM hltv_anomalies WHERE demo_id=? ORDER BY start_tick").all(demoId),
       runs: this.db.prepare("SELECT * FROM hltv_analysis_runs WHERE demo_id=? ORDER BY started_at DESC LIMIT 50").all(demoId),
+      upstream_runs: this.db.prepare("SELECT id,status,created_at,finished_at,upstream_sha,error_code,result_json FROM hltv_upstream_runs WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").all(demoId),
       audit: this.db.prepare("SELECT * FROM hltv_audit WHERE demo_id=? ORDER BY id DESC LIMIT 200").all(demoId) };
   }
   hold(demoId, reason, actor) { const holdId = id(); this.db.prepare("INSERT INTO hltv_holds(id,demo_id,reason,created_by,created_at) VALUES(?,?,?,?,?)").run(holdId, demoId, reason, actor, Date.now()); return holdId; }
@@ -148,6 +150,7 @@ class Registry {
     return ["available", "deleting"].includes(d.file_status) && d.expires_at <= now &&
       (d.analysis_status === "complete" || Boolean(d.analysis_waiver) || manualRoutine) && d.retention_class !== "evidence" &&
       !this.db.prepare("SELECT 1 FROM hltv_holds WHERE demo_id=? AND released_at IS NULL").get(d.id) &&
+      !this.db.prepare("SELECT 1 FROM hltv_upstream_runs WHERE demo_id=? AND status IN ('queued','processing')").get(d.id) &&
       !this.db.prepare("SELECT 1 FROM hltv_cases WHERE demo_id=? AND status IN ('queued','in_review','escalated')").get(d.id);
   }
   cleanup({ enabled = false, dryRun = true, now = Date.now(), actor = "cleanup", verifyFiles = true } = {}) {
@@ -160,6 +163,7 @@ class Registry {
           AND last_error IS NULL AND NOT EXISTS(SELECT 1 FROM hltv_analysis_runs r WHERE r.demo_id=d.id)))
       AND retention_class!='evidence'
       AND NOT EXISTS(SELECT 1 FROM hltv_holds h WHERE h.demo_id=d.id AND h.released_at IS NULL)
+      AND NOT EXISTS(SELECT 1 FROM hltv_upstream_runs u WHERE u.demo_id=d.id AND u.status IN ('queued','processing'))
       AND NOT EXISTS(SELECT 1 FROM hltv_cases c WHERE c.demo_id=d.id AND c.status IN ('queued','in_review','escalated'))
       ORDER BY expires_at,id LIMIT 100`).all(now, this.manualRetentionEnabled ? 1 : 0);
     for (const candidate of candidates) {

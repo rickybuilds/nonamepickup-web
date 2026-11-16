@@ -5,13 +5,14 @@ function inside(root, candidate) {
   return relative !== "" && relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative);
 }
 class Storage {
-  constructor(root, { publicRoot, maxBytes = 268435456 } = {}) {
+  constructor(root, { publicRoot, maxBytes = 268435456, readonly = false } = {}) {
     if (!root || !path.isAbsolute(root)) throw new Error("HLTV absolute private storage root required");
     this.root = path.resolve(root); this.maxBytes = maxBytes;
     const repository = path.resolve(__dirname, "../../..");
     if (this.root === repository || inside(repository, this.root)) throw new Error("HLTV storage must be outside the website repository");
     if (publicRoot && (this.root === path.resolve(publicRoot) || inside(path.resolve(publicRoot), this.root))) throw new Error("HLTV storage cannot be public");
-    fs.mkdirSync(this.root, { recursive: true, mode: 0o700 });
+    if (readonly) { if (!fs.statSync(this.root).isDirectory()) throw new Error("Storage root unavailable"); }
+    else fs.mkdirSync(this.root, { recursive: true, mode: 0o700 });
     if (fs.realpathSync(this.root) !== this.root || fs.lstatSync(this.root).isSymbolicLink()) throw new Error("HLTV root cannot contain symlinks");
   }
   resolve(key, extension = ".dem") {
