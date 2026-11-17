@@ -174,7 +174,8 @@ async function runPending(registry, options) {
     return { enabled: true, processed: 1, status: "complete", run_id: run.id };
   } catch (error) {
     console.error("[HLTV upstream]", run.id, error.message);
-    const code = ["ambiguous_log_pairing", "no_verified_log_pairing", "insufficient_storage_headroom"].includes(error.message) ? error.message : "upstream_failed";
+    const known=["ambiguous_log_pairing","no_verified_log_pairing","insufficient_storage_headroom","missing_map_asset","missing_or_invalid_player_model","no_server_player_models","upstream_scanner_timeout","too_many_scanner_findings","statistics_input_too_large","upstream_resource_limit"];
+    const code=known.find(value=>error.message===value||error.message.includes("upstream_process_failed: "+value))||"upstream_failed";
     registry.db.prepare("UPDATE hltv_upstream_runs SET status='failed',finished_at=?,error_code=?,result_json=? WHERE id=?").run(Date.now(), code, error.diagnostics ? JSON.stringify(error.diagnostics) : null, run.id);
     registry.audit(run.demo_id, "upstream-worker", "upstream_failed", { run_id: run.id, error_code: code });
     // Failure keeps the explicit hold for an administrator to inspect/release.

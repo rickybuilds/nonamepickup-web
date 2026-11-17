@@ -24,7 +24,10 @@ function loadViewer(root, fetch) {
     try { vm.runInContext(fs.readFileSync(path.join(root, "web", file), "utf8"), context, {filename:file,timeout:5000}); }
     catch (error) { if (file !== "viewer.js" || error !== stopped) throw error; }
   }
-  const api = vm.runInContext("({S,prefs,Studio,ConcEstimate,ConcAim,BloodHits,buildData,loadMap,runConcAim,playerState,serverModelPath,who})",context);
+  // The scanner is the pinned upstream viewer implementation. Suppress only
+  // rendering and the unrelated bullet summary in this headless worker.
+  vm.runInContext("renderReview=()=>{}; drawTimeline=()=>{}; shotStats=()=>{}",context);
+  const api = vm.runInContext("({S,prefs,Studio,ConcEstimate,ConcAim,BloodHits,buildData,loadMap,runConcAim,runAnalysis,playerState,serverModelPath,who})",context);
   api.Studio.init(gl, () => ({u:{}}));
   api.elements = elements;
   return api;
@@ -65,6 +68,7 @@ async function compare(root, meta, bytes, log, fetch) {
   if (S.conc.log !== log) throw new Error("upstream_rejected_log");
   S.maps = {};
   for (const level of meta.levels) if (!S.maps[level.map]) S.maps[level.map] = await viewer.loadMap(meta.game, level.map);
+  if (!Object.values(S.maps).some(Boolean)) throw new Error("missing_map_asset");
   const requiredModels = new Set();
   for (const slot of S.D.slots) for (const [frame] of meta.pmodels?.[slot] || []) {
     const model = viewer.serverModelPath(slot, frame);
@@ -72,6 +76,28 @@ async function compare(root, meta, bytes, log, fetch) {
   }
   for (const model of requiredModels) if (!await Studio.load(meta.game, model)) throw new Error("missing_or_invalid_player_model");
   if (!requiredModels.size) throw new Error("no_server_player_models");
+  // runAnalysis chunks work on the event loop, bounded by the enclosing
+  // sandbox process. Identity is resolved at each finding's event time.
+  viewer.runAnalysis();
+  const deadline = Date.now() + 120000;
+  while (S.analysis?.running) {
+    if (Date.now() > deadline) throw new Error("upstream_scanner_timeout");
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  const identity = (slot, time) => {
+    const rows = meta.players.filter(p => p.ent === slot && p.first <= time && (p.left == null || p.left > time));
+    return rows.length === 1 ? rows[0] : null;
+  };
+  if ((S.analysis?.found||[]).length>2000) throw new Error("too_many_scanner_findings");
+  const findings = (S.analysis?.found || []).map((item, index) => {
+    const player = identity(item.p, item.t0), target = identity(item.e, item.t0);
+    return {index,kind:item.kind,player_slot:item.p,target_slot:item.e,
+      steam_id:player?.steam || null,player_name:player?.name || null,
+      target_steam_id:target?.steam || null,target_name:target?.name || null,
+      time_seconds:Math.max(0,item.t0-meta.start),end_seconds:Math.max(0,item.t1-meta.start),
+      ...(item.kind === "track" ? {target_movement:item.moved,angular_sweep_degrees:item.sweep,related_firing:item.fired,related_kill:item.kill} : {angular_turn_degrees:item.turn,angular_speed_degrees_per_second:item.speed}),
+      heuristic_score:item.score};
+  });
   const samples = new Map(), originalMeasure = ConcAim.measure;
   // Observe original sample outputs; return each output unchanged to the original estimator.
   ConcAim.measure = args => originalMeasure({...args, sample:(t,margin,shot)=>{
@@ -114,8 +140,8 @@ async function compare(root, meta, bytes, log, fetch) {
       if(hit?.includedInPercentage){group.evidence_eligible++;const strict=["kill-confirmed","blood-damage"].includes(hit.status);group.strict+=Number(strict);group.inclusive+=Number(strict||!!hit.inclusiveMatch);}
     }
   }
-  return {version:1,metric:"ghosty-firing-v1",settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:log.alignment.uncertainty},
-    groups:[...groups.values()],shots,audits,unassigned,accuracy_kind:"estimated_hit_evidence_not_bullet_accuracy"};
+  return {version:1,metric:"ghosty-firing-v1",source_start_seconds:meta.start,settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:log.alignment.uncertainty},
+    groups:[...groups.values()],shots,audits,unassigned,scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",findings,stats:S.analysis?.stats||{}},accuracy_kind:"estimated_hit_evidence_not_bullet_accuracy"};
 }
 async function run(root,directory){
   const read=(name,max)=>{const file=path.join(directory,name);if(fs.statSync(file).size>max)throw new Error("statistics_input_too_large");return fs.readFileSync(file);};

@@ -20,7 +20,11 @@ function storeStatistics(registry,source,result){
     if(row.state==="uncertain"&&row.uncertain!==row.recorded)throw new Error("invalid_uncertain_statistics");
   }
   const assets=result.assets.map(asset=>{if(typeof asset.route!=="string"||asset.route.length>300||asset.missing||!sha(asset.sha256))throw new Error("incomplete_statistics_assets");return [asset.route,asset.sha256];}).sort((a,b)=>a[0].localeCompare(b[0]));
-  const configHash=hash({adapter:"ghosty-firing-v1",upstream:source.upstream_sha,settings,assets});
+  if(result.scanner){
+    if(result.scanner.version!=="upstream-runAnalysis"||result.scanner.time_coordinate!=="demo_relative_seconds"||!Array.isArray(result.scanner.findings)||result.scanner.findings.length>2000)throw new Error("invalid_scanner_contract");
+    for(const f of result.scanner.findings)if(!["track","snap"].includes(f.kind)||!Number.isFinite(f.time_seconds)||!Number.isFinite(f.end_seconds)||f.time_seconds<0||f.end_seconds<f.time_seconds||f.steam_id!=null&&!steam(f.steam_id)||f.target_steam_id!=null&&!steam(f.target_steam_id))throw new Error("invalid_scanner_finding");
+  }
+  const configHash=hash({adapter:"ghosty-firing-v1",scanner:result.scanner?.version||null,upstream:source.upstream_sha,settings,assets});
   const inputKey=hash([demo.sha256,pairing.log_sha256]),serialized=JSON.stringify(result);
   const payloadHash=crypto.createHash("sha256").update(serialized).digest("hex");
   if(Buffer.byteLength(serialized)>16777216)throw new Error("statistics_result_too_large");

@@ -58,7 +58,7 @@ class Registry {
       }).immediate();
     });
   }
-  list({ status, search, offset = 0, limit = 50 } = {}) {
+  list({ status, search, priority:priorityFilter, analysis:analysisFilter, offset = 0, limit = 50 } = {}) {
     // One visible row per current recording; the original case remains actionable.
     const rank=alias=>"CASE "+alias+".status WHEN 'escalated' THEN 0 WHEN 'in_review' THEN 1 WHEN 'queued' THEN 2 ELSE 3 END";
     const preferOld="oc.id IS NOT NULL AND (c.id IS NULL OR "+rank('oc')+"<"+rank('c')+")";
@@ -76,8 +76,10 @@ class Registry {
       LEFT JOIN hltv_demos o ON o.id=rc.original_demo_id LEFT JOIN hltv_cases oc ON oc.demo_id=o.id
       WHERE NOT EXISTS(SELECT 1 FROM hltv_source_recoveries old WHERE old.original_demo_id=d.id)
       AND (? IS NULL OR ${state}=?) AND (? IS NULL OR d.match_id LIKE ? OR d.map LIKE ?)
+      AND (? IS NULL OR ${priority}=?)
+      AND (? IS NULL OR (SELECT status FROM hltv_upstream_runs u WHERE u.demo_id=d.id ORDER BY created_at DESC,id DESC LIMIT 1)=?)
       ORDER BY CASE ${priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,d.recorded_at DESC LIMIT ? OFFSET ?`)
-      .all(status || null, status || null, search || null, `%${search || ""}%`, `%${search || ""}%`, Math.max(1, Math.min(100, Number(limit) || 50)), Math.max(0, Number(offset) || 0));
+      .all(status || null, status || null, search || null, `%${search || ""}%`, `%${search || ""}%`,priorityFilter||null,priorityFilter||null,analysisFilter||null,analysisFilter||null,Math.max(1, Math.min(100, Number(limit) || 50)), Math.max(0, Number(offset) || 0));
   }
   detail(demoId) {
     const recoveredFrom=this.db.prepare("SELECT original_demo_id,source_filename FROM hltv_source_recoveries WHERE recovered_demo_id=?").get(demoId)||null;
@@ -171,6 +173,7 @@ class Registry {
       (d.analysis_status === "complete" || Boolean(d.analysis_waiver) || manualRoutine) && d.retention_class !== "evidence" &&
       !this.db.prepare("SELECT 1 FROM hltv_holds WHERE demo_id=? AND released_at IS NULL").get(d.id) &&
       !this.db.prepare("SELECT 1 FROM hltv_upstream_runs WHERE demo_id=? AND status IN ('queued','processing')").get(d.id) &&
+      !this.db.prepare("SELECT 1 FROM hltv_statistics_jobs j LEFT JOIN hltv_upstream_runs u ON u.id=j.run_id WHERE j.demo_id=? AND (j.skip_reason IS NOT NULL OR u.status='failed')").get(d.id) &&
       !this.db.prepare("SELECT 1 FROM hltv_cases WHERE demo_id=? AND status IN ('queued','in_review','escalated')").get(d.id);
   }
   cleanup({ enabled = false, dryRun = true, now = Date.now(), actor = "cleanup", verifyFiles = true } = {}) {
@@ -184,6 +187,7 @@ class Registry {
       AND retention_class!='evidence'
       AND NOT EXISTS(SELECT 1 FROM hltv_holds h WHERE h.demo_id=d.id AND h.released_at IS NULL)
       AND NOT EXISTS(SELECT 1 FROM hltv_upstream_runs u WHERE u.demo_id=d.id AND u.status IN ('queued','processing'))
+      AND NOT EXISTS(SELECT 1 FROM hltv_statistics_jobs j LEFT JOIN hltv_upstream_runs u ON u.id=j.run_id WHERE j.demo_id=d.id AND (j.skip_reason IS NOT NULL OR u.status='failed'))
       AND NOT EXISTS(SELECT 1 FROM hltv_cases c WHERE c.demo_id=d.id AND c.status IN ('queued','in_review','escalated'))
       ORDER BY expires_at,id LIMIT 100`).all(now, this.manualRetentionEnabled ? 1 : 0);
     for (const candidate of candidates) {
@@ -253,7 +257,8 @@ class Registry {
         (?=1 AND analysis_status='unsupported' AND retention_class='normal' AND review_status='unreviewed'
           AND last_error IS NULL AND NOT EXISTS(SELECT 1 FROM hltv_analysis_runs r WHERE r.demo_id=d.id))
         THEN 1 ELSE 0 END) AS analysis_blocked,
-      SUM(CASE WHEN review_status IN ('queued','in_review','escalated') THEN 1 ELSE 0 END) AS open_reviews FROM hltv_demos d`).get(this.manualRetentionEnabled ? 1 : 0);
+      SUM(CASE WHEN review_status IN ('queued','in_review','escalated') THEN 1 ELSE 0 END) AS open_reviews,
+      (SELECT COUNT(*) FROM hltv_cases c WHERE c.priority='high' AND c.status IN ('queued','in_review','escalated')) AS high_priority_reviews FROM hltv_demos d`).get(this.manualRetentionEnabled ? 1 : 0);
     const free = this.storage.freeBytes();
     const copyBytes = this.db.prepare("SELECT COALESCE(SUM(size_bytes),0) AS n FROM hltv_copies WHERE deleted_at IS NULL").get().n;
     return { ...totals, current_demos:this.db.prepare("SELECT COUNT(*) AS n FROM hltv_demos d WHERE NOT EXISTS(SELECT 1 FROM hltv_source_recoveries c WHERE c.original_demo_id=d.id)").get().n, available_bytes: totals.available_bytes + copyBytes, duplicate_bytes: copyBytes, free_bytes: free, low_disk: free < this.minFreeBytes,

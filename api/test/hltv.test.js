@@ -243,6 +243,37 @@ test("player histories deduplicate reruns, preserve raw-expired data and pool co
   assert.throws(()=>storeStatistics(r,source,{...result,groups:[{...group,strict:99}]}));
   assert.throws(()=>storeStatistics(r,source,{...result,groups:[{...group,steam_id:"slot1"}]}));
 });
+test("player timeline keeps scanner identity, source time and stable event references", t=>{
+  const {registry:r,demo}=fixture(t),{storeStatistics}=require("../src/hltv/playerStatistics"),investigation=require("../src/hltv/investigation");
+  const steam="STEAM_0:1:123",target="STEAM_0:1:456";
+  const group={steam_id:steam,name:"Player",class_id:5,weapon:"shotgun",state:"outside",recorded:1,eligible:1,no_enemy:0,unavailable:0,uncertain:0,geometry_hit:0,aim_near:0,strict:0,inclusive:0,evidence_eligible:1};
+  const result={version:1,metric:"ghosty-firing-v1",source_start_seconds:100,settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:1},assets:[],groups:[group],unassigned:0,
+    shots:[{steam_id:steam,name:"Player",time_seconds:102.5,weapon:"shotgun",state:"outside",visibility:"visible",evidence:{status:"unmatched"}}],
+    scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",stats:{},findings:[{kind:"track",steam_id:steam,player_name:"Player",target_steam_id:target,target_name:"Target",time_seconds:1,end_seconds:2,target_movement:120,angular_sweep_degrees:5,heuristic_score:1.5}]}};
+  const source={id:"timeline-run",demo,upstream_sha:"b".repeat(40),pairing:{log_sha256:"c".repeat(64),log_round:1}};
+  storeStatistics(r,source,result);
+  const timeline=investigation.timeline(r,demo.id,steam,{limit:1});
+  assert.equal(timeline.total,2);assert.equal(timeline.events[0].category,"wall_track");assert.equal(timeline.events[0].time_seconds,1);
+  assert.equal(timeline.events[0].target_steam_id,target);
+  assert.equal(investigation.detail(r,demo.id,timeline.events[0].id).event.id,timeline.events[0].id);
+  assert.equal(investigation.timeline(r,demo.id,steam,{category:"firing"}).events[0].time_seconds,2.5);
+  assert.equal(investigation.timeline(r,demo.id,target,{}).total,0);
+  assert.throws(()=>investigation.timeline(r,demo.id,steam,{start:3,end:2}),/invalid_time_range/);
+  assert.throws(()=>storeStatistics(r,{...source,id:"bad-scanner"},{...result,scanner:{...result.scanner,findings:[{...result.scanner.findings[0],time_seconds:-1}]}}),/invalid_scanner_finding/);
+});
+test("failed or skipped automatic statistics cannot become routine cleanup eligible",t=>{
+  const {registry:r,demo}=fixture(t),{queueRun}=require("../src/hltv/upstream");
+  r.manualRetentionEnabled=true;
+  r.db.prepare("UPDATE hltv_demos SET expires_at=0 WHERE id=?").run(demo.id);
+  const run=queueRun(r,demo.id,"statistics-scheduler");
+  r.db.prepare("INSERT INTO hltv_statistics_jobs(demo_id,run_id,created_at) VALUES(?,?,?)").run(demo.id,run.id,Date.now());
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='failed' WHERE id=?").run(run.id);
+  require("../src/hltv/statisticsQueue").releaseStatisticsLeases(r);
+  assert.equal(r.eligible(r.get(demo.id),Date.now()),false);
+  assert.equal(r.cleanup({enabled:true,dryRun:true,verifyFiles:false}).eligible,0);
+  r.db.prepare("UPDATE hltv_statistics_jobs SET run_id=NULL,skip_reason='unfinalized_demo' WHERE demo_id=?").run(demo.id);
+  assert.equal(r.eligible(r.get(demo.id),Date.now()),false);
+});
 test("duplicate handoff is idempotent; unavailable analyzer blocks deletion", t => {
   const { registry: r, demo, manifest } = fixture(t);
   assert.equal(r.ingest(manifest)[0].id, demo.id);
@@ -437,7 +468,7 @@ test("review API denies unknown credentials and keeps paths private",async t=>{
   const server=app.listen(0,"127.0.0.1");await new Promise(resolve=>server.once("listening",resolve));
   t.after(()=>new Promise(resolve=>server.close(resolve)));
   const url=`http://127.0.0.1:${server.address().port}/api/admin/hltv`;
-  for(const endpoint of ["/demos","/demos/"+demo.id,"/demos/"+demo.id+"/file","/demos/"+demo.id+"/statistics","/demos/"+demo.id+"/players/STEAM_0:1:123/history"]){
+  for(const endpoint of ["/demos","/jobs","/demos/"+demo.id,"/demos/"+demo.id+"/file","/demos/"+demo.id+"/statistics","/demos/"+demo.id+"/investigation","/demos/"+demo.id+"/players/STEAM_0:1:123/history","/demos/"+demo.id+"/players/STEAM_0:1:123/timeline"]){
     assert.equal((await fetch(url+endpoint)).status,401);
     assert.equal((await fetch(url+endpoint,{headers:{Authorization:"Bearer "+"b".repeat(48)}})).status,403);
   }

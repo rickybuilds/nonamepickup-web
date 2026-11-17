@@ -3,6 +3,7 @@ const express = require("express"), fs = require("fs");
 const { createAuth } = require("./auth");
 const { upstreamConfig, queueRun } = require("./upstream");
 const { demoStatistics,playerHistory,statisticsPayload }=require("./playerStatistics");
+const investigation=require("./investigation");
 function publicData(value) {
   // Raw local paths never cross the HTTP boundary, even to a reviewer.
   if (Array.isArray(value)) return value.map(publicData);
@@ -55,7 +56,15 @@ function createRouter({ registry, env = process.env }) {
     const shots=result.shots.filter(shot=>!req.query.steam_id||shot.steam_id===req.query.steam_id);
     res.json({shots:shots.slice(offset,offset+100),total:shots.length,offset});
   }));
+  router.get("/demos/:id/investigation",route((req,res)=>{
+    const data=investigation.events(registry,req.params.id);
+    res.json({status:data.status,observation:data.observation,players:data.players});
+  }));
+  router.get("/demos/:id/players/:steam/timeline",route((req,res)=>res.json(investigation.timeline(registry,req.params.id,req.params.steam,req.query))));
+  router.get("/demos/:id/events/:event",route((req,res)=>res.json(investigation.detail(registry,req.params.id,req.params.event))));
   router.get("/storage-summary", route((req, res) => res.json(registry.summary())));
+  router.get("/jobs",route((req,res)=>res.json(registry.db.prepare(`SELECT u.id,u.status,u.error_code,u.created_at,u.finished_at,d.map,d.match_id
+    FROM hltv_upstream_runs u JOIN hltv_demos d ON d.id=u.demo_id ORDER BY u.created_at DESC,u.id DESC LIMIT 50`).all())));
   router.get("/demos", route((req, res) => res.json(publicData(registry.list(req.query)))));
   router.get("/demos/:id", route((req, res) => res.json(publicData(registry.detail(req.params.id)))));
   router.post("/demos/:id/upstream", route((req, res) => {
