@@ -250,6 +250,27 @@ test("duplicate handoff is idempotent; unavailable analyzer blocks deletion", t 
   assert.equal(demo.analysis_status, "unsupported");
   assert.equal(r.cleanup({ enabled: true, dryRun: false }).deleted, 0);
 });
+
+test("finalized recovery preserves the original, rejects unrelated bytes and queues one linked replacement",t=>{
+  const {registry:r,root}=fixture(t),old=Buffer.alloc(644);old.write("HLDEMO");old.write("2fort",16);old.write("tfc",276);old.fill(7,544);
+  fs.writeFileSync(path.join(root,"incoming/recording/open.dem"),old);
+  const original=r.ingest({version:1,match_id:"recover",server:"east",map:"2fort",demos:[{storage_key:"incoming/recording/open.dem",filename:"-2611170000-2fort.dem",recorded_at:1000} ]})[0];
+  r.action(original.id,"flag",{reason:"review",priority:"high"},"admin");r.action(original.id,"claim",{},"admin");r.action(original.id,"evidence",{reason:"retain evidence"},"admin");
+  const complete=Buffer.alloc(760);old.copy(complete);complete.writeInt32LE(664,540);complete.writeInt32LE(1,664);complete.writeInt32LE(544,668+84);complete.writeInt32LE(120,668+88);
+  fs.writeFileSync(path.join(root,"incoming/recording/recovered.dem"),complete);
+  const input={storage_key:"incoming/recording/recovered.dem",filename:"recover-2fort-recovered.dem"};
+  const wrong=Buffer.from(complete);wrong[600]=9;fs.writeFileSync(path.join(root,"incoming/recording/wrong.dem"),wrong);
+  assert.throws(()=>r.recoverFinalizedSource(original.id,{...input,storage_key:"incoming/recording/wrong.dem"},"admin"),/prefix/);
+  const result=r.recoverFinalizedSource(original.id,input,"admin"),again=r.recoverFinalizedSource(original.id,input,"admin");
+  assert.equal(result.demo_id,again.demo_id);assert.equal(result.run_id,again.run_id);assert.notEqual(result.demo_id,original.id);
+  assert.deepEqual(fs.readFileSync(path.join(root,original.storage_key)),old);assert.equal(r.get(original.id).sha256,original.sha256);
+  assert.equal(r.detail(original.id).case.assigned_to,"admin");assert.equal(r.get(result.demo_id).retention_class,"evidence");assert(r.detail(result.demo_id).holds.length);
+  assert.equal(r.detail(original.id).recovered_source.recovered_demo_id,result.demo_id);assert.equal(r.detail(result.demo_id).recovered_from.original_demo_id,original.id);
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_upstream_runs WHERE demo_id=?").get(result.demo_id).n,1);
+  const {downloadName}=require("../src/hltv/sourceRecovery");assert.equal(downloadName(r.get(result.demo_id),2),"recover-2fort-round-2.dem");assert.match(downloadName(r.get(result.demo_id),null),/unpaired-/);
+  require("../src/hltv/statisticsQueue").queueAutomaticStatistics(r,{enabled:true,statisticsEnabled:true,statisticsAutoCollect:true});
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_statistics_jobs WHERE demo_id=?").get(original.id).n,0);
+});
 test("opt-in manual mode expires only overdue unflagged demos without pretending analysis completed", t => {
   const {registry:r,demo,root}=fixture(t);
   r.manualRetentionEnabled=true;

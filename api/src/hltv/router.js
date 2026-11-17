@@ -91,7 +91,9 @@ function createRouter({ registry, env = process.env }) {
       } catch (error) { console.error("[HLTV] download hold retained:", error.message); }
     };
     res.on("close", release); res.on("finish", release);
-    res.set({ "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${download.demo.id}.dem"` });
+    const observation=registry.db.prepare("SELECT log_round FROM hltv_statistics_observations WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").get(download.demo.id);
+    const name=env.HLTV_FRIENDLY_DEMO_NAMES_ENABLED==="true"?require("./sourceRecovery").downloadName(download.demo,observation?.log_round):`${download.demo.id}.dem`;
+    res.set({ "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${name}"` });
     const stream = fs.createReadStream(null, { fd: download.fd, autoClose: true });
     res.on("close", () => stream.destroy());
     stream.on("error", () => { res.destroy(); release(); }); stream.pipe(res);

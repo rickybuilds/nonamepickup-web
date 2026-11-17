@@ -10,6 +10,7 @@ function queueAutomaticStatistics(registry,options){
   if(!options.enabled||!options.statisticsEnabled||!options.statisticsAutoCollect)return null;
   return registry.db.transaction(()=>{
     const demo=registry.db.prepare(`SELECT d.* FROM hltv_demos d WHERE d.file_status='available'
+      AND NOT EXISTS(SELECT 1 FROM hltv_source_recoveries c WHERE c.original_demo_id=d.id)
       AND NOT EXISTS(SELECT 1 FROM hltv_statistics_jobs j WHERE j.demo_id=d.id)
       AND NOT EXISTS(SELECT 1 FROM hltv_statistics_observations o WHERE o.demo_sha256=d.sha256)
       AND NOT EXISTS(SELECT 1 FROM hltv_upstream_runs r WHERE r.demo_id=d.id AND r.status IN ('queued','processing'))

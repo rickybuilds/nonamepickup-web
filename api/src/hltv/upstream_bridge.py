@@ -65,8 +65,12 @@ def main(request):
     after = os.stat(request['demo_path'])
     if (before.st_ino, before.st_size, before.st_mtime_ns) != (after.st_ino, after.st_size, after.st_mtime_ns):
         raise ValueError("demo_changed")
-    if not meta.get('complete') or not meta.get('hltv') or meta.get('map', '').lower() != request['map'].lower():
-        raise ValueError("demo_incomplete_or_wrong_map")
+    if not meta.get('complete'):
+        raise ValueError("demo_unfinalized_missing_directory")
+    if not meta.get('hltv'):
+        raise ValueError("demo_is_not_hltv")
+    if meta.get('map', '').lower() != request['map'].lower():
+        raise ValueError("demo_wrong_map")
     if not meta.get('game', '').lower().startswith('tfc') or not meta.get('frames'):
         raise ValueError("unsupported_demo")
 

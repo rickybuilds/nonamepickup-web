@@ -125,3 +125,9 @@ CREATE INDEX IF NOT EXISTS hltv_review_session_user ON hltv_review_sessions(user
 CREATE TABLE IF NOT EXISTS hltv_review_login_limits(
  scope TEXT PRIMARY KEY, attempts INTEGER NOT NULL, expires_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS hltv_source_recoveries(
+ original_demo_id TEXT PRIMARY KEY REFERENCES hltv_demos(id),
+ recovered_demo_id TEXT NOT NULL UNIQUE REFERENCES hltv_demos(id),
+ run_id TEXT NOT NULL REFERENCES hltv_upstream_runs(id), source_filename TEXT NOT NULL,
+ original_sha256 TEXT NOT NULL, recovered_sha256 TEXT NOT NULL, created_at INTEGER NOT NULL, created_by TEXT NOT NULL
+);

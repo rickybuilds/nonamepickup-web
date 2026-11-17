@@ -24,6 +24,7 @@ class Registry {
   audit(demo, actor, action, details) { this.db.prepare("INSERT INTO hltv_audit(demo_id,actor,action,details,created_at) VALUES(?,?,?,?,?)").run(demo, actor, action, JSON.stringify(details), Date.now()); }
   alert(demo, kind) { this.db.prepare("INSERT INTO hltv_alerts(id,demo_id,kind,created_at) VALUES(?,?,?,?)").run(id(), demo, kind, Date.now()); }
   get(demoId) { const d = this.db.prepare("SELECT * FROM hltv_demos WHERE id=?").get(demoId); if (!d) throw new Error("Demo not found"); return d; }
+  recoverFinalizedSource(originalId,input,actor) { return require("./sourceRecovery").recoverFinalizedSource(this,originalId,input,actor); }
   ingest(manifest) {
     if (manifest.version !== 1 || !Array.isArray(manifest.demos) || manifest.demos.length > 100) throw new Error("Invalid manifest");
     const match = text(manifest.match_id, 100), server = text(manifest.server, 100);
@@ -69,6 +70,8 @@ class Registry {
   }
   detail(demoId) {
     return { ...this.get(demoId), case: this.db.prepare("SELECT * FROM hltv_cases WHERE demo_id=?").get(demoId) || null,
+      recovered_source:this.db.prepare("SELECT recovered_demo_id,run_id FROM hltv_source_recoveries WHERE original_demo_id=?").get(demoId)||null,
+      recovered_from:this.db.prepare("SELECT original_demo_id,source_filename FROM hltv_source_recoveries WHERE recovered_demo_id=?").get(demoId)||null,
       holds: this.db.prepare("SELECT * FROM hltv_holds WHERE demo_id=? AND released_at IS NULL").all(demoId),
       notes: this.db.prepare("SELECT * FROM hltv_notes WHERE demo_id=? ORDER BY created_at").all(demoId),
       anomalies: this.db.prepare("SELECT * FROM hltv_anomalies WHERE demo_id=? ORDER BY start_tick").all(demoId),
