@@ -24,6 +24,10 @@ Only after real-match comparisons and resource consumption have been validated, 
 
 ## Definitions and history
 
+The detail page now leads with a selected-player Weapon / Conc / Non-conc quick comparison. Percentages are aim-near rates; the three counts are aim-near / normal-hitbox intersections / eligible firing events. The original viewer's additional concussion-count field is not exposed by this summary and is not fabricated. Full firing and history tables have searchable, selectable-size pagination. Concussion-event/log-pairing details, recording metadata, review actions and audit history are collapsed by default. Concussion tables can search/page all stored windows rather than truncating the display at 300. Browser fixture checks covered collapsed defaults, search, page reset, empty results, CSP and desktop/mobile layout.
+
+The intended next detector report is a private Discord review alert identifying the player, weapon, actual finding, comparable baseline/sample sizes, source version and evidence/review link. Collecting firing statistics and displaying this comparison do not themselves implement an anomaly detector. No ordinary rate difference is automatically promoted to a finding, and no simulated detector alert is emitted.
+
 The review table separates SteamID, observed class, weapon and estimated concussion state. A firing event can contain multiple pellets. Aim intersections and strict/inclusive hit evidence are estimates, not exact bullet accuracy. Unmatched evidence means unknown, not a confirmed miss. Zero eligible denominators display no percentage. Unknown visibility and uncertain concussion boundaries are explicit exclusions.
 
 History pools integer numerators/denominators from earlier verified recordings of that player, using the same map, weapon, class and exact upstream/settings/asset configuration. It excludes the current recording and later recordings. All verified earlier history and rolling 30-day views are available. Incomplete groups do not enter rate histories. There are no anomaly scores, thresholds, automatic suspicion alerts or public rankings.
