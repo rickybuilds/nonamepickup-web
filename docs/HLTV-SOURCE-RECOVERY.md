@@ -6,7 +6,13 @@ Recovery requires the old registered file/checksum to be intact, a missing direc
 
 One SQLite transaction registers the new checksum, preserves the stronger retention class/expiry, creates a protected upstream job and records both identities in `hltv_source_recoveries` and the audit log. Original review decisions, assignments, holds and bytes stay intact. Repeated calls return the same recovery/job. Recovery never marks the earlier failed run successful, releases its holds or reuses its identity for different bytes.
 
-The private review page offers links between the unfinished capture and its recovered version. Account access and existing token access use the same authorization. To enable readable authenticated download names, add to API `.env`:
+The private review page offers links between the unfinished capture and its recovered version. Account access and existing token access use the same authorization.
+
+The recording list now shows only the current version of each capture. Recovered originals remain in the registry and are accessible under Recording details. Old direct links open the recovered version by default. Analysis status comes from the current version, so an earlier failed capture does not label its completed replacement failed. Active reviews/assignments stay visible; escalated and in-progress cases take precedence over a newly queued case. Notes, holds and audit history from the original remain available on the current recording. Review actions target that displayed case; file-specific actions still target the selected recording or the hold's owning demo.
+
+The quick view shows player names and supported weapon hit-evidence rates/counts. Unsupported weapons, aim-near comparisons, exclusions, baseline progress, provenance and individual firing evidence are available under Analysis details. Storage policies, recording metadata, history and holds are collapsed by default. These presentation changes do not alter stored metrics, alert rules, account permissions, retention, files or review decisions.
+
+For readable download filenames, add to API `.env`:
 
 ```dotenv
 HLTV_FRIENDLY_DEMO_NAMES_ENABLED=true

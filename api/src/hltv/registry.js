@@ -59,27 +59,42 @@ class Registry {
     });
   }
   list({ status, search, offset = 0, limit = 50 } = {}) {
-    return this.db.prepare(`SELECT d.*,c.priority,c.assigned_to,c.source,
-      (SELECT COUNT(*) FROM hltv_holds h WHERE h.demo_id=d.id AND h.released_at IS NULL) AS active_holds,
+    // One visible row per current recording; the original case remains actionable.
+    const rank=alias=>"CASE "+alias+".status WHEN 'escalated' THEN 0 WHEN 'in_review' THEN 1 WHEN 'queued' THEN 2 ELSE 3 END";
+    const preferOld="oc.id IS NOT NULL AND (c.id IS NULL OR "+rank('oc')+"<"+rank('c')+")";
+    const state="CASE WHEN "+preferOld+" THEN o.review_status ELSE d.review_status END";
+    const priority="CASE WHEN "+preferOld+" THEN oc.priority ELSE c.priority END";
+    return this.db.prepare(`SELECT d.*,${state} AS review_status,${priority} AS priority,
+      CASE WHEN ${preferOld} THEN oc.assigned_to ELSE c.assigned_to END AS assigned_to,
+      CASE WHEN ${preferOld} THEN oc.source ELSE c.source END AS source,
+      (SELECT COUNT(*) FROM hltv_holds h WHERE h.demo_id IN(d.id,o.id) AND h.released_at IS NULL) AS active_holds,
       (SELECT status FROM hltv_upstream_runs u WHERE u.demo_id=d.id ORDER BY created_at DESC,id DESC LIMIT 1) AS upstream_status,
+      (SELECT log_round FROM hltv_statistics_observations st WHERE st.demo_id=d.id ORDER BY created_at DESC,id DESC LIMIT 1) AS log_round,
       (SELECT COUNT(*) FROM hltv_anomalies a WHERE a.demo_id=d.id) AS anomaly_count
       FROM hltv_demos d LEFT JOIN hltv_cases c ON c.demo_id=d.id
-      WHERE (? IS NULL OR d.review_status=?) AND (? IS NULL OR d.match_id LIKE ? OR d.map LIKE ?)
-      ORDER BY CASE c.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,d.recorded_at DESC LIMIT ? OFFSET ?`)
+      LEFT JOIN hltv_source_recoveries rc ON rc.recovered_demo_id=d.id
+      LEFT JOIN hltv_demos o ON o.id=rc.original_demo_id LEFT JOIN hltv_cases oc ON oc.demo_id=o.id
+      WHERE NOT EXISTS(SELECT 1 FROM hltv_source_recoveries old WHERE old.original_demo_id=d.id)
+      AND (? IS NULL OR ${state}=?) AND (? IS NULL OR d.match_id LIKE ? OR d.map LIKE ?)
+      ORDER BY CASE ${priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,d.recorded_at DESC LIMIT ? OFFSET ?`)
       .all(status || null, status || null, search || null, `%${search || ""}%`, `%${search || ""}%`, Math.max(1, Math.min(100, Number(limit) || 50)), Math.max(0, Number(offset) || 0));
   }
   detail(demoId) {
-    return { ...this.get(demoId), case: this.db.prepare("SELECT * FROM hltv_cases WHERE demo_id=?").get(demoId) || null,
+    const recoveredFrom=this.db.prepare("SELECT original_demo_id,source_filename FROM hltv_source_recoveries WHERE recovered_demo_id=?").get(demoId)||null;
+    const originalId=recoveredFrom?.original_demo_id||demoId;
+    const review=this.db.prepare("SELECT * FROM hltv_cases WHERE demo_id IN(?,?) ORDER BY CASE status WHEN 'escalated' THEN 0 WHEN 'in_review' THEN 1 WHEN 'queued' THEN 2 ELSE 3 END,CASE WHEN demo_id=? THEN 0 ELSE 1 END LIMIT 1").get(demoId,originalId,demoId)||null;
+    return { ...this.get(demoId), case:review,review_demo_id:review?.demo_id||demoId,
+      ...(review?{review_status:review.status}:{}),
       recovered_source:this.db.prepare("SELECT recovered_demo_id,run_id FROM hltv_source_recoveries WHERE original_demo_id=?").get(demoId)||null,
-      recovered_from:this.db.prepare("SELECT original_demo_id,source_filename FROM hltv_source_recoveries WHERE recovered_demo_id=?").get(demoId)||null,
-      holds: this.db.prepare("SELECT * FROM hltv_holds WHERE demo_id=? AND released_at IS NULL").all(demoId),
-      notes: this.db.prepare("SELECT * FROM hltv_notes WHERE demo_id=? ORDER BY created_at").all(demoId),
+      recovered_from:recoveredFrom,
+      holds: this.db.prepare("SELECT * FROM hltv_holds WHERE demo_id IN(?,?) AND released_at IS NULL").all(demoId,originalId),
+      notes: this.db.prepare("SELECT * FROM hltv_notes WHERE demo_id IN(?,?) ORDER BY created_at").all(demoId,originalId),
       anomalies: this.db.prepare("SELECT * FROM hltv_anomalies WHERE demo_id=? ORDER BY start_tick").all(demoId),
       gap_findings:this.db.prepare("SELECT id,created_at,data_json FROM hltv_gap_findings WHERE demo_id=? ORDER BY created_at,id").all(demoId),
       aim_markers:this.db.prepare("SELECT id,created_at,data_json FROM hltv_aim_markers WHERE demo_id=? ORDER BY created_at,id").all(demoId),
       runs: this.db.prepare("SELECT * FROM hltv_analysis_runs WHERE demo_id=? ORDER BY started_at DESC LIMIT 50").all(demoId),
       upstream_runs: this.db.prepare("SELECT id,status,created_at,finished_at,upstream_sha,error_code,result_json FROM hltv_upstream_runs WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").all(demoId),
-      audit: this.db.prepare("SELECT * FROM hltv_audit WHERE demo_id=? ORDER BY id DESC LIMIT 200").all(demoId) };
+      audit: this.db.prepare("SELECT * FROM hltv_audit WHERE demo_id IN(?,?) ORDER BY id DESC LIMIT 200").all(demoId,originalId) };
   }
   hold(demoId, reason, actor) { const holdId = id(); this.db.prepare("INSERT INTO hltv_holds(id,demo_id,reason,created_by,created_at) VALUES(?,?,?,?,?)").run(holdId, demoId, reason, actor, Date.now()); return holdId; }
   openCase(demoId, source, priority, actor, reason) {
@@ -241,7 +256,7 @@ class Registry {
       SUM(CASE WHEN review_status IN ('queued','in_review','escalated') THEN 1 ELSE 0 END) AS open_reviews FROM hltv_demos d`).get(this.manualRetentionEnabled ? 1 : 0);
     const free = this.storage.freeBytes();
     const copyBytes = this.db.prepare("SELECT COALESCE(SUM(size_bytes),0) AS n FROM hltv_copies WHERE deleted_at IS NULL").get().n;
-    return { ...totals, available_bytes: totals.available_bytes + copyBytes, duplicate_bytes: copyBytes, free_bytes: free, low_disk: free < this.minFreeBytes,
+    return { ...totals, current_demos:this.db.prepare("SELECT COUNT(*) AS n FROM hltv_demos d WHERE NOT EXISTS(SELECT 1 FROM hltv_source_recoveries c WHERE c.original_demo_id=d.id)").get().n, available_bytes: totals.available_bytes + copyBytes, duplicate_bytes: copyBytes, free_bytes: free, low_disk: free < this.minFreeBytes,
       protected_bytes: this.db.prepare("SELECT COALESCE(SUM(size_bytes + (SELECT COALESCE(SUM(c.size_bytes),0) FROM hltv_copies c WHERE c.demo_id=d.id AND c.deleted_at IS NULL)),0) AS n FROM hltv_demos d WHERE file_status IN ('available','deleting') AND (retention_class='evidence' OR EXISTS(SELECT 1 FROM hltv_holds h WHERE h.demo_id=d.id AND released_at IS NULL))").get().n,
       failed_manifests: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_manifests WHERE status='failed'").get().n,
       stalled_alerts: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE sent_at IS NULL AND attempts>=12 AND id NOT IN(SELECT alert_id FROM hltv_alert_suppressions)").get().n,

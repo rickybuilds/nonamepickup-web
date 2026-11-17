@@ -270,6 +270,11 @@ test("finalized recovery preserves the original, rejects unrelated bytes and que
   const {downloadName}=require("../src/hltv/sourceRecovery");assert.equal(downloadName(r.get(result.demo_id),2),"recover-2fort-round-2.dem");assert.match(downloadName(r.get(result.demo_id),null),/unpaired-/);
   require("../src/hltv/statisticsQueue").queueAutomaticStatistics(r,{enabled:true,statisticsEnabled:true,statisticsAutoCollect:true});
   assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_statistics_jobs WHERE demo_id=?").get(original.id).n,0);
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='complete' WHERE id=?").run(result.run_id);
+  r.action(result.demo_id,"flag",{reason:"new finding",priority:"high"},"rule");
+  const listed=r.list({search:"recover"});assert.equal(listed.length,1);assert.equal(listed[0].id,result.demo_id);assert.equal(listed[0].upstream_status,"complete");assert.equal(listed[0].review_status,"in_review");assert.equal(listed[0].assigned_to,"admin");
+  assert.equal(r.list({status:"in_review",search:"recover"}).length,1);
+  const current=r.detail(result.demo_id);assert.equal(current.review_demo_id,original.id);assert.equal(current.case.assigned_to,"admin");assert(current.holds.some(h=>h.demo_id===original.id));
 });
 test("opt-in manual mode expires only overdue unflagged demos without pretending analysis completed", t => {
   const {registry:r,demo,root}=fixture(t);
