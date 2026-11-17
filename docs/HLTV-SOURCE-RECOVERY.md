@@ -12,6 +12,8 @@ The recording list now shows only the current version of each capture. Recovered
 
 The quick view shows player names and supported weapon hit-evidence rates/counts. Unsupported weapons, aim-near comparisons, exclusions, baseline progress, provenance and individual firing evidence are available under Analysis details. Storage policies, recording metadata, history and holds are collapsed by default. These presentation changes do not alter stored metrics, alert rules, account permissions, retention, files or review decisions.
 
+The list uses map previews and named/color-coded status badges. The detail view adds existing TFC weapon icons and paired Conc/Non-conc bars on the same 0–100% scale, with percentages and event counts retained. Bars represent the existing strict hit-evidence rate, not confidence, cheating probability or exact bullet accuracy. Images use existing local assets, with the site's existing `tfcmaps.net` screenshot fallback and a local map-pin fallback when unavailable. Image requests carry no review bearer credential and omit the referrer. The review page CSP permits only self and that existing image provider for images; script and connection restrictions remain unchanged. No new image assets or game assets are redistributed.
+
 For readable download filenames, add to API `.env`:
 
 ```dotenv
