@@ -14,7 +14,6 @@ const { createPickupReplaysRouter, createPickupReplayViewerRouter } = require(".
 const { createFlagDeathRouter } = require("./routes/flagDeaths");
 const { createPickupFlagCarryRouter } = require("./routes/pickupFlagCarry");
 const { createPickupLiveIngestRouter, createPickupLiveViewerRouter } = require("./routes/pickupLive");
-const { registerRelayStatusRoute } = require("./live/udpRelay");
 
 function createApp({
   db,
@@ -353,7 +352,6 @@ function createApp({
     }
   }
 
-  registerRelayStatusRoute(app);
 
   registerRoutes(app, {
     leaderboardHandler,
