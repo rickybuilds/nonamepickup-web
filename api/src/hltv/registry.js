@@ -73,6 +73,7 @@ class Registry {
       notes: this.db.prepare("SELECT * FROM hltv_notes WHERE demo_id=? ORDER BY created_at").all(demoId),
       anomalies: this.db.prepare("SELECT * FROM hltv_anomalies WHERE demo_id=? ORDER BY start_tick").all(demoId),
       gap_findings:this.db.prepare("SELECT id,created_at,data_json FROM hltv_gap_findings WHERE demo_id=? ORDER BY created_at,id").all(demoId),
+      aim_markers:this.db.prepare("SELECT id,created_at,data_json FROM hltv_aim_markers WHERE demo_id=? ORDER BY created_at,id").all(demoId),
       runs: this.db.prepare("SELECT * FROM hltv_analysis_runs WHERE demo_id=? ORDER BY started_at DESC LIMIT 50").all(demoId),
       upstream_runs: this.db.prepare("SELECT id,status,created_at,finished_at,upstream_sha,error_code,result_json FROM hltv_upstream_runs WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").all(demoId),
       audit: this.db.prepare("SELECT * FROM hltv_audit WHERE demo_id=? ORDER BY id DESC LIMIT 200").all(demoId) };
@@ -240,8 +241,8 @@ class Registry {
     return { ...totals, available_bytes: totals.available_bytes + copyBytes, duplicate_bytes: copyBytes, free_bytes: free, low_disk: free < this.minFreeBytes,
       protected_bytes: this.db.prepare("SELECT COALESCE(SUM(size_bytes + (SELECT COALESCE(SUM(c.size_bytes),0) FROM hltv_copies c WHERE c.demo_id=d.id AND c.deleted_at IS NULL)),0) AS n FROM hltv_demos d WHERE file_status IN ('available','deleting') AND (retention_class='evidence' OR EXISTS(SELECT 1 FROM hltv_holds h WHERE h.demo_id=d.id AND released_at IS NULL))").get().n,
       failed_manifests: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_manifests WHERE status='failed'").get().n,
-      stalled_alerts: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE sent_at IS NULL AND attempts>=12").get().n,
-      pending_alerts: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE sent_at IS NULL").get().n,
+      stalled_alerts: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE sent_at IS NULL AND attempts>=12 AND id NOT IN(SELECT alert_id FROM hltv_alert_suppressions)").get().n,
+      pending_alerts: this.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE sent_at IS NULL AND id NOT IN(SELECT alert_id FROM hltv_alert_suppressions)").get().n,
       policy: this.db.prepare("SELECT * FROM hltv_policy").all(),
       retention_mode: this.manualRetentionEnabled ? "manual_review" : "require_analysis",
       analyzer: "not_integrated", viewer: "not_integrated" };

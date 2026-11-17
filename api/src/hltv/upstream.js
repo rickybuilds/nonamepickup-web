@@ -8,7 +8,7 @@ function upstreamConfig(env = process.env) {
   return { enabled: env.HLTV_UPSTREAM_ENABLED === "true", root: env.HLTV_UPSTREAM_ROOT || "/opt/noname-hltv-tools",
     python: env.HLTV_UPSTREAM_PYTHON || "python3", logsRoot: env.HLTV_PARSER_LOG_ROOT || "/var/lib/noname-parser", memoryBytes,
     statisticsEnabled: env.HLTV_STATISTICS_ENABLED === "true", statisticsAutoCollect:env.HLTV_STATISTICS_AUTO_COLLECT === "true",assetsRoot: env.HLTV_ASSETS_ROOT || "/srv/noname-hltv-assets",
-    gapReviewEnabled:env.HLTV_AIM_GAP_REVIEW_ENABLED === "true" };
+    gapReviewEnabled:env.HLTV_AIM_GAP_REVIEW_ENABLED === "true",aimReview:require("./aimReviewPolicy").aimReviewConfig(env) };
 }
 function resolveBinary(bin) {
   const candidates = path.isAbsolute(bin) ? [bin] : (process.env.PATH || "").split(path.delimiter).map(dir => path.join(dir, bin));
@@ -162,8 +162,9 @@ async function runPending(registry, options) {
       if (committed.changes !== 1) throw new Error("upstream_run_lease_lost");
       if(statistics){
         const stored=require("./playerStatistics").storeStatistics(registry,{id:run.id,demo,upstream_sha:release.sha,pairing:matched},statistics);
+        require("./concWindows").recordWindowCounts(registry,stored.id,statistics,estimate.windows);
         require("./gapReview").evaluateGapReview(registry,{...stored,demo_id:demo.id,upstream_sha:release.sha,log_round:matched.log_round,
-          groups:statistics.groups.map(group=>({...group,player_name:group.name}))},{enabled:options.gapReviewEnabled});
+          groups:statistics.groups.map(group=>({...group,player_name:group.name}))},{...options.aimReview,enabled:options.gapReviewEnabled||options.aimReview?.alertsEnabled});
       }
       // This is an explicit reviewer request. Preserve originals until the
       // reviewer has inspected the result and deliberately releases the hold.

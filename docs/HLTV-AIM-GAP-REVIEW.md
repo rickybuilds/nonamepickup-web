@@ -1,5 +1,7 @@
 # Configured aim-gap review rule
 
+**Retired as an automatic notification rule.** See [strict hit-evidence alerts](HLTV-HIT-EVIDENCE-ALERTS.md) for the current policy. Single-round close aim-near rates now create quiet website markers only; they do not automatically open new reviews or notify Discord. The 25-game baseline is separate from per-game evidence coverage. The description below preserves the original rollout history; its old automatic behavior is no longer active.
+
 The operator-requested rule flags an absolute conc/non-conc **aim-near** rate gap strictly below **10 percentage points**, for the same SteamID/class/weapon in one recording. Each side needs a positive eligible denominator. There is no 25-shot gate: small samples still flag. Show **Below 25 eligible shots in at least one state** only when either side has fewer than 25; omit it when both sides have at least 25. Zero-denominator and timing-uncertain groups do not produce a comparison.
 
 This is a configured review heuristic, not a cheating verdict or a learned baseline detector. Two zero aim-near numerators with positive denominators can qualify. Historical anomaly thresholds remain pending; existing descriptive histories are unchanged.

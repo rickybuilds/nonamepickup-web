@@ -18,6 +18,7 @@ function createRouter({ registry, env = process.env }) {
   router.get("/demos/:id/statistics",route((req,res)=>{
     if(!upstreamConfig(env).statisticsEnabled)return res.status(404).json({error:"statistics_disabled"});
     const observation=demoStatistics(registry,req.params.id);
+    if(observation){const {aimReviewConfig,historyRows,baselineFrom}=require("./aimReviewPolicy"),policy=aimReviewConfig(env);observation.review_context=observation.groups.filter(group=>group.state==="conc").map(group=>({steam_id:group.steam_id,class_id:group.class_id,weapon:group.weapon,conc_windows:group.conc_windows,baseline:baselineFrom(historyRows(registry,observation,group),policy.baselineGames)}));}
     const job=registry.db.prepare("SELECT j.skip_reason,r.status,r.error_code FROM hltv_statistics_jobs j LEFT JOIN hltv_upstream_runs r ON r.id=j.run_id WHERE j.demo_id=?").get(req.params.id)||null;
     res.json({observation,job});
   }));

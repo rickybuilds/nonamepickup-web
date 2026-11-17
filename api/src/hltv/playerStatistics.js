@@ -57,8 +57,10 @@ function playerHistory(registry,{steamId,configHash,weapon,classId,map,before,da
 }
 function demoStatistics(registry,demoId){
   registry.get(demoId);
-  const observation=registry.db.prepare("SELECT id,input_key,config_hash,demo_id,recorded_at,created_at,upstream_sha,log_round,demo_sha256,log_sha256 FROM hltv_statistics_observations WHERE demo_id=? ORDER BY created_at DESC LIMIT 1").get(demoId);
-  return observation?{...observation,groups:registry.db.prepare("SELECT * FROM hltv_player_statistics WHERE observation_id=? ORDER BY steam_id,class_id,weapon,state").all(observation.id)}:null;
+  const observation=registry.db.prepare("SELECT id,input_key,config_hash,demo_id,match_id,server,map,recorded_at,created_at,upstream_sha,log_round,demo_sha256,log_sha256,run_id,payload_sha256 FROM hltv_statistics_observations WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").get(demoId);
+  return observation?{...observation,groups:registry.db.prepare(`SELECT s.*,CASE WHEN s.state='conc' AND p.payload_sha256=? AND p.run_id=? THEN w.window_count ELSE NULL END AS conc_windows
+    FROM hltv_player_statistics s LEFT JOIN hltv_statistics_window_counts w ON w.observation_id=s.observation_id AND w.steam_id=s.steam_id AND w.class_id=s.class_id AND w.weapon=s.weapon
+    LEFT JOIN hltv_statistics_window_provenance p ON p.observation_id=s.observation_id WHERE s.observation_id=? ORDER BY s.steam_id,s.class_id,s.weapon,s.state`).all(observation.payload_sha256,observation.run_id,observation.id)}:null;
 }
 function statisticsPayload(registry,observationId){
   const row=registry.db.prepare("SELECT p.result_gzip FROM hltv_statistics_observations o JOIN hltv_statistics_payloads p ON p.sha256=o.payload_sha256 WHERE o.id=?").get(observationId);

@@ -1,4 +1,15 @@
 PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS hltv_aim_markers(
+ id TEXT PRIMARY KEY,demo_id TEXT NOT NULL REFERENCES hltv_demos(id),observation_id TEXT NOT NULL REFERENCES hltv_statistics_observations(id),created_at INTEGER NOT NULL,data_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS hltv_statistics_window_counts(
+ observation_id TEXT NOT NULL REFERENCES hltv_statistics_observations(id),steam_id TEXT NOT NULL,class_id INTEGER NOT NULL,weapon TEXT NOT NULL,
+ window_count INTEGER,PRIMARY KEY(observation_id,steam_id,class_id,weapon)
+);
+CREATE TABLE IF NOT EXISTS hltv_statistics_window_provenance(
+ observation_id TEXT PRIMARY KEY REFERENCES hltv_statistics_observations(id),payload_sha256 TEXT NOT NULL,run_id TEXT NOT NULL,method TEXT NOT NULL,created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS hltv_alert_suppressions(alert_id TEXT PRIMARY KEY REFERENCES hltv_alerts(id),reason TEXT NOT NULL,created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS hltv_gap_findings(
  id TEXT PRIMARY KEY,demo_id TEXT NOT NULL REFERENCES hltv_demos(id),observation_id TEXT NOT NULL REFERENCES hltv_statistics_observations(id),
  alert_id TEXT NOT NULL REFERENCES hltv_alerts(id),created_at INTEGER NOT NULL,data_json TEXT NOT NULL

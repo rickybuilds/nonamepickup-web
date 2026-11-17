@@ -119,7 +119,7 @@ function fixture(t) {
   const demo = registry.ingest(manifest)[0];
   return { root, registry, demo, manifest };
 }
-test("aim-gap review flags all positive-denominator gaps under ten points and labels only small samples",t=>{
+test("close-gap comparisons become quiet markers without reviews, holds or Discord alerts",t=>{
   const {registry:r,demo}=fixture(t),{evaluateGapReview}=require("../src/hltv/gapReview");
   const pair=(weapon,concNear,concCount,outNear,outCount)=>[...[{state:"conc",aim_near:concNear,eligible:concCount},{state:"outside",aim_near:outNear,eligible:outCount}].map(row=>({steam_id:"STEAM_0:1:123",name:"Player",class_id:6,weapon,recorded:row.eligible,no_enemy:0,unavailable:0,uncertain:0,geometry_hit:0,strict:0,inclusive:0,evidence_eligible:0,...row}))];
   const groups=[...pair("ac",22,227,138,744),...pair("shotgun",1,2,1,2),...pair("rpg",1,10,2,10),...pair("nailgun",0,0,1,10),...pair("super_shotgun",10,25,10,25)];
@@ -127,20 +127,99 @@ test("aim-gap review flags all positive-denominator gaps under ten points and la
   storeStatistics(r,{id:"source-run",demo,upstream_sha:"b".repeat(40),pairing:{log_sha256:"c".repeat(64),log_round:1}},{version:1,metric:"ghosty-firing-v1",settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:1},assets:[],groups,shots:[],unassigned:0});
   const obs=demoStatistics(r,demo.id);
   assert.equal(evaluateGapReview(r,obs,{enabled:false}).findings,0);
-  const result=evaluateGapReview(r,obs,{enabled:true});assert.equal(result.findings,3);
-  const findings=r.db.prepare("SELECT data_json FROM hltv_gap_findings ORDER BY id").all().map(row=>JSON.parse(row.data_json));
-  assert.equal(findings.find(f=>f.weapon==="ac").small_sample,false);
-  assert.equal(findings.find(f=>f.weapon==="shotgun").small_sample,true);
-  assert.equal(findings.find(f=>f.weapon==="super_shotgun").small_sample,false);
-  assert.equal(r.get(demo.id).review_status,"queued");assert.equal(r.get(demo.id).retention_class,"high");
-  assert.equal(r.detail(demo.id).holds.length,1);assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE kind='aim_gap_review'").get().n,1);
+  const result=evaluateGapReview(r,obs,{enabled:true});assert.equal(result.findings,0);assert.equal(result.markers,3);
+  assert.equal(r.get(demo.id).review_status,"unreviewed");assert.equal(r.get(demo.id).retention_class,"normal");
+  assert.equal(r.detail(demo.id).holds.length,0);assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts").get().n,0);
   assert.equal(evaluateGapReview(r,obs,{enabled:true}).findings,0);
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_aim_markers").get().n,3);
+});
+function statisticsRound(registry,root,{seq,match="game"+seq,eligible=20,near=20,hits=near,outside=20,outsideNear=8,outsideHits=outsideNear,windows=20,weapon="super_shotgun",map="2fort",upstream="b".repeat(40)}){
+  const filename=`incoming/recording/stat-${seq}.dem`;fs.writeFileSync(path.join(root,filename),"unique fixture "+seq);
+  const demo=registry.ingest({version:1,match_id:match,server:"east",map,demos:[{storage_key:filename,filename:`stat-${seq}.dem`,recorded_at:seq*1000+1}]})[0];
+  const identity={steam_id:"STEAM_0:1:123",name:"Player",class_id:6,weapon};
+  const direct=["ac","shotgun","super_shotgun","sniper","auto_rifle"].includes(weapon);
+  const group=(state,n,aim,hit)=>({...identity,state,recorded:n,eligible:n,aim_near:aim,no_enemy:0,unavailable:0,uncertain:0,geometry_hit:0,strict:direct?hit:0,inclusive:direct?hit:0,evidence_eligible:direct?n:0});
+  const shots=Array.from({length:eligible},(_,i)=>({...identity,state:"conc",visibility:"visible",time_seconds:(i%windows)*10+2,evidence:direct?{includedInPercentage:true,status:i<hits?"blood-damage":"unmatched"}:null}));
+  const statistics={version:1,metric:"ghosty-firing-v1",settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:1},assets:[],groups:[group("conc",eligible,near,hits),group("outside",outside,outsideNear,outsideHits)],shots,unassigned:0};
+  const {storeStatistics,demoStatistics}=require("../src/hltv/playerStatistics");
+  const saved=storeStatistics(registry,{id:"stat-run-"+seq,demo,upstream_sha:upstream,pairing:{log_sha256:"c".repeat(64),log_round:1}},statistics);
+  require("../src/hltv/concWindows").recordWindowCounts(registry,saved.id,statistics,Array.from({length:windows},(_,i)=>({player_steam_id:identity.steam_id,class_id:6,time_seconds:i*10,end_seconds:i*10+8})));
+  return demoStatistics(registry,demo.id);
+}
+test("100 percent across twenty distinct conc windows can alert before twenty-five games",t=>{
+  const {registry:r,root}=fixture(t),{evaluateGapReview}=require("../src/hltv/gapReview");
+  const obs=statisticsRound(r,root,{seq:10,outside:0,outsideNear:0});
+  const result=evaluateGapReview(r,obs,{enabled:true,alertsEnabled:true});assert.equal(result.findings,1);
+  const finding=JSON.parse(r.db.prepare("SELECT data_json FROM hltv_gap_findings").get().data_json);
+  assert.equal(finding.trigger,"high_conc");assert.equal(finding.conc_windows,20);assert.equal(finding.baseline.games,0);assert.equal(finding.baseline.ready,false);
+  assert.equal(evaluateGapReview(r,obs,{enabled:true,alertsEnabled:true}).findings,0);
+  assert.equal(r.get(obs.demo_id).review_status,"queued");assert.equal(r.detail(obs.demo_id).holds.length,1);
+});
+test("one hundred shots in one conc window and projectile weapons never satisfy the immediate rule",t=>{
+  const {registry:r,root}=fixture(t),{evaluateGapReview}=require("../src/hltv/gapReview");
+  const single=statisticsRound(r,root,{seq:10,eligible:100,near:100,windows:1});
+  assert.equal(evaluateGapReview(r,single,{enabled:true,alertsEnabled:true}).findings,0);
+  const projectile=statisticsRound(r,root,{seq:11,weapon:"rpg"});
+  assert.equal(evaluateGapReview(r,projectile,{enabled:true,alertsEnabled:true}).findings,0);
+  const good=statisticsRound(r,root,{seq:12});
+  assert.equal(evaluateGapReview(r,good,{enabled:true,alertsEnabled:false}).findings,0);
+  const geometryOnly=statisticsRound(r,root,{seq:13,near:20,hits:10});
+  assert.equal(evaluateGapReview(r,geometryOnly,{enabled:true,alertsEnabled:true}).findings,0,"100% aim-near is not 100% strict hit evidence");
+  const incomplete=statisticsRound(r,root,{seq:14});
+  r.db.prepare("UPDATE hltv_player_statistics SET complete=0 WHERE observation_id=? AND state='conc'").run(incomplete.id);
+  assert.equal(evaluateGapReview(r,incomplete,{enabled:true,alertsEnabled:true}).findings,0);
+  const closed=statisticsRound(r,root,{seq:15});r.action(closed.demo_id,"flag",{reason:"manual case"},"admin");r.action(closed.demo_id,"status",{status:"dismissed",reason:"review complete"},"admin");
+  assert.equal(evaluateGapReview(r,closed,{enabled:true,alertsEnabled:true}).findings,0);
+  assert.equal(r.get(closed.demo_id).review_status,"dismissed");
+});
+test("repeated hit-evidence patterns count games once and preserve assignments and manual holds",t=>{
+  const {registry:r,root}=fixture(t),{evaluateGapReview}=require("../src/hltv/gapReview");
+  statisticsRound(r,root,{seq:10,match:"one",hits:8,near:20,outsideHits:8});
+  const sameGame=statisticsRound(r,root,{seq:11,match:"one",hits:8,near:20,outsideHits:8});
+  assert.equal(evaluateGapReview(r,sameGame,{enabled:true,alertsEnabled:true}).findings,0);
+  const second=statisticsRound(r,root,{seq:12,match:"two",hits:8,near:20,outsideHits:8});
+  r.action(second.demo_id,"flag",{reason:"manual investigation"},"admin");r.action(second.demo_id,"claim",{},"admin");
+  const originalHolds=r.detail(second.demo_id).holds.map(h=>h.id);
+  assert.equal(evaluateGapReview(r,second,{enabled:true,alertsEnabled:true}).findings,1);
+  assert.equal(r.get(second.demo_id).review_status,"in_review");
+  for(const hold of originalHolds)assert.ok(r.detail(second.demo_id).holds.some(h=>h.id===hold));
+  const finding=JSON.parse(r.db.prepare("SELECT data_json FROM hltv_gap_findings").get().data_json);assert.equal(finding.trigger,"repeated_gap");assert.equal(finding.conc_percent,40);assert.equal(finding.baseline.games,1);
+});
+test("baseline readiness counts twenty-five prior games rather than shots or rounds",t=>{
+  const {registry:r,root}=fixture(t),{evaluateGapReview}=require("../src/hltv/gapReview");
+  for(let i=1;i<=25;i++)statisticsRound(r,root,{seq:i,match:i===25?"game24":"game"+i,near:8});
+  const current=statisticsRound(r,root,{seq:26,near:16});
+  statisticsRound(r,root,{seq:100,hits:20});
+  statisticsRound(r,root,{seq:25.75,match:"game26",hits:20});
+  statisticsRound(r,root,{seq:25.6,map:"other",hits:20});
+  statisticsRound(r,root,{seq:25.7,upstream:"d".repeat(40),hits:20});
+  assert.equal(evaluateGapReview(r,current,{enabled:true,alertsEnabled:true}).findings,0,"twenty-five rounds in twenty-four games is not ready");
+  statisticsRound(r,root,{seq:25.5,match:"game25",near:8});
+  const result=evaluateGapReview(r,current,{enabled:true,alertsEnabled:true});assert.equal(result.findings,1);
+  const finding=JSON.parse(r.db.prepare("SELECT data_json FROM hltv_gap_findings").get().data_json);
+  assert.equal(finding.trigger,"baseline_rise");assert.equal(finding.baseline.games,25);assert.equal(finding.baseline.percent,40);assert.equal(finding.conc_percent,80);
+});
+test("window coverage is recoverable from stored evidence without decoding and fails closed for mismatched sources",t=>{
+  const {registry:r,root}=fixture(t),{ensureWindowCounts}=require("../src/hltv/concWindows");
+  const obs=statisticsRound(r,root,{seq:10}),demo=r.get(obs.demo_id),hold=r.hold(demo.id,"Fixture source","test");
+  r.db.prepare("DELETE FROM hltv_statistics_window_counts WHERE observation_id=?").run(obs.id);
+  r.db.prepare("DELETE FROM hltv_statistics_window_provenance WHERE observation_id=?").run(obs.id);
+  const estimate={demo_sha256:obs.demo_sha256,upstream_sha:obs.upstream_sha,pairing:{log_sha256:obs.log_sha256},windows:Array.from({length:20},(_,i)=>({player_steam_id:"STEAM_0:1:123",class_id:6,time_seconds:i*10,end_seconds:i*10+8}))};
+  r.db.prepare("INSERT INTO hltv_upstream_runs(id,demo_id,hold_id,status,requested_by,created_at,result_json) VALUES(?,?,?,'complete','test',1,?)").run(obs.run_id,demo.id,hold,JSON.stringify({...estimate,demo_sha256:"wrong"}));
+  assert.equal(ensureWindowCounts(r,obs),false);
+  r.db.prepare("UPDATE hltv_upstream_runs SET result_json=? WHERE id=?").run(JSON.stringify(estimate),obs.run_id);
+  assert.equal(ensureWindowCounts(r,obs),true);
+  assert.equal(r.db.prepare("SELECT window_count FROM hltv_statistics_window_counts WHERE observation_id=?").get(obs.id).window_count,20);
+});
+test("legacy broad alerts are suppressed without changing sent history, manual alerts or holds",t=>{
+  const {registry:r,demo}=fixture(t),{retireLegacyGapAlerts}=require("../src/hltv/gapReview");
+  r.alert(demo.id,"aim_gap_review");r.alert(demo.id,"manual_flag");r.hold(demo.id,"manual","admin");
+  assert.equal(retireLegacyGapAlerts(r),1);assert.equal(retireLegacyGapAlerts(r),0);
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE sent_at IS NULL").get().n,2);
+  assert.equal(r.summary().pending_alerts,1);
   assert.equal(r.detail(demo.id).holds.length,1);
-  r.action(demo.id,"claim",{},"admin");
-  const manual=r.hold(demo.id,"Manual evidence","admin");
-  assert.equal(evaluateGapReview(r,obs,{enabled:true}).findings,0);
-  assert.equal(r.get(demo.id).review_status,"in_review");
-  assert.ok(r.detail(demo.id).holds.some(h=>h.id===manual));
+  const {aimReviewConfig}=require("../src/hltv/aimReviewPolicy");assert.equal(aimReviewConfig({}).alertsEnabled,false);assert.equal(aimReviewConfig({}).baselineGames,25);
+  assert.throws(()=>aimReviewConfig({HLTV_HIT_BASELINE_GAMES:"no"}));
 });
 test("player histories deduplicate reruns, preserve raw-expired data and pool counts without current/future leakage", t=>{
   const {registry:r,demo}=fixture(t),{storeStatistics,playerHistory}=require("../src/hltv/playerStatistics");

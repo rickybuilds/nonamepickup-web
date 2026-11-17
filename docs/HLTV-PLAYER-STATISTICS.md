@@ -1,5 +1,7 @@
 # Private firing statistics and personal histories
 
+Current quick-view headline and notification policy: [strict hit evidence, concussion-window coverage and 25-game personal baselines](HLTV-HIT-EVIDENCE-ALERTS.md). Aim-near is now supporting context. Single-round close aim-near markers stay quiet; older descriptions below record the original statistics rollout.
+
 Implemented behind default-off flags. Uses Ghosty's unchanged firing counter, viewer geometry/visibility/server-model pose functions and strict/inclusive hit-evidence matching inside the existing isolated background worker. No Chrome installation is required on the server: drawing uploads are inert, while original comparison functions execute in Node. Upstream remains an official immutable checkout managed by the existing updater.
 
 ## Before enabling
