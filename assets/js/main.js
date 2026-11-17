@@ -61,8 +61,10 @@ document.querySelectorAll(".site-nav .nav-more").forEach(menu => {
       menu.querySelector("summary").focus();
     }
   });
-  menu.addEventListener("focusout", event => {
-    if (!menu.contains(event.relatedTarget)) menu.open = false;
+  // Safari can blur the summary without focusing a clicked link. Closing on
+  // focusout would hide that link before its click can finish.
+  document.addEventListener("focusin", event => {
+    if (!menu.contains(event.target)) menu.open = false;
   });
   menu.addEventListener("click", event => {
     if (event.target.closest("a")) menu.open = false;
