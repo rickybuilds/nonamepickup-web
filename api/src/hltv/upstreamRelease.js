@@ -23,7 +23,7 @@ function verifyRelease(root, sha) {
   if (command("git", ["-C", dir, "remote", "get-url", "origin"]) !== OFFICIAL ||
       command("git", ["-C", dir, "rev-parse", "HEAD"]) !== sha ||
       command("git", ["-C", dir, "status", "--porcelain", "--untracked-files=all"])) throw new Error("Upstream release is dirty or has unexpected origin/revision");
-  for (const file of ["LICENSE", "goldsrc_demo.py", "demo_viewer.py", "server_log.py", "web/conc.js"]) {
+  for (const file of ["LICENSE", "goldsrc_demo.py", "demo_viewer.py", "server_log.py", "web/conc.js", "web/conc_aim.js", "web/blood_hits.js", "web/studio.js", "web/viewer.js", "bsp.py", "mdl.py"]) {
     const target = path.join(dir, file);
     if (!fs.lstatSync(target).isFile() || fs.realpathSync(target) !== target) throw new Error("Unsafe/missing upstream API file");
   }

@@ -1,5 +1,7 @@
 # Ghosty upstream adapter: no fork required
 
+Optional firing comparisons and personal histories are now implemented separately behind default-off statistics flags. See [private player statistics rollout](HLTV-PLAYER-STATISTICS.md); provisioning assets and validating a real Linux run are required before automatic collection.
+
 This connection uses the official [ghostile/goldsrc-hltv-tools](https://github.com/ghostile/goldsrc-hltv-tools) repository without modifying its files or pushing to it. Our transport, queue and access controls stay in `nonamepickup-web`; upstream algorithms stay in upstream. No submodule edit or fork is required.
 
 ## Connected capability

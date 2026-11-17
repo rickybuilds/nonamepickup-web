@@ -6,7 +6,8 @@ function upstreamConfig(env = process.env) {
   const memoryBytes = Number(env.HLTV_UPSTREAM_MEMORY_BYTES || 2147483648);
   if (!Number.isSafeInteger(memoryBytes) || memoryBytes < 268435456 || memoryBytes > 4294967296) throw new Error("Invalid HLTV_UPSTREAM_MEMORY_BYTES");
   return { enabled: env.HLTV_UPSTREAM_ENABLED === "true", root: env.HLTV_UPSTREAM_ROOT || "/opt/noname-hltv-tools",
-    python: env.HLTV_UPSTREAM_PYTHON || "python3", logsRoot: env.HLTV_PARSER_LOG_ROOT || "/var/lib/noname-parser", memoryBytes };
+    python: env.HLTV_UPSTREAM_PYTHON || "python3", logsRoot: env.HLTV_PARSER_LOG_ROOT || "/var/lib/noname-parser", memoryBytes,
+    statisticsEnabled: env.HLTV_STATISTICS_ENABLED === "true", statisticsAutoCollect:env.HLTV_STATISTICS_AUTO_COLLECT === "true",assetsRoot: env.HLTV_ASSETS_ROOT || "/srv/noname-hltv-assets" };
 }
 function resolveBinary(bin) {
   const candidates = path.isAbsolute(bin) ? [bin] : (process.env.PATH || "").split(path.delimiter).map(dir => path.join(dir, bin));
@@ -27,7 +28,7 @@ function cleanupScratch(registry, runId) {
   const cache = path.join(registry.storage.root, "cache"), directory = path.join(cache, "ghosty-" + runId);
   if (!fs.existsSync(directory)) return;
   if (fs.realpathSync(cache) !== cache || fs.realpathSync(directory) !== directory || fs.lstatSync(directory).isSymbolicLink()) throw new Error("Unsafe scratch directory");
-  const allowed = new Set(["meta.json.gz", "data.bin.gz", "matched-log.json"]);
+  const allowed = new Set(["meta.json.gz", "data.bin.gz", "matched-log.json", "assets.bin", "statistics.json"]);
   for (const name of fs.readdirSync(directory)) {
     if (!allowed.has(name)) continue;
     const target = path.join(directory, name), stat = fs.lstatSync(target);
@@ -82,17 +83,24 @@ async function runPending(registry, options) {
   if (!options.enabled) return { enabled: false, processed: 0 };
   // Startup recovery never treats interrupted work as a successful result.
   registry.db.transaction(() => {
-    registry.db.prepare("UPDATE hltv_upstream_runs SET status='failed',finished_at=?,error_code='worker_interrupted' WHERE status='processing' AND started_at<?")
+    registry.db.prepare("UPDATE hltv_upstream_runs SET status='failed',finished_at=?,error_code='worker_interrupted' WHERE status='processing' AND COALESCE((SELECT touched_at FROM hltv_upstream_heartbeats h WHERE h.run_id=hltv_upstream_runs.id),started_at)<?")
       .run(Date.now(), Date.now() - 600000);
   }).immediate();
   reapScratch(registry);
+  const {queueAutomaticStatistics,releaseStatisticsLeases}=require("./statisticsQueue");
+  releaseStatisticsLeases(registry);
+  queueAutomaticStatistics(registry,options);
   const run = registry.db.transaction(() => {
     if (registry.db.prepare("SELECT 1 FROM hltv_upstream_runs WHERE status='processing'").get()) return null;
-    const run = registry.db.prepare("SELECT * FROM hltv_upstream_runs WHERE status='queued' ORDER BY created_at,id LIMIT 1").get();
+    const run = registry.db.prepare("SELECT * FROM hltv_upstream_runs WHERE status='queued' AND (?=1 OR requested_by<>'statistics-scheduler') ORDER BY created_at,id LIMIT 1").get(Number(options.statisticsEnabled===true));
     if (run) registry.db.prepare("UPDATE hltv_upstream_runs SET status='processing',started_at=? WHERE id=?").run(Date.now(), run.id);
     return run;
   }).immediate();
   if (!run) return { enabled: true, processed: 0 };
+  const touch=()=>registry.db.prepare("INSERT INTO hltv_upstream_heartbeats(run_id,touched_at) VALUES(?,?) ON CONFLICT(run_id) DO UPDATE SET touched_at=excluded.touched_at").run(run.id,Date.now());
+  touch();
+  const heartbeat=setInterval(()=>{try{touch();}catch(error){console.error("[HLTV upstream] heartbeat deferred:",error.code||error.name);}},60000);
+  heartbeat.unref();
   let directory;
   try {
     if (registry.storage.freeBytes() < registry.minFreeBytes) throw new Error("insufficient_storage_headroom");
@@ -132,6 +140,17 @@ async function runPending(registry, options) {
     const heapMiB = Math.floor((options.memoryBytes || 2147483648) / 2097152);
     const nodeCommand = sandboxCommand(process.execPath, ["--max-old-space-size=" + heapMiB, path.join(__dirname, "upstream_conc.js"), release.root, directory], directory, options.memoryBytes);
     const estimate = await child(nodeCommand.bin, nodeCommand.args);
+    let statistics;
+    if(options.statisticsEnabled){
+      const assets=new Storage(options.assetsRoot,{readonly:true,publicRoot:path.resolve(__dirname,"../../..")});
+      const conversion=sandboxCommand(options.python,["-I",path.join(__dirname,"upstream_assets.py")],directory,options.memoryBytes);
+      await child(conversion.bin,conversion.args,{upstream_root:release.root,assets_root:assets.root,output_dir:directory});
+      const comparison=sandboxCommand(process.execPath,["--max-old-space-size="+heapMiB,path.join(__dirname,"upstream_statistics.js"),release.root,directory],directory,options.memoryBytes);
+      await child(comparison.bin,comparison.args);
+      const resultFile=path.join(directory,"statistics.json");
+      if(fs.statSync(resultFile).size>16777216)throw new Error("statistics_result_too_large");
+      statistics=JSON.parse(fs.readFileSync(resultFile,"utf8"));
+    }
     const result = { ...estimate, upstream_sha: release.sha, source: "ghostile/goldsrc-hltv-tools", pairing: matched,
       demo_sha256: demo.sha256, match_id: demo.match_id, demo_id: demo.id, anomaly_detection: "not_implemented", viewer: "not_integrated" };
     const serialized = JSON.stringify(result);
@@ -140,6 +159,7 @@ async function runPending(registry, options) {
     registry.db.transaction(() => {
       const committed = registry.db.prepare("UPDATE hltv_upstream_runs SET status='complete',finished_at=?,result_json=?,error_code=NULL WHERE id=? AND status='processing'").run(Date.now(), serialized, run.id);
       if (committed.changes !== 1) throw new Error("upstream_run_lease_lost");
+      if(statistics)require("./playerStatistics").storeStatistics(registry,{id:run.id,demo,upstream_sha:release.sha,pairing:matched},statistics);
       // This is an explicit reviewer request. Preserve originals until the
       // reviewer has inspected the result and deliberately releases the hold.
       registry.audit(demo.id, "upstream-worker", "upstream_complete", { run_id: run.id, upstream_sha: release.sha, log_round: matched.log_round, log_sha256: matched.log_sha256 });
@@ -153,6 +173,8 @@ async function runPending(registry, options) {
     // Failure keeps the explicit hold for an administrator to inspect/release.
     return { enabled: true, processed: 1, status: "failed", run_id: run.id, error_code: code };
   } finally {
+    clearInterval(heartbeat);
+    releaseStatisticsLeases(registry);
     if (directory) {
       try { cleanupScratch(registry, run.id); } catch (error) { console.error("[HLTV upstream] scratch cleanup deferred:", error.message); }
     }

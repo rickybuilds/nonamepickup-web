@@ -2,6 +2,7 @@
 const express = require("express"), fs = require("fs");
 const { createAuth } = require("./auth");
 const { upstreamConfig, queueRun } = require("./upstream");
+const { demoStatistics,playerHistory,statisticsPayload }=require("./playerStatistics");
 function publicData(value) {
   // Raw local paths never cross the HTTP boundary, even to a reviewer.
   if (Array.isArray(value)) return value.map(publicData);
@@ -13,7 +14,29 @@ function createRouter({ registry, env = process.env }) {
   router.use(createAuth(env));
   router.use(express.json({ limit: "16kb", strict: true }));
   const route = fn => (req, res, next) => { try { fn(req, res); } catch (error) { next(error); } };
-  router.get("/session", (req, res) => res.json({ user_id: req.hltvActor, upstream_enabled: upstreamConfig(env).enabled }));
+  router.get("/session", (req, res) => res.json({ user_id: req.hltvActor, upstream_enabled: upstreamConfig(env).enabled,statistics_enabled:upstreamConfig(env).statisticsEnabled }));
+  router.get("/demos/:id/statistics",route((req,res)=>{
+    if(!upstreamConfig(env).statisticsEnabled)return res.status(404).json({error:"statistics_disabled"});
+    const observation=demoStatistics(registry,req.params.id);
+    const job=registry.db.prepare("SELECT j.skip_reason,r.status,r.error_code FROM hltv_statistics_jobs j LEFT JOIN hltv_upstream_runs r ON r.id=j.run_id WHERE j.demo_id=?").get(req.params.id)||null;
+    res.json({observation,job});
+  }));
+  router.get("/demos/:id/players/:steam/history",route((req,res)=>{
+    if(!upstreamConfig(env).statisticsEnabled)return res.status(404).json({error:"statistics_disabled"});
+    const observation=demoStatistics(registry,req.params.id);
+    if(!observation)return res.json({groups:[],kind:"descriptive_personal_history"});
+    res.json(playerHistory(registry,{steamId:req.params.steam,configHash:observation.config_hash,before:observation.recorded_at,
+      excludeInputKey:observation.input_key,days:req.query.days,map:registry.get(req.params.id).map}));
+  }));
+  router.get("/demos/:id/statistics/shots",route((req,res)=>{
+    if(!upstreamConfig(env).statisticsEnabled)return res.status(404).json({error:"statistics_disabled"});
+    const observation=demoStatistics(registry,req.params.id);
+    if(!observation)return res.json({shots:[],total:0});
+    const offset=Math.max(0,Math.min(10000,Number(req.query.offset)||0));
+    const result=statisticsPayload(registry,observation.id);
+    const shots=result.shots.filter(shot=>!req.query.steam_id||shot.steam_id===req.query.steam_id);
+    res.json({shots:shots.slice(offset,offset+100),total:shots.length,offset});
+  }));
   router.get("/storage-summary", route((req, res) => res.json(registry.summary())));
   router.get("/demos", route((req, res) => res.json(publicData(registry.list(req.query)))));
   router.get("/demos/:id", route((req, res) => res.json(publicData(registry.detail(req.params.id)))));

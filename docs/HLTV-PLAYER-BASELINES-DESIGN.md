@@ -1,6 +1,6 @@
 # Player firing statistics and personal baselines
 
-Status: design for review; not implemented. The existing connected capability remains matched-log concussion estimates.
+Status: approved and implemented behind default-off flags. See `HLTV-PLAYER-STATISTICS.md` for installation, definitions and outstanding real-match/Linux validation. Automated anomaly scoring remains outside this stage.
 
 ## Approved direction
 

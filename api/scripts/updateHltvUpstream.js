@@ -43,6 +43,8 @@ function main() {
     }
     const concProbe = JSON.parse(command(process.execPath, [path.resolve(__dirname, "../src/hltv/upstream_conc.js"), "--probe", target]));
     if (concProbe.ok !== true) throw new Error("Unsupported concussion adapter contract");
+    // Probe original viewer APIs and the adapter's inert presentation boundary before switching pins.
+    command(process.execPath,["-e","const v=require(process.argv[1]).loadViewer(process.argv[2],async()=>{throw Error('unexpected fetch')});if(typeof v.runConcAim!=='function'||typeof v.Studio.poseServer!=='function')throw Error('unsupported comparison API')",path.resolve(__dirname,"../src/hltv/upstream_statistics.js"),target]);
     if (process.platform === "linux") {
       const { upstreamConfig, sandboxCommand } = require("../src/hltv/upstream");
       const memory = upstreamConfig().memoryBytes, scratch = fs.mkdtempSync(path.join(root, ".sandbox-check-"));

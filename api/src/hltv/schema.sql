@@ -1,4 +1,27 @@
 PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS hltv_upstream_heartbeats(run_id TEXT PRIMARY KEY REFERENCES hltv_upstream_runs(id),touched_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS hltv_statistics_jobs(
+ demo_id TEXT PRIMARY KEY REFERENCES hltv_demos(id), run_id TEXT UNIQUE REFERENCES hltv_upstream_runs(id),
+ created_at INTEGER NOT NULL, skip_reason TEXT
+);
+CREATE TABLE IF NOT EXISTS hltv_statistics_observations(
+ id TEXT PRIMARY KEY, input_key TEXT NOT NULL, config_hash TEXT NOT NULL, demo_id TEXT NOT NULL REFERENCES hltv_demos(id),
+ run_id TEXT NOT NULL, match_id TEXT NOT NULL, server TEXT NOT NULL, map TEXT NOT NULL, recorded_at INTEGER NOT NULL,
+ created_at INTEGER NOT NULL, upstream_sha TEXT NOT NULL, demo_sha256 TEXT NOT NULL, log_sha256 TEXT NOT NULL,
+ log_round INTEGER NOT NULL, payload_sha256 TEXT NOT NULL REFERENCES hltv_statistics_payloads(sha256), UNIQUE(input_key,config_hash)
+);
+CREATE TABLE IF NOT EXISTS hltv_statistics_payloads(sha256 TEXT PRIMARY KEY,result_gzip BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS hltv_statistics_results(run_id TEXT PRIMARY KEY,observation_id TEXT NOT NULL REFERENCES hltv_statistics_observations(id),payload_sha256 TEXT NOT NULL REFERENCES hltv_statistics_payloads(sha256),created_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS hltv_statistics_history ON hltv_statistics_observations(config_hash,recorded_at);
+CREATE TABLE IF NOT EXISTS hltv_player_statistics(
+ observation_id TEXT NOT NULL REFERENCES hltv_statistics_observations(id), steam_id TEXT NOT NULL, player_name TEXT,
+ class_id INTEGER NOT NULL, weapon TEXT NOT NULL, state TEXT NOT NULL, complete INTEGER NOT NULL,
+ recorded INTEGER NOT NULL, eligible INTEGER NOT NULL, no_enemy INTEGER NOT NULL, unavailable INTEGER NOT NULL,
+ uncertain INTEGER NOT NULL, geometry_hit INTEGER NOT NULL, aim_near INTEGER NOT NULL, strict INTEGER NOT NULL,
+ inclusive INTEGER NOT NULL, evidence_eligible INTEGER NOT NULL,
+ PRIMARY KEY(observation_id,steam_id,class_id,weapon,state)
+);
+CREATE INDEX IF NOT EXISTS hltv_statistics_player ON hltv_player_statistics(steam_id,class_id,weapon,state);
 CREATE TABLE IF NOT EXISTS hltv_schema(version INTEGER PRIMARY KEY);
 INSERT OR IGNORE INTO hltv_schema VALUES(1);
 CREATE TABLE IF NOT EXISTS hltv_demos(
