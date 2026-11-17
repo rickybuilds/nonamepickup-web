@@ -1,4 +1,9 @@
 PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS hltv_gap_findings(
+ id TEXT PRIMARY KEY,demo_id TEXT NOT NULL REFERENCES hltv_demos(id),observation_id TEXT NOT NULL REFERENCES hltv_statistics_observations(id),
+ alert_id TEXT NOT NULL REFERENCES hltv_alerts(id),created_at INTEGER NOT NULL,data_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS hltv_gap_alert ON hltv_gap_findings(alert_id);
 CREATE TABLE IF NOT EXISTS hltv_upstream_heartbeats(run_id TEXT PRIMARY KEY REFERENCES hltv_upstream_runs(id),touched_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS hltv_statistics_jobs(
  demo_id TEXT PRIMARY KEY REFERENCES hltv_demos(id), run_id TEXT UNIQUE REFERENCES hltv_upstream_runs(id),

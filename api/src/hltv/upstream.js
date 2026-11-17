@@ -7,7 +7,8 @@ function upstreamConfig(env = process.env) {
   if (!Number.isSafeInteger(memoryBytes) || memoryBytes < 268435456 || memoryBytes > 4294967296) throw new Error("Invalid HLTV_UPSTREAM_MEMORY_BYTES");
   return { enabled: env.HLTV_UPSTREAM_ENABLED === "true", root: env.HLTV_UPSTREAM_ROOT || "/opt/noname-hltv-tools",
     python: env.HLTV_UPSTREAM_PYTHON || "python3", logsRoot: env.HLTV_PARSER_LOG_ROOT || "/var/lib/noname-parser", memoryBytes,
-    statisticsEnabled: env.HLTV_STATISTICS_ENABLED === "true", statisticsAutoCollect:env.HLTV_STATISTICS_AUTO_COLLECT === "true",assetsRoot: env.HLTV_ASSETS_ROOT || "/srv/noname-hltv-assets" };
+    statisticsEnabled: env.HLTV_STATISTICS_ENABLED === "true", statisticsAutoCollect:env.HLTV_STATISTICS_AUTO_COLLECT === "true",assetsRoot: env.HLTV_ASSETS_ROOT || "/srv/noname-hltv-assets",
+    gapReviewEnabled:env.HLTV_AIM_GAP_REVIEW_ENABLED === "true" };
 }
 function resolveBinary(bin) {
   const candidates = path.isAbsolute(bin) ? [bin] : (process.env.PATH || "").split(path.delimiter).map(dir => path.join(dir, bin));
@@ -159,7 +160,11 @@ async function runPending(registry, options) {
     registry.db.transaction(() => {
       const committed = registry.db.prepare("UPDATE hltv_upstream_runs SET status='complete',finished_at=?,result_json=?,error_code=NULL WHERE id=? AND status='processing'").run(Date.now(), serialized, run.id);
       if (committed.changes !== 1) throw new Error("upstream_run_lease_lost");
-      if(statistics)require("./playerStatistics").storeStatistics(registry,{id:run.id,demo,upstream_sha:release.sha,pairing:matched},statistics);
+      if(statistics){
+        const stored=require("./playerStatistics").storeStatistics(registry,{id:run.id,demo,upstream_sha:release.sha,pairing:matched},statistics);
+        require("./gapReview").evaluateGapReview(registry,{...stored,demo_id:demo.id,upstream_sha:release.sha,log_round:matched.log_round,
+          groups:statistics.groups.map(group=>({...group,player_name:group.name}))},{enabled:options.gapReviewEnabled});
+      }
       // This is an explicit reviewer request. Preserve originals until the
       // reviewer has inspected the result and deliberately releases the hold.
       registry.audit(demo.id, "upstream-worker", "upstream_complete", { run_id: run.id, upstream_sha: release.sha, log_round: matched.log_round, log_sha256: matched.log_sha256 });

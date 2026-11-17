@@ -88,6 +88,7 @@ test("feature and cleanup default off; cleanup preview defaults on",()=>{
   assert.equal(require("../src/hltv/upstream").upstreamConfig({}).enabled,false);
   assert.equal(require("../src/hltv/upstream").upstreamConfig({}).statisticsEnabled,false);
   assert.equal(require("../src/hltv/upstream").upstreamConfig({}).statisticsAutoCollect,false);
+  assert.equal(require("../src/hltv/upstream").upstreamConfig({}).gapReviewEnabled,false);
 });
 test("automatic statistics collection queues once and releases only its own finished lease",t=>{
   const {registry:r,root,manifest}=fixture(t),{queueAutomaticStatistics,releaseStatisticsLeases}=require("../src/hltv/statisticsQueue");
@@ -118,6 +119,29 @@ function fixture(t) {
   const demo = registry.ingest(manifest)[0];
   return { root, registry, demo, manifest };
 }
+test("aim-gap review flags all positive-denominator gaps under ten points and labels only small samples",t=>{
+  const {registry:r,demo}=fixture(t),{evaluateGapReview}=require("../src/hltv/gapReview");
+  const pair=(weapon,concNear,concCount,outNear,outCount)=>[...[{state:"conc",aim_near:concNear,eligible:concCount},{state:"outside",aim_near:outNear,eligible:outCount}].map(row=>({steam_id:"STEAM_0:1:123",name:"Player",class_id:6,weapon,recorded:row.eligible,no_enemy:0,unavailable:0,uncertain:0,geometry_hit:0,strict:0,inclusive:0,evidence_eligible:0,...row}))];
+  const groups=[...pair("ac",22,227,138,744),...pair("shotgun",1,2,1,2),...pair("rpg",1,10,2,10),...pair("nailgun",0,0,1,10),...pair("super_shotgun",10,25,10,25)];
+  const {storeStatistics,demoStatistics}=require("../src/hltv/playerStatistics");
+  storeStatistics(r,{id:"source-run",demo,upstream_sha:"b".repeat(40),pairing:{log_sha256:"c".repeat(64),log_round:1}},{version:1,metric:"ghosty-firing-v1",settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:1},assets:[],groups,shots:[],unassigned:0});
+  const obs=demoStatistics(r,demo.id);
+  assert.equal(evaluateGapReview(r,obs,{enabled:false}).findings,0);
+  const result=evaluateGapReview(r,obs,{enabled:true});assert.equal(result.findings,3);
+  const findings=r.db.prepare("SELECT data_json FROM hltv_gap_findings ORDER BY id").all().map(row=>JSON.parse(row.data_json));
+  assert.equal(findings.find(f=>f.weapon==="ac").small_sample,false);
+  assert.equal(findings.find(f=>f.weapon==="shotgun").small_sample,true);
+  assert.equal(findings.find(f=>f.weapon==="super_shotgun").small_sample,false);
+  assert.equal(r.get(demo.id).review_status,"queued");assert.equal(r.get(demo.id).retention_class,"high");
+  assert.equal(r.detail(demo.id).holds.length,1);assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE kind='aim_gap_review'").get().n,1);
+  assert.equal(evaluateGapReview(r,obs,{enabled:true}).findings,0);
+  assert.equal(r.detail(demo.id).holds.length,1);
+  r.action(demo.id,"claim",{},"admin");
+  const manual=r.hold(demo.id,"Manual evidence","admin");
+  assert.equal(evaluateGapReview(r,obs,{enabled:true}).findings,0);
+  assert.equal(r.get(demo.id).review_status,"in_review");
+  assert.ok(r.detail(demo.id).holds.some(h=>h.id===manual));
+});
 test("player histories deduplicate reruns, preserve raw-expired data and pool counts without current/future leakage", t=>{
   const {registry:r,demo}=fixture(t),{storeStatistics,playerHistory}=require("../src/hltv/playerStatistics");
   const group={steam_id:"STEAM_0:1:123",name:"Player",class_id:5,weapon:"shotgun",state:"outside",recorded:10,eligible:8,no_enemy:1,unavailable:1,uncertain:0,geometry_hit:3,aim_near:4,strict:2,inclusive:3,evidence_eligible:8};

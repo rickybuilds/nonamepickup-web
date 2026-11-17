@@ -72,6 +72,7 @@ class Registry {
       holds: this.db.prepare("SELECT * FROM hltv_holds WHERE demo_id=? AND released_at IS NULL").all(demoId),
       notes: this.db.prepare("SELECT * FROM hltv_notes WHERE demo_id=? ORDER BY created_at").all(demoId),
       anomalies: this.db.prepare("SELECT * FROM hltv_anomalies WHERE demo_id=? ORDER BY start_tick").all(demoId),
+      gap_findings:this.db.prepare("SELECT id,created_at,data_json FROM hltv_gap_findings WHERE demo_id=? ORDER BY created_at,id").all(demoId),
       runs: this.db.prepare("SELECT * FROM hltv_analysis_runs WHERE demo_id=? ORDER BY started_at DESC LIMIT 50").all(demoId),
       upstream_runs: this.db.prepare("SELECT id,status,created_at,finished_at,upstream_sha,error_code,result_json FROM hltv_upstream_runs WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").all(demoId),
       audit: this.db.prepare("SELECT * FROM hltv_audit WHERE demo_id=? ORDER BY id DESC LIMIT 200").all(demoId) };
