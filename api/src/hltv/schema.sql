@@ -112,3 +112,16 @@ CREATE TABLE IF NOT EXISTS hltv_upstream_runs(
  upstream_sha TEXT, result_json TEXT, error_code TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS hltv_one_active_upstream_run ON hltv_upstream_runs(demo_id) WHERE status IN ('queued','processing');
+CREATE TABLE IF NOT EXISTS hltv_review_users(
+ id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, actor TEXT NOT NULL UNIQUE,
+ password_hash TEXT NOT NULL, must_change_password INTEGER NOT NULL DEFAULT 1,
+ disabled INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS hltv_review_sessions(
+ token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES hltv_review_users(id),
+ created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS hltv_review_session_user ON hltv_review_sessions(user_id);
+CREATE TABLE IF NOT EXISTS hltv_review_login_limits(
+ scope TEXT PRIMARY KEY, attempts INTEGER NOT NULL, expires_at INTEGER NOT NULL
+);

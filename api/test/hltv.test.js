@@ -408,6 +408,57 @@ test("review API denies unknown credentials and keeps paths private",async t=>{
   assert.equal(res.status,200);assert.equal((await res.json()).storage_key,undefined);
   assert.equal(r.detail(demo.id).holds.length,0);
 });
+test("reviewer accounts require password changes and restrict account management to owners",async t=>{
+  const {registry:r,demo}=fixture(t),express=require("express"),{createRouter}=require("../src/hltv/router");
+  const owner="123456789012345678",key="o".repeat(48),app=express();
+  app.use(createRouter({registry:r,env:{HLTV_REVIEW_ACCOUNTS_ENABLED:"true",HLTV_REVIEW_OWNER_USER_IDS:owner,HLTV_REVIEW_ALLOWED_USER_IDS:owner,HLTV_REVIEW_TOKEN_HASHES:JSON.stringify({[owner]:crypto.createHash("sha256").update(key).digest("hex")})}}));
+  const server=app.listen(0,"127.0.0.1");await new Promise(resolve=>server.once("listening",resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const base=`http://127.0.0.1:${server.address().port}`;
+  const request=(url,token,body)=>fetch(base+url,{method:body?"POST":"GET",headers:{...(token?{Authorization:"Bearer "+token}:{}),"Content-Type":"application/json"},...(body?{body:JSON.stringify(body)}:{})});
+  assert.equal((await request("/auth/options")).status,200);
+  assert.equal((await request("/users",null,{})).status,401);
+  assert.equal((await request("/users",key,{username:"ed",password:"too short"})).status,400);
+  const created=await request("/users",key,{username:"reviewer",password:"temporary passphrase"});assert.equal(created.status,201);const user=await created.json();assert.equal(user.password_hash,undefined);
+  assert.equal((await request("/users",key,{username:"REVIEWER",password:"temporary passphrase"})).status,409);
+  assert.equal((await request("/auth/login",null,{username:"reviewer",password:"incorrect password"})).status,401);
+  const first=await (await request("/auth/login",null,{username:"REVIEWER",password:"temporary passphrase"})).json();assert(first.token);assert.equal(first.must_change_password,true);
+  for(const endpoint of ["/demos","/demos/"+demo.id,"/demos/"+demo.id+"/file","/users"])assert.equal((await request(endpoint,first.token)).status,403);
+  assert.equal((await request("/account/password",first.token,{current_password:"temporary passphrase",new_password:"temporary passphrase"})).status,400);
+  const changed=await (await request("/account/password",first.token,{current_password:"temporary passphrase",new_password:"my own private passphrase"})).json();assert(changed.token);
+  assert.equal((await request("/demos",first.token)).status,403);
+  assert.equal((await request("/demos",changed.token)).status,200);
+  assert.equal((await request("/users",changed.token,{username:"intruder",password:"another passphrase"})).status,403);
+  assert.equal((await request("/users/"+user.id+"/reset",changed.token,{password:"reset passphrase"})).status,403);
+  assert.equal((await request("/users/"+user.id+"/reset",key,{password:"reset passphrase"})).status,200);
+  assert.equal((await request("/demos",changed.token)).status,403);
+  const reset=await (await request("/auth/login",null,{username:"reviewer",password:"reset passphrase"})).json();assert.equal(reset.must_change_password,true);
+  assert.equal((await request("/users/"+user.id+"/disable",key,{})).status,200);
+  assert.equal((await request("/session",reset.token)).status,403);
+  assert.equal((await request("/auth/login",null,{username:"reviewer",password:"reset passphrase"})).status,401);
+  const stored=r.db.prepare("SELECT password_hash FROM hltv_review_users WHERE id=?").get(user.id).password_hash;assert(!stored.includes("passphrase"));assert.match(stored,/^scrypt\$/);
+  assert(!JSON.stringify(r.db.prepare("SELECT * FROM hltv_audit").all()).includes("passphrase"));
+});
+
+test("account login throttles persist, sessions expire and logout revokes access",async t=>{
+  const {registry:r}=fixture(t),{ReviewerAccounts}=require("../src/hltv/accounts");
+  const accounts=new ReviewerAccounts(r,{HLTV_REVIEW_ACCOUNTS_ENABLED:"true",HLTV_REVIEW_OWNER_USER_IDS:"123456789012345678"});
+  const user=await accounts.create({username:"example",password:"temporary passphrase"},"123456789012345678");
+  const other=await accounts.create({username:"another",password:"temporary passphrase"},"123456789012345678");
+  assert.notEqual(r.db.prepare("SELECT password_hash FROM hltv_review_users WHERE id=?").get(user.id).password_hash,r.db.prepare("SELECT password_hash FROM hltv_review_users WHERE id=?").get(other.id).password_hash);
+  const owner=await accounts.create({username:"owner",password:"temporary passphrase",discord_id:"123456789012345678"},"123456789012345678");
+  assert.throws(()=>accounts.disable(owner.id,"123456789012345678"),e=>e.status===400);
+  for(let i=0;i<10;i++)await assert.rejects(accounts.login({username:"missing",password:"wrong passphrase"},"client"),e=>e.status===401);
+  await assert.rejects(new ReviewerAccounts(r,{HLTV_REVIEW_ACCOUNTS_ENABLED:"true"}).login({username:"missing",password:"wrong passphrase"},"other-client"),e=>e.status===429);
+  const login=await accounts.login({username:"example",password:"temporary passphrase"},"client");assert(accounts.authenticate(login.token));
+  r.db.prepare("UPDATE hltv_review_sessions SET expires_at=0").run();assert.equal(accounts.authenticate(login.token),null);
+  const second=await accounts.login({username:"example",password:"temporary passphrase"},"client");accounts.logout(second.token);assert.equal(accounts.authenticate(second.token),null);
+  const sessions=[];for(let i=0;i<6;i++)sessions.push(await accounts.login({username:"example",password:"temporary passphrase"},"client"));
+  assert.equal(accounts.authenticate(sessions[0].token),null);assert(accounts.authenticate(sessions[5].token));
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_review_sessions WHERE user_id=?").get(user.id).n,5);
+  const disabled=new ReviewerAccounts(r,{});assert.equal(disabled.authenticate(sessions[5].token),null);await assert.rejects(disabled.login({username:"example",password:"temporary passphrase"},"client"),e=>e.status===404);
+  assert.equal(user.username,"example");
+});
+
 test("private statistics API returns an explicit empty state when collection is enabled",async t=>{
   const {registry:r,demo}=fixture(t),express=require("express"),{createRouter}=require("../src/hltv/router");
   const token="c".repeat(48),user="123456789012345678",app=express();

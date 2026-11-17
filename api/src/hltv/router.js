@@ -11,10 +11,27 @@ function publicData(value) {
 }
 function createRouter({ registry, env = process.env }) {
   const router = express.Router();
-  router.use(createAuth(env));
+  const accounts = new (require("./accounts").ReviewerAccounts)(registry, env);
+  router.use((req,res,next)=>{res.set({"Cache-Control":"no-store","Referrer-Policy":"no-referrer","X-Content-Type-Options":"nosniff"});next();});
   router.use(express.json({ limit: "16kb", strict: true }));
+  router.get("/auth/options", (req,res)=>res.json({accounts_enabled:accounts.enabled}));
+  router.post("/auth/login", async (req,res)=>res.json(await accounts.login(req.body||{},req.ip)));
+  router.use(createAuth(env, accounts));
+  router.use((req,res,next)=>{
+    if(req.hltvAccount?.must_change_password && !["/session","/account/password","/auth/logout"].includes(req.path))return res.status(403).json({error:"password_change_required"});
+    next();
+  });
   const route = fn => (req, res, next) => { try { fn(req, res); } catch (error) { next(error); } };
-  router.get("/session", (req, res) => res.json({ user_id: req.hltvActor, upstream_enabled: upstreamConfig(env).enabled,statistics_enabled:upstreamConfig(env).statisticsEnabled }));
+  router.get("/session", (req, res) => res.json({ user_id: req.hltvActor, username:req.hltvAccount?.username,accounts_enabled:accounts.enabled,can_manage_users:accounts.isOwner(req.hltvActor),must_change_password:!!req.hltvAccount?.must_change_password,upstream_enabled: upstreamConfig(env).enabled,statistics_enabled:upstreamConfig(env).statisticsEnabled }));
+  router.post("/auth/logout",route((req,res)=>{accounts.logout(req.hltvSessionToken);res.json({ok:true});}));
+  router.post("/account/password",async(req,res)=>{
+    if(!req.hltvAccount)return res.status(400).json({error:"username_login_required"});
+    res.json(await accounts.changePassword(req.hltvAccount,req.hltvSessionToken,req.body||{}));
+  });
+  router.get("/users",route((req,res)=>res.json(accounts.list(req.hltvActor))));
+  router.post("/users",async(req,res)=>res.status(201).json(await accounts.create(req.body||{},req.hltvActor)));
+  router.post("/users/:id/reset",async(req,res)=>res.json(await accounts.reset(req.params.id,req.body||{},req.hltvActor)));
+  router.post("/users/:id/disable",route((req,res)=>res.json(accounts.disable(req.params.id,req.hltvActor))));
   router.get("/demos/:id/statistics",route((req,res)=>{
     if(!upstreamConfig(env).statisticsEnabled)return res.status(404).json({error:"statistics_disabled"});
     const observation=demoStatistics(registry,req.params.id);
@@ -83,7 +100,8 @@ function createRouter({ registry, env = process.env }) {
     if (res.headersSent) return next(error);
     // Never expose SQL errors or filesystem paths.
     console.error("[HLTV review] request failed:", error.code || error.name);
-    res.status(400).json({ ok: false, error: "review_operation_failed" });
+    if(error.status===429)res.set("Retry-After","900");
+    res.status(error.publicCode?error.status:400).json({ ok: false, error: error.publicCode||"review_operation_failed" });
   });
   return router;
 }

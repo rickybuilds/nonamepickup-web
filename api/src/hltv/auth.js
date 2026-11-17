@@ -1,6 +1,6 @@
 "use strict";
 const crypto = require("crypto");
-function createAuth(env = process.env) {
+function createAuth(env = process.env, accounts) {
   const allowed = new Set((env.HLTV_REVIEW_ALLOWED_USER_IDS || "").split(",").map(x => x.trim()).filter(Boolean));
   const credentials = JSON.parse(env.HLTV_REVIEW_TOKEN_HASHES || "{}");
   for (const [user, hash] of Object.entries(credentials)) {
@@ -10,6 +10,8 @@ function createAuth(env = process.env) {
     res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" });
     const token = /^Bearer ([\x21-\x7e]{32,256})$/.exec(req.headers.authorization || "")?.[1];
     if (!token) return res.status(401).json({ ok: false, error: "review_auth_required" });
+    const account = accounts?.authenticate(token);
+    if (account) { req.hltvActor = account.actor; req.hltvAccount = account; req.hltvSessionToken = token; return next(); }
     const hash = crypto.createHash("sha256").update(token).digest();
     const user = Object.entries(credentials).find(([, value]) => crypto.timingSafeEqual(hash, Buffer.from(value, "hex")))?.[0];
     if (!user) return res.status(403).json({ ok: false, error: "review_access_denied" });
