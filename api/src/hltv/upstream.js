@@ -80,6 +80,18 @@ function child(bin, args, input, timeout = 180000) {
     worker.stdin.end(input ? JSON.stringify(input) : "");
   });
 }
+function resolveParserLogs(root, matchId) {
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(matchId)) throw new Error("invalid_match_identity");
+  const logs = new Storage(root, { readonly: true });
+  const logDir = path.join(logs.root, matchId);
+  const logManifest = logs.resolve(matchId + "/manifest.json", ".json");
+  const logResult = logs.resolve(matchId + "/result.json", ".json");
+  if (fs.statSync(logManifest).size > 65536) throw new Error("invalid_parser_log_manifest");
+  const names = JSON.parse(fs.readFileSync(logManifest, "utf8")).logs;
+  if (!Array.isArray(names) || names.length < 1 || names.length > 2 || !names.every((name, i) => name === `round-${i + 1}.log`)) throw new Error("invalid_parser_log_manifest");
+  for (const name of names) logs.resolve(matchId + "/" + name, ".log");
+  return { logDir, logManifest, logResult };
+}
 async function runPending(registry, options) {
   if (options.runId != null && !/^[a-f0-9-]{36}$/.test(options.runId)) throw new Error("Invalid upstream run ID");
   if (!options.enabled) return { enabled: false, processed: 0 };
@@ -113,15 +125,7 @@ async function runPending(registry, options) {
     const release = activeRelease(options.root), demo = registry.get(run.demo_id);
     if (demo.file_status !== "available") throw new Error("demo_unavailable");
     const source = registry.storage.verify(demo);
-    if (!/^[A-Za-z0-9_-]{1,80}$/.test(demo.match_id)) throw new Error("invalid_match_identity");
-    const logs = new Storage(options.logsRoot, { readonly: true });
-    const logDir = path.join(logs.root, demo.match_id);
-    const logManifest = logs.resolve(demo.match_id + "/manifest.json", ".json");
-    const logResult = logs.resolve(demo.match_id + "/result.json", ".json");
-    if (fs.statSync(logManifest).size > 65536) throw new Error("invalid_parser_log_manifest");
-    const logNames = JSON.parse(fs.readFileSync(logManifest, "utf8")).logs;
-    if (!Array.isArray(logNames) || logNames.length < 1 || logNames.length > 2 || !logNames.every((name, i) => name === `round-${i + 1}.log`)) throw new Error("invalid_parser_log_manifest");
-    for (const name of logNames) logs.resolve(demo.match_id + "/" + name, ".log");
+    const { logDir, logManifest, logResult } = resolveParserLogs(options.logsRoot, demo.match_id);
     const cache = path.join(registry.storage.root, "cache");
     fs.mkdirSync(cache, { recursive: true, mode: 0o700 });
     if (fs.realpathSync(cache) !== cache) throw new Error("unsafe_cache_root");
@@ -188,4 +192,4 @@ async function runPending(registry, options) {
     }
   }
 }
-module.exports = { upstreamConfig, queueRun, runPending, child, reapScratch, sandboxCommand };
+module.exports = { upstreamConfig, queueRun, runPending, child, reapScratch, sandboxCommand, resolveParserLogs };
