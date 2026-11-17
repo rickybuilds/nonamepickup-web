@@ -12,9 +12,42 @@ test("unchanged upstream viewer loads without a browser and keeps original geome
   const { loadViewer } = require("../src/hltv/upstream_statistics");
   const viewer = loadViewer(root, async () => { throw new Error("unexpected fetch"); });
   assert.equal(typeof viewer.runConcAim, "function");
+  assert.equal(typeof viewer.runAnalysis, "function");
   assert.equal(typeof viewer.Studio.poseServer, "function");
   assert.equal(viewer.ConcAim.stateAt([{t:10,end:20}], 15), "conc");
   assert.equal(viewer.ConcAim.stateAt([{t:10,end:20}], 10), "uncertain");
+});
+test("pinned upstream scanner reaches a terminal empty result and rejects unsupported revisions", async t => {
+  const root=process.env.HLTV_TEST_UPSTREAM_ROOT;
+  if(!root){t.skip("Upstream checkout is an optional integration input");return;}
+  const {loadViewer}=require("../src/hltv/upstream_statistics"),viewer=loadViewer(root,async()=>{throw Error("unexpected fetch");});
+  viewer.S.meta={start:0,levels:[{frame:0,map:"fixture"}],players:[],kills:[]};
+  viewer.S.maps={fixture:{}};
+  viewer.S.D={n:2,times:Float32Array.from([0,1]),slots:[1],pos:{1:new Float32Array(10)},info:{1:new Uint32Array(2)},shotsBy:new Map()};
+  viewer.runAnalysis();
+  const deadline=Date.now()+1000;
+  while(viewer.S.analysis?.running&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));
+  assert.equal(viewer.S.analysis?.running,false);
+  assert.deepEqual([...viewer.S.analysis.found],[]);
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),"hltv-unsupported-scanner-"));
+  t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+  fs.mkdirSync(path.join(directory,"web"));
+  for(const file of ["conc.js","conc_aim.js","blood_hits.js","studio.js","viewer.js"]){
+    let source=fs.readFileSync(path.join(root,"web",file),"utf8");
+    if(file==="viewer.js")source=source.replace("function runAnalysis() {","function missingAnalysis() {");
+    fs.writeFileSync(path.join(directory,"web",file),source);
+  }
+  assert.throws(()=>loadViewer(directory,async()=>{}),/unsupported_upstream_scanner/);
+});
+test("scanner comparison fails on missing map geometry before recording an empty result",async t=>{
+  const root=process.env.HLTV_TEST_UPSTREAM_ROOT;
+  if(!root){t.skip("Upstream checkout is an optional integration input");return;}
+  const {compare}=require("../src/hltv/upstream_statistics");
+  const bytes=Float32Array.from([0,1]).buffer;
+  const meta={file:"fixture.dem",map:"missing",game:"tfc",frames:2,slots:[],start:0,end:1,
+    players:[],shots:[],kills:[],pauses:[],levels:[{t:0,frame:0,map:"missing"}],buffers:{times:[0,8],objs:[8,0]}};
+  const log={version:1,file:meta.file,map:meta.map,demoEnd:1,alignment:{anchors:20,uncertainty:1},events:[]};
+  await assert.rejects(compare(root,meta,bytes,log,async()=>({ok:false,json:async()=>({error:"missing_private_asset"})})),/missing_private_asset/);
 });
 test("original upstream comparison executes with real private map and model assets", async t => {
   const root=process.env.HLTV_TEST_UPSTREAM_ROOT,python=process.env.HLTV_TEST_PYTHON,assets=process.env.HLTV_TEST_ASSETS;
@@ -249,17 +282,68 @@ test("player timeline keeps scanner identity, source time and stable event refer
   const group={steam_id:steam,name:"Player",class_id:5,weapon:"shotgun",state:"outside",recorded:1,eligible:1,no_enemy:0,unavailable:0,uncertain:0,geometry_hit:0,aim_near:0,strict:0,inclusive:0,evidence_eligible:1};
   const result={version:1,metric:"ghosty-firing-v1",source_start_seconds:100,settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:1},assets:[],groups:[group],unassigned:0,
     shots:[{steam_id:steam,name:"Player",time_seconds:102.5,weapon:"shotgun",state:"outside",visibility:"visible",evidence:{status:"unmatched"}}],
-    scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",stats:{},findings:[{kind:"track",steam_id:steam,player_name:"Player",target_steam_id:target,target_name:"Target",time_seconds:1,end_seconds:2,target_movement:120,angular_sweep_degrees:5,heuristic_score:1.5}]}};
+    scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",stats:{},findings:[{kind:"track",steam_id:steam,player_name:"Player",target_steam_id:target,target_name:"Target",time_seconds:1,end_seconds:2,duration_seconds:1,target_movement:120,angular_sweep_degrees:5,heuristic_score:1.5},
+      {kind:"snap",steam_id:steam,player_name:"Player",target_steam_id:target,target_name:"Target",time_seconds:1.75,end_seconds:1.75,pre_shot_window_start_seconds:1.55,angular_turn_degrees:20,sample_interval_seconds:.05,angular_speed_degrees_per_second:400,heuristic_score:.6}]}};
   const source={id:"timeline-run",demo,upstream_sha:"b".repeat(40),pairing:{log_sha256:"c".repeat(64),log_round:1}};
   storeStatistics(r,source,result);
   const timeline=investigation.timeline(r,demo.id,steam,{limit:1});
-  assert.equal(timeline.total,2);assert.equal(timeline.events[0].category,"wall_track");assert.equal(timeline.events[0].time_seconds,1);
+  assert.equal(timeline.total,3);assert.equal(timeline.events[0].category,"wall_track");assert.equal(timeline.events[0].time_seconds,1);
   assert.equal(timeline.events[0].target_steam_id,target);
+  assert.equal(timeline.events[0].end_seconds,2);assert.equal(timeline.events[0].details.duration_seconds,1);
   assert.equal(investigation.detail(r,demo.id,timeline.events[0].id).event.id,timeline.events[0].id);
+  const snaps=investigation.timeline(r,demo.id,steam,{category:"snap"});
+  assert.equal(snaps.total,1);assert.equal(snaps.events[0].time_seconds,1.75);
+  assert.equal(snaps.events[0].details.sample_interval_seconds,.05);
+  assert.equal(investigation.detail(r,demo.id,snaps.events[0].id).event.category,"snap");
+  assert.equal(snaps.scanner.snap.count,1);
   assert.equal(investigation.timeline(r,demo.id,steam,{category:"firing"}).events[0].time_seconds,2.5);
   assert.equal(investigation.timeline(r,demo.id,target,{}).total,0);
   assert.throws(()=>investigation.timeline(r,demo.id,steam,{start:3,end:2}),/invalid_time_range/);
   assert.throws(()=>storeStatistics(r,{...source,id:"bad-scanner"},{...result,scanner:{...result.scanner,findings:[{...result.scanner.findings[0],time_seconds:-1}]}}),/invalid_scanner_finding/);
+});
+test("scanner status distinguishes queued, running, failed, empty completion and previous results",t=>{
+  const {registry:r,demo}=fixture(t),{queueRun}=require("../src/hltv/upstream");
+  const {storeStatistics,statisticsPayload}=require("../src/hltv/playerStatistics"),investigation=require("../src/hltv/investigation");
+  const capability={upstreamEnabled:true,statisticsEnabled:true},state=()=>investigation.events(r,demo.id,capability).scanner;
+  assert.equal(state().wall_track.state,"not_analyzed");
+  assert.equal(state().snap.count,0);
+  const first=queueRun(r,demo.id,"reviewer");
+  assert.equal(queueRun(r,demo.id,"reviewer").id,first.id);
+  assert.equal(state().wall_track.state,"queued");
+  assert.equal(state().wall_track.can_run,false);
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='processing' WHERE id=?").run(first.id);
+  assert.equal(state().snap.state,"running");
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='failed',error_code='missing_map_asset' WHERE id=?").run(first.id);
+  assert.equal(state().wall_track.state,"missing_assets");
+  assert.equal(state().snap.error_code,"missing_map_asset");
+  const second=queueRun(r,demo.id,"reviewer");
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='complete' WHERE id=?").run(second.id);
+  const base={version:1,metric:"ghosty-firing-v1",settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:1},assets:[],groups:[],shots:[],unassigned:0,
+    scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",settings:{source:"web/viewer.js:runAnalysis",sample_target_hz:10,lag_compensation:true},stats:{},findings:[]}};
+  const source={id:second.id,demo,upstream_sha:"b".repeat(40),pairing:{log_sha256:"c".repeat(64),log_round:1}};
+  const stored=storeStatistics(r,source,base);
+  assert.equal(state().wall_track.state,"completed");
+  assert.equal(state().wall_track.count,0);
+  assert.equal(state().snap.count,0);
+  assert.equal(state().wall_track.config_hash,stored.config_hash);
+  assert.deepEqual(statisticsPayload(r,stored.id).scanner.findings,[]);
+  const third=queueRun(r,demo.id,"reviewer");
+  assert.equal(state().wall_track.state,"queued");
+  assert.equal(state().wall_track.previous_result,true);
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='failed',error_code='unsupported_upstream_scanner' WHERE id=?").run(third.id);
+  assert.equal(state().snap.state,"unsupported");
+  assert.equal(state().snap.previous_result,true);
+  const fourth=queueRun(r,demo.id,"reviewer");
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='complete' WHERE id=?").run(fourth.id);
+  const newer=storeStatistics(r,{...source,id:fourth.id,upstream_sha:"d".repeat(40)},{...base,scanner:{...base.scanner,findings:[{kind:"snap",steam_id:"STEAM_0:1:123",time_seconds:3,end_seconds:3,angular_turn_degrees:20}]}});
+  assert.notEqual(newer.config_hash,stored.config_hash);
+  assert.equal(state().snap.state,"completed");assert.equal(state().snap.count,1);
+  assert.equal(state().players["STEAM_0:1:123"].snap,1);
+  assert.equal(investigation.timeline(r,demo.id,"STEAM_0:1:123",{category:"snap"},capability).total,1);
+  assert.deepEqual(statisticsPayload(r,stored.id).scanner.findings,[]);
+  assert.equal(r.db.prepare("SELECT COUNT(*) n FROM hltv_statistics_payloads").get().n,2);
+  assert.equal(r.db.prepare("SELECT COUNT(*) n FROM hltv_statistics_results").get().n,2);
+  assert.equal(investigation.events(r,demo.id,{upstreamEnabled:false,statisticsEnabled:false}).scanner.wall_track.can_run,false);
 });
 test("failed or skipped automatic statistics cannot become routine cleanup eligible",t=>{
   const {registry:r,demo}=fixture(t),{queueRun}=require("../src/hltv/upstream");
@@ -478,6 +562,26 @@ test("review API denies unknown credentials and keeps paths private",async t=>{
   const res=await fetch(url+"/demos/"+demo.id,{headers:{Authorization:"Bearer "+token}});
   assert.equal(res.status,200);assert.equal((await res.json()).storage_key,undefined);
   assert.equal(r.detail(demo.id).holds.length,0);
+});
+test("reviewer scanner reanalysis requires authorization and deduplicates active jobs",async t=>{
+  const {registry:r,demo}=fixture(t),express=require("express"),{createRouter}=require("../src/hltv/router");
+  const user="123456789012345678",token="r".repeat(48),env={HLTV_REVIEW_ALLOWED_USER_IDS:user,
+    HLTV_REVIEW_TOKEN_HASHES:JSON.stringify({[user]:crypto.createHash("sha256").update(token).digest("hex")}),
+    HLTV_UPSTREAM_ENABLED:"true",HLTV_STATISTICS_ENABLED:"true"};
+  const app=express();app.use("/api/admin/hltv",createRouter({registry:r,env}));
+  const server=app.listen(0,"127.0.0.1");await new Promise(resolve=>server.once("listening",resolve));
+  t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const url=`http://127.0.0.1:${server.address().port}/api/admin/hltv/demos/${demo.id}`;
+  const post=auth=>fetch(url+"/upstream",{method:"POST",headers:{"Content-Type":"application/json",...(auth?{Authorization:"Bearer "+auth}:{})},body:JSON.stringify({analysis:"scanner"})});
+  assert.equal((await post()).status,401);
+  assert.equal((await post("x".repeat(48))).status,403);
+  const first=await post(token);assert.equal(first.status,202);
+  const run=await first.json();assert.equal(run.status,"queued");
+  const second=await post(token);assert.equal(second.status,202);assert.equal((await second.json()).id,run.id);
+  assert.equal(r.db.prepare("SELECT COUNT(*) n FROM hltv_upstream_runs WHERE demo_id=?").get(demo.id).n,1);
+  assert.equal(r.detail(demo.id).holds.length,1);
+  const info=await fetch(url+"/investigation",{headers:{Authorization:"Bearer "+token}});
+  assert.equal(info.status,200);assert.equal((await info.json()).scanner.wall_track.state,"queued");
 });
 test("reviewer accounts require password changes and restrict account management to owners",async t=>{
   const {registry:r,demo}=fixture(t),express=require("express"),{createRouter}=require("../src/hltv/router");

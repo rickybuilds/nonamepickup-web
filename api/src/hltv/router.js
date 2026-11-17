@@ -57,10 +57,10 @@ function createRouter({ registry, env = process.env }) {
     res.json({shots:shots.slice(offset,offset+100),total:shots.length,offset});
   }));
   router.get("/demos/:id/investigation",route((req,res)=>{
-    const data=investigation.events(registry,req.params.id);
-    res.json({status:data.status,observation:data.observation,players:data.players});
+    const data=investigation.events(registry,req.params.id,upstreamConfig(env));
+    res.json({status:data.status,scanner:data.scanner,observation:data.observation,players:data.players});
   }));
-  router.get("/demos/:id/players/:steam/timeline",route((req,res)=>res.json(investigation.timeline(registry,req.params.id,req.params.steam,req.query))));
+  router.get("/demos/:id/players/:steam/timeline",route((req,res)=>res.json(investigation.timeline(registry,req.params.id,req.params.steam,req.query,upstreamConfig(env)))));
   router.get("/demos/:id/events/:event",route((req,res)=>res.json(investigation.detail(registry,req.params.id,req.params.event))));
   router.get("/storage-summary", route((req, res) => res.json(registry.summary())));
   router.get("/jobs",route((req,res)=>res.json(registry.db.prepare(`SELECT u.id,u.status,u.error_code,u.created_at,u.finished_at,d.map,d.match_id
@@ -68,7 +68,10 @@ function createRouter({ registry, env = process.env }) {
   router.get("/demos", route((req, res) => res.json(publicData(registry.list(req.query)))));
   router.get("/demos/:id", route((req, res) => res.json(publicData(registry.detail(req.params.id)))));
   router.post("/demos/:id/upstream", route((req, res) => {
-    if (!upstreamConfig(env).enabled) return res.status(404).json({ ok: false, error: "upstream_disabled" });
+    const config=upstreamConfig(env);
+    if (!config.enabled) return res.status(404).json({ ok: false, error: "upstream_disabled" });
+    if(req.body?.analysis==="scanner"&&!config.statisticsEnabled)return res.status(409).json({ok:false,error:"scanner_disabled"});
+    if(req.body?.analysis!=null&&req.body.analysis!=="scanner")return res.status(400).json({ok:false,error:"unsupported_analysis_request"});
     res.status(202).json(queueRun(registry, req.params.id, req.hltvActor));
   }));
   router.post("/demos/:id/actions/:action", route((req, res) => {

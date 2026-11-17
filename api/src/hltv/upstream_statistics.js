@@ -12,7 +12,7 @@ function loadViewer(root, fetch) {
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, { value: id === "#concAimMargin" ? "10" : id === "#concViewAspect" ? String(4/3) : "",
-      textContent: "", innerHTML: "", classList: {add(){},remove(){},toggle(){}}, addEventListener(){}, getContext: () => gl });
+      textContent: "", innerHTML: "", style:{}, classList: {add(){},remove(){},toggle(){}}, addEventListener(){}, getContext: () => gl });
     return elements.get(id);
   };
   const context = vm.createContext({ TextDecoder, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int16Array, Int32Array,
@@ -27,6 +27,7 @@ function loadViewer(root, fetch) {
   // The scanner is the pinned upstream viewer implementation. Suppress only
   // rendering and the unrelated bullet summary in this headless worker.
   vm.runInContext("renderReview=()=>{}; drawTimeline=()=>{}; shotStats=()=>{}",context);
+  if(vm.runInContext("typeof runAnalysis",context)!=="function")throw new Error("unsupported_upstream_scanner");
   const api = vm.runInContext("({S,prefs,Studio,ConcEstimate,ConcAim,BloodHits,buildData,loadMap,runConcAim,runAnalysis,playerState,serverModelPath,who})",context);
   api.Studio.init(gl, () => ({u:{}}));
   api.elements = elements;
@@ -68,7 +69,7 @@ async function compare(root, meta, bytes, log, fetch) {
   if (S.conc.log !== log) throw new Error("upstream_rejected_log");
   S.maps = {};
   for (const level of meta.levels) if (!S.maps[level.map]) S.maps[level.map] = await viewer.loadMap(meta.game, level.map);
-  if (!Object.values(S.maps).some(Boolean)) throw new Error("missing_map_asset");
+  if (!meta.levels.length||meta.levels.some(level=>!S.maps[level.map])) throw new Error("missing_map_asset");
   const requiredModels = new Set();
   for (const slot of S.D.slots) for (const [frame] of meta.pmodels?.[slot] || []) {
     const model = viewer.serverModelPath(slot, frame);
@@ -79,23 +80,30 @@ async function compare(root, meta, bytes, log, fetch) {
   // runAnalysis chunks work on the event loop, bounded by the enclosing
   // sandbox process. Identity is resolved at each finding's event time.
   viewer.runAnalysis();
+  if(!S.analysis||!Array.isArray(S.analysis.found))throw new Error("upstream_scanner_incomplete");
   const deadline = Date.now() + 120000;
   while (S.analysis?.running) {
     if (Date.now() > deadline) throw new Error("upstream_scanner_timeout");
     await new Promise(resolve => setTimeout(resolve, 20));
   }
+  if(S.analysis.running!==false)throw new Error("upstream_scanner_incomplete");
   const identity = (slot, time) => {
     const rows = meta.players.filter(p => p.ent === slot && p.first <= time && (p.left == null || p.left > time));
     return rows.length === 1 ? rows[0] : null;
   };
   if ((S.analysis?.found||[]).length>2000) throw new Error("too_many_scanner_findings");
   const findings = (S.analysis?.found || []).map((item, index) => {
-    const player = identity(item.p, item.t0), target = identity(item.e, item.t0);
+    const sampleTime=item.kind==="snap"?item.t1:item.t0;
+    const player = identity(item.p, sampleTime), target = identity(item.e, sampleTime);
+    const frame=item.kind==="snap"?ConcAim.eventFrame(S.D.times,item.t1):null;
+    const sampleInterval=frame>0&&Math.abs(S.D.times[frame]-item.t1)<.003?S.D.times[frame]-S.D.times[frame-1]:null;
+    const firingTimes=item.kind==="snap"?(S.D.shotsBy.get(item.p)||[]):[];
+    const firing=firingTimes.find(t=>t>=item.t1-.02&&t<=item.t1+.15);
     return {index,kind:item.kind,player_slot:item.p,target_slot:item.e,
       steam_id:player?.steam || null,player_name:player?.name || null,
       target_steam_id:target?.steam || null,target_name:target?.name || null,
-      time_seconds:Math.max(0,item.t0-meta.start),end_seconds:Math.max(0,item.t1-meta.start),
-      ...(item.kind === "track" ? {target_movement:item.moved,angular_sweep_degrees:item.sweep,related_firing:item.fired,related_kill:item.kill} : {angular_turn_degrees:item.turn,angular_speed_degrees_per_second:item.speed}),
+      time_seconds:Math.max(0,(item.kind==="snap"?item.t1:item.t0)-meta.start),end_seconds:Math.max(0,item.t1-meta.start),
+      ...(item.kind === "track" ? {duration_seconds:item.t1-item.t0,target_movement:item.moved,angular_sweep_degrees:item.sweep,related_firing:item.fired,related_kill:item.kill,visibility_context:"occluded_at_qualifying_samples",aim_alignment:"within_upstream_range_dependent_cone"} : {pre_shot_window_start_seconds:Math.max(0,item.t0-meta.start),angular_turn_degrees:item.turn,angular_speed_degrees_per_second:item.speed,sample_interval_seconds:sampleInterval,firing_delay_seconds:firing==null?null:firing-item.t1,visibility_context:"not_evaluated",aim_alignment:"within_upstream_head_threshold",snapshot_quality:sampleInterval!=null&&sampleInterval>0&&sampleInterval<=.1?"sampled":"unavailable"}),
       heuristic_score:item.score};
   });
   const samples = new Map(), originalMeasure = ConcAim.measure;
@@ -141,7 +149,7 @@ async function compare(root, meta, bytes, log, fetch) {
     }
   }
   return {version:1,metric:"ghosty-firing-v1",source_start_seconds:meta.start,settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:log.alignment.uncertainty},
-    groups:[...groups.values()],shots,audits,unassigned,scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",findings,stats:S.analysis?.stats||{}},accuracy_kind:"estimated_hit_evidence_not_bullet_accuracy"};
+    groups:[...groups.values()],shots,audits,unassigned,scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",settings:{source:"web/viewer.js:runAnalysis",sample_target_hz:10,lag_compensation:!!viewer.prefs.unlag},findings,stats:S.analysis?.stats||{}},accuracy_kind:"estimated_hit_evidence_not_bullet_accuracy"};
 }
 async function run(root,directory){
   const read=(name,max)=>{const file=path.join(directory,name);if(fs.statSync(file).size>max)throw new Error("statistics_input_too_large");return fs.readFileSync(file);};
