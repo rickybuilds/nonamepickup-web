@@ -12,6 +12,13 @@ const registry = new Registry(cfg);
 try {
   const arg = name => { const i = process.argv.indexOf(name); return i < 0 ? null : process.argv[i + 1]; };
   const manifest = arg("--manifest");
+  const runId = arg("--run");
+  if (process.argv.includes("--run") && (!runId || !/^[a-f0-9-]{36}$/.test(runId) || manifest)) throw new Error("Usage: hltv-worker.js --run RUN_UUID (cannot combine with --manifest)");
+  if (runId) {
+    // Targeted verification does not ingest other matches or run global cleanup.
+    console.log(JSON.stringify({upstream:await runPending(registry,{...upstreamConfig(),runId})}));
+    return;
+  }
   if (manifest) {
     const input = JSON.parse(fs.readFileSync(manifest, "utf8"));
     // Local-only backfill: input references already-owned files, never fetches bytes.

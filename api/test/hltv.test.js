@@ -293,6 +293,20 @@ test("upstream queue is idempotent and protects a running job even if its hold i
   r.action(demo.id,"release-hold",{reason:"administrator action",hold_id:hold.id},"123");
   assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
 });
+test("targeted upstream work selects only the requested run and never falls through to another match",async t=>{
+  const {registry:r,demo,root}=fixture(t),{queueRun,runPending}=require("../src/hltv/upstream");
+  const older=queueRun(r,demo.id,"admin"),other=statisticsRound(r,root,{seq:90,match:"DZW8NE"}),target=queueRun(r,other.demo_id,"admin");
+  r.db.prepare("UPDATE hltv_upstream_runs SET created_at=1 WHERE id=?").run(older.id);
+  r.minFreeBytes=Number.MAX_SAFE_INTEGER;
+  const result=await runPending(r,{enabled:true,runId:target.id,statisticsEnabled:true,statisticsAutoCollect:true});
+  assert.equal(result.run_id,target.id);assert.equal(result.status,"failed");
+  assert.equal(r.db.prepare("SELECT status FROM hltv_upstream_runs WHERE id=?").get(older.id).status,"queued");
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_statistics_jobs").get().n,0);
+  const again=await runPending(r,{enabled:true,runId:target.id});assert.equal(again.processed,0);assert.equal(again.reason,"requested_run_not_queued_or_worker_busy");
+  assert.equal(r.db.prepare("SELECT status FROM hltv_upstream_runs WHERE id=?").get(older.id).status,"queued");
+  await assert.rejects(runPending(r,{enabled:true,runId:"invalid"}),/Invalid upstream run ID/);
+});
+
 test("disabled upstream worker never starts a queued job",async t=>{
   const {registry:r,demo}=fixture(t), {queueRun,runPending}=require("../src/hltv/upstream");
   queueRun(r,demo.id,"123");

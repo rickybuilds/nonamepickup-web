@@ -81,6 +81,7 @@ function child(bin, args, input, timeout = 180000) {
   });
 }
 async function runPending(registry, options) {
+  if (options.runId != null && !/^[a-f0-9-]{36}$/.test(options.runId)) throw new Error("Invalid upstream run ID");
   if (!options.enabled) return { enabled: false, processed: 0 };
   // Startup recovery never treats interrupted work as a successful result.
   registry.db.transaction(() => {
@@ -90,14 +91,14 @@ async function runPending(registry, options) {
   reapScratch(registry);
   const {queueAutomaticStatistics,releaseStatisticsLeases}=require("./statisticsQueue");
   releaseStatisticsLeases(registry);
-  queueAutomaticStatistics(registry,options);
+  if (!options.runId) queueAutomaticStatistics(registry,options);
   const run = registry.db.transaction(() => {
     if (registry.db.prepare("SELECT 1 FROM hltv_upstream_runs WHERE status='processing'").get()) return null;
-    const run = registry.db.prepare("SELECT * FROM hltv_upstream_runs WHERE status='queued' AND (?=1 OR requested_by<>'statistics-scheduler') ORDER BY created_at,id LIMIT 1").get(Number(options.statisticsEnabled===true));
+    const run = registry.db.prepare("SELECT * FROM hltv_upstream_runs WHERE status='queued' AND (?=1 OR requested_by<>'statistics-scheduler') AND (? IS NULL OR id=?) ORDER BY created_at,id LIMIT 1").get(Number(options.statisticsEnabled===true), options.runId || null, options.runId || null);
     if (run) registry.db.prepare("UPDATE hltv_upstream_runs SET status='processing',started_at=? WHERE id=?").run(Date.now(), run.id);
     return run;
   }).immediate();
-  if (!run) return { enabled: true, processed: 0 };
+  if (!run) return { enabled: true, processed: 0, ...(options.runId ? {run_id:options.runId,reason:"requested_run_not_queued_or_worker_busy"} : {}) };
   const touch=()=>registry.db.prepare("INSERT INTO hltv_upstream_heartbeats(run_id,touched_at) VALUES(?,?) ON CONFLICT(run_id) DO UPDATE SET touched_at=excluded.touched_at").run(run.id,Date.now());
   touch();
   const heartbeat=setInterval(()=>{try{touch();}catch(error){console.error("[HLTV upstream] heartbeat deferred:",error.code||error.name);}},60000);

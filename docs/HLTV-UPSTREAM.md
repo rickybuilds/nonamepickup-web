@@ -55,6 +55,14 @@ flock -n /var/lib/noname-hltv-worker/worker.lock node /var/www/tfcbot/api/script
 
 The existing five-minute worker processes at most one queued upstream run per pass, serially. For two demos run the worker twice or wait for the next cron pass. Source demos and logs are read from their existing private locations, never downloaded/re-uploaded/copied for this work. The CLI only queues existing registered available demos; it does not invoke normal match reporting or any public stats upload.
 
+To verify a particular queued recording ahead of other matches, pass its returned run ID:
+
+```sh
+flock -n /var/lib/noname-hltv-worker/worker.lock node /var/www/tfcbot/api/scripts/hltv-worker.js --run RUN_UUID
+```
+
+This selects only that queued run and never falls through to another match. It does not enroll automatic jobs, ingest manifests or execute global cleanup. Existing processing locks, resource checks and evidence holds still apply. If the run has already completed/failed, or a different run is processing, it reports `processed:0` and `requested_run_not_queued_or_worker_busy`; explicitly queue a new run if reanalysis is needed. To compare with the standalone viewer, verify the same demo SHA-256, log round/hash, upstream revision, assets/settings, selected player/class/weapon and metric. A completed job for a different recording is not a verification of the selected demo.
+
 Refresh the review detail to see the latest run. A successful report gives a **verified matched log** and estimated concussion windows. A failure exposes a safe error code, and rejected log-pair candidates show the upstream matching reasons when available. Consult `/var/log/noname-hltv-worker.log` for private operational detail. The result is versioned by demo hash, log hash and exact upstream commit. Source parser directories can be explicitly replaced by their own operator; these hashes preserve which source version was used but do not make that external store immutable.
 
 Every user-requested upstream run adds an explicit hold. That hold persists after both success and failure until an authorized admin releases it after inspection. Queued/processing runs also independently block demo cleanup even if someone releases their hold early. These rules do not shorten manual evidence/report holds or set an anti-cheat clean verdict. A retry is another explicit request, with its own hold; resolve obsolete failed-run holds deliberately.
