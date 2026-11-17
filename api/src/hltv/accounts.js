@@ -13,8 +13,8 @@ async function derive(password, salt) {
   finally { hashing--; }
 }
 function passwordInput(value) {
-  if (typeof value !== "string" || value.length < 12 || value.length > 128 || Buffer.byteLength(value) > 512)
-    throw fail(400, "password_must_be_12_to_128_characters");
+  if (typeof value !== "string" || value.length < 6 || value.length > 128 || Buffer.byteLength(value) > 512)
+    throw fail(400, "password_must_be_6_to_128_characters");
   return value;
 }
 function usernameInput(value) {

@@ -17,7 +17,7 @@ Do not give another account your owner Discord ID. Owner IDs are set only by the
 
 ## Add reviewers
 
-From **Manage users**, enter their username and a temporary passphrase of 12–128 characters. Discord ID is optional. Share only that username and temporary password privately. They use the same review URL, sign in, and replace the temporary password before opening any evidence. No environment changes or API restart are needed for each new account.
+From **Manage users**, enter their username and a temporary passphrase of 6–128 characters. Discord ID is optional. Share only that username and temporary password privately. They use the same review URL, sign in, and replace the temporary password before opening any evidence. No environment changes or API restart are needed for each new account.
 
 An owner-created account is an explicit grant of website access, independent of `HLTV_REVIEW_ALLOWED_USER_IDS`. That legacy allowlist still restricts legacy credential login and the bot's channel checks. Creating a website account does not change Discord channel permissions. If a reviewer should see Discord alerts too, grant their member access to that private channel, update the bot's user allowlist and restart the bot when appropriate.
 
