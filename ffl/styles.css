@@ -83,3 +83,9 @@ progress.percent-track{border:0;appearance:none;display:block;color:#8b86d9}prog
 .theme-toggle svg{width:19px;height:19px}
 .theme-toggle svg[hidden]{display:none!important}
 [data-theme="dark"]{color-scheme:dark}
+
+/* Icons are selected by CSS, even if JavaScript is blocked. */
+#theme-toggle #theme-sun{display:none}
+#theme-toggle #theme-moon{display:block}
+:root[data-theme="dark"] #theme-toggle #theme-sun{display:block}
+:root[data-theme="dark"] #theme-toggle #theme-moon{display:none}

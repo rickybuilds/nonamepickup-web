@@ -5,16 +5,8 @@
 <meta name="theme-color" id="theme-color" content="#1c2440">
 <title>FFL · Final Fortress League</title>
 <meta name="description" content="Final Fortress League player availability and team rosters.">
-<link rel="icon" href="/ffl/favicon.svg"><link rel="stylesheet" href="/ffl/styles.css">
-<script>
-(function(){
-  let saved;
-  try { saved = localStorage.getItem('ffl-theme'); } catch(e) {}
-  const theme = saved === 'dark' || saved === 'light' ? saved : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  document.documentElement.dataset.theme = theme;
-  document.getElementById('theme-color').content = theme === 'dark' ? '#111827' : '#1c2440';
-})();
-</script>
+<link rel="icon" href="/ffl/favicon.svg"><link rel="stylesheet" href="/ffl/styles.css?v=2">
+<script src="/ffl/theme.js?v=2" defer></script>
 <script src="/ffl/app.js" defer></script>
 </head>
 <body>
@@ -39,28 +31,5 @@
 <dialog id="team-dialog" aria-labelledby="team-title"><form id="team-form"><div class="dialog-heading"><div><h2 id="team-title">Add a team</h2><p>Name it now. Draft players whenever you’re ready.</p></div><button type="button" class="icon-button close-dialog" aria-label="Close team form">×</button></div><div class="form-body"><label>Team name<input name="name" required maxlength="50"></label><p id="team-error" class="form-error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="subtle close-dialog">Cancel</button><button type="submit" class="primary">Add team</button></div></form></dialog>
 <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-heading"><div><h2 id="delete-title">Remove player?</h2><p id="delete-description"></p></div></div><div class="form-body"><p>This removes their roster entry and team assignment.</p><p id="delete-error" class="form-error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="subtle close-dialog">Keep player</button><button id="confirm-delete" class="danger">Remove player</button></div></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
-<script>
-(function(){
-  const root = document.documentElement;
-  const button = document.getElementById('theme-toggle');
-  const meta = document.getElementById('theme-color');
-  const sun = document.getElementById('theme-sun');
-  const moon = document.getElementById('theme-moon');
-  function refresh(){
-    const dark = root.dataset.theme === 'dark';
-    sun.hidden = !dark;
-    moon.hidden = dark;
-    button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
-    button.title = dark ? 'Light mode' : 'Dark mode';
-    meta.content = dark ? '#111827' : '#1c2440';
-  }
-  button.addEventListener('click', function(){
-    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-    root.dataset.theme = next;
-    try { localStorage.setItem('ffl-theme', next); } catch(e) {}
-    refresh();
-  });
-  refresh();
-})();
-</script>
+
 </body></html>
