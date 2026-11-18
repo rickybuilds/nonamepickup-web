@@ -122,7 +122,7 @@ async function finishLogin(){
   $('loginPanel').hidden=true;$('passwordPanel').hidden=!user.must_change_password;$('workspace').hidden=!!user.must_change_password;$('cancelPassword').hidden=!!user.must_change_password;
   $('passwordNotice').textContent=user.must_change_password?'Choose your own password before accessing demos. Your temporary password will stop working.':'Changing your password signs out your other sessions.';
   if(user.must_change_password){$('currentPassword').focus();return;}
-  await refresh();const demo=new URLSearchParams(location.search).get('demo');if(demo)await open(demo);
+  await refresh();const query=new URLSearchParams(location.search),demo=query.get('demo');if(demo){await open(demo);const requestedTab=query.get('tab');if(typeof tabNames!=="undefined"&&tabNames.includes(requestedTab)){activeTab=requestedTab;renderTab();run(loadTimeline);}}
 }
 $('login').onsubmit=e=>{e.preventDefault();run(async()=>{credential=$('token').value;$('token').value='';await finishLogin();});};
 $('passwordLogin').onsubmit=e=>{e.preventDefault();run(async()=>{credential='';const password=$('password').value;$('password').value='';const result=await api('/auth/login',{username:$('username').value,password});credential=result.token;await finishLogin();});};

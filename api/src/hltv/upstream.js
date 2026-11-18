@@ -30,6 +30,27 @@ function diagnosticForError(error, stage="worker") {
   const row=DIAGNOSTICS[code]||[stage,"The analysis worker terminated before a complete result was produced.",true,"Inspect the worker log before retrying."];
   return {code,stage:row[0],message:row[1],retryable:row[2],next_action:row[3]};
 }
+function analysisNotificationPayload({demo,run,result,diagnostic}) {
+  const base={match_id:String(demo?.match_id||"Unknown match").slice(0,100),map:String(demo?.map||"Unknown map").slice(0,100),demo_id:demo?.id,run_id:run?.id};
+  if(run?.status==="failed") {
+    const safe=diagnostic||{code:"upstream_failed",stage:"worker",message:"The analysis worker terminated before analysis completed.",retryable:true,next_action:"Inspect the worker status and retry when ready."};
+    return {...base,outcome:"failed",failure_code:String(safe.code).slice(0,80),failure_stage:String(safe.stage).slice(0,40),failure_message:String(safe.message).slice(0,500),retryable:Boolean(safe.retryable),next_action:String(safe.next_action).slice(0,500)};
+  }
+  const scanner=result?.scanner;
+  if(run?.status!=="complete"||!scanner||scanner.version!=="upstream-runAnalysis"||!Array.isArray(scanner.findings))return null;
+  const candidates=[];
+  for(const finding of scanner.findings){
+    if(!finding||!['track','snap'].includes(finding.kind)||!Number.isFinite(finding.time_seconds)||!Number.isFinite(finding.end_seconds)||finding.time_seconds<0||finding.end_seconds<finding.time_seconds)return null;
+    const candidate={kind:finding.kind==="track"?"wall_track":"snap",player_name:typeof finding.player_name==="string"&&finding.player_name.trim()?finding.player_name.trim().slice(0,100):"Identity unavailable",time_seconds:Number(finding.time_seconds.toFixed(3))};
+    if(finding.kind==="track"){
+      if(finding.duration_seconds!=null&&!Number.isFinite(finding.duration_seconds))return null;
+      candidate.duration_seconds=Number((finding.duration_seconds==null?finding.end_seconds-finding.time_seconds:finding.duration_seconds).toFixed(3));
+    }
+    candidates.push(candidate);
+  }
+  candidates.sort((a,b)=>a.time_seconds-b.time_seconds||a.kind.localeCompare(b.kind)||a.player_name.localeCompare(b.player_name));
+  return {...base,outcome:candidates.length?"candidates_found":"completed_empty",wall_track_count:candidates.filter(f=>f.kind==="wall_track").length,snap_count:candidates.filter(f=>f.kind==="snap").length,candidate_count:candidates.length,candidates:candidates.slice(0,200)};
+}
 function upstreamConfig(env = process.env) {
   const memoryBytes = Number(env.HLTV_UPSTREAM_MEMORY_BYTES || 2147483648);
   if (!Number.isSafeInteger(memoryBytes) || memoryBytes < 268435456 || memoryBytes > 4294967296) throw new Error("Invalid HLTV_UPSTREAM_MEMORY_BYTES");
@@ -218,6 +239,8 @@ async function runPending(registry, options) {
         require("./concWindows").recordWindowCounts(registry,stored.id,statistics,estimate.windows);
         require("./gapReview").evaluateGapReview(registry,{...stored,demo_id:demo.id,upstream_sha:release.sha,log_round:matched.log_round,
           groups:statistics.groups.map(group=>({...group,player_name:group.name}))},{...options.aimReview,enabled:options.gapReviewEnabled||options.aimReview?.alertsEnabled});
+        const notification=analysisNotificationPayload({demo,run:{...run,status:"complete"},result:statistics});
+        if(notification)registry.queueAnalysisNotification({runId:run.id,demo,payload:notification});
       }
       // This is an explicit reviewer request. Preserve originals until the
       // reviewer has inspected the result and deliberately releases the hold.
@@ -230,6 +253,7 @@ async function runPending(registry, options) {
     const code=known.find(value=>error.message===value||error.message.includes("upstream_process_failed: "+value))||"upstream_failed";
     const diagnostic=diagnosticForError(error,code.includes("log")||code.includes("pairing")?"parser":code.includes("asset")||code.includes("model")?"assets":code.includes("scanner")?"scanner":"worker");
     registry.db.prepare("UPDATE hltv_upstream_runs SET status='failed',finished_at=?,error_code=?,result_json=?,diagnostic_json=?,analysis_disposition='pending' WHERE id=?").run(Date.now(), code, error.diagnostics ? JSON.stringify(error.diagnostics) : null, JSON.stringify(diagnostic), run.id);
+    try { registry.queueAnalysisNotification({runId:run.id,demo:registry.get(run.demo_id),payload:analysisNotificationPayload({demo:registry.get(run.demo_id),run:{...run,status:"failed"},diagnostic})}); } catch (notificationError) { console.error("[HLTV upstream] failure notification deferred:",notificationError.message); }
     registry.audit(run.demo_id, "upstream-worker", "upstream_failed", { run_id: run.id, error_code: code, stage:diagnostic.stage });
     // Failure keeps the explicit hold for an administrator to inspect/release.
     return { enabled: true, processed: 1, status: "failed", run_id: run.id, error_code: code };
@@ -241,4 +265,4 @@ async function runPending(registry, options) {
     }
   }
 }
-module.exports = { upstreamConfig, queueRun, runPending, child, reapScratch, sandboxCommand, resolveParserLogs, diagnosticForError };
+module.exports = { upstreamConfig, queueRun, runPending, child, reapScratch, sandboxCommand, resolveParserLogs, diagnosticForError, analysisNotificationPayload };

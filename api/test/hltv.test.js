@@ -487,6 +487,28 @@ test("upstream diagnostics normalize actionable categories without private detai
   const unexpected=diagnosticForError(new Error("ENOENT: C:\\private\\logs\\secret.log"),"parser");
   assert.equal(unexpected.code,"internal_failure");assert.equal(unexpected.message.includes("secret"),false);
 });
+test("scanner notification summaries distinguish empty, candidates, failures, and legacy payloads",()=>{
+  const {analysisNotificationPayload}=require("../src/hltv/upstream");
+  const demo={id:"demo-1",match_id:"EFWN6W",map:"2fort"},run={id:"run-1",status:"complete"};
+  const base={version:1,scanner:{version:"upstream-runAnalysis",findings:[]}};
+  assert.deepEqual(analysisNotificationPayload({demo,run,result:base}),{outcome:"completed_empty",match_id:"EFWN6W",map:"2fort",demo_id:"demo-1",run_id:"run-1",wall_track_count:0,snap_count:0,candidate_count:0,candidates:[]});
+  const candidates=analysisNotificationPayload({demo,run:{...run,id:"run-2"},result:{scanner:{version:"upstream-runAnalysis",findings:[
+    {kind:"snap",player_name:"eDub",time_seconds:246.256,end_seconds:246.256},
+    {kind:"track",player_name:"eDub",time_seconds:93.778,end_seconds:94.308,duration_seconds:.53},
+    {kind:"track",player_name:null,time_seconds:10,end_seconds:11}
+  ]}}});
+  assert.equal(candidates.outcome,"candidates_found");assert.equal(candidates.wall_track_count,2);assert.equal(candidates.snap_count,1);assert.deepEqual(candidates.candidates[1],{kind:"wall_track",player_name:"eDub",time_seconds:93.778,duration_seconds:.53});assert.equal(candidates.candidates[0].player_name,"Identity unavailable");
+  assert.deepEqual(analysisNotificationPayload({demo,run:{...run,status:"failed"},diagnostic:{code:"missing_map_asset",stage:"scanner",message:"Map unavailable.",retryable:false,next_action:"Provision assets."}}),{outcome:"failed",match_id:"EFWN6W",map:"2fort",demo_id:"demo-1",run_id:"run-1",failure_code:"missing_map_asset",failure_stage:"scanner",failure_message:"Map unavailable.",retryable:false,next_action:"Provision assets."});
+  assert.equal(analysisNotificationPayload({demo,run,result:{groups:[]}}),null);
+});
+test("scanner notification outbox deduplicates a run but allows a reanalysis run",t=>{
+  const {registry:r,demo}=fixture(t),run1="11111111-1111-4111-8111-111111111111",run2="22222222-2222-4222-8222-222222222222",payload={outcome:"completed_empty",match_id:demo.match_id,map:demo.map,demo_id:demo.id,run_id:run1,wall_track_count:0,snap_count:0,candidates:[]};
+  r.db.prepare("INSERT INTO hltv_upstream_runs(id,demo_id,hold_id,status,requested_by,created_at) VALUES(?,?,?,'complete','reviewer',?)").run(run1,demo.id,r.hold(demo.id,run1,"reviewer"),Date.now());
+  const first=r.queueAnalysisNotification({runId:run1,demo,payload}),again=r.queueAnalysisNotification({runId:run1,demo,payload});
+  assert.equal(first.alertId,again.alertId);assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_analysis_notifications").get().n,1);
+  r.db.prepare("INSERT INTO hltv_upstream_runs(id,demo_id,hold_id,status,requested_by,created_at) VALUES(?,?,?,'complete','reviewer',?)").run(run2,demo.id,r.hold(demo.id,run2,"reviewer"),Date.now()+1);
+  const second=r.queueAnalysisNotification({runId:run2,demo,payload:{...payload,run_id:run2}});assert.notEqual(first.alertId,second.alertId);assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE kind='hltv_analysis_complete'").get().n,2);
+});
 test("targeted upstream work selects only the requested run and never falls through to another match",async t=>{
   const {registry:r,demo,root}=fixture(t),{queueRun,runPending}=require("../src/hltv/upstream");
   const older=queueRun(r,demo.id,"admin"),other=statisticsRound(r,root,{seq:90,match:"DZW8NE"}),target=queueRun(r,other.demo_id,"admin");
@@ -520,7 +542,7 @@ test("missing upstream release fails safely and keeps its review hold",async t=>
   assert.equal(r.db.prepare("SELECT status FROM hltv_upstream_runs WHERE id=?").get(queued.id).status,"failed");
   assert.equal(r.detail(demo.id).holds.length,1);
   assert.equal(r.get(demo.id).analysis_status,"unsupported");
-  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts").get().n,0);
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_alerts WHERE kind='hltv_analysis_failed'").get().n,1);
 });
 test("interrupted upstream cache is reaped without touching original demos or holds",t=>{
   const {registry:r,demo,root}=fixture(t), {queueRun,reapScratch}=require("../src/hltv/upstream");

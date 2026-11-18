@@ -29,7 +29,18 @@ class Registry {
   }
   close() { this.db.close(); }
   audit(demo, actor, action, details) { this.db.prepare("INSERT INTO hltv_audit(demo_id,actor,action,details,created_at) VALUES(?,?,?,?,?)").run(demo, actor, action, JSON.stringify(details), Date.now()); }
-  alert(demo, kind) { this.db.prepare("INSERT INTO hltv_alerts(id,demo_id,kind,created_at) VALUES(?,?,?,?)").run(id(), demo, kind, Date.now()); }
+  alert(demo, kind) { const alertId=id(); this.db.prepare("INSERT INTO hltv_alerts(id,demo_id,kind,created_at) VALUES(?,?,?,?)").run(alertId, demo, kind, Date.now()); return alertId; }
+  queueAnalysisNotification({runId,demo,payload}) {
+    if (!/^[a-f0-9-]{36}$/.test(runId||"") || !demo?.id || !payload || !["completed_empty","candidates_found","failed"].includes(payload.outcome)) throw new Error("invalid_analysis_notification");
+    const serialized=JSON.stringify(payload);if(serialized.length>500000)throw new Error("analysis_notification_too_large");
+    return this.db.transaction(()=>{
+      const existing=this.db.prepare("SELECT alert_id FROM hltv_analysis_notifications WHERE run_id=?").get(runId);
+      if(existing)return {alertId:existing.alert_id,duplicate:true};
+      const alertId=this.alert(demo.id,payload.outcome==="failed"?"hltv_analysis_failed":payload.outcome==="candidates_found"?"hltv_analysis_candidates":"hltv_analysis_complete");
+      this.db.prepare("INSERT INTO hltv_analysis_notifications(alert_id,run_id,outcome,data_json,created_at) VALUES(?,?,?,?,?)").run(alertId,runId,payload.outcome,serialized,Date.now());
+      return {alertId,duplicate:false};
+    }).immediate();
+  }
   preserveSourceLog({demoId,runId,logFilename,logRound,sourceHash,manifestSha256,matchedLog,rawLog}) {
     if (!Buffer.isBuffer(rawLog) || !rawLog.length || !/^[a-f0-9]{64}$/.test(sourceHash || "") || !/^[a-f0-9]{64}$/.test(manifestSha256 || "") || !Number.isInteger(logRound) || logRound < 1 || logRound > 2) throw new Error("invalid_source_log_snapshot");
     const sha256=crypto.createHash("sha256").update(rawLog).digest("hex"),serialized=JSON.stringify(matchedLog);

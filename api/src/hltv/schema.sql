@@ -102,6 +102,10 @@ CREATE TABLE IF NOT EXISTS hltv_alerts(
  created_at INTEGER NOT NULL, sent_at INTEGER, attempts INTEGER NOT NULL DEFAULT 0,
  next_attempt INTEGER NOT NULL DEFAULT 0, lease TEXT, lease_until INTEGER
 );
+CREATE TABLE IF NOT EXISTS hltv_analysis_notifications(
+ alert_id TEXT PRIMARY KEY REFERENCES hltv_alerts(id), run_id TEXT NOT NULL UNIQUE REFERENCES hltv_upstream_runs(id),
+ outcome TEXT NOT NULL, data_json TEXT NOT NULL, created_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS hltv_manifests(
  digest TEXT PRIMARY KEY, storage_key TEXT NOT NULL, status TEXT NOT NULL,
  attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL DEFAULT 0, error TEXT
