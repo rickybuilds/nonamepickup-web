@@ -1,7 +1,15 @@
 "use strict";
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 const html=fs.readFileSync(path.join(__dirname,"../src/hltv/review.html"),"utf8");
+const publicHome=fs.readFileSync(path.join(__dirname,"../../index.html"),"utf8");
 const script=/<script>([\s\S]*?)<\/script>/.exec(html)[1];
+test("private review shell uses NN//TFC branding without public HLTV navigation",()=>{
+  assert.match(html,/class="nn-logo"/);
+  assert.match(html,/logo-nn/);
+  assert.doesNotMatch(script,/\['Matches','\/matches\.html'\]/);
+  assert.doesNotMatch(script,/['"]HLTV Review['"]/);
+  assert.doesNotMatch(publicHome,/HLTV|hltv-review/);
+});
 function section(start,end){const a=script.indexOf(start),b=script.indexOf(end,a);assert.ok(a>=0&&b>a);return script.slice(a,b);}
 const runtime=[section("const pendingControls=","function tableControls("),section("async function refresh(){","async function open("),section("function navigateRegistry(","function renderRecoveryLinks(")].join("\n");
 const storage=count=>({current_demos:count,demos:count,open_reviews:0,high_priority_reviews:0,free_bytes:1073741824,low_disk:false,policy:[{class:"normal",days:7}]});

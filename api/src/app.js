@@ -96,7 +96,7 @@ function createApp({
       const script = /<script>([\s\S]*?)<\/script>/.exec(html)[1];
       const hash = require("crypto").createHash("sha256").update(script).digest("base64");
       res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow, noarchive",
-        "X-Frame-Options": "DENY", "Content-Security-Policy": `default-src 'none'; script-src 'sha256-${hash}'; style-src 'unsafe-inline'; img-src 'self' https://tfcmaps.net; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'` });
+        "X-Frame-Options": "DENY", "Content-Security-Policy": `default-src 'none'; script-src 'sha256-${hash}'; style-src 'self' 'unsafe-inline'; img-src 'self' https://tfcmaps.net; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'` });
       res.sendFile(require("path").join(__dirname, "hltv/review.html"));
     });
     app.locals.closeHltv = () => registry.close();
