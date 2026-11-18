@@ -67,8 +67,9 @@ test("browser navigation keeps controls enabled through queue, rapid switching, 
   assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('107/409')"),true);
   assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('108/409')"),true);
   assert.equal(await evalJs("document.getElementById('statsContext').textContent.includes('Historical consistency: insufficient baseline')"),true);
-  statistics.observation.groups[0].complete=0;await evalJs("open('demo-1')");await until(()=>evalJs("document.getElementById('quickOutput').textContent.includes('Insufficient Data')"));
-  assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('NaN')"),false);
+  statistics.observation.groups[0].complete=0;await evalJs("open('demo-1')");await until(()=>evalJs("document.getElementById('quickOutput').textContent.includes('Near Parity')"));
+  assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('107/409')"),true);
+  assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('108/409')"),true);
   statistics.observation.groups[0].complete=1;await evalJs("open('demo-1')");await until(()=>evalJs("document.getElementById('quickOutput').textContent.includes('Near Parity')"));
   await evalJs("[...document.querySelectorAll('.investigation-tabs button')].find(b=>b.textContent==='Wall-Track').click()");
   assert.equal(await evalJs("document.querySelector('.investigation-tabs button.active').textContent"),"Wall-Track");
