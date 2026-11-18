@@ -99,6 +99,7 @@ sudo grep '^FFL_INITIAL_PASSWORD=' /etc/ffl.env
 Open **https://nonamepickup.servehalflife.com/ffl/**, choose **Admin login**, and enter the value after `=`. Then use **Change password** to set one you prefer (minimum 6 characters). This signs out all admin sessions. The initial password is not in the website's source or visible to visitors; it only works until you change it.
 
 - **Players:** anyone can add an entry; saved entries can only be changed by an admin. Duplicate names are rejected.
+- **League details:** the default opening tab contains KingOfPests' Version 15 update (November 14, 2026), including the December 4–10 Week 1 startup window, supporting servers, class limits, match timing and conduct rules. The supplied pending matchup/finals and roster sections are omitted because Teams and Schedule cover them. Direct links to `#roster`, `#teams` and `#schedule` still open those views. The startup window is informational; individual match dates remain admin-managed in Schedule.
 - **Teams:** choose a player in a team's **Add a player…** menu, or choose a team beside an unassigned player. Move someone by changing their team dropdown. Choose **Unassigned** to undo a draft assignment.
 - **Add team:** creates another team with any name you choose. It starts with Team 1 through Team 6.
 - **Ringers:** clearly marked; their percentages are indicative availability, not regular-season commitments. foo's prior 50%/75% is retained with the new ringer status.

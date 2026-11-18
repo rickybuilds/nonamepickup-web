@@ -79,6 +79,28 @@ progress.percent-track{border:0;appearance:none;display:block;color:#8b86d9}prog
 [data-theme="dark"] button:focus-visible,[data-theme="dark"] a:focus-visible,[data-theme="dark"] input:focus-visible,[data-theme="dark"] select:focus-visible,[data-theme="dark"] textarea:focus-visible{outline-color:#b5aaff}
 
 /* Theme toggle */
+.league-details{max-width:76ch;font-size:14px;line-height:1.8;color:var(--ink)}
+.league-details-intro{padding-bottom:25px;border-bottom:1px solid var(--line)}
+.league-details h2{font-size:19px;line-height:1.4;margin:0 0 14px}
+.league-details-intro h2{font-size:23px}
+.league-details-intro>p:first-of-type{color:var(--muted);font-size:13px}
+.league-details section{margin-top:32px}
+.league-details p{margin:12px 0}
+.league-details ul{padding-left:22px;margin:14px 0}
+.league-details li+li{margin-top:10px}
+.league-details code{font-size:.95em;overflow-wrap:anywhere}
+.league-servers{margin:0}
+.league-servers dt{font-weight:600;margin-top:20px}
+.league-servers dd{margin:4px 0 0}
+.league-servers dd span{display:block;color:var(--muted);font-size:13px}
+.class-limits{min-width:0;white-space:normal;font-variant-numeric:tabular-nums}
+.class-limits th,.class-limits td{height:auto;padding:11px 18px}
+.class-limits tbody th{font-size:13px;color:var(--ink)}
+.page-nav{overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--muted) transparent}
+.page-nav>a{flex-shrink:0;white-space:nowrap}
+@media(max-width:900px){.page-nav .public-note{display:none}}
+@media(max-width:650px){.league-details{font-size:14px}.class-limits th,.class-limits td{padding:10px 12px}.league-details-intro h2{font-size:21px}}
+
 .schedule-table{white-space:normal;min-width:640px}
 .schedule-table tbody th{color:var(--ink);font-size:13px;font-weight:600;white-space:nowrap}
 .schedule-table td{line-height:1.7;vertical-align:top}

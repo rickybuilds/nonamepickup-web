@@ -52,11 +52,11 @@ function render(){
  renderRoster();renderTeams();renderSchedule();renderPage();
 }
 function renderPage(){
- const page=['#teams','#schedule'].includes(location.hash)?location.hash.slice(1):'roster';
- for(const name of ['roster','teams','schedule']){$(name+'-view').hidden=page!==name;$(name+'-link').removeAttribute('aria-current');}
- $(page+'-link').setAttribute('aria-current','page');$('add-player').hidden=page==='schedule';
- $('page-title').textContent={roster:'Player roster',teams:'Team rosters',schedule:'League schedule'}[page];
- $('page-description').textContent={roster:'Find your teammates. Plan your weekends.',teams:'The draft starts here. Give every player a place.',schedule:'Weekly maps, match dates and team matchups.'}[page];
+ const page=['#roster','#teams','#schedule'].includes(location.hash)?location.hash.slice(1):'details';
+ for(const name of ['details','roster','teams','schedule']){$(name+'-view').hidden=page!==name;$(name+'-link').removeAttribute('aria-current');}
+ $(page+'-link').setAttribute('aria-current','page');$('add-player').hidden=!['roster','teams'].includes(page);
+ $('page-title').textContent={details:'League update details',roster:'Player roster',teams:'Team rosters',schedule:'League schedule'}[page];
+ $('page-description').textContent={details:'The summary and details for the league!',roster:'Find your teammates. Plan your weekends.',teams:'The draft starts here. Give every player a place.',schedule:'Weekly maps, match dates and team matchups.'}[page];
 }
 const weekLabel=week=>week===22?'Week 22 · Finals':'Week '+week;
 function renderSchedule(){
