@@ -4,7 +4,7 @@
 
 **Goal:** Make the authenticated HLTV console look native to NN//TFC without making HLTV publicly discoverable or weakening its existing server-side protection.
 
-**Architecture:** Keep the existing `/admin/hltv-review` route, API router, bearer/session auth, and inline script. Add the public NN//TFC shared styles and logo treatment to the private document, remove the synthetic public navigation from the authenticated shell, and retain admin-only workspace navigation. Extend existing navigation/browser tests with privacy and branding assertions.
+**Architecture:** Keep the existing `/admin/hltv-review` route, API router, bearer/session auth, and investigation script. Reuse the public NN//TFC header markup, shared styles, font load, and `main.js` only in the authenticated console; retain the logged-out header and separate admin-only sidebar. Extend existing navigation/browser tests with privacy, transitions, shared-header behavior, and branding assertions.
 
 **Tech Stack:** Express, vanilla HTML/CSS/JavaScript, shared NN//TFC CSS, Node test runner, local Edge browser fixture.
 
@@ -36,8 +36,8 @@
 - Produces: a branded login shell and authenticated administrative workspace with no public navigation link to HLTV.
 
 - [ ] **Step 1: Add the shared NN//TFC font, favicon, shared CSS, and logo treatment to the private document without changing public pages.**
-- [ ] **Step 2: Replace the standalone login/header styling with the NN//TFC dark/cyan visual system while preserving all existing login forms, copy, and controls.**
-- [ ] **Step 3: Remove the generated public Matches/Players/Analytics/HLTV Review links from the authenticated shell and label the remaining workspace as private administrative navigation.**
+- [ ] **Step 2: Preserve the working logged-out header and replace only the authenticated synthetic bar with the real NN//TFC header.**
+- [ ] **Step 3: Restore Home, Matches, Players, Speedruns, Live, More, and player search inside the authenticated console without adding an HLTV link.**
 - [ ] **Step 4: Preserve owner-only visibility for user management and all existing admin actions.**
 - [ ] **Step 5: Add scoped responsive rules for the private shell and confirm the three-column investigation layout remains usable at desktop, tablet, and mobile widths.**
 
@@ -53,7 +53,7 @@
 - Produces: regression coverage for private navigation, branded login markup, and protected data access.
 
 - [ ] **Step 1: Add source-level assertions that the HLTV document has the NN//TFC brand and no generated public navigation list.**
-- [ ] **Step 2: Add browser assertions that the login view is branded and the authenticated workspace exposes only private admin navigation.**
+- [ ] **Step 2: Add browser assertions for logged-out/authenticated transitions, exact shared logo colors and typography, public header destinations, More, search, reviewer controls, private sidebar, mobile layout, and logout.**
 - [ ] **Step 3: Add or strengthen an existing router assertion that unauthenticated protected requests return 401/403 and do not return review data.**
 - [ ] **Step 4: Run the focused navigation, browser, and HLTV auth tests.**
 

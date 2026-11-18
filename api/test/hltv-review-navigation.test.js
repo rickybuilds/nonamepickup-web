@@ -1,14 +1,18 @@
 "use strict";
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 const html=fs.readFileSync(path.join(__dirname,"../src/hltv/review.html"),"utf8");
-const publicHome=fs.readFileSync(path.join(__dirname,"../../index.html"),"utf8");
+const publicNavigation=["index.html","matches.html","leaderboard.html","speedruns.html","live.html","sitemap.xml"].map(file=>fs.readFileSync(path.join(__dirname,"../..",file),"utf8")).join("\n");
 const script=/<script>([\s\S]*?)<\/script>/.exec(html)[1];
-test("private review shell uses NN//TFC branding without public HLTV navigation",()=>{
-  assert.match(html,/class="nn-logo"/);
-  assert.match(html,/logo-nn/);
-  assert.doesNotMatch(script,/\['Matches','\/matches\.html'\]/);
-  assert.doesNotMatch(script,/['"]HLTV Review['"]/);
-  assert.doesNotMatch(publicHome,/HLTV|hltv-review/);
+test("authenticated review shell reuses the public NN//TFC header without exposing HLTV publicly",()=>{
+  assert.match(html,/id="authenticatedHeader" class="site-header" hidden/);
+  assert.match(html,/src="\/assets\/js\/main\.js[^\"]*" defer/);
+  for(const [href,label] of [["index.html","Home"],["matches.html","Matches"],["leaderboard.html","Players"],["speedruns.html","Speedruns"],["live.html","Live"]])
+    assert.match(html,new RegExp(`href="${href}"[^>]*>${label}<\\/a>`));
+  assert.match(html,/class="nav-more"/);
+  assert.match(html,/id="global-search"/);
+  assert.doesNotMatch(html,/href="[^"]*hltv-review/);
+  assert.doesNotMatch(script,/const consoleTop=/);
+  assert.doesNotMatch(publicNavigation,/HLTV|hltv-review|\/admin\/hltv/);
 });
 function section(start,end){const a=script.indexOf(start),b=script.indexOf(end,a);assert.ok(a>=0&&b>a);return script.slice(a,b);}
 const runtime=[section("const pendingControls=","function tableControls("),section("async function refresh(){","async function open("),section("function navigateRegistry(","function renderRecoveryLinks(")].join("\n");

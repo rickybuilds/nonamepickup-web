@@ -2,6 +2,7 @@
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path"),http=require("node:http"),{spawn}=require("node:child_process");
 const edge="C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const page=fs.readFileSync(path.join(__dirname,"../src/hltv/review.html"));
+const projectRoot=path.join(__dirname,"../..");
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function until(fn,timeout=12000){const end=Date.now()+timeout;while(Date.now()<end){const value=await fn();if(value)return value;await pause(40);}throw Error("Browser test timed out");}
 function cdpsocket(url){return new Promise((resolve,reject)=>{const ws=new WebSocket(url),waiting=new Map();let next=0;ws.addEventListener("open",()=>resolve({
@@ -21,8 +22,15 @@ test("browser navigation keeps controls enabled through queue, rapid switching, 
   const scanner=()=>({wall_track:{state:state.scannerStatus,count:state.scannerStatus==="completed"&&state.scannerFindings?1:0,can_run:state.scannerStatus!=="queued",reason:state.scannerStatus==="missing_assets"?"missing_map_asset":"Scanner completed."},snap:{state:state.scannerStatus,count:state.scannerStatus==="completed"&&state.scannerFindings?1:0,can_run:state.scannerStatus!=="queued",reason:"Scanner completed."},players:{[steam]:{wall_track:state.scannerFindings?1:0,snap:state.scannerFindings?1:0}}});
   const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,"http://localhost");state.calls.push(url.pathname+url.search);
+    if(url.pathname.startsWith("/assets/")){
+      const file=path.resolve(projectRoot,"."+url.pathname),assets=path.resolve(projectRoot,"assets")+path.sep;
+      if(file.startsWith(assets)&&fs.existsSync(file)){res.setHeader("Content-Type",file.endsWith(".js")?"text/javascript":file.endsWith(".css")?"text/css":"application/octet-stream");return res.end(fs.readFileSync(file));}
+    }
     res.setHeader("Content-Type",url.pathname==="/admin/hltv-review"?"text/html":"application/json");
     if(url.pathname==="/admin/hltv-review")return res.end(page);
+    if(url.pathname==="/api/supporters")return res.end(JSON.stringify({supporters:[]}));
+    if(url.pathname==="/api/queue")return res.end(JSON.stringify({players:[],max:8}));
+    if(url.pathname==="/api/players/search")return res.end(JSON.stringify({data:[{id:"123",player:"di_ky",elo:1200,wins:2,losses:1,ties:0}]}));
     if(url.pathname.endsWith("/auth/options"))return res.end(JSON.stringify({accounts_enabled:false}));
     if(url.pathname.endsWith("/session"))return res.end(JSON.stringify({user_id:"qa",username:"qa",accounts_enabled:false,can_manage_users:false,must_change_password:false,upstream_enabled:false,statistics_enabled:state.statisticsEnabled}));
     if(url.pathname.endsWith("/demos")){if(state.delayQueue&&url.searchParams.get("status")==="queued")await pause(250);return res.end(JSON.stringify(state.includeDemo?[{id:"demo-1",map:"2fort",match_id:"MATCH1",server:"east",recorded_at:Date.now(),review_status:"queued",priority:"high",upstream_status:null,log_round:1}]:[]));}
@@ -45,10 +53,18 @@ test("browser navigation keeps controls enabled through queue, rapid switching, 
   const port=await until(()=>fs.existsSync(portFile)&&Number(fs.readFileSync(portFile,"utf8").split(/\r?\n/)[0]));
   const targets=await until(async()=>{const response=await fetch(`http://127.0.0.1:${port}/json`);const targets=await response.json();return targets.find(target=>target.type==="page"&&target.url.includes("hltv-review"))?.webSocketDebuggerUrl;});
   cdp=await cdpsocket(targets);await cdp.command("Runtime.enable");
-  const evalJs=async expression=>{const result=await cdp.command("Runtime.evaluate",{expression,returnByValue:true,awaitPromise:true});if(result.exceptionDetails)throw Error(result.exceptionDetails.text);return result.result.value;};
-  await until(()=>evalJs("!!document.getElementById('login')"));
+  const evalJs=async expression=>{const result=await cdp.command("Runtime.evaluate",{expression,returnByValue:true,awaitPromise:true});if(result.exceptionDetails)throw Error(result.exceptionDetails.exception?.description||result.exceptionDetails.text);return result.result.value;};
+  await until(()=>evalJs("!!document.getElementById('login')?.onsubmit && !!document.getElementById('summaryRecordings')"));
+  assert.deepEqual(await evalJs("({loginHidden:document.getElementById('loginPanel').hidden,authenticatedHidden:document.getElementById('authenticatedHeader').hidden})"),{loginHidden:false,authenticatedHidden:true});
+  assert.deepEqual(await evalJs("({nn:getComputedStyle(document.querySelector('main .logo-nn')).color,slash:getComputedStyle(document.querySelector('main .logo-slash')).color,tfc:getComputedStyle(document.querySelector('main .logo-tfc')).color})"),{nn:"rgb(114, 216, 255)",slash:"rgb(255, 93, 130)",tfc:"rgb(241, 245, 249)"});
   await evalJs("document.getElementById('token').value='local-test';document.querySelector('#login button').click()");
-  await until(()=>evalJs("document.getElementById('workspace').hidden===false && document.getElementById('summaryRecordings').textContent==='1'"));
+  await until(async()=>{const view=await evalJs("({ready:document.readyState,workspaceHidden:document.getElementById('workspace').hidden,summary:document.getElementById('summaryRecordings').textContent,message:document.getElementById('message').textContent})");if(view.message)throw Error(`Login transition failed: ${JSON.stringify(view)}; calls: ${JSON.stringify(state.calls)}`);return !view.workspaceHidden&&view.summary==='1';});
+  assert.deepEqual(await evalJs("({authenticatedHidden:document.getElementById('authenticatedHeader').hidden,links:[...document.querySelectorAll('#authenticatedHeader .site-nav>a')].map(a=>[a.textContent.trim(),a.getAttribute('href')]),hasMore:!!document.querySelector('#authenticatedHeader .nav-more'),hasSearch:!!document.querySelector('#authenticatedHeader .search-wrap'),identity:document.getElementById('identity').textContent,signOut:document.getElementById('lock').textContent,sidebar:[...document.querySelectorAll('.console-side button')].map(b=>b.textContent.trim())})"),{authenticatedHidden:false,links:[["Home","index.html"],["Matches","matches.html"],["Players","leaderboard.html"],["Speedruns","speedruns.html"],["Live","live.html"]],hasMore:true,hasSearch:true,identity:"Reviewer qa",signOut:"Sign out",sidebar:["▣  Registry","◇  Review Queue","⚙  Configuration","▤  Retention","◷  Analysis Jobs"]});
+  assert.deepEqual(await evalJs("({nn:getComputedStyle(document.querySelector('#authenticatedHeader .logo-nn')).color,slash:getComputedStyle(document.querySelector('#authenticatedHeader .logo-slash')).color,tfc:getComputedStyle(document.querySelector('#authenticatedHeader .logo-tfc')).color,font:getComputedStyle(document.querySelector('#authenticatedHeader .nn-logo')).fontFamily})"),{nn:"rgb(114, 216, 255)",slash:"rgb(255, 93, 130)",tfc:"rgb(241, 245, 249)",font:'Orbitron, sans-serif'});
+  await evalJs("document.querySelector('#authenticatedHeader .nav-more summary').click()");assert.equal(await evalJs("document.querySelector('#authenticatedHeader .nav-more').open"),true);
+  await evalJs("document.body.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}))");assert.equal(await evalJs("document.querySelector('#authenticatedHeader .nav-more').open"),false);
+  await evalJs("document.getElementById('global-search').value='di';document.getElementById('global-search').dispatchEvent(new Event('input',{bubbles:true}))");
+  await until(()=>evalJs("document.getElementById('search-dropdown')?.textContent.includes('di_ky')"));
   const side=label=>`[...document.querySelectorAll('.console-side button')].find(b=>b.textContent.includes(${JSON.stringify(label)})).click()`;
   const check=()=>evalJs("({status:document.getElementById('status').value,disabled:[...document.querySelectorAll('.console-side button,#lock,#refresh,#filters button')].filter(b=>b.disabled).map(b=>b.textContent.trim()),message:document.getElementById('message').textContent})");
   const before=state.calls.filter(call=>call.includes("/demos?")).length;
@@ -79,7 +95,7 @@ test("browser navigation keeps controls enabled through queue, rapid switching, 
   statistics.observation.groups[0].complete=1;await evalJs("open('demo-1')");await until(()=>evalJs("document.getElementById('quickOutput').textContent.includes('Near Parity')"));
   await evalJs("[...document.querySelectorAll('.investigation-tabs button')].find(b=>b.textContent==='Wall-Track').click()");
   assert.equal(await evalJs("document.querySelector('.investigation-tabs button.active').textContent"),"Wall-Track");
-  await until(()=>evalJs("document.querySelector('.event-row')?.textContent.includes('until 0:11.250')"));
+  try{await until(()=>evalJs("document.querySelector('.event-row')?.textContent.includes('until 0:11.250')"));}catch(error){const view=await evalJs("({timeline:document.getElementById('timelineList').textContent,status:document.getElementById('scannerStatus').textContent,message:document.getElementById('message').textContent,active:document.querySelector('.investigation-tabs button.active')?.textContent})");throw Error(`${error.message}: ${JSON.stringify(view)}; calls: ${JSON.stringify(state.calls.slice(-20))}`);}
   assert.equal(await evalJs("document.getElementById('evidenceSummary').textContent.includes('Wall-Track: 1 candidate')"),true);
   assert.equal(await evalJs("document.querySelector('.rail-marker.wall_track')?.style.width.length>0"),true);
   await evalJs("document.querySelector('.event-row').click()");
@@ -98,4 +114,8 @@ test("browser navigation keeps controls enabled through queue, rapid switching, 
   await evalJs("document.getElementById('reason').value='Local review fixture';document.getElementById('actionForm').requestSubmit()");
   await until(()=>state.calls.some(call=>call.includes("/actions/flag")));
   assert.equal(await evalJs("document.getElementById('lock').disabled"),false);
+  await cdp.command("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  assert.deepEqual(await evalJs("({overflow:document.documentElement.scrollWidth<=innerWidth,headerVisible:!document.getElementById('authenticatedHeader').hidden,navVisible:getComputedStyle(document.querySelector('#authenticatedHeader .site-nav')).display!=='none',sidebarVisible:getComputedStyle(document.querySelector('.console-side')).display!=='none'})"),{overflow:true,headerVisible:true,navVisible:true,sidebarVisible:true});
+  await evalJs("document.getElementById('lock').click()");
+  await until(()=>evalJs("document.getElementById('loginPanel').hidden===false && document.getElementById('authenticatedHeader').hidden===true"));
 });
