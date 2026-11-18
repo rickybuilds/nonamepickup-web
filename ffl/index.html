@@ -5,9 +5,9 @@
 <meta name="theme-color" id="theme-color" content="#1c2440">
 <title>FFL · Final Fortress League</title>
 <meta name="description" content="Final Fortress League player availability and team rosters.">
-<link rel="icon" href="/ffl/favicon.svg"><link rel="stylesheet" href="/ffl/styles.css?v=3">
+<link rel="icon" href="/ffl/favicon.svg"><link rel="stylesheet" href="/ffl/styles.css?v=ffl-theme-fix-4">
 
-<script src="/ffl/app.js" defer></script>
+<script src="/ffl/app.js?v=ffl-theme-fix-4" defer></script>
 </head>
 <body>
 <header class="masthead"><a class="brand" href="/ffl/" aria-label="Final Fortress League home"><img src="/ffl/favicon.svg" width="40" height="40" alt=""><span><strong>FFL</strong><span>Final Fortress League</span></span></a><div class="header-actions"><span class="live-label"><i></i> Season 4</span><button id="theme-toggle" class="header-button theme-toggle" type="button" aria-label="Switch theme" title="Switch theme"><svg id="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg><svg id="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486A9 9 0 0 1 11.514 3.015 9 9 0 1 0 20.985 12.486Z"/></svg></button><button id="admin-button" class="header-button">Admin login</button></div></header>
@@ -32,42 +32,5 @@
 <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-heading"><div><h2 id="delete-title">Remove player?</h2><p id="delete-description"></p></div></div><div class="form-body"><p>This removes their roster entry and team assignment.</p><p id="delete-error" class="form-error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="subtle close-dialog">Keep player</button><button id="confirm-delete" class="danger">Remove player</button></div></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
 
-<script>
-/* FFL theme controller: independent of app.js, compatible with restrictive inline-script policies. */
-(function () {
-  'use strict';
-  const root = document.documentElement;
-  let saved = null;
-  try { saved = localStorage.getItem('ffl-theme'); } catch (_) {}
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const initial = saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light');
-  function apply(theme) {
-    const dark = theme === 'dark';
-    root.dataset.theme = dark ? 'dark' : 'light';
-    root.style.colorScheme = dark ? 'dark' : 'light';
-    const meta = document.getElementById('theme-color');
-    if (meta) meta.content = dark ? '#111827' : '#1c2440';
-    const button = document.getElementById('theme-toggle');
-    if (button) {
-      button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
-      button.title = dark ? 'Light mode' : 'Dark mode';
-      button.setAttribute('aria-pressed', String(dark));
-    }
-  }
-  apply(initial);
-  function bind() {
-    const button = document.getElementById('theme-toggle');
-    if (!button) return;
-    button.addEventListener('click', function () {
-      const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-      apply(next);
-      try { localStorage.setItem('ffl-theme', next); } catch (_) {}
-    });
-    apply(root.dataset.theme);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, { once: true });
-  else bind();
-})();
 
-</script>
 </body></html>

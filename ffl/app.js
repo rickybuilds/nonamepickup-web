@@ -1,5 +1,35 @@
 'use strict';
 const $=id=>document.getElementById(id);
+// FFL theme toggle — runs from the existing CSP-approved app.js.
+(function initTheme() {
+  const root = document.documentElement;
+  const button = document.getElementById('theme-toggle');
+  if (!button) return;
+  let saved = null;
+  try { saved = localStorage.getItem('ffl-theme'); } catch (_) {}
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const initial = saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light');
+  function apply(theme) {
+    const dark = theme === 'dark';
+    root.dataset.theme = dark ? 'dark' : 'light';
+    button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    button.setAttribute('title', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    button.setAttribute('aria-pressed', String(dark));
+    const meta = document.getElementById('theme-color');
+    if (meta) meta.content = dark ? '#111827' : '#1c2440';
+    const sun = document.getElementById('theme-sun');
+    const moon = document.getElementById('theme-moon');
+    if (sun) sun.hidden = !dark;
+    if (moon) moon.hidden = dark;
+  }
+  apply(initial);
+  button.addEventListener('click', () => {
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    apply(next);
+    try { localStorage.setItem('ffl-theme', next); } catch (_) {}
+  });
+})();
+
 const state={players:[],teams:[],admin:false,filter:'all',sort:'name',direction:1,editing:null,deleting:null,loaded:false,busy:false};
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const percent=value=>Number.isInteger(value)?String(value):Number(value).toFixed(1);
