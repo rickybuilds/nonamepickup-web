@@ -1,6 +1,8 @@
 # Strict hit-evidence alerts and game baselines
 
-The primary notification metric is now **strict identified hit-evidence firing events / evidence-eligible firing events**, using Ghosty's existing kill/blood/damage association outputs. It is not aim-near, exact bullet/pellet accuracy or a cheating probability. The quick-view headline uses this same metric; aim-near remains explicitly labelled supporting context. Unmatched evidence is not a confirmed miss.
+The primary notification metric is now **strict identified hit-evidence firing events / evidence-eligible firing events**, using Ghosty's existing kill/blood/damage association outputs. It is not aim-near, exact bullet/pellet accuracy or a cheating probability. The Firing Analysis view presents both metrics separately: aim-near is contextual proximity evidence, while strict hit evidence is matched evidence per firing event. Each comparison shows the concussed and non-concussed numerators, denominators, rates and percentage-point difference. Unmatched evidence is not a confirmed miss.
+
+For example, a concussed AC rate of 26.4% (108/409) can coexist with an aim-near rate of 26.2% (107/409): the numerators represent different evidence fields even though the eligible-event denominator is shared. A non-concussed 26.3% strict rate (177/674) can likewise coexist with 22.7% aim-near (153/674). The console uses neutral descriptive labels such as **Concussion Advantage**, **Normal Advantage**, **Near Parity** and **Insufficient Data**; these labels describe the selected metric only and are not cheating classifications.
 
 ## Games, windows and firing events
 

@@ -8,20 +8,24 @@ function cdpsocket(url){return new Promise((resolve,reject)=>{const ws=new WebSo
   command(method,params={}){return new Promise((yes,no)=>{const id=++next;waiting.set(id,{yes,no});ws.send(JSON.stringify({id,method,params}));});},close(){ws.close();}}));
   ws.addEventListener("message",event=>{const data=JSON.parse(event.data);if(!data.id)return;const call=waiting.get(data.id);if(!call)return;waiting.delete(data.id);data.error?call.no(Error(data.error.message)):call.yes(data.result);});ws.addEventListener("error",reject);});}
 test("browser navigation keeps controls enabled through queue, rapid switching, and API failure",{skip:process.platform!=="win32"||!fs.existsSync(edge)?"Requires installed Windows Edge":false,timeout:60000},async t=>{
-  const state={calls:[],failNext:false,delayQueue:false,includeDemo:false,scannerStatus:"completed",scannerFindings:true};
+  const state={calls:[],failNext:false,delayQueue:false,includeDemo:false,scannerStatus:"completed",scannerFindings:true,statisticsEnabled:true};
   const steam="STEAM_0:1:123",target="STEAM_0:1:456";
   const observation={id:"observation-1",demo_sha256:"a".repeat(64),upstream_sha:"b".repeat(40),config_hash:"c".repeat(64)};
   const findings=[{id:"1".repeat(32),category:"wall_track",steam_id:steam,player_name:"Player",target_steam_id:target,target_name:"Target",time_seconds:10,end_seconds:11.25,source:"ghosty_runAnalysis",quality:"reconstructed_geometry",details:{duration_seconds:1.25,target_movement:120,angular_sweep_degrees:8,related_firing:1,related_kill:false},limitations:["Reconstructed occlusion is not awareness."]},
     {id:"2".repeat(32),category:"snap",steam_id:steam,player_name:"Player",target_steam_id:target,target_name:"Target",time_seconds:20,end_seconds:20,source:"ghosty_runAnalysis",quality:"reconstructed_geometry",details:{angular_turn_degrees:20,sample_interval_seconds:.05,angular_speed_degrees_per_second:400,firing_delay_seconds:.08,heuristic_score:.6},limitations:["Snapshot samples do not prove intent."]}];
+  const statistics={observation:{id:"observation-1",log_round:1,upstream_sha:"b".repeat(40),config_hash:"c".repeat(64),groups:[
+    {steam_id:steam,player_name:"Player",class_id:1,weapon:"ac",state:"conc",recorded:500,eligible:409,aim_near:107,evidence_eligible:409,strict:108,inclusive:120,geometry_hit:107,no_enemy:0,unavailable:0,uncertain:0,complete:1},
+    {steam_id:steam,player_name:"Player",class_id:1,weapon:"ac",state:"outside",recorded:800,eligible:674,aim_near:153,evidence_eligible:674,strict:177,inclusive:190,geometry_hit:153,no_enemy:0,unavailable:0,uncertain:0,complete:1}],review_context:[{steam_id:steam,class_id:1,weapon:"ac",conc_windows:12,baseline:{games:3,required_games:25,ready:false,percent:null}}]},job:null};
   const scanner=()=>({wall_track:{state:state.scannerStatus,count:state.scannerStatus==="completed"&&state.scannerFindings?1:0,can_run:state.scannerStatus!=="queued",reason:state.scannerStatus==="missing_assets"?"missing_map_asset":"Scanner completed."},snap:{state:state.scannerStatus,count:state.scannerStatus==="completed"&&state.scannerFindings?1:0,can_run:state.scannerStatus!=="queued",reason:"Scanner completed."},players:{[steam]:{wall_track:state.scannerFindings?1:0,snap:state.scannerFindings?1:0}}});
   const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,"http://localhost");state.calls.push(url.pathname+url.search);
     res.setHeader("Content-Type",url.pathname==="/admin/hltv-review"?"text/html":"application/json");
     if(url.pathname==="/admin/hltv-review")return res.end(page);
     if(url.pathname.endsWith("/auth/options"))return res.end(JSON.stringify({accounts_enabled:false}));
-    if(url.pathname.endsWith("/session"))return res.end(JSON.stringify({user_id:"qa",username:"qa",accounts_enabled:false,can_manage_users:false,must_change_password:false,upstream_enabled:false,statistics_enabled:false}));
+    if(url.pathname.endsWith("/session"))return res.end(JSON.stringify({user_id:"qa",username:"qa",accounts_enabled:false,can_manage_users:false,must_change_password:false,upstream_enabled:false,statistics_enabled:state.statisticsEnabled}));
     if(url.pathname.endsWith("/demos")){if(state.delayQueue&&url.searchParams.get("status")==="queued")await pause(250);return res.end(JSON.stringify(state.includeDemo?[{id:"demo-1",map:"2fort",match_id:"MATCH1",server:"east",recorded_at:Date.now(),review_status:"queued",priority:"high",upstream_status:null,log_round:1}]:[]));}
     if(url.pathname.endsWith("/demos/demo-1"))return res.end(JSON.stringify({id:"demo-1",map:"2fort",match_id:"MATCH1",server:"east",recorded_at:Date.now(),review_status:"queued",file_status:"available",analysis_status:"unsupported",retention_class:"normal",expires_at:Date.now()+86400000,sha256:"a".repeat(64),upstream_runs:[],holds:[],notes:[],anomalies:[],aim_markers:[],gap_findings:[],audit:[]}));
+    if(url.pathname.endsWith("/demos/demo-1/statistics"))return res.end(JSON.stringify(statistics));
     if(url.pathname.endsWith("/demos/demo-1/investigation"))return res.end(JSON.stringify({status:"ready",players:[{steam_id:steam,name:"Player"}],scanner:scanner()}));
     if(url.pathname.includes("/players/")&&url.pathname.endsWith("/timeline")){const list=state.scannerStatus==="completed"&&state.scannerFindings?findings.filter(e=>!url.searchParams.get("category")||e.category===url.searchParams.get("category")):[];return res.end(JSON.stringify({status:"ready",observation,scanner:scanner(),total:list.length,offset:0,limit:100,events:list}));}
     if(url.pathname.includes("/events/"))return res.end(JSON.stringify({observation,event:findings.find(e=>url.pathname.endsWith(e.id))}));
@@ -57,6 +61,12 @@ test("browser navigation keeps controls enabled through queue, rapid switching, 
   await evalJs(side("Analysis Jobs"));await until(()=>evalJs("document.getElementById('jobsPanel').hidden===false"));assert.deepEqual((await check()).disabled,[]);
   state.includeDemo=true;await evalJs("document.getElementById('refresh').click()");await until(()=>evalJs("document.querySelector('#rows button')!==null"));
   await evalJs("document.querySelector('#rows button').click()");await until(()=>evalJs("document.getElementById('detail').hidden===false"));
+  await until(()=>evalJs("document.getElementById('quickOutput').textContent.includes('Aim-near context')"));
+  assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('Strict hit evidence')"),true);
+  assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('Near Parity')"),true);
+  assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('107/409')"),true);
+  assert.equal(await evalJs("document.getElementById('quickOutput').textContent.includes('108/409')"),true);
+  assert.equal(await evalJs("document.getElementById('statsContext').textContent.includes('Historical consistency: insufficient baseline')"),true);
   await evalJs("[...document.querySelectorAll('.investigation-tabs button')].find(b=>b.textContent==='Wall-Track').click()");
   assert.equal(await evalJs("document.querySelector('.investigation-tabs button.active').textContent"),"Wall-Track");
   await until(()=>evalJs("document.querySelector('.event-row')?.textContent.includes('until 0:11.250')"));

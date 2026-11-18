@@ -15,9 +15,30 @@ function harness(responder=async route=>route.startsWith("/demos?")?[]:storage(1
     $:el,message:text=>{el("message").textContent=text;},
     registryPageSize:10,stamp:()=>"",cell(){throw Error("Unexpected row")},mapPreview(){throw Error("Unexpected row")},statusBadge(){throw Error("Unexpected row")}};
   vm.createContext(context);
-  vm.runInContext(`let registryRequest=0,navigationEpoch=0,timelineRequest=0,eventRequest=0,selected=null,reviewTarget=null,offset=0;${runtime}\nglobalThis.testApi={run,navigateRegistry,refresh,getOffset:()=>offset};`,context);
+  vm.runInContext(`let registryRequest=0,navigationEpoch=0,timelineRequest=0,eventRequest=0,selected=null,reviewTarget=null,offset=0;${runtime}\nglobalThis.testApi={run,navigateRegistry,refresh,getOffset:()=>offset,comparisonSummary,comparisonText};`,context);
   return {el,calls,...context.testApi};
 }
+test("comparison helpers keep aim-near context separate from strict hit evidence",()=>{
+  const ui=harness();
+  const summary=ui.comparisonSummary({near:107,nearEligible:409,strict:108,strictEligible:409},{near:153,nearEligible:674,strict:177,strictEligible:674});
+  assert.equal(summary.aimNear.conc.percent.toFixed(1),"26.2");
+  assert.equal(summary.aimNear.outside.percent.toFixed(1),"22.7");
+  assert.equal(summary.aimNear.gapPoints.toFixed(1),"3.5");
+  assert.equal(summary.strict.conc.percent.toFixed(1),"26.4");
+  assert.equal(summary.strict.outside.percent.toFixed(1),"26.3");
+  assert.equal(summary.strict.gapPoints.toFixed(1),"0.1");
+  assert.equal(summary.aimNear.label,"Near Parity");
+  assert.equal(ui.comparisonText(summary.strict),"Near parity: concussed 26.4% (108/409) vs non-concussed 26.3% (177/674), a +0.1 point difference.");
+});
+test("comparison helpers describe direction and insufficient evidence without fabricating rates",()=>{
+  const ui=harness();
+  assert.equal(ui.comparisonSummary({near:30,nearEligible:100,strict:40,strictEligible:100},{near:20,nearEligible:100,strict:10,strictEligible:100}).aimNear.label,"Concussion Advantage");
+  assert.equal(ui.comparisonSummary({near:10,nearEligible:100,strict:5,strictEligible:100},{near:20,nearEligible:100,strict:30,strictEligible:100}).strict.label,"Normal Advantage");
+  const missing=ui.comparisonSummary({near:0,nearEligible:0,strict:0,strictEligible:0},null);
+  assert.equal(missing.aimNear.label,"Insufficient Data");
+  assert.equal(missing.strict.conc.percent,null);
+  assert.match(ui.comparisonText(missing.strict),/Insufficient data/);
+});
 test("Review Queue makes one registry request and leaves navigation enabled",async()=>{
   const ui=harness();for(const id of ["back","refresh","lock","filters","previous","next"])ui.el(id);
   await ui.navigateRegistry("queued");
