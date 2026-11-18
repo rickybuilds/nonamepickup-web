@@ -73,8 +73,8 @@ async function run(fn,control){
   finally{if(state&&--state.count===0){control.disabled=state.previous;pendingControls.delete(control);}}
 }
 function metricComparison(concNumerator,concDenominator,outsideNumerator,outsideDenominator){
-  const conc=Number.isFinite(concDenominator)&&concDenominator>0?{numerator:concNumerator,denominator:concDenominator,percent:100*concNumerator/concDenominator}:null;
-  const outside=Number.isFinite(outsideDenominator)&&outsideDenominator>0?{numerator:outsideNumerator,denominator:outsideDenominator,percent:100*outsideNumerator/outsideDenominator}:null;
+  const conc=Number.isFinite(concNumerator)&&Number.isFinite(concDenominator)&&concNumerator>=0&&concDenominator>0?{numerator:concNumerator,denominator:concDenominator,percent:100*concNumerator/concDenominator}:null;
+  const outside=Number.isFinite(outsideNumerator)&&Number.isFinite(outsideDenominator)&&outsideNumerator>=0&&outsideDenominator>0?{numerator:outsideNumerator,denominator:outsideDenominator,percent:100*outsideNumerator/outsideDenominator}:null;
   const gapPoints=conc&&outside?conc.percent-outside.percent:null;
   let label='Insufficient Data';
   if(gapPoints!=null)label=Math.abs(gapPoints)<5?'Near Parity':gapPoints>0?'Concussion Advantage':'Normal Advantage';
@@ -88,6 +88,16 @@ function comparisonText(summary){
   if(!summary?.available)return 'Insufficient data: compatible concussed and non-concussed eligible events are required.';
   const c=summary.conc,o=summary.outside,g=summary.gapPoints,sign=g>=0?'+':'';
   return `${summary.label==='Near Parity'?'Near parity':summary.label.toLowerCase()}: concussed ${c.percent.toFixed(1)}% (${c.numerator}/${c.denominator}) vs non-concussed ${o.percent.toFixed(1)}% (${o.numerator}/${o.denominator}), a ${sign}${g.toFixed(1)} point difference.`;
+}
+function findingEvidence(f){
+  const aimNear=f?.metric==='aim-near-context'||(f?.conc_hits==null&&f?.conc_near!=null);
+  return {kind:aimNear?'aim-near':'strict-hit-evidence',label:aimNear?'Aim-near context':'Strict matched hit evidence',concNumerator:aimNear?f?.conc_near:f?.conc_hits,outsideNumerator:aimNear?f?.outside_near:f?.outside_hits};
+}
+function historicalContextText(item){
+  const b=item?.baseline;
+  if(!b)return 'Historical consistency: unavailable; no compatible baseline or concussion-window coverage was returned.';
+  const coverage=item.conc_windows==null?'Concussion-window coverage unavailable. ':item.conc_windows+' distinct concussion windows. ';
+  return coverage+(b.ready?'Historical comparable-game baseline: '+b.percent.toFixed(1)+'% across '+b.games+' games.':'Historical consistency: insufficient baseline ('+b.games+'/'+b.required_games+' earlier comparable games).')+' Review findings, when present, remain human-review context rather than cheating classifications.';
 }
 function tableControls(container,table,name,pageSize){
   const body=table.tBodies[0],rows=[...body.rows],indexed=rows.map(row=>({row,text:[...row.cells].map(cell=>cell.textContent).join(" ").toLowerCase()}));let page=0;
@@ -188,7 +198,7 @@ function renderQuickStatistics(){
   const out=$('quickOutput'),context=$('statsContext');out.replaceChildren();context.replaceChildren();const comparisonOutput=document.createElement('div');comparisonOutput.className='comparison-grid';const weapons=new Map();
   for(const group of statisticsGroups.filter(g=>g.steam_id===$('historyPlayer').value)){
     if(!weapons.has(group.weapon))weapons.set(group.weapon,{conc:{strict:0,total:0,near:0,eligible:0,noEnemy:0},outside:{strict:0,total:0,near:0,eligible:0,noEnemy:0},uncertain:0});
-    const w=weapons.get(group.weapon);if(group.state==='uncertain'){w.uncertain+=group.recorded;continue;}const bucket=w[group.state];if(!bucket)continue;bucket.strict+=group.strict;bucket.total+=group.evidence_eligible;bucket.near+=group.aim_near;bucket.eligible+=group.eligible;bucket.noEnemy+=group.no_enemy;
+    const w=weapons.get(group.weapon);if(group.state==='uncertain'){w.uncertain+=group.recorded;continue;}if(group.complete===false||group.complete===0){continue;}const bucket=w[group.state];if(!bucket)continue;bucket.strict+=group.strict;bucket.total+=group.evidence_eligible;bucket.near+=group.aim_near;bucket.eligible+=group.eligible;bucket.noEnemy+=group.no_enemy;
   }
   const table=document.createElement('table'),head=document.createElement('thead'),heading=document.createElement('tr'),body=document.createElement('tbody');for(const name of ['Weapon','Conc','Non-conc']){const th=document.createElement('th');th.scope='col';th.textContent=name;heading.append(th);}head.append(heading);
   const labels={ac:'AC',super_shotgun:'Super shotgun',shotgun:'Shotgun',sniper:'Sniper rifle',auto_rifle:'Auto rifle'};
@@ -203,7 +213,7 @@ function renderQuickStatistics(){
   if(body.children.length){table.append(head,body);const scroll=document.createElement('div');scroll.className='table-scroll';scroll.append(table);out.append(scroll);}else out.textContent='No supported weapon stats for this player.';
   for(const [weapon,buckets]of weapons){const summary=comparisonSummary({near:buckets.conc.near,nearEligible:buckets.conc.eligible,strict:buckets.conc.strict,strictEligible:buckets.conc.total},{near:buckets.outside.near,nearEligible:buckets.outside.eligible,strict:buckets.outside.strict,strictEligible:buckets.outside.total});const label=labels[weapon]||weapon.replaceAll('_',' ');article(comparisonOutput,label+' · Aim-near context · '+summary.aimNear.label,comparisonText(summary.aimNear)+' Contextual proximity evidence, not confirmed hits or accuracy.');article(comparisonOutput,label+' · Strict hit evidence · '+summary.strict.label,comparisonText(summary.strict)+' Matched hit evidence per firing event, not conventional bullet accuracy.');}
   if(comparisonOutput.children.length)out.prepend(comparisonOutput);
-  for(const item of reviewContexts.filter(c=>c.steam_id===$('historyPlayer').value)){const b=item.baseline;article(context,'Class '+item.class_id+' · '+item.weapon.replaceAll('_',' '),(item.conc_windows==null?'Concussion-window coverage: unavailable. ':item.conc_windows+' distinct concussion windows. ')+(b.ready?'Historical comparable-game baseline: '+b.percent.toFixed(1)+'% across '+b.games+' games.':'Historical consistency: insufficient baseline ('+b.games+'/'+b.required_games+' earlier comparable games).')+' Review findings, when present, remain human-review context rather than cheating classifications.');}
+  for(const item of reviewContexts.filter(c=>c.steam_id===$('historyPlayer').value)){article(context,'Class '+item.class_id+' · '+item.weapon.replaceAll('_',' '),historicalContextText(item));}
 }
 function renderGapFindings(d){
   const markers=d.aim_markers||[];$("quietMarkers").hidden=!markers.length;$("markerOutput").replaceChildren();
@@ -211,9 +221,9 @@ function renderGapFindings(d){
   const findings=d.gap_findings||[];if(!findings.length)return;
   if(!d.anomalies.length)$("anomalies").replaceChildren();
   const titles={high_conc:"High conc hit evidence",repeated_gap:"Repeated close hit-evidence rates",baseline_rise:"Increase above personal baseline"};
-  for(const finding of findings){const f=JSON.parse(finding.data_json),baseline=f.baseline;
+  for(const finding of findings){const f=JSON.parse(finding.data_json),baseline=f.baseline,evidence=findingEvidence(f);
     article($("anomalies"),`${f.player_name||f.steam_id} · ${f.weapon} · class ${f.class_id} · ${titles[f.trigger]||"Historical aim-near trigger (retired)"}`,
-      `Strict matched hit evidence: concussed ${f.conc_percent.toFixed(1)}% (${f.conc_hits??f.conc_near}/${f.conc_eligible}); `+(f.outside_percent==null?"non-concussed unavailable. ":`non-concussed ${f.outside_percent.toFixed(1)}% (${f.outside_hits??f.outside_near}/${f.outside_eligible}). `)+
+      `${evidence.label}: concussed ${f.conc_percent.toFixed(1)}% (${evidence.concNumerator}/${f.conc_eligible}); `+(f.outside_percent==null?"non-concussed unavailable. ":`non-concussed ${f.outside_percent.toFixed(1)}% (${evidence.outsideNumerator}/${f.outside_eligible}). `)+
       (f.conc_windows!=null?`${f.conc_windows} distinct concussion windows. `:"")+(baseline?(baseline.ready?`Earlier baseline ${baseline.percent.toFixed(1)}% across ${baseline.games} games. `:`Baseline building: ${baseline.games}/${baseline.required_games} earlier games. `):"")+"Human review trigger, not a cheating verdict. "+f.steam_id);
   }
 }

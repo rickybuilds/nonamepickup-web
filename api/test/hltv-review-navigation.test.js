@@ -15,7 +15,7 @@ function harness(responder=async route=>route.startsWith("/demos?")?[]:storage(1
     $:el,message:text=>{el("message").textContent=text;},
     registryPageSize:10,stamp:()=>"",cell(){throw Error("Unexpected row")},mapPreview(){throw Error("Unexpected row")},statusBadge(){throw Error("Unexpected row")}};
   vm.createContext(context);
-  vm.runInContext(`let registryRequest=0,navigationEpoch=0,timelineRequest=0,eventRequest=0,selected=null,reviewTarget=null,offset=0;${runtime}\nglobalThis.testApi={run,navigateRegistry,refresh,getOffset:()=>offset,comparisonSummary,comparisonText};`,context);
+  vm.runInContext(`let registryRequest=0,navigationEpoch=0,timelineRequest=0,eventRequest=0,selected=null,reviewTarget=null,offset=0;${runtime}\nglobalThis.testApi={run,navigateRegistry,refresh,getOffset:()=>offset,comparisonSummary,comparisonText,findingEvidence,historicalContextText};`,context);
   return {el,calls,...context.testApi};
 }
 test("comparison helpers keep aim-near context separate from strict hit evidence",()=>{
@@ -38,6 +38,13 @@ test("comparison helpers describe direction and insufficient evidence without fa
   assert.equal(missing.aimNear.label,"Insufficient Data");
   assert.equal(missing.strict.conc.percent,null);
   assert.match(ui.comparisonText(missing.strict),/Insufficient data/);
+});
+test("comparison helpers fail closed for malformed numerators and missing history",()=>{
+  const ui=harness();
+  assert.equal(ui.comparisonSummary({near:undefined,nearEligible:100,strict:108,strictEligible:409},{near:153,nearEligible:674,strict:177,strictEligible:674}).aimNear.label,"Insufficient Data");
+  assert.equal(JSON.stringify(ui.findingEvidence({metric:"aim-near-context",conc_near:107,conc_eligible:409,outside_near:153,outside_eligible:674})),JSON.stringify({kind:"aim-near",label:"Aim-near context",concNumerator:107,outsideNumerator:153}));
+  assert.equal(JSON.stringify(ui.findingEvidence({metric:"strict-hit-evidence-v1",conc_hits:108,conc_eligible:409,outside_hits:177,outside_eligible:674})),JSON.stringify({kind:"strict-hit-evidence",label:"Strict matched hit evidence",concNumerator:108,outsideNumerator:177}));
+  assert.equal(ui.historicalContextText({conc_windows:null,baseline:null}),"Historical consistency: unavailable; no compatible baseline or concussion-window coverage was returned.");
 });
 test("Review Queue makes one registry request and leaves navigation enabled",async()=>{
   const ui=harness();for(const id of ["back","refresh","lock","filters","previous","next"])ui.el(id);
