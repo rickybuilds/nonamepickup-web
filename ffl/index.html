@@ -1,7 +1,30 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#1c2440"><title>FFL · Final Fortress League</title><meta name="description" content="Final Fortress League player availability and team rosters."><link rel="icon" href="/ffl/favicon.svg"><link rel="stylesheet" href="/ffl/styles.css"><script src="/ffl/app.js" defer></script></head>
-<body>
-<header class="masthead"><a class="brand" href="/ffl/" aria-label="Final Fortress League home"><img src="/ffl/favicon.svg" width="40" height="40" alt=""><span><strong>FFL</strong><span>Final Fortress League</span></span></a><div class="header-actions"><span class="live-label"><i></i> Season 4</span><button id="admin-button" class="header-button">Admin login</button></div></header>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#1c2440" id="theme-color">
+  <title>FFL · Final Fortress League</title>
+  <meta name="description" content="Final Fortress League player availability and team rosters.">
+  <link rel="icon" href="/ffl/favicon.svg">
+  <link rel="stylesheet" href="/ffl/styles.css">
+
+  <script>
+    (function () {
+      const saved = localStorage.getItem("ffl-theme");
+      const theme = saved === "light" || saved === "dark"
+        ? saved
+        : (window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark" : "light");
+
+      document.documentElement.dataset.theme = theme;
+      document.getElementById("theme-color")
+        .setAttribute("content", theme === "dark" ? "#111827" : "#1c2440");
+    })();
+  </script>
+
+  <script src="/ffl/app.js" defer></script>
+</head>
+
 <main>
 <div class="page-heading"><div><h1 id="page-title">Player roster</h1><p id="page-description">Find your teammates. Plan your weekends.</p></div><button id="add-player" class="primary"><span class="plus" aria-hidden="true">+</span> Add player</button></div>
 <nav class="page-nav" aria-label="League pages"><a href="#roster" id="roster-link" aria-current="page">Players <span id="total-count">—</span></a><a href="#teams" id="teams-link">Teams <span id="teams-count">—</span></a><span class="public-note" id="public-note">Open signup · Admin-managed changes</span></nav>
