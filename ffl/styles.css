@@ -96,7 +96,8 @@ progress.percent-track{border:0;appearance:none;display:block;color:#8b86d9}prog
 .class-limits{min-width:0;white-space:normal;font-variant-numeric:tabular-nums}
 .class-limits th,.class-limits td{height:auto;padding:11px 18px}
 .class-limits tbody th{font-size:13px;color:var(--ink)}
-.page-nav{overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--muted) transparent}
+.page-nav{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--muted) transparent}
+.page-nav a[aria-current]:after{bottom:0}
 .page-nav>a{flex-shrink:0;white-space:nowrap}
 @media(max-width:900px){.page-nav .public-note{display:none}}
 @media(max-width:650px){.league-details{font-size:14px}.class-limits th,.class-limits td{padding:10px 12px}.league-details-intro h2{font-size:21px}}
