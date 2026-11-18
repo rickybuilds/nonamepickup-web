@@ -65,6 +65,7 @@ function assetEntry(directory, route) {
 }
 function patchWeb(source) {
   return source.replaceAll("/api/", "/api/admin/hltv/viewer/")
+    .replace("$('#btnOpen').addEventListener('click', showPicker);", "$('#btnOpen').addEventListener('click', () => window.close());")
     .replace("const m = /demo=([0-9a-f]+)/.exec(location.hash);", "const m = /demo=([0-9a-f-]{16,64})/.exec(location.hash);")
     .replace("fetch(`/api/admin/hltv/viewer/map/${encodeURIComponent(game)}/${encodeURIComponent(name)}`)", "fetch(`/api/admin/hltv/viewer/map/${encodeURIComponent(game)}/${encodeURIComponent(name)}?demo=${encodeURIComponent(S.id)}`)")
     .replace("fetch(`/api/admin/hltv/viewer/model/${encodeURIComponent(game)}/${encodeURIComponent(path)}`)", "fetch(`/api/admin/hltv/viewer/model/${encodeURIComponent(game)}/${encodeURIComponent(path)}?demo=${encodeURIComponent(S.id)}`)")
@@ -73,7 +74,7 @@ function patchWeb(source) {
 function viewerPage(release) {
   let html = fs.readFileSync(path.join(release.root, "web", "index.html"), "utf8");
   html = html.replaceAll('href="/web/', 'href="/api/admin/hltv/viewer/web/').replaceAll('src="/web/', 'src="/api/admin/hltv/viewer/web/');
-  html = html.replace('<button id="btnOpen" class="btn">Open demo…</button>', '<button class="btn" type="button" onclick="window.close()">Close viewer</button>');
+  html = html.replace('<button id="btnOpen" class="btn">Open demo…</button>', '<button id="btnOpen" class="btn" type="button">Close viewer</button>');
   html = html.replace('<button data-tab="edit">Edit</button>', '').replace('<div id="tab-edit" class="tab"></div>', '');
   html = html.replace('<div class="conc-log-attach">', '<div class="conc-log-attach" hidden>');
   html = html.replace('<div id="picker" class="overlay">', '<div id="picker" class="overlay hidden">');
