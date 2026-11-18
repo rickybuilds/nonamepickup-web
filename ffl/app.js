@@ -8,7 +8,7 @@ const $=id=>document.getElementById(id);
   let saved = null;
   try { saved = localStorage.getItem('ffl-theme'); } catch (_) {}
   const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const initial = saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light');
+  const initial = saved === 'dark' || saved === 'light' ? saved : 'dark';
   function apply(theme) {
     const dark = theme === 'dark';
     root.dataset.theme = dark ? 'dark' : 'light';
