@@ -65,6 +65,7 @@ function assetEntry(directory, route) {
 }
 function patchWeb(source) {
   return source.replaceAll("/api/", "/api/admin/hltv/viewer/")
+    .replace("const m = /demo=([0-9a-f]+)/.exec(location.hash);", "const m = /demo=([0-9a-f-]{16,64})/.exec(location.hash);")
     .replace("fetch(`/api/admin/hltv/viewer/map/${encodeURIComponent(game)}/${encodeURIComponent(name)}`)", "fetch(`/api/admin/hltv/viewer/map/${encodeURIComponent(game)}/${encodeURIComponent(name)}?demo=${encodeURIComponent(S.id)}`)")
     .replace("fetch(`/api/admin/hltv/viewer/model/${encodeURIComponent(game)}/${encodeURIComponent(path)}`)", "fetch(`/api/admin/hltv/viewer/model/${encodeURIComponent(game)}/${encodeURIComponent(path)}?demo=${encodeURIComponent(S.id)}`)")
     .replace("startDemo();", "startDemo(); const requested=/[&#]t=([0-9]+(?:\\.[0-9]+)?)/.exec(location.hash); if(requested) S.t=Math.min(S.meta.end,S.meta.start+Number(requested[1])); const requestedPlayer=/[&#]player=([^&]+)/.exec(location.hash); if(requestedPlayer){const steam=decodeURIComponent(requestedPlayer[1]);const player=S.meta.players.find(p=>p.steam===steam&&p.first<=S.t&&(p.left==null||p.left>=S.t));if(player)selectPlayer(player.ent,'eye');}");
@@ -148,7 +149,15 @@ function registerViewer(router, { registry, env }) {
   });
   router.get("/viewer/demo/:id/:file", (req, res, next) => {
     try {
-      if (req.params.file === "conc-log") return res.json({});
+      if (req.params.file === "conc-log") {
+        let snapshot = registry.db.prepare("SELECT matched_log_json FROM hltv_source_log_snapshots WHERE demo_id=? ORDER BY created_at DESC LIMIT 1").get(req.params.id);
+        if (!snapshot) {
+          const linked = registry.db.prepare("SELECT original_demo_id,recovered_demo_id FROM hltv_source_recoveries WHERE original_demo_id=? OR recovered_demo_id=?").get(req.params.id, req.params.id);
+          const related = linked && (linked.original_demo_id === req.params.id ? linked.recovered_demo_id : linked.original_demo_id);
+          if (related) snapshot = registry.db.prepare("SELECT matched_log_json FROM hltv_source_log_snapshots WHERE demo_id=? ORDER BY created_at DESC LIMIT 1").get(related);
+        }
+        return res.json(snapshot ? JSON.parse(snapshot.matched_log_json) : {});
+      }
       const names = { meta: ["meta.json.gz", "application/json"], data: ["data.bin.gz", "application/octet-stream"] }, item = names[req.params.file];
       if (!item) return res.sendStatus(404);
       const demo = registry.get(req.params.id); if (demo.file_status !== "available") return res.sendStatus(410); const directory = cacheDirectory(registry, demo.sha256);
