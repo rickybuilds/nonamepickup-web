@@ -125,7 +125,7 @@ function createRouter({ registry, env = process.env }) {
   router.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
     // Never expose SQL errors or filesystem paths.
-    console.error("[HLTV review] request failed:", error.code || error.name);
+    console.error("[HLTV review] request failed:", req.method, req.path, error.code || error.name, String(error.message || "").slice(0, 500));
     if(error.status===429)res.set("Retry-After","900");
     res.status(error.publicCode?error.status:400).json({ ok: false, error: error.publicCode||"review_operation_failed" });
   });
