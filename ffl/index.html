@@ -5,8 +5,8 @@
 <meta name="theme-color" id="theme-color" content="#1c2440">
 <title>FFL · Final Fortress League</title>
 <meta name="description" content="Final Fortress League player availability and team rosters.">
-<link rel="icon" href="/ffl/favicon.svg"><link rel="stylesheet" href="/ffl/styles.css?v=2">
-<script src="/ffl/theme.js?v=2" defer></script>
+<link rel="icon" href="/ffl/favicon.svg"><link rel="stylesheet" href="/ffl/styles.css?v=3">
+
 <script src="/ffl/app.js" defer></script>
 </head>
 <body>
@@ -32,4 +32,42 @@
 <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-heading"><div><h2 id="delete-title">Remove player?</h2><p id="delete-description"></p></div></div><div class="form-body"><p>This removes their roster entry and team assignment.</p><p id="delete-error" class="form-error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="subtle close-dialog">Keep player</button><button id="confirm-delete" class="danger">Remove player</button></div></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
 
+<script>
+/* FFL theme controller: independent of app.js, compatible with restrictive inline-script policies. */
+(function () {
+  'use strict';
+  const root = document.documentElement;
+  let saved = null;
+  try { saved = localStorage.getItem('ffl-theme'); } catch (_) {}
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const initial = saved === 'dark' || saved === 'light' ? saved : (prefersDark ? 'dark' : 'light');
+  function apply(theme) {
+    const dark = theme === 'dark';
+    root.dataset.theme = dark ? 'dark' : 'light';
+    root.style.colorScheme = dark ? 'dark' : 'light';
+    const meta = document.getElementById('theme-color');
+    if (meta) meta.content = dark ? '#111827' : '#1c2440';
+    const button = document.getElementById('theme-toggle');
+    if (button) {
+      button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+      button.title = dark ? 'Light mode' : 'Dark mode';
+      button.setAttribute('aria-pressed', String(dark));
+    }
+  }
+  apply(initial);
+  function bind() {
+    const button = document.getElementById('theme-toggle');
+    if (!button) return;
+    button.addEventListener('click', function () {
+      const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      apply(next);
+      try { localStorage.setItem('ffl-theme', next); } catch (_) {}
+    });
+    apply(root.dataset.theme);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, { once: true });
+  else bind();
+})();
+
+</script>
 </body></html>
