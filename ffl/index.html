@@ -1,30 +1,24 @@
-
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#1c2440" id="theme-color">
-  <title>FFL · Final Fortress League</title>
-  <meta name="description" content="Final Fortress League player availability and team rosters.">
-  <link rel="icon" href="/ffl/favicon.svg">
-  <link rel="stylesheet" href="/ffl/styles.css">
-
-  <script>
-    (function () {
-      const saved = localStorage.getItem("ffl-theme");
-      const theme = saved === "light" || saved === "dark"
-        ? saved
-        : (window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark" : "light");
-
-      document.documentElement.dataset.theme = theme;
-      document.getElementById("theme-color")
-        .setAttribute("content", theme === "dark" ? "#111827" : "#1c2440");
-    })();
-  </script>
-
-  <script src="/ffl/app.js" defer></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" id="theme-color" content="#1c2440">
+<title>FFL · Final Fortress League</title>
+<meta name="description" content="Final Fortress League player availability and team rosters.">
+<link rel="icon" href="/ffl/favicon.svg"><link rel="stylesheet" href="/ffl/styles.css">
+<script>
+(function(){
+  let saved;
+  try { saved = localStorage.getItem('ffl-theme'); } catch(e) {}
+  const theme = saved === 'dark' || saved === 'light' ? saved : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = theme;
+  document.getElementById('theme-color').content = theme === 'dark' ? '#111827' : '#1c2440';
+})();
+</script>
+<script src="/ffl/app.js" defer></script>
 </head>
-
+<body>
+<header class="masthead"><a class="brand" href="/ffl/" aria-label="Final Fortress League home"><img src="/ffl/favicon.svg" width="40" height="40" alt=""><span><strong>FFL</strong><span>Final Fortress League</span></span></a><div class="header-actions"><span class="live-label"><i></i> Season 4</span><button id="theme-toggle" class="header-button theme-toggle" type="button" aria-label="Switch theme" title="Switch theme"><svg id="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg><svg id="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.985 12.486A9 9 0 0 1 11.514 3.015 9 9 0 1 0 20.985 12.486Z"/></svg></button><button id="admin-button" class="header-button">Admin login</button></div></header>
 <main>
 <div class="page-heading"><div><h1 id="page-title">Player roster</h1><p id="page-description">Find your teammates. Plan your weekends.</p></div><button id="add-player" class="primary"><span class="plus" aria-hidden="true">+</span> Add player</button></div>
 <nav class="page-nav" aria-label="League pages"><a href="#roster" id="roster-link" aria-current="page">Players <span id="total-count">—</span></a><a href="#teams" id="teams-link">Teams <span id="teams-count">—</span></a><span class="public-note" id="public-note">Open signup · Admin-managed changes</span></nav>
@@ -45,4 +39,28 @@
 <dialog id="team-dialog" aria-labelledby="team-title"><form id="team-form"><div class="dialog-heading"><div><h2 id="team-title">Add a team</h2><p>Name it now. Draft players whenever you’re ready.</p></div><button type="button" class="icon-button close-dialog" aria-label="Close team form">×</button></div><div class="form-body"><label>Team name<input name="name" required maxlength="50"></label><p id="team-error" class="form-error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="subtle close-dialog">Cancel</button><button type="submit" class="primary">Add team</button></div></form></dialog>
 <dialog id="delete-dialog" aria-labelledby="delete-title"><div class="dialog-heading"><div><h2 id="delete-title">Remove player?</h2><p id="delete-description"></p></div></div><div class="form-body"><p>This removes their roster entry and team assignment.</p><p id="delete-error" class="form-error" role="alert" hidden></p></div><div class="dialog-footer"><button type="button" class="subtle close-dialog">Keep player</button><button id="confirm-delete" class="danger">Remove player</button></div></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
+<script>
+(function(){
+  const root = document.documentElement;
+  const button = document.getElementById('theme-toggle');
+  const meta = document.getElementById('theme-color');
+  const sun = document.getElementById('theme-sun');
+  const moon = document.getElementById('theme-moon');
+  function refresh(){
+    const dark = root.dataset.theme === 'dark';
+    sun.hidden = !dark;
+    moon.hidden = dark;
+    button.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    button.title = dark ? 'Light mode' : 'Dark mode';
+    meta.content = dark ? '#111827' : '#1c2440';
+  }
+  button.addEventListener('click', function(){
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem('ffl-theme', next); } catch(e) {}
+    refresh();
+  });
+  refresh();
+})();
+</script>
 </body></html>
