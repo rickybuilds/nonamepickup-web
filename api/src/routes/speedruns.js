@@ -21,6 +21,7 @@ const {
 const MAX_MAP_NAME_LENGTH = 64;
 const MAX_STEAM_ID_LENGTH = 35;
 const MAX_DISCORD_ID_LENGTH = 32;
+const SUB_TWO_SECOND_EXCEPTION_MAP = "2small2push";
 const SPEEDRUN_USAGE_FIELDS = [
   { column: "crowbar_shots", resultAlias: "worldRecordCrowbarShots" },
   { column: "shotgun_shots", resultAlias: "worldRecordShotgunShots" },
@@ -39,11 +40,11 @@ const SPEEDRUN_USAGE_FIELDS = [
 ];
 
 function eligibleRunSql(alias = "") {
-  return `${alias}time_ms >= ${MIN_VALID_RUN_TIME_MS}`;
+  return `(${alias}map = '${SUB_TWO_SECOND_EXCEPTION_MAP}' OR ${alias}time_ms >= ${MIN_VALID_RUN_TIME_MS})`;
 }
 
 function eligibleRecordSql(alias = "") {
-  return `${alias}best_time_ms >= ${MIN_VALID_RUN_TIME_MS}`;
+  return `(${alias}map = '${SUB_TWO_SECOND_EXCEPTION_MAP}' OR ${alias}best_time_ms >= ${MIN_VALID_RUN_TIME_MS})`;
 }
 
 function concLimitFields(row) {
