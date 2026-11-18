@@ -75,7 +75,7 @@ function viewerPage(release) {
   let html = fs.readFileSync(path.join(release.root, "web", "index.html"), "utf8");
   html = html.replaceAll('href="/web/', 'href="/api/admin/hltv/viewer/web/').replaceAll('src="/web/', 'src="/api/admin/hltv/viewer/web/');
   html = html.replace('<button id="btnOpen" class="btn">Open demo…</button>', '<button id="btnOpen" class="btn" type="button">Close viewer</button>');
-  html = html.replace('<button data-tab="edit">Edit</button>', '').replace('<div id="tab-edit" class="tab"></div>', '');
+  html = html.replace('<button data-tab="edit">Edit</button>', '').replace('<div id="tab-edit" class="tab"></div>', '<div id="tab-edit" class="tab" hidden></div>');
   html = html.replace('<div class="conc-log-attach">', '<div class="conc-log-attach" hidden>');
   html = html.replace('<div id="picker" class="overlay">', '<div id="picker" class="overlay hidden">');
   return html;
