@@ -24,8 +24,9 @@ function createRouter({ registry, env = process.env }) {
     next();
   });
   const route = fn => (req, res, next) => { try { fn(req, res); } catch (error) { next(error); } };
-  router.get("/session", (req, res) => res.json({ user_id: req.hltvActor, username:req.hltvAccount?.username,accounts_enabled:accounts.enabled,can_manage_users:accounts.isOwner(req.hltvActor),must_change_password:!!req.hltvAccount?.must_change_password,upstream_enabled: upstreamConfig(env).enabled,statistics_enabled:upstreamConfig(env).statisticsEnabled }));
-  router.post("/auth/logout",route((req,res)=>{accounts.logout(req.hltvSessionToken);res.json({ok:true});}));
+  router.get("/session", (req, res) => res.json({ user_id: req.hltvActor, username:req.hltvAccount?.username,accounts_enabled:accounts.enabled,can_manage_users:accounts.isOwner(req.hltvActor),must_change_password:!!req.hltvAccount?.must_change_password,upstream_enabled: upstreamConfig(env).enabled,statistics_enabled:upstreamConfig(env).statisticsEnabled,viewer_enabled:env.HLTV_VIEWER_ENABLED==="true" }));
+  require("./viewer").registerViewer(router,{registry,env});
+  router.post("/auth/logout",route((req,res)=>{accounts.logout(req.hltvSessionToken);res.clearCookie("hltv_viewer",{path:"/api/admin/hltv/viewer"});res.clearCookie("hltv_viewer_demo",{path:"/api/admin/hltv/viewer"});res.json({ok:true});}));
   router.post("/account/password",async(req,res)=>{
     if(!req.hltvAccount)return res.status(400).json({error:"username_login_required"});
     res.json(await accounts.changePassword(req.hltvAccount,req.hltvSessionToken,req.body||{}));

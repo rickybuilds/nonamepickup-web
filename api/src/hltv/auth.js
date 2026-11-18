@@ -8,14 +8,18 @@ function createAuth(env = process.env, accounts) {
   }
   return (req, res, next) => {
     res.set({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" });
-    const token = /^Bearer ([\x21-\x7e]{32,256})$/.exec(req.headers.authorization || "")?.[1];
+    let token = /^Bearer ([\x21-\x7e]{32,256})$/.exec(req.headers.authorization || "")?.[1];
+    if (!token && req.path.startsWith("/viewer/")) {
+      const encoded = /(?:^|;\s*)hltv_viewer=([A-Za-z0-9_-]{43,342})(?:;|$)/.exec(req.headers.cookie || "")?.[1];
+      try { token = encoded ? Buffer.from(encoded, "base64url").toString("utf8") : null; } catch { token = null; }
+    }
     if (!token) return res.status(401).json({ ok: false, error: "review_auth_required" });
     const account = accounts?.authenticate(token);
     if (account) { req.hltvActor = account.actor; req.hltvAccount = account; req.hltvSessionToken = token; return next(); }
     const hash = crypto.createHash("sha256").update(token).digest();
     const user = Object.entries(credentials).find(([, value]) => crypto.timingSafeEqual(hash, Buffer.from(value, "hex")))?.[0];
     if (!user) return res.status(403).json({ ok: false, error: "review_access_denied" });
-    req.hltvActor = user; next();
+    req.hltvActor = user; req.hltvSessionToken = token; next();
   };
 }
 module.exports = { createAuth };

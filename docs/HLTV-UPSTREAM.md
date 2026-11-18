@@ -10,7 +10,7 @@ The private background worker calls the actual upstream `goldsrc_demo.Demo.parse
 
 For an accepted match, results include the upstream commit, log round/hash, alignment anchors/residuals/uncertainty, pause intervals and logged concussion events with upstream estimated timer windows. Upstream's stock duration defaults and pause/death/cure/track rules are used unchanged. No replacement timer or anomaly algorithm is implemented here. These outputs are gameplay estimates, not cheating probabilities or verdicts. Zero concussion events is not a clean anti-cheat result.
 
-The first connection does **not** host Ghosty's 3D viewer, run weapon/hitbox comparisons, or emit Discord anomaly alerts. Those capabilities need game assets and a separately reviewed authenticated viewer service. Never proxy Ghosty's entire localhost HTTP application publicly: its listing/upload/export/filesystem-oriented features are not this API. Decoding and matched-log concussion estimation here do not need a Half-Life installation; the later rendered viewer does. Game assets are not included or redistributed.
+The private console can optionally host Ghosty's browser viewer through a narrow authenticated, read-only adapter. It serves only the selected verified demo's decoded stream and a bounded bundle containing its map, player models, recorded weapon/object models and available first-person weapon models; Ghosty's listing, upload, edit, export and filesystem-oriented endpoints are not proxied. Set `HLTV_VIEWER_ENABLED=true` only after the existing upstream pin and private `HLTV_ASSETS_ROOT` are working. Viewer artifacts live beneath private HLTV storage, expire after `HLTV_VIEWER_CACHE_HOURS` (12 by default), are capped by `HLTV_VIEWER_CACHE_MAX_BYTES` (1 GiB by default), and preparation still obeys `HLTV_MIN_DISK_FREE_BYTES`. Sounds, sprites and video export are intentionally unavailable in this first hosted version. Game assets are not included or redistributed.
 
 The original registry `analysis_status` remains `unsupported` for automated anomaly detection. The separate `hltv_upstream_runs` table and **Conc analysis** UI column report this real connected capability, avoiding a false complete/clean detector status.
 
@@ -26,6 +26,9 @@ HLTV_UPSTREAM_ROOT=/opt/noname-hltv-tools
 HLTV_UPSTREAM_PYTHON=python3
 HLTV_UPSTREAM_MEMORY_BYTES=2147483648
 HLTV_PARSER_LOG_ROOT=/var/lib/noname-parser
+HLTV_VIEWER_ENABLED=false
+HLTV_VIEWER_CACHE_HOURS=12
+HLTV_VIEWER_CACHE_MAX_BYTES=1073741824
 ```
 
 Install/check the real upstream source:

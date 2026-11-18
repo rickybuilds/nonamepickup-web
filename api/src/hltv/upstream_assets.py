@@ -32,8 +32,16 @@ def convert(request):
                 name = level['models'].get(str(index))
                 if name and name.lower().endswith('.mdl'):
                     models.add(name)
+    if request.get('viewer'):
+        # The scanner needs only player models. Hosted playback additionally needs
+        # every model index actually referenced by player weapons and demo objects.
+        with open(os.path.join(request['output_dir'], 'viewer-models.json'), 'rb') as source:
+            viewer_models = json.loads(source.read(65537))
+        if not isinstance(viewer_models, list) or len(viewer_models) > 256 or not all(isinstance(name, str) for name in viewer_models):
+            raise ValueError('invalid_viewer_model_manifest')
+        models.update(viewer_models)
     maps = {level['map'] for level in meta['levels']}
-    if len(models) > 128 or len(maps) > 8:
+    if len(models) > (256 if request.get('viewer') else 128) or len(maps) > 8:
         raise ValueError('too_many_analysis_assets')
     rows = []
     def safe(filename):
