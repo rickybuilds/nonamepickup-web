@@ -2,6 +2,34 @@
 const fs = require("fs"), path = require("path"), crypto = require("crypto"), { spawn } = require("child_process");
 const { Storage } = require("./storage");
 const { activeRelease } = require("./upstreamRelease");
+const DIAGNOSTICS={
+  missing_map_asset:["scanner","Required private map or model assets are unavailable.",false,"Provision or verify the private BSP/model asset root before retrying."],
+  missing_private_asset:["assets","Required private map or model assets are unavailable.",false,"Provision or verify the private BSP/model asset root before retrying."],
+  missing_or_invalid_player_model:["assets","Required player-model assets are unavailable or invalid.",false,"Provision or verify the private player-model assets before retrying."],
+  no_server_player_models:["scanner","The recording did not provide usable player-model references.",false,"Inspect the demo export and recording completeness before retrying."],
+  no_verified_log_pairing:["pairing","No unique verified server-log round could be associated with this recording.",true,"Preserve or recover the correct parser log, then retry."],
+  ambiguous_log_pairing:["pairing","More than one server-log round matched this recording.",true,"Inspect the pairing candidates before retrying."],
+  demo_unfinalized_missing_directory:["decode","The demo recording is incomplete and has no finalized directory.",true,"Finalize or recover the original recording before retrying."],
+  demo_checksum_mismatch:["source","The retained demo bytes no longer match their registered checksum.",false,"Quarantine the recording and reconcile it from a trusted source."],
+  unsupported_upstream_scanner:["scanner","The active upstream release does not provide a compatible scanner.",false,"Restore a supported pinned upstream release before retrying."],
+  upstream_scanner_incomplete:["scanner","The worker terminated before a complete scanner result was produced.",true,"Inspect the worker log and retry after resolving the reported condition."],
+  upstream_scanner_timeout:["scanner","The scanner exceeded its bounded runtime.",true,"Inspect input size and worker capacity before retrying."],
+  resource_limit:["worker","The analysis worker exceeded its configured resource limit.",true,"Inspect memory, CPU, storage headroom, and worker logs before retrying."],
+  upstream_resource_limit:["worker","The analysis worker exceeded its configured resource limit.",true,"Inspect memory, CPU, storage headroom, and worker logs before retrying."],
+  insufficient_memory_headroom:["worker","The host did not have enough available memory to start analysis safely.",true,"Wait for or provision sufficient host memory before retrying."],
+  insufficient_storage_headroom:["worker","The private analysis storage does not have enough free space.",true,"Free or provision private storage before retrying."],
+  invalid_log_manifest:["parser","The parser-log manifest is invalid.",false,"Inspect the parser-log manifest and source preservation records."],
+  missing_parser_log_manifest:["parser","The parser-log manifest is unavailable.",true,"Restore the verified parser-log manifest before retrying."],
+  missing_parser_result:["parser","The parser result is unavailable.",true,"Restore the verified parser result before retrying."],
+  invalid_upstream_output:["worker","The analysis worker returned an invalid result.",true,"Inspect the worker log and retry after resolving the upstream failure."],
+  log_source_checksum_mismatch:["parser","The parser log bytes do not match the recorded source checksum.",false,"Preserve the original source or inspect the immutable snapshot."],
+  upstream_failed:["worker","The worker terminated before analysis completed.",true,"Inspect the recorded stage and worker log before retrying."]
+};
+function diagnosticForError(error, stage="worker") {
+  const raw=String(error?.message||""), match=Object.keys(DIAGNOSTICS).find(code=>raw===code||raw.includes(code)), code=match==="upstream_resource_limit"?"resource_limit":match||"internal_failure";
+  const row=DIAGNOSTICS[code]||[stage,"The analysis worker terminated before a complete result was produced.",true,"Inspect the worker log before retrying."];
+  return {code,stage:row[0],message:row[1],retryable:row[2],next_action:row[3]};
+}
 function upstreamConfig(env = process.env) {
   const memoryBytes = Number(env.HLTV_UPSTREAM_MEMORY_BYTES || 2147483648);
   if (!Number.isSafeInteger(memoryBytes) || memoryBytes < 268435456 || memoryBytes > 4294967296) throw new Error("Invalid HLTV_UPSTREAM_MEMORY_BYTES");
@@ -29,7 +57,7 @@ function cleanupScratch(registry, runId) {
   const cache = path.join(registry.storage.root, "cache"), directory = path.join(cache, "ghosty-" + runId);
   if (!fs.existsSync(directory)) return;
   if (fs.realpathSync(cache) !== cache || fs.realpathSync(directory) !== directory || fs.lstatSync(directory).isSymbolicLink()) throw new Error("Unsafe scratch directory");
-  const allowed = new Set(["meta.json.gz", "data.bin.gz", "matched-log.json", "assets.bin", "statistics.json"]);
+  const allowed = new Set(["meta.json.gz", "data.bin.gz", "matched-log.json", "assets.bin", "statistics.json", "accepted-log.bin", "source-manifest.json", "preserved-source.log"]);
   for (const name of fs.readdirSync(directory)) {
     if (!allowed.has(name)) continue;
     const target = path.join(directory, name), stat = fs.lstatSync(target);
@@ -74,7 +102,11 @@ function child(bin, args, input, timeout = 180000) {
     worker.stdin.on("error", () => {});
     worker.on("close", code => {
       clearTimeout(timer);
-      if (failed || code !== 0) return reject(new Error(failed ? "upstream_resource_limit" : "upstream_process_failed: " + (error || Buffer.concat(stdout).toString("utf8").slice(0, 1000))));
+      if (failed || code !== 0) {
+        let detail = error || Buffer.concat(stdout).toString("utf8").slice(0, 1000);
+        try { detail = JSON.parse(detail).error || detail; } catch {}
+        return reject(new Error(failed ? "upstream_resource_limit" : "upstream_process_failed: " + detail));
+      }
       try { resolve(JSON.parse(Buffer.concat(stdout).toString("utf8"))); } catch { reject(new Error("invalid_upstream_output")); }
     });
     worker.stdin.end(input ? JSON.stringify(input) : "");
@@ -84,8 +116,9 @@ function resolveParserLogs(root, matchId) {
   if (!/^[A-Za-z0-9_-]{1,80}$/.test(matchId)) throw new Error("invalid_match_identity");
   const logs = new Storage(root, { readonly: true });
   const logDir = path.join(logs.root, matchId);
-  const logManifest = logs.resolve(matchId + "/manifest.json", ".json");
-  const logResult = logs.resolve(matchId + "/result.json", ".json");
+  let logManifest, logResult;
+  try { logManifest = logs.resolve(matchId + "/manifest.json", ".json"); } catch (error) { if (error.code === "ENOENT") { const missing=new Error("missing_parser_log_manifest");missing.code="ENOENT";throw missing; } throw error; }
+  try { logResult = logs.resolve(matchId + "/result.json", ".json"); } catch (error) { if (error.code === "ENOENT") { const missing=new Error("missing_parser_result");missing.code="ENOENT";throw missing; } throw error; }
   if (fs.statSync(logManifest).size > 65536) throw new Error("invalid_parser_log_manifest");
   const names = JSON.parse(fs.readFileSync(logManifest, "utf8")).logs;
   if (!Array.isArray(names) || names.length < 1 || names.length > 2 || !names.every((name, i) => name === `round-${i + 1}.log`)) throw new Error("invalid_parser_log_manifest");
@@ -125,17 +158,27 @@ async function runPending(registry, options) {
     const release = activeRelease(options.root), demo = registry.get(run.demo_id);
     if (demo.file_status !== "available") throw new Error("demo_unavailable");
     const source = registry.storage.verify(demo);
-    const { logDir, logManifest, logResult } = resolveParserLogs(options.logsRoot, demo.match_id);
+    const previous = registry.db.prepare(`SELECT s.sha256,s.log_filename,s.log_round,s.source_hash,s.manifest_sha256
+      FROM hltv_source_log_snapshots s JOIN hltv_upstream_run_sources rs ON rs.snapshot_sha256=s.sha256
+      JOIN hltv_upstream_runs prior ON prior.id=rs.run_id WHERE s.demo_id=? ORDER BY rs.created_at DESC LIMIT 1`).get(demo.id);
     const cache = path.join(registry.storage.root, "cache");
     fs.mkdirSync(cache, { recursive: true, mode: 0o700 });
     if (fs.realpathSync(cache) !== cache) throw new Error("unsafe_cache_root");
     directory = path.join(cache, "ghosty-" + run.id); fs.mkdirSync(directory, { mode: 0o700 });
+    let logDir, logManifest, logResult, sourceSnapshotInput;
+    if (previous) {
+      const preserved = registry.sourceLogSnapshot(previous.sha256);
+      const snapshotPath = path.join(directory, "preserved-source.log");
+      fs.writeFileSync(snapshotPath, preserved.rawLog, { mode: 0o600, flag: "wx" });
+      sourceSnapshotInput = { log_path: snapshotPath, log_filename: previous.log_filename, log_round: previous.log_round,
+        sha256: previous.sha256, source_hash: previous.source_hash, manifest_sha256: previous.manifest_sha256 };
+    } else ({ logDir, logManifest, logResult } = resolveParserLogs(options.logsRoot, demo.match_id));
     registry.db.prepare("UPDATE hltv_upstream_runs SET upstream_sha=? WHERE id=?").run(release.sha, run.id);
     const pythonCommand = sandboxCommand(options.python, ["-I", path.join(__dirname, "upstream_bridge.py")], directory, options.memoryBytes);
     const matched = await child(pythonCommand.bin, pythonCommand.args, {
       upstream_root: release.root, demo_path: source.path, demo_sha256: demo.sha256,
       max_demo_bytes: registry.storage.maxBytes, match_id: demo.match_id, map: demo.map,
-      log_dir: logDir, log_manifest: logManifest, log_result: logResult, output_dir: directory,
+      ...(sourceSnapshotInput ? { source_snapshot: sourceSnapshotInput } : { log_dir: logDir, log_manifest: logManifest, log_result: logResult }), output_dir: directory,
       memory_bytes: options.memoryBytes || 2147483648,
     });
     if (matched.status !== "matched") {
@@ -146,6 +189,10 @@ async function runPending(registry, options) {
     const heapMiB = Math.floor((options.memoryBytes || 2147483648) / 2097152);
     const nodeCommand = sandboxCommand(process.execPath, ["--max-old-space-size=" + heapMiB, path.join(__dirname, "upstream_conc.js"), release.root, directory], directory, options.memoryBytes);
     const estimate = await child(nodeCommand.bin, nodeCommand.args);
+    JSON.parse(fs.readFileSync(path.join(directory,"source-manifest.json"),"utf8"));
+    const sourceSnapshot=registry.preserveSourceLog({demoId:demo.id,runId:run.id,logFilename:matched.log_filename,logRound:matched.log_round,
+      sourceHash:matched.source_hash,manifestSha256:matched.manifest_sha256,matchedLog:JSON.parse(fs.readFileSync(path.join(directory,"matched-log.json"),"utf8")),
+      rawLog:fs.readFileSync(path.join(directory,"accepted-log.bin"))});
     let statistics;
     if(options.statisticsEnabled){
       const assets=new Storage(options.assetsRoot,{readonly:true,publicRoot:path.resolve(__dirname,"../../..")});
@@ -158,12 +205,13 @@ async function runPending(registry, options) {
       statistics=JSON.parse(fs.readFileSync(resultFile,"utf8"));
     }
     const result = { ...estimate, upstream_sha: release.sha, source: "ghostile/goldsrc-hltv-tools", pairing: matched,
+      source_snapshot_sha256:sourceSnapshot.sha256, source_revision:"immutable_registry_snapshot",
       demo_sha256: demo.sha256, match_id: demo.match_id, demo_id: demo.id, anomaly_detection: "not_implemented", viewer: "not_integrated" };
     const serialized = JSON.stringify(result);
     if (serialized.length > 2 * 1024 * 1024) throw new Error("result_too_large");
     registry.storage.verify(demo);
     registry.db.transaction(() => {
-      const committed = registry.db.prepare("UPDATE hltv_upstream_runs SET status='complete',finished_at=?,result_json=?,error_code=NULL WHERE id=? AND status='processing'").run(Date.now(), serialized, run.id);
+      const committed = registry.db.prepare("UPDATE hltv_upstream_runs SET status='complete',finished_at=?,result_json=?,error_code=NULL,diagnostic_json=?,analysis_disposition='completed' WHERE id=? AND status='processing'").run(Date.now(), serialized, JSON.stringify({code:"complete",stage:"complete",message:"Analysis completed.",retryable:false,next_action:"Review the stored result in context."}), run.id);
       if (committed.changes !== 1) throw new Error("upstream_run_lease_lost");
       if(statistics){
         const stored=require("./playerStatistics").storeStatistics(registry,{id:run.id,demo,upstream_sha:release.sha,pairing:matched},statistics);
@@ -178,10 +226,11 @@ async function runPending(registry, options) {
     return { enabled: true, processed: 1, status: "complete", run_id: run.id };
   } catch (error) {
     console.error("[HLTV upstream]", run.id, error.message);
-    const known=["ambiguous_log_pairing","no_verified_log_pairing","insufficient_storage_headroom","missing_map_asset","missing_or_invalid_player_model","no_server_player_models","missing_private_asset","asset_checksum_mismatch","unsupported_upstream_scanner","upstream_scanner_incomplete","upstream_scanner_timeout","too_many_scanner_findings","statistics_input_too_large","upstream_resource_limit"];
+    const known=["ambiguous_log_pairing","no_verified_log_pairing","insufficient_storage_headroom","insufficient_memory_headroom","missing_map_asset","missing_or_invalid_player_model","no_server_player_models","missing_private_asset","asset_checksum_mismatch","unsupported_upstream_scanner","upstream_scanner_incomplete","upstream_scanner_timeout","too_many_scanner_findings","statistics_input_too_large","upstream_resource_limit","source_log_revision_changed","demo_unfinalized_missing_directory","demo_is_not_hltv","demo_wrong_map","unsupported_demo","log_source_checksum_mismatch","invalid_log_manifest","missing_parser_log_manifest","missing_parser_result","log_match_identity","demo_checksum_mismatch","invalid_upstream_output"];
     const code=known.find(value=>error.message===value||error.message.includes("upstream_process_failed: "+value))||"upstream_failed";
-    registry.db.prepare("UPDATE hltv_upstream_runs SET status='failed',finished_at=?,error_code=?,result_json=? WHERE id=?").run(Date.now(), code, error.diagnostics ? JSON.stringify(error.diagnostics) : null, run.id);
-    registry.audit(run.demo_id, "upstream-worker", "upstream_failed", { run_id: run.id, error_code: code });
+    const diagnostic=diagnosticForError(error,code.includes("log")||code.includes("pairing")?"parser":code.includes("asset")||code.includes("model")?"assets":code.includes("scanner")?"scanner":"worker");
+    registry.db.prepare("UPDATE hltv_upstream_runs SET status='failed',finished_at=?,error_code=?,result_json=?,diagnostic_json=?,analysis_disposition='pending' WHERE id=?").run(Date.now(), code, error.diagnostics ? JSON.stringify(error.diagnostics) : null, JSON.stringify(diagnostic), run.id);
+    registry.audit(run.demo_id, "upstream-worker", "upstream_failed", { run_id: run.id, error_code: code, stage:diagnostic.stage });
     // Failure keeps the explicit hold for an administrator to inspect/release.
     return { enabled: true, processed: 1, status: "failed", run_id: run.id, error_code: code };
   } finally {
@@ -192,4 +241,4 @@ async function runPending(registry, options) {
     }
   }
 }
-module.exports = { upstreamConfig, queueRun, runPending, child, reapScratch, sandboxCommand, resolveParserLogs };
+module.exports = { upstreamConfig, queueRun, runPending, child, reapScratch, sandboxCommand, resolveParserLogs, diagnosticForError };

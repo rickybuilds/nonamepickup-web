@@ -1,5 +1,6 @@
 "use strict";
 const express = require("express"), fs = require("fs");
+const parseJson=value=>{try{return value==null?null:JSON.parse(value);}catch{return null;}};
 const { createAuth } = require("./auth");
 const { upstreamConfig, queueRun } = require("./upstream");
 const { demoStatistics,playerHistory,statisticsPayload }=require("./playerStatistics");
@@ -63,8 +64,18 @@ function createRouter({ registry, env = process.env }) {
   router.get("/demos/:id/players/:steam/timeline",route((req,res)=>res.json(investigation.timeline(registry,req.params.id,req.params.steam,req.query,upstreamConfig(env)))));
   router.get("/demos/:id/events/:event",route((req,res)=>res.json(investigation.detail(registry,req.params.id,req.params.event))));
   router.get("/storage-summary", route((req, res) => res.json(registry.summary())));
-  router.get("/jobs",route((req,res)=>res.json(registry.db.prepare(`SELECT u.id,u.status,u.error_code,u.created_at,u.finished_at,d.map,d.match_id
-    FROM hltv_upstream_runs u JOIN hltv_demos d ON d.id=u.demo_id ORDER BY u.created_at DESC,u.id DESC LIMIT 50`).all())));
+  router.get("/worker-status",route((req,res)=>{
+    const latest=registry.db.prepare("SELECT id,status,created_at,started_at,finished_at,error_code,diagnostic_json FROM hltv_upstream_runs ORDER BY created_at DESC,id DESC LIMIT 1").get();
+    const current=registry.db.prepare("SELECT id,status,started_at FROM hltv_upstream_runs WHERE status IN ('queued','processing') ORDER BY created_at,id LIMIT 1").get()||null;
+    const queue=registry.db.prepare("SELECT COUNT(*) AS n FROM hltv_upstream_runs WHERE status='queued'").get().n;
+    const lastComplete=registry.db.prepare("SELECT finished_at FROM hltv_upstream_runs WHERE status='complete' ORDER BY finished_at DESC,id DESC LIMIT 1").get()?.finished_at||null;
+    res.json({configured:{upstream:upstreamConfig(env).enabled,statistics:upstreamConfig(env).statisticsEnabled,assets_root:Boolean(upstreamConfig(env).assetsRoot),parser_logs:Boolean(upstreamConfig(env).logsRoot)},queue_depth:queue,current_job:current,last_successful_pass:lastComplete,last_run:latest?{...latest,diagnostic:parseJson(latest.diagnostic_json)}:null});
+  }));
+  router.get("/jobs", route((req, res) => {
+    const jobs = registry.db.prepare(`SELECT u.id,u.status,u.error_code,u.diagnostic_json,u.analysis_disposition,u.created_at,u.started_at,u.finished_at,d.map,d.match_id
+      FROM hltv_upstream_runs u JOIN hltv_demos d ON d.id=u.demo_id ORDER BY u.created_at DESC,u.id DESC LIMIT 50`).all();
+    res.json(jobs.map(job => ({ ...job, diagnostic: parseJson(job.diagnostic_json) })));
+  }));
   router.get("/demos", route((req, res) => res.json(publicData(registry.list(req.query)))));
   router.get("/demos/:id", route((req, res) => res.json(publicData(registry.detail(req.params.id)))));
   router.post("/demos/:id/upstream", route((req, res) => {

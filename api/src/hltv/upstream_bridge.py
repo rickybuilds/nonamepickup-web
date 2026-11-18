@@ -74,21 +74,38 @@ def main(request):
     if not meta.get('game', '').lower().startswith('tfc') or not meta.get('frames'):
         raise ValueError("unsupported_demo")
 
-    manifest = json.loads(read_source(request['log_manifest'], 65536))
-    result = json.loads(read_source(request['log_result'], 33554432))
-    names = manifest.get('logs')
-    if names not in [['round-1.log'], ['round-1.log', 'round-2.log']]:
-        raise ValueError("invalid_log_manifest")
-    if result.get('matchId') != request['match_id'] or result.get('map', '').lower() != meta['map'].lower():
-        raise ValueError("log_match_identity")
-    combined = hashlib.sha256()
-    originals = []
-    for name in names:
-        data = read_source(os.path.join(request['log_dir'], name), 8388608)
-        combined.update(str(len(data)).encode('ascii') + b':' + data)
-        originals.append((name, data))
-    if combined.hexdigest() != result.get('sourceHash'):
-        raise ValueError("log_source_checksum_mismatch")
+    snapshot = request.get('source_snapshot')
+    if snapshot:
+        name = snapshot.get('log_filename')
+        data = read_source(snapshot['log_path'], 8388608)
+        if hashlib.sha256(data).hexdigest() != snapshot.get('sha256'):
+            raise ValueError("log_source_checksum_mismatch")
+        names = [name]
+        originals = [(name, data)]
+        source_hash = snapshot.get('source_hash')
+        manifest_sha256 = snapshot.get('manifest_sha256')
+    else:
+        try:
+            manifest_bytes = read_source(request['log_manifest'], 65536)
+            manifest = json.loads(manifest_bytes)
+            result = json.loads(read_source(request['log_result'], 33554432))
+        except FileNotFoundError as error:
+            raise ValueError('missing_parser_log_manifest' if error.filename == request['log_manifest'] else 'missing_parser_result')
+        names = manifest.get('logs')
+        if names not in [['round-1.log'], ['round-1.log', 'round-2.log']]:
+            raise ValueError("invalid_log_manifest")
+        if result.get('matchId') != request['match_id'] or result.get('map', '').lower() != meta['map'].lower():
+            raise ValueError("log_match_identity")
+        combined = hashlib.sha256()
+        originals = []
+        for name in names:
+            data = read_source(os.path.join(request['log_dir'], name), 8388608)
+            combined.update(str(len(data)).encode('ascii') + b':' + data)
+            originals.append((name, data))
+        source_hash = combined.hexdigest()
+        if source_hash != result.get('sourceHash'):
+            raise ValueError("log_source_checksum_mismatch")
+        manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
     accepted, rejected = [], []
     for index, (name, data) in enumerate(originals):
         try:
@@ -103,14 +120,22 @@ def main(request):
         raise ValueError("decoded_data_too_large")
     round_number, log_name, log_sha, aligned = accepted[0]
     output = request['output_dir']
+    with open(os.path.join(output, 'accepted-log.bin'), 'xb') as target:
+        target.write(originals[round_number - 1][1])
+    with open(os.path.join(output, 'source-manifest.json'), 'xb') as target:
+        target.write(json.dumps({'match_id': request['match_id'], 'map': meta['map'], 'logs': names,
+                                 'accepted_round': round_number, 'accepted_filename': log_name,
+                                 'source_hash': source_hash,
+                                 'manifest_sha256': manifest_sha256}, separators=(',', ':')).encode())
     for name, data in [('meta.json.gz', gzip.compress(json.dumps(meta, separators=(',', ':')).encode(), 4)),
                        ('data.bin.gz', gzip.compress(binary, 4)),
                        ('matched-log.json', json.dumps(aligned, separators=(',', ':')).encode())]:
         with open(os.path.join(output, name), 'xb') as target:
             target.write(data)
     return {'status': 'matched', 'log_round': round_number, 'log_filename': log_name,
-            'log_sha256': log_sha, 'source_hash': combined.hexdigest(), 'alignment': aligned['alignment'],
-            'export_version': demo_viewer.EXPORT_VERSION, 'rejected_candidates': rejected}
+            'log_sha256': log_sha, 'source_hash': source_hash, 'alignment': aligned['alignment'],
+            'export_version': demo_viewer.EXPORT_VERSION, 'rejected_candidates': rejected,
+            'manifest_sha256': manifest_sha256}
 
 
 try:

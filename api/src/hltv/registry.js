@@ -1,10 +1,11 @@
 "use strict";
-const fs = require("fs"), path = require("path"), crypto = require("crypto");
+const fs = require("fs"), path = require("path"), crypto = require("crypto"), zlib = require("zlib");
 const Database = require("better-sqlite3");
 const { Storage } = require("./storage");
 const DAY = 86400000;
 const OPEN = ["queued", "in_review", "escalated"];
 const id = () => crypto.randomUUID();
+const jsonValue = value => { try { return value == null ? null : JSON.parse(value); } catch { return null; } };
 function text(value, max = 2000) {
   if (typeof value !== "string" || !value.trim() || value.length > max) throw new Error("Invalid text");
   return value.trim();
@@ -18,11 +19,34 @@ class Registry {
     this.db = new Database(database, { timeout: 10000 });
     this.db.pragma("journal_mode = WAL"); this.db.pragma("foreign_keys = ON"); this.db.pragma("synchronous = FULL");
     this.db.exec(fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8"));
+    // Additive upgrades for registries created before analysis dispositions
+    // and source snapshots existed. Never rebuild or replace the database.
+    const columns = this.db.prepare("PRAGMA table_info(hltv_upstream_runs)").all().map(row => row.name);
+    for (const [name, definition] of [["diagnostic_json", "TEXT"], ["analysis_disposition", "TEXT NOT NULL DEFAULT 'pending'"], ["source_snapshot_sha256", "TEXT"]]) {
+      if (!columns.includes(name)) this.db.exec(`ALTER TABLE hltv_upstream_runs ADD COLUMN ${name} ${definition}`);
+    }
     if (this.db.prepare("SELECT MAX(version) AS v FROM hltv_schema").get().v !== 1) throw new Error("Unsupported HLTV schema");
   }
   close() { this.db.close(); }
   audit(demo, actor, action, details) { this.db.prepare("INSERT INTO hltv_audit(demo_id,actor,action,details,created_at) VALUES(?,?,?,?,?)").run(demo, actor, action, JSON.stringify(details), Date.now()); }
   alert(demo, kind) { this.db.prepare("INSERT INTO hltv_alerts(id,demo_id,kind,created_at) VALUES(?,?,?,?)").run(id(), demo, kind, Date.now()); }
+  preserveSourceLog({demoId,runId,logFilename,logRound,sourceHash,manifestSha256,matchedLog,rawLog}) {
+    if (!Buffer.isBuffer(rawLog) || !rawLog.length || !/^[a-f0-9]{64}$/.test(sourceHash || "") || !/^[a-f0-9]{64}$/.test(manifestSha256 || "") || !Number.isInteger(logRound) || logRound < 1 || logRound > 2) throw new Error("invalid_source_log_snapshot");
+    const sha256=crypto.createHash("sha256").update(rawLog).digest("hex"),serialized=JSON.stringify(matchedLog);
+    return this.db.transaction(()=>{
+      const existing=this.db.prepare("SELECT sha256,source_hash,manifest_sha256,matched_log_json,raw_log_gzip FROM hltv_source_log_snapshots WHERE sha256=?").get(sha256);
+      if(existing && (existing.source_hash!==sourceHash || existing.manifest_sha256!==manifestSha256 || existing.matched_log_json!==serialized || !zlib.gunzipSync(existing.raw_log_gzip).equals(rawLog))) throw new Error("immutable_source_log");
+      if(!existing)this.db.prepare("INSERT INTO hltv_source_log_snapshots(sha256,demo_id,log_filename,log_round,source_hash,manifest_sha256,matched_log_json,raw_log_gzip,created_at) VALUES(?,?,?,?,?,?,?,?,?)").run(sha256,demoId,logFilename,logRound,sourceHash,manifestSha256,serialized,zlib.gzipSync(rawLog,{level:1}),Date.now());
+      this.db.prepare("INSERT OR IGNORE INTO hltv_upstream_run_sources(run_id,snapshot_sha256,created_at) VALUES(?,?,?)").run(runId,sha256,Date.now());
+      this.db.prepare("UPDATE hltv_upstream_runs SET source_snapshot_sha256=? WHERE id=?").run(sha256,runId);
+      return {sha256};
+    }).immediate();
+  }
+  sourceLogSnapshot(sha256) {
+    const row=this.db.prepare("SELECT * FROM hltv_source_log_snapshots WHERE sha256=?").get(sha256);
+    if(!row)throw new Error("source_log_snapshot_not_found");
+    return {...row,matchedLog:JSON.parse(row.matched_log_json),rawLog:zlib.gunzipSync(row.raw_log_gzip)};
+  }
   get(demoId) { const d = this.db.prepare("SELECT * FROM hltv_demos WHERE id=?").get(demoId); if (!d) throw new Error("Demo not found"); return d; }
   recoverFinalizedSource(originalId,input,actor) { return require("./sourceRecovery").recoverFinalizedSource(this,originalId,input,actor); }
   ingest(manifest) {
@@ -77,9 +101,11 @@ class Registry {
       WHERE NOT EXISTS(SELECT 1 FROM hltv_source_recoveries old WHERE old.original_demo_id=d.id)
       AND (? IS NULL OR ${state}=?) AND (? IS NULL OR d.match_id LIKE ? OR d.map LIKE ?)
       AND (? IS NULL OR ${priority}=?)
-      AND (? IS NULL OR (SELECT status FROM hltv_upstream_runs u WHERE u.demo_id=d.id ORDER BY created_at DESC,id DESC LIMIT 1)=?)
+      AND (? IS NULL OR (SELECT status FROM hltv_upstream_runs u WHERE u.demo_id=d.id ORDER BY created_at DESC,id DESC LIMIT 1)=?
+        OR (?='not_analyzed' AND NOT EXISTS(SELECT 1 FROM hltv_upstream_runs u WHERE u.demo_id=d.id))
+        OR (?='missing_assets' AND (SELECT error_code FROM hltv_upstream_runs u WHERE u.demo_id=d.id ORDER BY created_at DESC,id DESC LIMIT 1) IN ('missing_map_asset','missing_private_asset','missing_or_invalid_player_model','no_server_player_models','asset_checksum_mismatch')))
       ORDER BY CASE ${priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,d.recorded_at DESC LIMIT ? OFFSET ?`)
-      .all(status || null, status || null, search || null, `%${search || ""}%`, `%${search || ""}%`,priorityFilter||null,priorityFilter||null,analysisFilter||null,analysisFilter||null,Math.max(1, Math.min(100, Number(limit) || 50)), Math.max(0, Number(offset) || 0));
+      .all(status || null, status || null, search || null, `%${search || ""}%`, `%${search || ""}%`,priorityFilter||null,priorityFilter||null,analysisFilter||null,analysisFilter||null,analysisFilter||null,analysisFilter||null,Math.max(1, Math.min(100, Number(limit) || 50)), Math.max(0, Number(offset) || 0));
   }
   detail(demoId) {
     const recoveredFrom=this.db.prepare("SELECT original_demo_id,source_filename FROM hltv_source_recoveries WHERE recovered_demo_id=?").get(demoId)||null;
@@ -95,7 +121,7 @@ class Registry {
       gap_findings:this.db.prepare("SELECT id,created_at,data_json FROM hltv_gap_findings WHERE demo_id=? ORDER BY created_at,id").all(demoId),
       aim_markers:this.db.prepare("SELECT id,created_at,data_json FROM hltv_aim_markers WHERE demo_id=? ORDER BY created_at,id").all(demoId),
       runs: this.db.prepare("SELECT * FROM hltv_analysis_runs WHERE demo_id=? ORDER BY started_at DESC LIMIT 50").all(demoId),
-      upstream_runs: this.db.prepare("SELECT id,status,created_at,finished_at,upstream_sha,error_code,result_json FROM hltv_upstream_runs WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").all(demoId),
+      upstream_runs: this.db.prepare("SELECT id,status,created_at,started_at,finished_at,upstream_sha,error_code,diagnostic_json,analysis_disposition,source_snapshot_sha256,result_json FROM hltv_upstream_runs WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").all(demoId).map(run=>({...run,diagnostic:jsonValue(run.diagnostic_json)})),
       audit: this.db.prepare("SELECT * FROM hltv_audit WHERE demo_id IN(?,?) ORDER BY id DESC LIMIT 200").all(demoId,originalId) };
   }
   hold(demoId, reason, actor) { const holdId = id(); this.db.prepare("INSERT INTO hltv_holds(id,demo_id,reason,created_by,created_at) VALUES(?,?,?,?,?)").run(holdId, demoId, reason, actor, Date.now()); return holdId; }
@@ -115,7 +141,7 @@ class Registry {
         this.storage.resolve(d.storage_key);
         this.db.prepare("UPDATE hltv_demos SET file_status='available' WHERE id=?").run(demoId);
       }
-      const reason = ["flag", "report", "hold", "evidence", "release-hold", "status", "extend", "waive-analysis"].includes(action) ? text(data.reason) : null;
+      const reason = ["flag", "report", "hold", "evidence", "release-hold", "status", "extend", "waive-analysis", "analysis-disposition", "reassign", "unclaim"].includes(action) ? text(data.reason) : null;
       switch (action) {
         case "flag": case "report": {
           const priority = data.priority || "high";
@@ -139,6 +165,16 @@ class Registry {
           this.db.prepare("UPDATE hltv_cases SET assigned_to=?,status='in_review' WHERE demo_id=?").run(actor, demoId);
           this.db.prepare("UPDATE hltv_demos SET review_status='in_review' WHERE id=?").run(demoId); break;
         }
+        case "reassign": {
+          if (!OPEN.includes(d.review_status)) throw new Error("Open a case first");
+          const assignee = text(data.assignee, 100);
+          if (!this.db.prepare("UPDATE hltv_cases SET assigned_to=?,status='in_review' WHERE demo_id=?").run(assignee, demoId).changes) throw new Error("Open a case first");
+          this.db.prepare("UPDATE hltv_demos SET review_status='in_review' WHERE id=?").run(demoId); break;
+        }
+        case "unclaim": {
+          if (!this.db.prepare("UPDATE hltv_cases SET assigned_to=NULL,status='queued' WHERE demo_id=?").run(demoId).changes) throw new Error("Open a case first");
+          this.db.prepare("UPDATE hltv_demos SET review_status='queued' WHERE id=?").run(demoId); break;
+        }
         case "status": {
           if (!["queued", "in_review", "dismissed", "confirmed", "escalated"].includes(data.status)) throw new Error("Invalid review status");
           if (!this.db.prepare("SELECT 1 FROM hltv_cases WHERE demo_id=?").get(demoId)) throw new Error("Open a case first");
@@ -155,6 +191,14 @@ class Registry {
           this.db.prepare("UPDATE hltv_demos SET expires_at=MAX(expires_at,?)+? WHERE id=?").run(Date.now(), data.days * DAY, demoId); break;
         }
         case "waive-analysis": this.db.prepare("UPDATE hltv_demos SET analysis_waiver=? WHERE id=?").run(reason, demoId); break;
+        case "analysis-disposition": {
+          if (data.status !== "disposed") throw new Error("Invalid analysis disposition");
+          const run = this.db.prepare("SELECT id,status,analysis_disposition FROM hltv_upstream_runs WHERE demo_id=? ORDER BY created_at DESC,id DESC LIMIT 1").get(demoId);
+          if (!run || !["failed"].includes(run.status)) throw new Error("Only a failed analysis can be disposed");
+          this.db.prepare("UPDATE hltv_upstream_runs SET analysis_disposition='disposed' WHERE id=?").run(run.id);
+          this.audit(demoId, actor, "analysis_disposition", { run_id: run.id, status: "disposed", reason });
+          break;
+        }
         case "policy": {
           if (!["normal", "low", "medium", "high"].includes(data.class) || !Number.isSafeInteger(data.days) || data.days < 1 || data.days > 3650) throw new Error("Invalid policy");
           this.db.prepare("UPDATE hltv_policy SET days=? WHERE class=?").run(data.days, data.class); break;
@@ -174,6 +218,7 @@ class Registry {
       !this.db.prepare("SELECT 1 FROM hltv_holds WHERE demo_id=? AND released_at IS NULL").get(d.id) &&
       !this.db.prepare("SELECT 1 FROM hltv_upstream_runs WHERE demo_id=? AND status IN ('queued','processing')").get(d.id) &&
       !this.db.prepare("SELECT 1 FROM hltv_statistics_jobs j LEFT JOIN hltv_upstream_runs u ON u.id=j.run_id WHERE j.demo_id=? AND (j.skip_reason IS NOT NULL OR u.status='failed')").get(d.id) &&
+      !this.db.prepare("SELECT 1 FROM hltv_upstream_runs u WHERE u.demo_id=? AND u.status='failed' AND COALESCE(u.analysis_disposition,'pending')<>'disposed'").get(d.id) &&
       !this.db.prepare("SELECT 1 FROM hltv_cases WHERE demo_id=? AND status IN ('queued','in_review','escalated')").get(d.id);
   }
   cleanup({ enabled = false, dryRun = true, now = Date.now(), actor = "cleanup", verifyFiles = true } = {}) {
@@ -187,7 +232,8 @@ class Registry {
       AND retention_class!='evidence'
       AND NOT EXISTS(SELECT 1 FROM hltv_holds h WHERE h.demo_id=d.id AND h.released_at IS NULL)
       AND NOT EXISTS(SELECT 1 FROM hltv_upstream_runs u WHERE u.demo_id=d.id AND u.status IN ('queued','processing'))
-      AND NOT EXISTS(SELECT 1 FROM hltv_statistics_jobs j LEFT JOIN hltv_upstream_runs u ON u.id=j.run_id WHERE j.demo_id=d.id AND (j.skip_reason IS NOT NULL OR u.status='failed'))
+       AND NOT EXISTS(SELECT 1 FROM hltv_statistics_jobs j LEFT JOIN hltv_upstream_runs u ON u.id=j.run_id WHERE j.demo_id=d.id AND (j.skip_reason IS NOT NULL OR u.status='failed'))
+       AND NOT EXISTS(SELECT 1 FROM hltv_upstream_runs u WHERE u.demo_id=d.id AND u.status='failed' AND COALESCE(u.analysis_disposition,'pending')<>'disposed')
       AND NOT EXISTS(SELECT 1 FROM hltv_cases c WHERE c.demo_id=d.id AND c.status IN ('queued','in_review','escalated'))
       ORDER BY expires_at,id LIMIT 100`).all(now, this.manualRetentionEnabled ? 1 : 0);
     for (const candidate of candidates) {

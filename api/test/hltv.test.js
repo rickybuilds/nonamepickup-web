@@ -314,6 +314,14 @@ test("player timeline keeps scanner identity, source time and stable event refer
   assert.throws(()=>investigation.timeline(r,demo.id,steam,{start:3,end:2}),/invalid_time_range/);
   assert.throws(()=>storeStatistics(r,{...source,id:"bad-scanner"},{...result,scanner:{...result.scanner,findings:[{...result.scanner.findings[0],time_seconds:-1}]}}),/invalid_scanner_finding/);
 });
+test("identity-unavailable scanner findings remain discoverable in aggregate timeline", t=>{
+  const {registry:r,demo}=fixture(t),{storeStatistics}=require("../src/hltv/playerStatistics"),investigation=require("../src/hltv/investigation");
+  const result={version:1,metric:"ghosty-firing-v1",settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:1},assets:[],groups:[],shots:[],unassigned:0,
+    scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",settings:{source:"web/viewer.js:runAnalysis",sample_target_hz:10,lag_compensation:true},stats:{},findings:[{kind:"track",steam_id:null,player_name:null,target_steam_id:null,target_name:null,time_seconds:12,end_seconds:13,duration_seconds:1}]}};
+  storeStatistics(r,{id:"identity-run",demo,upstream_sha:"b".repeat(40),pairing:{log_sha256:"c".repeat(64),log_round:1}},result);
+  const timeline=investigation.timeline(r,demo.id,"identity_unavailable",{});
+  assert.equal(timeline.total,1);assert.equal(timeline.events[0].identity_unavailable,true);assert.equal(timeline.events[0].time_seconds,12);
+});
 test("scanner status distinguishes queued, running, failed, empty completion and previous results",t=>{
   const {registry:r,demo}=fixture(t),{queueRun}=require("../src/hltv/upstream");
   const {storeStatistics,statisticsPayload}=require("../src/hltv/playerStatistics"),investigation=require("../src/hltv/investigation");
@@ -446,6 +454,38 @@ test("upstream queue is idempotent and protects a running job even if its hold i
   const hold=r.detail(demo.id).holds[0];
   r.action(demo.id,"release-hold",{reason:"administrator action",hold_id:hold.id},"123");
   assert.equal(r.cleanup({enabled:true,dryRun:false}).deleted,0);
+});
+test("failed manual upstream analysis stays protected after its temporary hold is released until disposition", t => {
+  const {registry:r,demo}=fixture(t), {queueRun}=require("../src/hltv/upstream");
+  r.manualRetentionEnabled=true;
+  r.db.prepare("UPDATE hltv_demos SET expires_at=1 WHERE id=?").run(demo.id);
+  const run=queueRun(r,demo.id,"reviewer");
+  r.db.prepare("UPDATE hltv_upstream_runs SET status='failed',finished_at=?,error_code='no_verified_log_pairing' WHERE id=?").run(Date.now(),run.id);
+  const hold=r.detail(demo.id).holds.find(row=>row.id===run.hold_id||row.reason.includes(run.id));
+  r.action(demo.id,"release-hold",{reason:"Failure inspected; temporary run hold released",hold_id:hold.id},"reviewer");
+  assert.equal(r.cleanup({enabled:true,dryRun:true}).eligible,0);
+  r.action(demo.id,"analysis-disposition",{reason:"No verified source pairing; reviewed and disposed",status:"disposed"},"reviewer");
+  assert.equal(r.cleanup({enabled:true,dryRun:true}).eligible,1);
+});
+test("accepted parser logs are preserved immutably and reused by run provenance", t => {
+  const {registry:r,demo}=fixture(t);
+  for(const id of ["run-1","run-2","run-3"]){const hold=r.hold(demo.id,"test "+id,"test");r.db.prepare("INSERT INTO hltv_upstream_runs(id,demo_id,hold_id,status,requested_by,created_at) VALUES(?,?,?,'failed','test',?)").run(id,demo.id,hold,Date.now());}
+  const first=r.preserveSourceLog({demoId:demo.id,runId:"run-1",logFilename:"round-1.log",logRound:1,sourceHash:"a".repeat(64),manifestSha256:"b".repeat(64),matchedLog:{version:1},rawLog:Buffer.from("accepted log")});
+  const second=r.preserveSourceLog({demoId:demo.id,runId:"run-2",logFilename:"round-1.log",logRound:1,sourceHash:"a".repeat(64),manifestSha256:"b".repeat(64),matchedLog:{version:1},rawLog:Buffer.from("accepted log")});
+  assert.equal(first.sha256,second.sha256);
+  assert.deepEqual(r.sourceLogSnapshot(first.sha256).rawLog,Buffer.from("accepted log"));
+  assert.throws(()=>r.preserveSourceLog({demoId:demo.id,runId:"run-3",logFilename:"round-1.log",logRound:1,sourceHash:"c".repeat(64),manifestSha256:"b".repeat(64),matchedLog:{version:1},rawLog:Buffer.from("accepted log")}),/immutable_source_log/);
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_source_log_snapshots").get().n,1);
+  assert.equal(r.db.prepare("SELECT COUNT(*) AS n FROM hltv_upstream_run_sources").get().n,2);
+});
+test("upstream diagnostics normalize actionable categories without private details",()=>{
+  const {diagnosticForError}=require("../src/hltv/upstream");
+  const missing=diagnosticForError(new Error("upstream_process_failed: missing_map_asset"),"scanner");
+  assert.deepEqual(missing,{code:"missing_map_asset",stage:"scanner",message:"Required private map or model assets are unavailable.",retryable:false,next_action:"Provision or verify the private BSP/model asset root before retrying."});
+  const timeout=diagnosticForError(new Error("upstream_resource_limit"),"worker");
+  assert.equal(timeout.code,"resource_limit");assert.equal(timeout.retryable,true);assert.equal(timeout.message.includes("C:"),false);
+  const unexpected=diagnosticForError(new Error("ENOENT: C:\\private\\logs\\secret.log"),"parser");
+  assert.equal(unexpected.code,"internal_failure");assert.equal(unexpected.message.includes("secret"),false);
 });
 test("targeted upstream work selects only the requested run and never falls through to another match",async t=>{
   const {registry:r,demo,root}=fixture(t),{queueRun,runPending}=require("../src/hltv/upstream");

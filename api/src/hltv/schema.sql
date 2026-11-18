@@ -109,9 +109,19 @@ CREATE TABLE IF NOT EXISTS hltv_manifests(
 CREATE TABLE IF NOT EXISTS hltv_upstream_runs(
  id TEXT PRIMARY KEY, demo_id TEXT NOT NULL REFERENCES hltv_demos(id), hold_id TEXT NOT NULL REFERENCES hltv_holds(id),
  status TEXT NOT NULL, requested_by TEXT NOT NULL, created_at INTEGER NOT NULL, started_at INTEGER, finished_at INTEGER,
- upstream_sha TEXT, result_json TEXT, error_code TEXT
+ upstream_sha TEXT, result_json TEXT, error_code TEXT, diagnostic_json TEXT,
+ analysis_disposition TEXT NOT NULL DEFAULT 'pending', source_snapshot_sha256 TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS hltv_one_active_upstream_run ON hltv_upstream_runs(demo_id) WHERE status IN ('queued','processing');
+CREATE TABLE IF NOT EXISTS hltv_source_log_snapshots(
+ sha256 TEXT PRIMARY KEY, demo_id TEXT NOT NULL REFERENCES hltv_demos(id), log_filename TEXT NOT NULL,
+ log_round INTEGER NOT NULL, source_hash TEXT NOT NULL, manifest_sha256 TEXT NOT NULL,
+ matched_log_json TEXT NOT NULL, raw_log_gzip BLOB NOT NULL, created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS hltv_upstream_run_sources(
+ run_id TEXT PRIMARY KEY REFERENCES hltv_upstream_runs(id), snapshot_sha256 TEXT NOT NULL REFERENCES hltv_source_log_snapshots(sha256),
+ created_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS hltv_review_users(
  id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, actor TEXT NOT NULL UNIQUE,
  password_hash TEXT NOT NULL, must_change_password INTEGER NOT NULL DEFAULT 1,
