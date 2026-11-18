@@ -30,7 +30,7 @@ const $=id=>document.getElementById(id);
   });
 })();
 
-const state={players:[],teams:[],admin:false,filter:'all',sort:'name',direction:1,editing:null,deleting:null,loaded:false,busy:false};
+const state={players:[],teams:[],weeks:[],editingWeek:null,admin:false,filter:'all',sort:'name',direction:1,editing:null,deleting:null,loaded:false,busy:false};
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const percent=value=>Number.isInteger(value)?String(value):Number(value).toFixed(1);
 const avg=p=>(p.saturday+p.sunday)/2;
@@ -42,16 +42,35 @@ async function api(body){
  let data;try{data=await response.json();}catch{throw new Error('The server could not be reached. Please try again.');}
  if(!response.ok){if(response.status===401&&body?.action!=='login'){state.admin=false;render();}throw new Error(data.error??'Could not complete that action.');}return data;
 }
-async function load(throwOnError=false){try{const data=await api();state.players=data.players;state.teams=data.teams;state.admin=data.admin;state.loaded=true;$('load-error').hidden=true;render();return true;}catch(e){$('load-error').hidden=false;$('load-error').querySelector('span').textContent=e.message;if(throwOnError)throw e;return false;}}
-async function mutate(body,message){await api(body);const refreshed=await load();toast(refreshed?message:message+' Refresh the page to see the latest roster.');}
+async function load(throwOnError=false){try{const data=await api();state.players=data.players;state.teams=data.teams;state.weeks=data.weeks??[];state.admin=data.admin;state.loaded=true;$('load-error').hidden=true;render();return true;}catch(e){$('load-error').hidden=false;$('load-error').querySelector('span').textContent=e.message;if(throwOnError)throw e;return false;}}
+async function mutate(body,message){await api(body);const refreshed=await load();toast(refreshed?message:message+' Refresh the page to see the latest league data.');}
 function identity(p){const initials=p.name.replace(/[^\p{L}\p{N}]/gu,'').slice(0,2).toUpperCase()||'FF';const tone=[...p.name].reduce((n,c)=>n+c.codePointAt(0),0)%4;return `<div class="player-identity"><span class="avatar" data-tone="${tone}" aria-hidden="true">${escapeHtml(initials)}</span><span class="name-stack"><span class="player-name">${escapeHtml(p.name)}</span>${p.status==='ringer'?'<span class="mini-ringer">Ringer only</span>':''}</span></div>`;}
 function roles(p){if(p.status==='ringer')return '<span class="muted">Substitute</span>';const badges=[];if(p.captain==='Y')badges.push('<span class="badge captain">Captain</span>');if(p.coCaptain==='Y')badges.push('<span class="badge">Co-captain</span>');if(p.captain==='Pending'||p.coCaptain==='Pending')badges.push(`<span class="badge pending">${p.captain==='Pending'?'Captain':'Co-captain'} pending</span>`);return badges.join(' ')||'<span class="muted">Player</span>';}
 function availability(v){return `<span class="percent"><span class="percent-number">${percent(v)}%</span><progress class="percent-track" aria-hidden="true" value="${Number(v)}" max="100"></progress></span>`;}
 function render(){
  $('total-count').textContent=state.players.length;$('teams-count').textContent=state.teams.length;$('admin-bar').hidden=!state.admin;$('admin-button').textContent=state.admin?'Admin settings':'Admin login';$('action-heading').hidden=!state.admin;$('add-team').hidden=!state.admin;
- renderRoster();renderTeams();renderPage();
+ renderRoster();renderTeams();renderSchedule();renderPage();
 }
-function renderPage(){const teams=location.hash==='#teams';$('roster-view').hidden=teams;$('teams-view').hidden=!teams;$('page-title').textContent=teams?'Team rosters':'Player roster';$('page-description').textContent=teams?'The draft starts here. Give every player a place.':'Find your teammates. Plan your weekends.';for(const id of ['roster-link','teams-link'])$(id).removeAttribute('aria-current');$(teams?'teams-link':'roster-link').setAttribute('aria-current','page');}
+function renderPage(){
+ const page=['#teams','#schedule'].includes(location.hash)?location.hash.slice(1):'roster';
+ for(const name of ['roster','teams','schedule']){$(name+'-view').hidden=page!==name;$(name+'-link').removeAttribute('aria-current');}
+ $(page+'-link').setAttribute('aria-current','page');$('add-player').hidden=page==='schedule';
+ $('page-title').textContent={roster:'Player roster',teams:'Team rosters',schedule:'League schedule'}[page];
+ $('page-description').textContent={roster:'Find your teammates. Plan your weekends.',teams:'The draft starts here. Give every player a place.',schedule:'Weekly maps, match dates and team matchups.'}[page];
+}
+const weekLabel=week=>week===22?'Week 22 · Finals':'Week '+week;
+function renderSchedule(){
+ $('schedule-action-heading').hidden=!state.admin;
+ const teamName=id=>escapeHtml(state.teams.find(t=>t.id===id)?.name??'Unknown team');
+ $('schedule-rows').innerHTML=state.weeks.length?state.weeks.map(w=>`<tr><th scope="row">${weekLabel(w.week)}</th><td>${w.date?`<time datetime="${escapeHtml(w.date)}">${escapeHtml(new Date(w.date+'T12:00:00Z').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}))}</time>`:'<span class="muted">TBD</span>'}</td><td class="schedule-maps">${escapeHtml(w.maps)}</td><td>${w.matchups.length?`<ul class="matchup-list">${w.matchups.map(m=>`<li>${teamName(m.teamA)} <span class="muted">vs</span> ${teamName(m.teamB)}</li>`).join('')}</ul>`:'<span class="muted">Matchups TBD</span>'}</td>${state.admin?`<td><button type="button" class="subtle" data-week="${w.week}" aria-label="Edit ${weekLabel(w.week)}">Edit</button></td>`:''}</tr>`).join(''):`<tr><td colspan="5" class="empty">${state.loaded?'The schedule is unavailable. Try refreshing the page.':'Loading the schedule…'}</td></tr>`;
+}
+function addMatchupFields(matchup={}){
+ const row=document.createElement('div');row.className='matchup-row';
+ const options=selected=>'<option value="">Choose team…</option>'+state.teams.map(t=>`<option value="${escapeHtml(t.id)}" ${selected===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('');
+ row.innerHTML=`<label>Team<select data-side="teamA" required>${options(matchup.teamA)}</select></label><span class="muted matchup-vs">vs</span><label>Opponent<select data-side="teamB" required>${options(matchup.teamB)}</select></label><button type="button" class="subtle" data-remove-matchup aria-label="Remove matchup">Remove</button>`;
+ $('matchup-fields').append(row);updateMatchupButton();return row;
+}
+function updateMatchupButton(){$('add-matchup').disabled=$('matchup-fields').children.length>=Math.floor(state.teams.length/2);}
 function renderRoster(){
  const query=$('search').value.trim().toLocaleLowerCase();const role=$('role-filter').value;
  const players=state.players.filter(p=>(state.filter==='all'||p.status===state.filter)&&p.name.toLocaleLowerCase().includes(query)&&(role==='all'||p[role]==='Y')).sort((a,b)=>state.direction*(state.sort==='average'?avg(a)-avg(b):a.name.localeCompare(b.name)));
@@ -79,6 +98,23 @@ function openEditor(id=null){
 function updateForm(){const f=$('player-form').elements;const ringer=f.namedItem('status').value==='ringer';$('ringer-note').hidden=!ringer;$('captain-fields').disabled=ringer;$('captain-fields').hidden=ringer;const a=f.namedItem('saturday').value,b=f.namedItem('sunday').value;$('form-average').textContent=a!==''&&b!==''?percent((Number(a)+Number(b))/2)+'%':'—';}
 async function formAction(form,errorId,action){clearError(errorId);const controls=[...form.querySelectorAll('button')];controls.forEach(b=>b.disabled=true);try{await action();}catch(e){showError(errorId,e.message);}finally{controls.forEach(b=>b.disabled=false);}}
 document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+$('schedule-rows').addEventListener('click',e=>{
+ const button=e.target.closest('[data-week]');if(!button||!state.admin)return;
+ const week=state.weeks.find(w=>w.week===Number(button.dataset.week));if(!week)return;
+ state.editingWeek=week.week;$('week-title').textContent='Edit '+weekLabel(week.week);clearError('week-error');
+ const form=$('week-form');form.elements.namedItem('date').value=week.date??'';form.elements.namedItem('maps').value=week.maps;
+ $('matchup-fields').replaceChildren();week.matchups.forEach(addMatchupFields);updateMatchupButton();$('week-dialog').showModal();
+});
+$('add-matchup').addEventListener('click',()=>addMatchupFields().querySelector('select').focus());
+$('matchup-fields').addEventListener('click',e=>{const button=e.target.closest('[data-remove-matchup]');if(button){button.closest('.matchup-row').remove();updateMatchupButton();$('add-matchup').focus();}});
+$('week-form').addEventListener('submit',e=>{
+ e.preventDefault();const form=e.currentTarget;
+ formAction(form,'week-error',async()=>{
+  const matchups=[...$('matchup-fields').children].map(row=>({teamA:row.querySelector('[data-side="teamA"]').value,teamB:row.querySelector('[data-side="teamB"]').value}));
+  const used=new Set();for(const m of matchups){if(m.teamA===m.teamB)throw new Error('A team cannot play itself.');if(used.has(m.teamA)||used.has(m.teamB))throw new Error('Each team can only appear once per week.');used.add(m.teamA);used.add(m.teamB);}
+  await mutate({action:'weekEdit',week:state.editingWeek,...Object.fromEntries(new FormData(form)),matchups},'Week saved.');$('week-dialog').close();
+ }).finally(updateMatchupButton);
+});
 $('add-player').addEventListener('click',()=>openEditor());
 $('search').addEventListener('input',renderRoster);$('role-filter').addEventListener('change',renderRoster);$('draft-search').addEventListener('input',renderTeams);
 document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{state.filter=b.dataset.filter;renderRoster();}));

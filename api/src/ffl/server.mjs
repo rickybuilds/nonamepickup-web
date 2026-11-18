@@ -5,7 +5,7 @@ import {promisify} from 'node:util';
 import {readFileSync,mkdirSync} from 'node:fs';
 import {dirname,join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {validatePlayer,nameKey} from './lib/domain.mjs';
+import {validatePlayer,nameKey,scheduleMaps,validateWeek} from './lib/domain.mjs';
 
 const directory=dirname(fileURLToPath(import.meta.url));
 const derive=promisify(pbkdf2);
@@ -25,12 +25,16 @@ export function createApplication({database,initialPassword,origin}={}){
  const db=new DatabaseSync(dbPath);db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
  db.exec(`CREATE TABLE IF NOT EXISTS players(id TEXT PRIMARY KEY,name TEXT NOT NULL,name_key TEXT NOT NULL UNIQUE,saturday REAL NOT NULL CHECK(saturday BETWEEN 0 AND 100),sunday REAL NOT NULL CHECK(sunday BETWEEN 0 AND 100),status TEXT NOT NULL,captain TEXT NOT NULL,co_captain TEXT NOT NULL,notes TEXT NOT NULL,created_at INTEGER NOT NULL,team_id TEXT);
  CREATE TABLE IF NOT EXISTS teams(id TEXT PRIMARY KEY,name TEXT NOT NULL,name_key TEXT NOT NULL UNIQUE,created_at INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS league_weeks(week INTEGER PRIMARY KEY CHECK(week BETWEEN 1 AND 22),maps TEXT NOT NULL,date TEXT);
+ CREATE TABLE IF NOT EXISTS league_matchups(week INTEGER NOT NULL REFERENCES league_weeks(week),position INTEGER NOT NULL,team_a TEXT NOT NULL REFERENCES teams(id),team_b TEXT NOT NULL REFERENCES teams(id),PRIMARY KEY(week,position),CHECK(team_a<>team_b));
  CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,expires INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires INTEGER NOT NULL);`);
  const setting=key=>db.prepare('SELECT value FROM settings WHERE key=?').get(key)?.value;
  function transaction(work){db.exec('BEGIN IMMEDIATE');try{const result=work();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}
  function initialize(){transaction(()=>{
+  const insertWeek=db.prepare('INSERT OR IGNORE INTO league_weeks(week,maps,date) VALUES (?,?,NULL)');
+  scheduleMaps.forEach((maps,index)=>insertWeek.run(index+1,maps));
   if(!setting('roster_imported')){
    const insert=db.prepare('INSERT OR IGNORE INTO players (id,name,name_key,saturday,sunday,status,captain,co_captain,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)');
    for(const p of seed)insert.run(p.id,p.name,nameKey(p.name),p.saturday,p.sunday,p.status,p.captain,p.coCaptain,p.notes,Date.now());
@@ -74,7 +78,8 @@ export function createApplication({database,initialPassword,origin}={}){
    }
    await ready;
    if(req.method==='GET'){
-    reply(res,{players:db.prepare('SELECT id,name,saturday,sunday,status,captain,co_captain AS coCaptain,notes,team_id AS teamId,created_at AS createdAt FROM players ORDER BY name_key').all(),teams:db.prepare('SELECT id,name FROM teams ORDER BY created_at,name').all(),admin:admin(req)});return;
+    const matchups=db.prepare('SELECT week,team_a AS teamA,team_b AS teamB FROM league_matchups ORDER BY week,position').all();
+    reply(res,{players:db.prepare('SELECT id,name,saturday,sunday,status,captain,co_captain AS coCaptain,notes,team_id AS teamId,created_at AS createdAt FROM players ORDER BY name_key').all(),teams:db.prepare('SELECT id,name FROM teams ORDER BY created_at,name').all(),weeks:db.prepare('SELECT week,maps,date FROM league_weeks ORDER BY week').all().map(w=>({...w,matchups:matchups.filter(m=>m.week===w.week).map(({teamA,teamB})=>({teamA,teamB}))})),admin:admin(req)});return;
    }
    if(req.method!=='POST')throw error(405,'Method not allowed.');
    if(req.headers.origin!==publicOrigin)throw error(403,'Please submit from the FFL website.');
@@ -98,7 +103,24 @@ export function createApplication({database,initialPassword,origin}={}){
     if(typeof b.newPassword!=='string'||b.newPassword.length<6||b.newPassword.length>100)throw error(400,'Use a password between 6 and 100 characters.');
     const hash=await hashPassword(b.newPassword);transaction(()=>{if(setting('password')!==passwordVersion||!admin(req))throw error(401,'Your admin session changed. Please log in again.');db.prepare('UPDATE settings SET value=? WHERE key=?').run(hash,'password');db.prepare('DELETE FROM sessions').run();});reply(res,{ok:true},200,{'Set-Cookie':cookie('')});return;
    }
-   if(action==='teamAdd'){
+   if(action==='weekEdit'){
+    let week;try{week=validateWeek(b);}catch(e){throw error(400,e.message);}
+    const teamIds=new Set(db.prepare('SELECT id FROM teams').all().map(t=>t.id));
+    if(!Array.isArray(b.matchups)||b.matchups.length>Math.floor(teamIds.size/2))throw error(400,'Choose valid matchups. Each team can play once per week.');
+    const used=new Set();
+    for(const m of b.matchups){
+     if(!m||!teamIds.has(m.teamA)||!teamIds.has(m.teamB))throw error(400,'Choose two existing teams for every matchup.');
+     if(m.teamA===m.teamB)throw error(400,'A team cannot play itself.');
+     if(used.has(m.teamA)||used.has(m.teamB))throw error(400,'Each team can only appear once per week.');
+     used.add(m.teamA);used.add(m.teamB);
+    }
+    transaction(()=>{
+     if(!db.prepare('UPDATE league_weeks SET maps=?,date=? WHERE week=?').run(week.maps,week.date,week.week).changes)throw error(404,'Week no longer exists. Refresh the schedule.');
+     db.prepare('DELETE FROM league_matchups WHERE week=?').run(week.week);
+     const insert=db.prepare('INSERT INTO league_matchups(week,position,team_a,team_b) VALUES (?,?,?,?)');
+     b.matchups.forEach((m,i)=>insert.run(week.week,i,m.teamA,m.teamB));
+    });
+   }else if(action==='teamAdd'){
     const name=String(b.name??'').trim();if(!name||name.length>50)throw error(400,'Use a team name between 1 and 50 characters.');
     if(db.prepare('SELECT id FROM teams WHERE name_key=?').get(nameKey(name)))throw error(409,'That team already exists.');
     db.prepare('INSERT INTO teams(id,name,name_key,created_at) VALUES (?,?,?,?)').run(random(),name,nameKey(name),Date.now());

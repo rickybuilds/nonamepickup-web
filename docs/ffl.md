@@ -103,6 +103,10 @@ Open **https://nonamepickup.servehalflife.com/ffl/**, choose **Admin login**, an
 - **Add team:** creates another team with any name you choose. It starts with Team 1 through Team 6.
 - **Ringers:** clearly marked; their percentages are indicative availability, not regular-season commitments. foo's prior 50%/75% is retained with the new ringer status.
 - **Export CSV:** downloads players, availability, roles, team assignments and notes.
+- **Schedule:** everyone can view 21 regular weeks and Week 22 finals. The initial map order includes the 5v5/7v7 alternatives and finals games on Magelli and Cranked. Dates and matchups start as TBD.
+- **Edit week (admins only):** open Schedule, choose Edit beside a week, then change its maps, date and team matchups. Dates are usually Saturdays but any day is allowed; clear a date to return it to TBD. Add a matchup and select its two teams, or remove a pairing to leave those teams unscheduled. A team cannot play itself or appear twice in the same week. Finals use the same pairings for both games. Save week publishes the changes to everyone.
+
+Schedule updates are enforced by the backend's existing admin session. The installer adds the schedule tables automatically on startup and preserves saved maps, dates, pairings, players and team assignments on future updates.
 
 Sessions last 12 hours. Login and public submission limits reduce casual spam. No player account or email address is needed. If multiple people use the shared admin password, they all have admin access.
 
@@ -138,3 +142,5 @@ The service will hash the new initial password on restart; it does not re-import
 ## Verification
 
 The original standalone implementation passed six tests before integration. Repository instructions prohibit adding or running tests unless explicitly requested, so no test files were added here and no repository tests were run. JavaScript syntax was checked with Node 24. Linux service/Nginx installation must still be verified on your server.
+
+The weekly schedule and matchup changes passed Node 24 syntax checks and `git diff --check`. A local preview started successfully with a temporary in-memory database. Browser visual verification could not be completed because the browser tool timed out connecting to the local preview.

@@ -79,6 +79,20 @@ progress.percent-track{border:0;appearance:none;display:block;color:#8b86d9}prog
 [data-theme="dark"] button:focus-visible,[data-theme="dark"] a:focus-visible,[data-theme="dark"] input:focus-visible,[data-theme="dark"] select:focus-visible,[data-theme="dark"] textarea:focus-visible{outline-color:#b5aaff}
 
 /* Theme toggle */
+.schedule-table{white-space:normal;min-width:640px}
+.schedule-table tbody th{color:var(--ink);font-size:13px;font-weight:600;white-space:nowrap}
+.schedule-table td{line-height:1.7;vertical-align:top}
+.schedule-table tbody th{vertical-align:top}
+.schedule-maps{white-space:pre-line;overflow-wrap:anywhere}
+.matchup-list{list-style:none;padding:0;margin:0;min-width:140px;overflow-wrap:anywhere}
+.matchup-list li+li{margin-top:5px}
+.matchup-fields{display:flex;flex-direction:column;gap:16px;margin:14px 0}
+.matchup-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:end}
+.matchup-row select{font-size:13px}
+.matchup-vs{padding-bottom:12px}
+.matchup-row button{grid-column:3;justify-self:end;font-size:12px}
+@media(max-width:650px){.matchup-row select{font-size:16px}.page-nav{gap:20px}}
+
 .theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0}
 .theme-toggle svg{width:19px;height:19px}
 .theme-toggle svg[hidden]{display:none!important}
