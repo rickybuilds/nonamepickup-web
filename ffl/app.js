@@ -30,7 +30,7 @@ const $=id=>document.getElementById(id);
   });
 })();
 
-const state={players:[],teams:[],weeks:[],editingWeek:null,admin:false,filter:'all',sort:'name',direction:1,editing:null,deleting:null,loaded:false,busy:false};
+const state={players:[],teams:[],weeks:[],editingWeek:null,editingTeam:null,deletingTeam:null,admin:false,filter:'all',sort:'name',direction:1,editing:null,deleting:null,loaded:false,busy:false};
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const percent=value=>Number.isInteger(value)?String(value):Number(value).toFixed(1);
 const avg=p=>(p.saturday+p.sunday)/2;
@@ -84,7 +84,7 @@ function assignment(p){return `<select class="move-player" data-assign="${p.id}"
 function renderTeams(){
  const unassigned=state.players.filter(p=>!p.teamId);const query=$('draft-search').value.trim().toLocaleLowerCase();
  $('draft-summary').textContent=`${state.players.length-unassigned.length} drafted · ${unassigned.length} unassigned · ${state.teams.length} teams`;
- $('team-grid').innerHTML=state.teams.map(t=>{const players=state.players.filter(p=>p.teamId===t.id);return `<article class="team-card"><div class="team-top"><div class="team-emblem">${icons.shield}<h2>${escapeHtml(t.name)}</h2></div><span>${players.length} player${players.length===1?'':'s'}</span></div>${players.length?`<ul class="team-members">${players.map(p=>`<li>${identity(p)}${state.admin?assignment(p):p.captain==='Y'?'<span class="badge captain">Captain</span>':''}</li>`).join('')}</ul>`:'<div class="team-empty"><strong>Ready for the draft</strong>No players assigned yet.</div>'}${state.admin?`<div class="team-draft"><select data-draft-to="${t.id}" aria-label="Add player to ${escapeHtml(t.name)}" ${state.busy?'disabled':''}><option value="">Add a player…</option>${unassigned.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}${p.status==='ringer'?' (ringer)':''}</option>`).join('')}</select></div>`:''}</article>`;}).join('');
+ $('team-grid').innerHTML=state.teams.map(t=>{const players=state.players.filter(p=>p.teamId===t.id);return `<article class="team-card"><div class="team-top"><div class="team-emblem">${icons.shield}<h2>${escapeHtml(t.name)}</h2></div><span>${players.length} player${players.length===1?'':'s'}</span></div>${players.length?`<ul class="team-members">${players.map(p=>`<li>${identity(p)}${state.admin?assignment(p):p.captain==='Y'?'<span class="badge captain">Captain</span>':''}</li>`).join('')}</ul>`:'<div class="team-empty"><strong>Ready for the draft</strong>No players assigned yet.</div>'}${state.admin?`<div class="team-draft"><div class="team-actions"><button type="button" class="subtle" data-team-edit="${t.id}" aria-label="Rename ${escapeHtml(t.name)}">Rename</button><button type="button" class="subtle" data-team-delete="${t.id}" aria-label="Remove ${escapeHtml(t.name)}">Remove</button></div><select data-draft-to="${t.id}" aria-label="Add player to ${escapeHtml(t.name)}" ${state.busy?'disabled':''}><option value="">Add a player…</option>${unassigned.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}${p.status==='ringer'?' (ringer)':''}</option>`).join('')}</select></div>`:''}</article>`;}).join('')||(state.loaded?'<p class="empty">No teams yet. Admins can add a team to start drafting.</p>':'<p class="empty">Loading teams…</p>');
  $('unassigned-count').textContent=unassigned.length;
  const visible=unassigned.filter(p=>p.name.toLocaleLowerCase().includes(query));
  $('unassigned-list').innerHTML=visible.length?visible.map(p=>`<div class="draft-player">${identity(p)}${state.admin?assignment(p):`<span class="draft-average">${percent(avg(p))}% avg.</span>`}</div>`).join(''):`<p class="empty">${unassigned.length?'No players match that search.':'Everyone has a team. Ready to play.'}</p>`;
@@ -128,8 +128,22 @@ $('login-form').addEventListener('submit',e=>{e.preventDefault();const f=e.curre
 $('password-button').addEventListener('click',()=>{$('password-form').reset();clearError('password-error');$('password-dialog').showModal();});
 $('password-form').addEventListener('submit',e=>{e.preventDefault();const f=e.currentTarget;formAction(f,'password-error',async()=>{const values=Object.fromEntries(new FormData(f));if(values.newPassword!==values.confirmPassword)throw new Error('The new passwords don’t match.');await mutate({action:'password',...values},'Password changed. Log in with your new password.');f.reset();$('password-dialog').close();});});
 $('logout-button').addEventListener('click',async()=>{try{await mutate({action:'logout'},'Logged out.');}catch(e){toast(e.message,true);}});
-$('add-team').addEventListener('click',()=>{$('team-form').reset();$('team-form').elements.namedItem('name').value='Team '+(state.teams.length+1);clearError('team-error');$('team-dialog').showModal();});
-$('team-form').addEventListener('submit',e=>{e.preventDefault();const f=e.currentTarget;formAction(f,'team-error',async()=>{await mutate({action:'teamAdd',name:f.elements.namedItem('name').value},'Team added.');$('team-dialog').close();});});
+function openTeamEditor(team=null){
+ state.editingTeam=team?.id??null;const form=$('team-form');form.reset();
+ let number=state.teams.length+1;while(state.teams.some(t=>t.name.normalize('NFKC').trim().toLowerCase()==='team '+number))number++;
+ form.elements.namedItem('name').value=team?team.name:'Team '+number;
+ $('team-title').textContent=team?'Rename team':'Add a team';$('team-description').textContent=team?'The new name will appear on rosters and the schedule.':'Name it now. Draft players whenever you’re ready.';$('save-team').textContent=team?'Save name':'Add team';
+ clearError('team-error');$('team-dialog').showModal();
+}
+$('add-team').addEventListener('click',()=>openTeamEditor());
+$('team-grid').addEventListener('click',e=>{
+ if(!state.admin)return;const edit=e.target.closest('[data-team-edit]'),remove=e.target.closest('[data-team-delete]');
+ const team=state.teams.find(t=>t.id===(edit?.dataset.teamEdit??remove?.dataset.teamDelete));if(!team)return;
+ if(edit){openTeamEditor(team);return;}
+ state.deletingTeam=team.id;$('delete-team-description').textContent='Remove '+team.name+' from the league?';clearError('delete-team-error');$('delete-team-dialog').showModal();
+});
+$('team-form').addEventListener('submit',e=>{e.preventDefault();const f=e.currentTarget;formAction(f,'team-error',async()=>{await mutate({action:state.editingTeam?'teamEdit':'teamAdd',id:state.editingTeam,name:f.elements.namedItem('name').value},state.editingTeam?'Team renamed.':'Team added.');$('team-dialog').close();});});
+$('delete-team-form').addEventListener('submit',e=>{e.preventDefault();formAction(e.currentTarget,'delete-team-error',async()=>{await mutate({action:'teamDelete',id:state.deletingTeam},'Team removed. Its players are now unassigned.');$('delete-team-dialog').close();});});
 $('teams-view').addEventListener('change',async e=>{const select=e.target.closest('[data-assign],[data-draft-to]');if(!select||state.busy)return;let id,teamId;if(select.dataset.assign){id=select.dataset.assign;teamId=select.value||null;}else{if(!select.value)return;id=select.value;teamId=select.dataset.draftTo;}state.busy=true;document.querySelectorAll('[data-assign],[data-draft-to]').forEach(s=>s.disabled=true);try{await mutate({action:'assign',id,teamId},'Team assignment saved.');}catch(e){toast(e.message,true);}finally{state.busy=false;renderTeams();}});
 $('retry-button').addEventListener('click',()=>load());
 $('export-button').addEventListener('click',()=>{const cell=value=>{let s=String(value??'');if(/^[=+@\-\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};const rows=[['Player','Saturday Availability %','Sunday Availability %','Average %','Participation','Captain','Co-Captain','Team','Notes'],...state.players.map(p=>[p.name,p.saturday,p.sunday,avg(p),p.status==='ringer'?'Ringer only':'Regular',p.captain,p.coCaptain,state.teams.find(t=>t.id===p.teamId)?.name??'Unassigned',p.notes])];const url=URL.createObjectURL(new Blob(['\uFEFF'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download='ffl-players.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});

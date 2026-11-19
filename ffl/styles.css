@@ -129,3 +129,5 @@ progress.percent-track{border:0;appearance:none;display:block;color:#8b86d9}prog
 
 /* Keep admin controls readable and comfortably spaced on touch screens. */
 @media(max-width:650px){.header-button{min-height:44px}.row-actions button{min-width:44px;min-height:44px}.move-player,.draft-player select{font-size:16px;min-height:44px;max-width:125px}}
+
+.team-actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.team-actions button{min-height:44px}.team-emblem{min-width:0}.team-emblem svg{flex-shrink:0}

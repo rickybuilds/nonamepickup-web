@@ -120,10 +120,22 @@ export function createApplication({database,initialPassword,origin}={}){
      const insert=db.prepare('INSERT INTO league_matchups(week,position,team_a,team_b) VALUES (?,?,?,?)');
      b.matchups.forEach((m,i)=>insert.run(week.week,i,m.teamA,m.teamB));
     });
-   }else if(action==='teamAdd'){
+   }else if(action==='teamAdd'||action==='teamEdit'){
+    const id=String(b.id);
+    if(action==='teamEdit'&&!db.prepare('SELECT id FROM teams WHERE id=?').get(id))throw error(404,'Team no longer exists. Refresh the teams.');
     const name=String(b.name??'').trim();if(!name||name.length>50)throw error(400,'Use a team name between 1 and 50 characters.');
-    if(db.prepare('SELECT id FROM teams WHERE name_key=?').get(nameKey(name)))throw error(409,'That team already exists.');
-    db.prepare('INSERT INTO teams(id,name,name_key,created_at) VALUES (?,?,?,?)').run(random(),name,nameKey(name),Date.now());
+    const existing=db.prepare('SELECT id FROM teams WHERE name_key=?').get(nameKey(name));
+    if(existing&&(action==='teamAdd'||existing.id!==id))throw error(409,'That team already exists.');
+    if(action==='teamAdd')db.prepare('INSERT INTO teams(id,name,name_key,created_at) VALUES (?,?,?,?)').run(random(),name,nameKey(name),Date.now());
+    else db.prepare('UPDATE teams SET name=?,name_key=? WHERE id=?').run(name,nameKey(name),id);
+   }else if(action==='teamDelete'){
+    const id=String(b.id);
+    transaction(()=>{
+     if(!db.prepare('SELECT id FROM teams WHERE id=?').get(id))throw error(404,'Team no longer exists. Refresh the teams.');
+     db.prepare('UPDATE players SET team_id=NULL WHERE team_id=?').run(id);
+     db.prepare('DELETE FROM league_matchups WHERE team_a=? OR team_b=?').run(id,id);
+     db.prepare('DELETE FROM teams WHERE id=?').run(id);
+    });
    }else if(action==='assign'){
     if(b.teamId!==null&&!db.prepare('SELECT id FROM teams WHERE id=?').get(String(b.teamId)))throw error(400,'That team no longer exists.');
     if(!db.prepare('UPDATE players SET team_id=? WHERE id=?').run(b.teamId===null?null:String(b.teamId),String(b.id)).changes)throw error(404,'Player no longer exists. Refresh the roster.');

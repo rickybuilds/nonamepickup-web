@@ -2,7 +2,7 @@
 
 This is the app for **https://nonamepickup.servehalflife.com/ffl/**, committed directly to the nonamepickup-web repository. It has no npm dependencies or build step. It uses a dedicated Node 24 runtime and a shared SQLite database, leaving the pickup bot on port 4000 alone.
 
-Included: 29 imported players, foo marked **Ringer only** and not a captain/co-captain, Saturday/Sunday percentages, computed averages, notes, CSV export, public player submissions, password-protected editing/deletion, password changes, Teams 1–6, adding teams, and admin-only drafting/moving players.
+Included: 29 imported players, foo marked **Ringer only** and not a captain/co-captain, Saturday/Sunday percentages, computed averages, notes, CSV export, public player submissions, password-protected editing/deletion, password changes, Teams 1–6, adding/renaming/removing teams, and admin-only drafting/moving players.
 
 ## 1. Pull and install
 
@@ -102,6 +102,7 @@ Open **https://nonamepickup.servehalflife.com/ffl/**, choose **Admin login**, an
 - **League details:** the default opening tab contains KingOfPests' Version 15 update (November 14, 2026), including the December 4–10 Week 1 startup window, supporting servers, class limits, match timing and conduct rules. The supplied pending matchup/finals and roster sections are omitted because Teams and Schedule cover them. Direct links to `#roster`, `#teams` and `#schedule` still open those views. The startup window is informational; individual match dates remain admin-managed in Schedule.
 - **Teams:** choose a player in a team's **Add a player…** menu, or choose a team beside an unassigned player. Move someone by changing their team dropdown. Choose **Unassigned** to undo a draft assignment.
 - **Add team:** creates another team with any name you choose. It starts with Team 1 through Team 6.
+- **Rename / Remove team (admins only):** use the buttons on a team card. Renaming updates its name throughout the roster, schedule and CSV export. Removing requires confirmation, keeps its players as Unassigned, and removes matchups involving that team while preserving week dates and maps. Removed teams stay removed after a restart or update.
 - **Ringers:** clearly marked; their percentages are indicative availability, not regular-season commitments. foo's prior 50%/75% is retained with the new ringer status.
 - **Export CSV:** downloads players, availability, roles, team assignments and notes.
 - **Schedule:** everyone can view 21 regular weeks and Week 22 finals. The initial map order includes the 5v5/7v7 alternatives and finals games on Magelli and Cranked. Dates and matchups start as TBD.
