@@ -26,7 +26,7 @@ function evaluateGapReview(registry,input,settings={}){
       if(!allowed)continue;
       const classification=classifyComparison(registry,observation,conc,outside,options);if(!classification.trigger)continue;
       const id=hash(["hit-evidence-pattern-v1",classification.trigger,observation.input_key,conc.steam_id,conc.class_id,conc.weapon]);if(registry.db.prepare("SELECT 1 FROM hltv_gap_findings WHERE id=?").get(id))continue;
-      fresh.push({id,data:{...data,...classification,rule:"hit-evidence-pattern-v1",thresholds:{min_conc_windows:options.minConcWindows,high_conc_percent:options.highConcPercent,repeat_games:options.repeatGames,repeat_window:options.repeatWindow,baseline_games:options.baselineGames,baseline_rise_points:options.baselineRisePoints},summary:"Configured strict hit-evidence trigger; human review requested, not exact bullet accuracy or a cheating verdict."}});
+      fresh.push({id,data:{...data,...classification,rule:"hit-evidence-pattern-v1",thresholds:{min_conc_windows:options.minConcWindows,high_conc_percent:options.highConcPercent,evidence_gap_points:options.evidenceGapPoints,repeat_games:options.repeatGames,repeat_window:options.repeatWindow,baseline_games:options.baselineGames,baseline_rise_points:options.baselineRisePoints},summary:"Configured strict hit-evidence trigger; human review requested, not exact bullet accuracy or a cheating verdict."}});
     }
     if(!fresh.length)return {findings:0,markers};
     registry.storage.verify(demo);const alertId=crypto.randomUUID(),now=Date.now();

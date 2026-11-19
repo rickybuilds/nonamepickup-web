@@ -28,6 +28,14 @@ class Registry {
     if (this.db.prepare("SELECT MAX(version) AS v FROM hltv_schema").get().v !== 1) throw new Error("Unsupported HLTV schema");
   }
   close() { this.db.close(); }
+  getSettingNumber(key, fallback) {
+    const row = this.db.prepare("SELECT value FROM hltv_settings WHERE key=?").get(key);
+    const value = Number(row?.value);
+    return Number.isFinite(value) ? value : fallback;
+  }
+  setSettingNumber(key, value) {
+    this.db.prepare("INSERT INTO hltv_settings(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at").run(key, String(value), Date.now());
+  }
   audit(demo, actor, action, details) { this.db.prepare("INSERT INTO hltv_audit(demo_id,actor,action,details,created_at) VALUES(?,?,?,?,?)").run(demo, actor, action, JSON.stringify(details), Date.now()); }
   alert(demo, kind) { const alertId=id(); this.db.prepare("INSERT INTO hltv_alerts(id,demo_id,kind,created_at) VALUES(?,?,?,?)").run(alertId, demo, kind, Date.now()); return alertId; }
   queueAnalysisNotification({runId,demo,payload}) {

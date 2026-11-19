@@ -30,7 +30,7 @@ function diagnosticForError(error, stage="worker") {
   const row=DIAGNOSTICS[code]||[stage,"The analysis worker terminated before a complete result was produced.",true,"Inspect the worker log before retrying."];
   return {code,stage:row[0],message:row[1],retryable:row[2],next_action:row[3]};
 }
-function analysisNotificationPayload({demo,run,result,diagnostic}) {
+function analysisNotificationPayload({demo,run,result,diagnostic,gapThreshold=7}) {
   const base={match_id:String(demo?.match_id||"Unknown match").slice(0,100),map:String(demo?.map||"Unknown map").slice(0,100),demo_id:demo?.id,run_id:run?.id};
   if(run?.status==="failed") {
     const safe=diagnostic||{code:"upstream_failed",stage:"worker",message:"The analysis worker terminated before analysis completed.",retryable:true,next_action:"Inspect the worker status and retry when ready."};
@@ -49,7 +49,8 @@ function analysisNotificationPayload({demo,run,result,diagnostic}) {
     candidates.push(candidate);
   }
   candidates.sort((a,b)=>a.time_seconds-b.time_seconds||a.kind.localeCompare(b.kind)||a.player_name.localeCompare(b.player_name));
-  return {...base,outcome:candidates.length?"candidates_found":"completed_empty",wall_track_count:candidates.filter(f=>f.kind==="wall_track").length,snap_count:candidates.filter(f=>f.kind==="snap").length,candidate_count:candidates.length,candidates:candidates.slice(0,200)};
+  const groups=Array.isArray(result?.groups)?result.groups:[],conc=groups.filter(group=>group.state==="conc"),outside=groups.filter(group=>group.state==="outside"),concEligible=conc.reduce((sum,group)=>sum+Number(group.evidence_eligible||0),0),outsideEligible=outside.reduce((sum,group)=>sum+Number(group.evidence_eligible||0),0),concHits=conc.reduce((sum,group)=>sum+Number(group.strict||0),0),outsideHits=outside.reduce((sum,group)=>sum+Number(group.strict||0),0),comparison=concEligible>0&&outsideEligible>0?{conc_percent:100*concHits/concEligible,outside_percent:100*outsideHits/outsideEligible,gap_points:Math.abs(100*concHits/concEligible-100*outsideHits/outsideEligible),gap_threshold:gapThreshold}:{};
+  return {...base,...comparison,outcome:candidates.length?"candidates_found":"completed_empty",wall_track_count:candidates.filter(f=>f.kind==="wall_track").length,snap_count:candidates.filter(f=>f.kind==="snap").length,candidate_count:candidates.length,candidates:candidates.slice(0,200)};
 }
 function upstreamConfig(env = process.env) {
   const memoryBytes = Number(env.HLTV_UPSTREAM_MEMORY_BYTES || 2147483648);
@@ -237,9 +238,10 @@ async function runPending(registry, options) {
       if(statistics){
         const stored=require("./playerStatistics").storeStatistics(registry,{id:run.id,demo,upstream_sha:release.sha,pairing:matched},statistics);
         require("./concWindows").recordWindowCounts(registry,stored.id,statistics,estimate.windows);
+        const aimReview={...options.aimReview,evidenceGapPoints:registry.getSettingNumber("aim_review:evidence_gap_points",options.aimReview.evidenceGapPoints)};
         require("./gapReview").evaluateGapReview(registry,{...stored,demo_id:demo.id,upstream_sha:release.sha,log_round:matched.log_round,
-          groups:statistics.groups.map(group=>({...group,player_name:group.name}))},{...options.aimReview,enabled:options.gapReviewEnabled||options.aimReview?.alertsEnabled});
-        const notification=analysisNotificationPayload({demo,run:{...run,status:"complete"},result:statistics});
+          groups:statistics.groups.map(group=>({...group,player_name:group.name}))},{...aimReview,enabled:options.gapReviewEnabled||options.aimReview?.alertsEnabled});
+        const notification=analysisNotificationPayload({demo,run:{...run,status:"complete"},result:statistics,gapThreshold:aimReview.evidenceGapPoints});
         if(notification)registry.queueAnalysisNotification({runId:run.id,demo,payload:notification});
       }
       // This is an explicit reviewer request. Preserve originals until the

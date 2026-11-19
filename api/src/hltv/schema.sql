@@ -1,4 +1,9 @@
 PRAGMA foreign_keys=ON;
+CREATE TABLE IF NOT EXISTS hltv_settings(
+ key TEXT PRIMARY KEY,
+ value TEXT NOT NULL,
+ updated_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS hltv_aim_markers(
  id TEXT PRIMARY KEY,demo_id TEXT NOT NULL REFERENCES hltv_demos(id),observation_id TEXT NOT NULL REFERENCES hltv_statistics_observations(id),created_at INTEGER NOT NULL,data_json TEXT NOT NULL
 );
