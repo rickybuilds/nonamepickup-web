@@ -55,9 +55,11 @@ function analysisNotificationPayload({demo,run,result,diagnostic,gapThreshold=7}
 function upstreamConfig(env = process.env) {
   const memoryBytes = Number(env.HLTV_UPSTREAM_MEMORY_BYTES || 2147483648);
   if (!Number.isSafeInteger(memoryBytes) || memoryBytes < 268435456 || memoryBytes > 4294967296) throw new Error("Invalid HLTV_UPSTREAM_MEMORY_BYTES");
+  const timeoutSeconds = Number(env.HLTV_UPSTREAM_TIMEOUT_SECONDS || 3600);
+  if (!Number.isInteger(timeoutSeconds) || timeoutSeconds < 180 || timeoutSeconds > 14400) throw new Error("Invalid HLTV_UPSTREAM_TIMEOUT_SECONDS");
   return { enabled: env.HLTV_UPSTREAM_ENABLED === "true", root: env.HLTV_UPSTREAM_ROOT || "/opt/noname-hltv-tools",
-    python: env.HLTV_UPSTREAM_PYTHON || "python3", logsRoot: env.HLTV_PARSER_LOG_ROOT || "/var/lib/noname-parser", memoryBytes,
-    statisticsEnabled: env.HLTV_STATISTICS_ENABLED === "true", statisticsAutoCollect:env.HLTV_STATISTICS_AUTO_COLLECT === "true",assetsRoot: env.HLTV_ASSETS_ROOT || "/srv/noname-hltv-assets",
+    python: env.HLTV_UPSTREAM_PYTHON || "python3", logsRoot: env.HLTV_PARSER_LOG_ROOT || "/var/lib/noname-parser", memoryBytes, timeoutSeconds,
+    statisticsEnabled: env.HLTV_STATISTICS_ENABLED === "true", statisticsAutoCollect:(env.HLTV_STATISTICS_AUTO_COLLECT ?? "true") === "true",assetsRoot: env.HLTV_ASSETS_ROOT || "/srv/noname-hltv-assets",
     gapReviewEnabled:env.HLTV_AIM_GAP_REVIEW_ENABLED === "true",aimReview:require("./aimReviewPolicy").aimReviewConfig(env) };
 }
 function resolveBinary(bin) {
@@ -65,11 +67,11 @@ function resolveBinary(bin) {
   for (const candidate of candidates) { try { fs.accessSync(candidate, fs.constants.X_OK); return fs.realpathSync(candidate); } catch {} }
   throw new Error("upstream_executable_unavailable");
 }
-function sandboxCommand(bin, args, directory, memoryBytes = 2147483648) {
+function sandboxCommand(bin, args, directory, memoryBytes = 2147483648, timeoutSeconds = 180) {
   if (process.platform !== "linux") throw new Error("upstream_worker_requires_linux_systemd");
   return { bin: "systemd-run", args: ["--quiet", "--pipe", "--wait", "--collect", "--service-type=exec",
     "--uid=" + process.getuid(), "--property=MemoryMax=" + memoryBytes, "--property=MemorySwapMax=0",
-    "--property=RuntimeMaxSec=180", "--property=TimeoutStopSec=5", "--property=TasksMax=16", "--property=CPUQuota=100%",
+    "--property=RuntimeMaxSec=" + timeoutSeconds, "--property=TimeoutStopSec=5", "--property=TasksMax=16", "--property=CPUQuota=100%",
     "--property=NoNewPrivileges=yes", "--property=PrivateNetwork=yes", "--property=PrivateTmp=yes",
     "--property=ProtectSystem=strict", "--property=ReadWritePaths=" + directory,
     "--", resolveBinary(bin), ...args] };
@@ -112,22 +114,35 @@ function queueRun(registry, demoId, actor) {
     return { id, status: "queued" };
   }).immediate();
 }
-function child(bin, args, input, timeout = 180000) {
+function child(bin, args, input, timeout = 180000, stage, unit) {
   return new Promise((resolve, reject) => {
     const processEnv = { PATH: process.env.PATH || "", SYSTEMROOT: process.env.SYSTEMROOT || "", LANG: "C.UTF-8" };
     const worker = spawn(bin, args, { stdio: ["pipe", "pipe", "pipe"], windowsHide: true, env: processEnv });
-    let stdout = [], size = 0, error = "", failed = false;
-    const timer = setTimeout(() => { failed = true; worker.kill("SIGKILL"); }, timeout);
-    worker.stdout.on("data", bytes => { size += bytes.length; if (size > 2 * 1024 * 1024) { failed = true; worker.kill("SIGKILL"); } else stdout.push(bytes); });
+    const started = Date.now();
+    let stdout = [], size = 0, error = "", limit;
+    const stop = reason => {
+      if (limit) return;
+      limit = reason;
+      if (!unit) { worker.kill("SIGKILL"); return; }
+      const stopper = spawn("systemctl", ["stop", unit], { stdio: "ignore", env: processEnv });
+      stopper.on("error", () => worker.kill("SIGKILL"));
+      stopper.on("close", code => { if (code !== 0) worker.kill("SIGKILL"); });
+    };
+    const timer = setTimeout(() => stop("timeout"), timeout);
+    worker.stdout.on("data", bytes => { size += bytes.length; if (size > 2 * 1024 * 1024) stop("stdout"); else stdout.push(bytes); });
     worker.stderr.on("data", bytes => { error = (error + bytes.toString()).slice(-2000); });
     worker.on("error", error => { clearTimeout(timer); reject(error); });
     worker.stdin.on("error", () => {});
     worker.on("close", code => {
       clearTimeout(timer);
-      if (failed || code !== 0) {
+      if (limit || code !== 0) {
         let detail = error || Buffer.concat(stdout).toString("utf8").slice(0, 1000);
         try { detail = JSON.parse(detail).error || detail; } catch {}
-        return reject(new Error(failed ? "upstream_resource_limit" : "upstream_process_failed: " + detail));
+        const failure = new Error(limit ? "upstream_resource_limit" : "upstream_process_failed: " + detail);
+        if (stage && (limit || detail.includes("upstream_scanner_timeout"))) {
+          failure.diagnostics = { stage, limit: limit || "scanner_timeout", elapsed_ms: Date.now() - started };
+        }
+        return reject(failure);
       }
       try { resolve(JSON.parse(Buffer.concat(stdout).toString("utf8"))); } catch { reject(new Error("invalid_upstream_output")); }
     });
@@ -145,7 +160,7 @@ function resolveParserLogs(root, matchId) {
   const names = JSON.parse(fs.readFileSync(logManifest, "utf8")).logs;
   if (!Array.isArray(names) || names.length < 1 || names.length > 2 || !names.every((name, i) => name === `round-${i + 1}.log`)) throw new Error("invalid_parser_log_manifest");
   for (const name of names) logs.resolve(matchId + "/" + name, ".log");
-  return { logDir, logManifest, logResult };
+  return { logDir, logManifest, logResult, logCount: names.length };
 }
 async function runPending(registry, options) {
   if (options.runId != null && !/^[a-f0-9-]{36}$/.test(options.runId)) throw new Error("Invalid upstream run ID");
@@ -158,14 +173,14 @@ async function runPending(registry, options) {
   reapScratch(registry);
   const {queueAutomaticStatistics,releaseStatisticsLeases}=require("./statisticsQueue");
   releaseStatisticsLeases(registry);
-  if (!options.runId) queueAutomaticStatistics(registry,options);
+  const scheduled = options.runId ? null : queueAutomaticStatistics(registry,options);
   const run = registry.db.transaction(() => {
     if (registry.db.prepare("SELECT 1 FROM hltv_upstream_runs WHERE status='processing'").get()) return null;
     const run = registry.db.prepare("SELECT * FROM hltv_upstream_runs WHERE status='queued' AND (?=1 OR requested_by<>'statistics-scheduler') AND (? IS NULL OR id=?) ORDER BY created_at,id LIMIT 1").get(Number(options.statisticsEnabled===true), options.runId || null, options.runId || null);
     if (run) registry.db.prepare("UPDATE hltv_upstream_runs SET status='processing',started_at=? WHERE id=?").run(Date.now(), run.id);
     return run;
   }).immediate();
-  if (!run) return { enabled: true, processed: 0, ...(options.runId ? {run_id:options.runId,reason:"requested_run_not_queued_or_worker_busy"} : {}) };
+  if (!run) return { enabled: true, processed: 0, ...(scheduled?.skipped ? { skipped: scheduled.skipped } : {}), ...(options.runId ? {run_id:options.runId,reason:"requested_run_not_queued_or_worker_busy"} : {}) };
   const touch=()=>registry.db.prepare("INSERT INTO hltv_upstream_heartbeats(run_id,touched_at) VALUES(?,?) ON CONFLICT(run_id) DO UPDATE SET touched_at=excluded.touched_at").run(run.id,Date.now());
   touch();
   const heartbeat=setInterval(()=>{try{touch();}catch(error){console.error("[HLTV upstream] heartbeat deferred:",error.code||error.name);}},60000);
@@ -187,30 +202,34 @@ async function runPending(registry, options) {
     fs.mkdirSync(cache, { recursive: true, mode: 0o700 });
     if (fs.realpathSync(cache) !== cache) throw new Error("unsafe_cache_root");
     directory = path.join(cache, "ghosty-" + run.id); fs.mkdirSync(directory, { mode: 0o700 });
-    let logDir, logManifest, logResult, sourceSnapshotInput;
+    let logDir, logManifest, logResult, logCount, sourceSnapshotInput;
     if (previous) {
       const preserved = registry.sourceLogSnapshot(previous.sha256);
       const snapshotPath = path.join(directory, "preserved-source.log");
       fs.writeFileSync(snapshotPath, preserved.rawLog, { mode: 0o600, flag: "wx" });
       sourceSnapshotInput = { log_path: snapshotPath, log_filename: previous.log_filename, log_round: previous.log_round,
         sha256: previous.sha256, source_hash: previous.source_hash, manifest_sha256: previous.manifest_sha256 };
-    } else ({ logDir, logManifest, logResult } = resolveParserLogs(options.logsRoot, demo.match_id));
+    } else ({ logDir, logManifest, logResult, logCount } = resolveParserLogs(options.logsRoot, demo.match_id));
     registry.db.prepare("UPDATE hltv_upstream_runs SET upstream_sha=? WHERE id=?").run(release.sha, run.id);
-    const pythonCommand = sandboxCommand(options.python, ["-I", path.join(__dirname, "upstream_bridge.py")], directory, options.memoryBytes);
-    const matched = await child(pythonCommand.bin, pythonCommand.args, {
+    const timeoutSeconds = options.timeoutSeconds ?? 3600;
+    const runStage = (stage, bin, args, input) => {
+      const command = sandboxCommand(bin, args, directory, options.memoryBytes, timeoutSeconds + 5);
+      const unit = "noname-hltv-" + run.id + "-" + stage + ".service";
+      return child(command.bin, ["--unit=" + unit, ...command.args], input, timeoutSeconds * 1000, stage, unit);
+    };
+    const matched = await runStage("demo_log_pairing", options.python, ["-I", path.join(__dirname, "upstream_bridge.py")], {
       upstream_root: release.root, demo_path: source.path, demo_sha256: demo.sha256,
       max_demo_bytes: registry.storage.maxBytes, match_id: demo.match_id, map: demo.map,
       ...(sourceSnapshotInput ? { source_snapshot: sourceSnapshotInput } : { log_dir: logDir, log_manifest: logManifest, log_result: logResult }), output_dir: directory,
-      memory_bytes: options.memoryBytes || 2147483648,
+      memory_bytes: options.memoryBytes || 2147483648, cpu_seconds: timeoutSeconds + 5,
     });
     if (matched.status !== "matched") {
       const error = new Error(matched.status === "ambiguous" ? "ambiguous_log_pairing" : "no_verified_log_pairing");
-      error.diagnostics = { upstream_sha: release.sha, candidates: matched.candidates, accepted_rounds: matched.accepted_rounds };
+      error.diagnostics = { upstream_sha: release.sha, candidates: matched.candidates, accepted_rounds: matched.accepted_rounds, log_count: logCount };
       throw error;
     }
     const heapMiB = Math.floor((options.memoryBytes || 2147483648) / 2097152);
-    const nodeCommand = sandboxCommand(process.execPath, ["--max-old-space-size=" + heapMiB, path.join(__dirname, "upstream_conc.js"), release.root, directory], directory, options.memoryBytes);
-    const estimate = await child(nodeCommand.bin, nodeCommand.args);
+    const estimate = await runStage("concussion_estimation", process.execPath, ["--max-old-space-size=" + heapMiB, path.join(__dirname, "upstream_conc.js"), release.root, directory]);
     JSON.parse(fs.readFileSync(path.join(directory,"source-manifest.json"),"utf8"));
     const sourceSnapshot=registry.preserveSourceLog({demoId:demo.id,runId:run.id,logFilename:matched.log_filename,logRound:matched.log_round,
       sourceHash:matched.source_hash,manifestSha256:matched.manifest_sha256,matchedLog:JSON.parse(fs.readFileSync(path.join(directory,"matched-log.json"),"utf8")),
@@ -218,10 +237,10 @@ async function runPending(registry, options) {
     let statistics;
     if(options.statisticsEnabled){
       const assets=new Storage(options.assetsRoot,{readonly:true,publicRoot:path.resolve(__dirname,"../../..")});
-      const conversion=sandboxCommand(options.python,["-I",path.join(__dirname,"upstream_assets.py")],directory,options.memoryBytes);
-      await child(conversion.bin,conversion.args,{upstream_root:release.root,assets_root:assets.root,output_dir:directory});
-      const comparison=sandboxCommand(process.execPath,["--max-old-space-size="+heapMiB,path.join(__dirname,"upstream_statistics.js"),release.root,directory],directory,options.memoryBytes);
-      await child(comparison.bin,comparison.args);
+      await runStage("asset_conversion", options.python, ["-I", path.join(__dirname,"upstream_assets.py")],
+        {upstream_root:release.root,assets_root:assets.root,output_dir:directory});
+      await runStage("scanner", process.execPath, ["--max-old-space-size="+heapMiB,
+        path.join(__dirname,"upstream_statistics.js"),release.root,directory,String(timeoutSeconds * 1000)]);
       const resultFile=path.join(directory,"statistics.json");
       if(fs.statSync(resultFile).size>16777216)throw new Error("statistics_result_too_large");
       statistics=JSON.parse(fs.readFileSync(resultFile,"utf8"));
@@ -250,7 +269,8 @@ async function runPending(registry, options) {
     }).immediate();
     return { enabled: true, processed: 1, status: "complete", run_id: run.id };
   } catch (error) {
-    console.error("[HLTV upstream]", run.id, error.message);
+    console.error("[HLTV upstream]", run.id, error.message,
+      error.diagnostics?.limit ? JSON.stringify(error.diagnostics) : "");
     const known=["ambiguous_log_pairing","no_verified_log_pairing","insufficient_storage_headroom","insufficient_memory_headroom","missing_map_asset","missing_or_invalid_player_model","no_server_player_models","missing_private_asset","asset_checksum_mismatch","unsupported_upstream_scanner","upstream_scanner_incomplete","upstream_scanner_timeout","too_many_scanner_findings","statistics_input_too_large","upstream_resource_limit","source_log_revision_changed","demo_unfinalized_missing_directory","demo_is_not_hltv","demo_wrong_map","unsupported_demo","log_source_checksum_mismatch","invalid_log_manifest","missing_parser_log_manifest","missing_parser_result","log_match_identity","demo_checksum_mismatch","invalid_upstream_output"];
     const code=known.find(value=>error.message===value||error.message.includes("upstream_process_failed: "+value))||"upstream_failed";
     const diagnostic=diagnosticForError(error,code.includes("log")||code.includes("pairing")?"parser":code.includes("asset")||code.includes("model")?"assets":code.includes("scanner")?"scanner":"worker");

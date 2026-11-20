@@ -25,6 +25,7 @@ HLTV_UPSTREAM_ENABLED=false
 HLTV_UPSTREAM_ROOT=/opt/noname-hltv-tools
 HLTV_UPSTREAM_PYTHON=python3
 HLTV_UPSTREAM_MEMORY_BYTES=2147483648
+HLTV_UPSTREAM_TIMEOUT_SECONDS=3600
 HLTV_PARSER_LOG_ROOT=/var/lib/noname-parser
 HLTV_VIEWER_ENABLED=false
 HLTV_VIEWER_CACHE_HOURS=12
@@ -56,7 +57,7 @@ node /var/www/tfcbot/api/scripts/analyzeHltvDemo.js --match 78ZA59
 flock -n /var/lib/noname-hltv-worker/worker.lock node /var/www/tfcbot/api/scripts/hltv-worker.js
 ```
 
-The existing five-minute worker processes at most one queued upstream run per pass, serially. For two demos run the worker twice or wait for the next cron pass. Source demos and logs are read from their existing private locations, never downloaded/re-uploaded/copied for this work. The CLI only queues existing registered available demos; it does not invoke normal match reporting or any public stats upload.
+The installed systemd worker watches for finalized demo and parser-log publications, then drains queued runs serially. It checks again within five seconds when idle, including for manually queued runs and missed filesystem events. A one-shot CLI invocation still processes at most one queued run. Stop `noname-hltv-worker.service` before running a command that acquires the worker lock, then start the service again. Source demos and logs are read from their existing private locations. The CLI only queues existing registered available demos.
 
 To verify a particular queued recording ahead of other matches, pass its returned run ID:
 
@@ -72,7 +73,7 @@ Every user-requested upstream run adds an explicit hold. That hold persists afte
 
 ## Resource and recovery controls
 
-On Linux each Python/Node analysis stage runs as the current worker UID through a transient systemd service with a whole-process memory cap (default 2 GiB), no swap, one-CPU quota, 180-second runtime, five-second stop timeout, task limit, no new privileges, private network/tmp and read-only system mounts except its generated scratch directory. The parent also bounds stdout, wall time and subprocess lifetime; Python adds address-space/CPU limits. The Node heap cap is supplemental, not the process RAM guarantee. The installer verifies memory enforcement before activation. This uses systemd's [transient service controls](https://www.freedesktop.org/software/systemd/man/latest/systemd-run.html).
+On Linux each Python/Node analysis stage runs as the current worker UID through a transient systemd service with a whole-process memory cap (default 2 GiB), no swap, one-CPU quota, a bounded runtime, five-second stop timeout, task limit, no new privileges, private network/tmp and read-only system mounts except its generated scratch directory. `HLTV_UPSTREAM_TIMEOUT_SECONDS` sets the per-stage deadline (default 3600, allowed 180–14400). The worker bounds stdout at 2 MiB and records the stage, limit, and elapsed milliseconds when either limit fires. Python adds address-space and CPU limits. The installer verifies memory enforcement before activation.
 
 The worker checks `/proc/meminfo` for at least the configured budget plus 256 MiB available before starting, as well as normal storage headroom. Adjust the budget only after measuring; too small a budget produces a held failed run. Do not disable resource isolation to force large inputs through a busy match server. Actual jobs require Linux/systemd; Windows compatibility checks cover imports and the algorithm/transport contract only.
 

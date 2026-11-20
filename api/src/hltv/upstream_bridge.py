@@ -27,7 +27,8 @@ def main(request):
         import resource
         memory = int(request.get('memory_bytes', 2147483648))
         resource.setrlimit(resource.RLIMIT_AS, (memory, memory))
-        resource.setrlimit(resource.RLIMIT_CPU, (150, 150))
+        cpu_seconds = int(request.get('cpu_seconds', 150))
+        resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
     sys.dont_write_bytecode = True
     sys.path.insert(0, request['upstream_root'])
     import goldsrc_demo

@@ -1,4 +1,4 @@
-# Install as /etc/logrotate.d/noname-hltv after installing the HLTV cron worker.
+# Install as /etc/logrotate.d/noname-hltv after installing the HLTV worker service.
 /var/log/noname-hltv-worker.log {
     weekly
     rotate 4

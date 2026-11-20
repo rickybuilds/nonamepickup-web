@@ -59,7 +59,7 @@ function evidenceQueues(shots){
   for(const shot of shots){const id=key(shot);if(!queues.has(id))queues.set(id,[]);queues.get(id).push(shot);}
   return shot=>queues.get(key(shot))?.shift();
 }
-async function compare(root, meta, bytes, log, fetch) {
+async function compare(root, meta, bytes, log, fetch, timeoutMs = 120000) {
   const viewer = loadViewer(root, fetch), {S, ConcAim, Studio} = viewer;
   for (const section of Object.values(meta.buffers)) {
     if (!Array.isArray(section) || section.length !== 2 || section.some(n=>!Number.isSafeInteger(n)||n<0) || section[0]%4 || section[0]+section[1]>bytes.byteLength) throw new Error("invalid_demo_buffer");
@@ -81,7 +81,7 @@ async function compare(root, meta, bytes, log, fetch) {
   // sandbox process. Identity is resolved at each finding's event time.
   viewer.runAnalysis();
   if(!S.analysis||!Array.isArray(S.analysis.found))throw new Error("upstream_scanner_incomplete");
-  const deadline = Date.now() + 120000;
+  const deadline = Date.now() + timeoutMs;
   while (S.analysis?.running) {
     if (Date.now() > deadline) throw new Error("upstream_scanner_timeout");
     await new Promise(resolve => setTimeout(resolve, 20));
@@ -151,19 +151,19 @@ async function compare(root, meta, bytes, log, fetch) {
   return {version:1,metric:"ghosty-firing-v1",source_start_seconds:meta.start,settings:{margin:.1,aspect:4/3,lag_compensation:true,uncertainty:log.alignment.uncertainty},
     groups:[...groups.values()],shots,audits,unassigned,scanner:{version:"upstream-runAnalysis",time_coordinate:"demo_relative_seconds",settings:{source:"web/viewer.js:runAnalysis",sample_target_hz:10,lag_compensation:!!viewer.prefs.unlag},findings,stats:S.analysis?.stats||{}},accuracy_kind:"estimated_hit_evidence_not_bullet_accuracy"};
 }
-async function run(root,directory){
+async function run(root,directory,timeoutMs){
   const read=(name,max)=>{const file=path.join(directory,name);if(fs.statSync(file).size>max)throw new Error("statistics_input_too_large");return fs.readFileSync(file);};
   const meta=JSON.parse(zlib.gunzipSync(read("meta.json.gz",33554432),{maxOutputLength:67108864}));
   const data=zlib.gunzipSync(read("data.bin.gz",268435456),{maxOutputLength:536870912});
   const log=JSON.parse(read("matched-log.json",33554432)),assets=assetReader(path.join(directory,"assets.bin"));
   try{
     const buffer=data.byteOffset===0&&data.byteLength===data.buffer.byteLength?data.buffer:data.buffer.slice(data.byteOffset,data.byteOffset+data.byteLength);
-    const result=await compare(root,meta,buffer,log,assets.fetch);
+    const result=await compare(root,meta,buffer,log,assets.fetch,timeoutMs);
     result.assets=assets.manifest.assets.map(({route,sha256,missing,sources})=>({route,sha256,missing,sources}));
     const output=JSON.stringify(result);if(Buffer.byteLength(output)>16777216)throw new Error("statistics_result_too_large");
     fs.writeFileSync(path.join(directory,"statistics.json"),output,{flag:"wx",mode:0o600});
     return {ok:true,recorded_shots:result.shots.length,groups:result.groups.length};
   }finally{assets.close();}
 }
-if(require.main===module)run(process.argv[2],process.argv[3]).then(result=>process.stdout.write(JSON.stringify(result))).catch(error=>{process.stderr.write(error.message);process.exitCode=1;});
+if(require.main===module)run(process.argv[2],process.argv[3],process.argv[4] === undefined ? undefined : Number(process.argv[4])).then(result=>process.stdout.write(JSON.stringify(result))).catch(error=>{process.stderr.write(error.message);process.exitCode=1;});
 module.exports = { loadViewer,compare,assetReader,run,evidenceQueues };

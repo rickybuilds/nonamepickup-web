@@ -14,7 +14,7 @@ Append to `/var/www/tfcbot/api/.env`:
 
 ```dotenv
 HLTV_STATISTICS_ENABLED=false
-HLTV_STATISTICS_AUTO_COLLECT=false
+HLTV_STATISTICS_AUTO_COLLECT=true
 HLTV_ASSETS_ROOT=/srv/noname-hltv-assets
 ```
 
@@ -22,7 +22,7 @@ Keep the already-working `HLTV_UPSTREAM_ENABLED`, storage/log paths and resource
 
 After assets are installed, update/check the upstream pin with `node /var/www/tfcbot/api/scripts/updateHltvUpstream.js --apply`. For a controlled first trial, set **only** `HLTV_STATISTICS_ENABLED=true`, keep automatic collection false, and restart `tfcapi`. Queue the finalized first `78ZA59` demo (`8bc2702c-94b9-492c-a29b-7c4a9355cb00`) through its existing Ghosty analysis button, then run the existing locked worker command. Refresh the review detail for firing statistics. The other `78ZA59` demo has no finalized directory and remains a separate retrieval issue; do not silently repair original evidence.
 
-Only after real-match comparisons and resource consumption have been validated, set `HLTV_STATISTICS_AUTO_COLLECT=true`. Existing cron then enrolls at most one new retained recording per pass, and processes one upstream job at a time. All players in a successful round are collected. Automatic jobs release only their own processing holds when they finish, including failures; routine raw retention applies afterward. Manual review/evidence holds are preserved. Failed and skipped automatic enrollments do not retry endlessly; an admin may explicitly queue a retry. Disabling collection leaves queued automatic jobs protected and unprocessed until re-enabled or deliberately resolved by an operator.
+With statistics enabled, automatic collection is on by default. Set `HLTV_STATISTICS_AUTO_COLLECT=false` to disable automatic enrollment. The installed worker enrolls eligible retained demos as finalized parser inputs become available and runs one job at a time. All players in a successful round are collected. Automatic jobs release only their own processing holds when they finish, including failures. Manual review and evidence holds are preserved. An admin can explicitly retry failed automatic runs.
 
 ## Definitions and history
 

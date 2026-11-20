@@ -19,7 +19,7 @@ hltv_script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 hltv_worker="${hltv_script_dir}/hltv-worker.js"
 for hltv_path in "$hltv_node_bin" "$hltv_flock_bin" "$hltv_worker"; do
   if [[ "$hltv_path" =~ [^a-zA-Z0-9_./+-] ]]; then
-    echo "Unsupported character in cron command path." >&2
+    echo "Unsupported character in worker command path." >&2
     exit 1
   fi
 done
@@ -44,13 +44,29 @@ fi
 chown "$hltv_worker_user:$hltv_worker_group" /var/log/noname-hltv-worker.log
 chmod 0600 /var/log/noname-hltv-worker.log
 
-hltv_cron_temp="$(mktemp)"
-trap 'rm -f -- "$hltv_cron_temp"' EXIT
-{
-  printf '%s\n' '# Managed HLTV registry worker; all deletion remains gated by api/.env.'
-  printf '%s\n' 'SHELL=/bin/bash' 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
-  printf '*/5 * * * * %s "%s" -n /var/lib/noname-hltv-worker/worker.lock "%s" "%s" >> /var/log/noname-hltv-worker.log 2>&1\n' "$hltv_worker_user" "$hltv_flock_bin" "$hltv_node_bin" "$hltv_worker"
-} > "$hltv_cron_temp"
-install -o root -g root -m 0644 "$hltv_cron_temp" /etc/cron.d/noname-hltv
-echo "Installed /etc/cron.d/noname-hltv: every five minutes, one worker."
+hltv_unit_temp="$(mktemp)"
+trap 'rm -f -- "$hltv_unit_temp"' EXIT
+cat > "$hltv_unit_temp" <<EOF
+[Unit]
+Description=NoName HLTV ingestion and analysis worker
+
+[Service]
+User=$hltv_worker_user
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=$hltv_flock_bin --no-fork /var/lib/noname-hltv-worker/worker.lock $hltv_node_bin $hltv_worker --watch
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+StandardOutput=append:/var/log/noname-hltv-worker.log
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
+EOF
+install -o root -g root -m 0644 "$hltv_unit_temp" /etc/systemd/system/noname-hltv-worker.service
+systemctl daemon-reload
+systemctl enable noname-hltv-worker.service
+systemctl restart noname-hltv-worker.service
+rm -f -- /etc/cron.d/noname-hltv
+echo "Installed noname-hltv-worker.service and retired the five-minute cron entry."
 echo "No environment flags changed. Cleanup stays off/dry-run until configured in api/.env."
