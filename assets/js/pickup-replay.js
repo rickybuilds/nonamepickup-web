@@ -1,4 +1,4 @@
-import { loadReplayMap } from "./replay-map-loader.js?v=20261120r2worker1";
+import { loadReplayMap } from "./replay-map-loader.js?v=20261120r2maps1";
 import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 import {
