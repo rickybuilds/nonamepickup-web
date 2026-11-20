@@ -983,6 +983,10 @@ function disposeObject(object) {
 function mapAssetUrl(mapName) {
   const safeMap = String(mapName || "").trim();
   if (!safeMap || !/^[a-z0-9_.-]+$/i.test(safeMap)) return "";
+  const testR2 = new URLSearchParams(window.location.search).get("r2test") === "1";
+  if (testR2 && safeMap === "conc_relic2") {
+    return "https://pub-30546a4318334918a316a6a6fedea6c8.r2.dev/assets/maps/conc_relic2/conc_relic2.glb";
+  }
   return `assets/maps/${encodeURIComponent(safeMap)}/${encodeURIComponent(safeMap)}.glb?v=20260707textures2`;
 }
 
