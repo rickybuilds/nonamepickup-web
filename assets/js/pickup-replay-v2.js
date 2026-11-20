@@ -4414,6 +4414,10 @@ function jumpToLive() {
 }
 
 function mapAssetUrl(map) {
+  const testR2 = new URLSearchParams(window.location.search).get("r2test") === "1";
+  if (testR2 && map === "2trof_b4") {
+    return "https://pub-30546a4318334918a316a6a6fedea6c8.r2.dev/assets/maps/2trof_b4/2trof_b4.glb";
+  }
   return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260801skies1`;
 }
 
