@@ -1,3 +1,4 @@
+import { loadReplayMap } from "./replay-map-loader.js?v=20261120r2maps1";
 import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 import { clone as cloneSkinnedModel } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/utils/SkeletonUtils.js";
@@ -4414,10 +4415,6 @@ function jumpToLive() {
 }
 
 function mapAssetUrl(map) {
-  const testR2 = new URLSearchParams(window.location.search).get("r2test") === "1";
-  if (testR2 && map === "2trof_b4") {
-    return "https://pub-30546a4318334918a316a6a6fedea6c8.r2.dev/assets/maps/2trof_b4/2trof_b4.glb";
-  }
   return `assets/maps/${encodeURIComponent(map)}/${encodeURIComponent(map)}.glb?v=20260801skies1`;
 }
 
@@ -4591,7 +4588,7 @@ function buildMapBeams(gltf) {
 
 function loadMap() {
   markReplayTiming("map-load-start", { map: state.metadata?.map || "" });
-  loader.load(mapAssetUrl(state.metadata.map), gltf => {
+  loadReplayMap(loader, mapAssetUrl(state.metadata.map), gltf => {
     mapModel = gltf.scene;
     mapModel.position.copy(sourcePoint(0, 0, 0));
     mapModel.traverse(child => {

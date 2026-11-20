@@ -1,3 +1,4 @@
+import { loadReplayMap } from "./replay-map-loader.js?v=20261120r2maps1";
 import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 import {
@@ -2718,7 +2719,7 @@ function buildMapBeams(gltf) {
 }
 
 function loadMap() {
-  loader.load(mapAssetUrl(state.metadata.map), gltf => {
+  loadReplayMap(loader, mapAssetUrl(state.metadata.map), gltf => {
     mapModel = gltf.scene;
     mapModel.position.copy(sourcePoint(0, 0, 0));
     mapModel.traverse(child => {

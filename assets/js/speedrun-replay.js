@@ -1,3 +1,4 @@
+import { loadReplayMap } from "./replay-map-loader.js?v=20261120r2maps1";
 import * as THREE from "three";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/loaders/GLTFLoader.js";
 import { configureReplayMapMaterial } from "./replay-map-materials.js?v=20260730mapmaterials2";
@@ -983,10 +984,6 @@ function disposeObject(object) {
 function mapAssetUrl(mapName) {
   const safeMap = String(mapName || "").trim();
   if (!safeMap || !/^[a-z0-9_.-]+$/i.test(safeMap)) return "";
-  const testR2 = new URLSearchParams(window.location.search).get("r2test") === "1";
-  if (testR2 && safeMap === "conc_relic2") {
-    return "https://pub-30546a4318334918a316a6a6fedea6c8.r2.dev/assets/maps/conc_relic2/conc_relic2.glb";
-  }
   return `assets/maps/${encodeURIComponent(safeMap)}/${encodeURIComponent(safeMap)}.glb?v=20260707textures2`;
 }
 
@@ -1006,7 +1003,8 @@ function loadMapModel(mapName) {
   const url = mapAssetUrl(mapName);
   if (!url || !state.origin) return;
 
-  loader.load(
+  loadReplayMap(
+    loader,
     url,
     gltf => {
       if (mapModel) {
